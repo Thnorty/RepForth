@@ -37,4 +37,6 @@ internal fun Project.configureKotlinAndroid(
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
+
+    configureGuardTestInputs()
 }
