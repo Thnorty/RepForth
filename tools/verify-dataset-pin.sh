@@ -25,9 +25,15 @@ fi
 
 # Only tracked files are checked. Build output and the downloaded dataset are
 # not part of the repository and legitimately contain the SHA in their paths.
+#
+# dataset-vocabulary.json is generated FROM the pin and records which commit it
+# came from. That is a provenance stamp, not a second source of truth: it is what
+# lets CategoricalVocabularyTest notice the file has gone stale after the pin
+# moves. Excluding it is the point, not a loophole.
 OFFENDERS=$(git grep -l --fixed-strings "$SHA" -- . \
   ":(exclude)$PIN_FILE" \
   ":(exclude)tools/verify-dataset-pin.sh" \
+  ":(exclude)core/model/src/test/resources/dataset-vocabulary.json" \
   || true)
 
 if [ -n "$OFFENDERS" ]; then
