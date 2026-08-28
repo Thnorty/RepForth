@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.repforth.core.database.RepForthDatabase
 import com.repforth.core.database.dao.ExerciseDao
+import com.repforth.core.database.dao.ProfileDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,4 +42,7 @@ object DatabaseModule {
 
     @Provides
     fun provideExerciseDao(database: RepForthDatabase): ExerciseDao = database.exerciseDao()
+
+    @Provides
+    fun provideProfileDao(database: RepForthDatabase): ProfileDao = database.profileDao()
 }

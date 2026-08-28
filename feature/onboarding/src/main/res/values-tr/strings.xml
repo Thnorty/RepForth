@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Onboarding flow strings in Turkish -->
+<resources>
+    <string name="onboarding_title">RepForth kurulumu</string>
+    <string name="onboarding_next">İleri</string>
+    <string name="onboarding_back">Geri</string>
+    <string name="onboarding_finish">Tamamla</string>
+    <string name="onboarding_skip">Atla</string>
+    <string name="onboarding_step">Adım %1$d / %2$d</string>
+
+    <string name="onboarding_goal_title">Ne için antrenman yapıyorsun?</string>
+    <string name="onboarding_goal_subtitle">Set ve tekrarları bu belirler.</string>
+    <string name="goal_strength">Güç</string>
+    <string name="goal_hypertrophy">Hipertrofi</string>
+    <string name="goal_endurance">Dayanıklılık</string>
+    <string name="goal_general_fitness">Genel kondisyon</string>
+
+    <string name="onboarding_experience_title">Ne kadar süredir antrenman yapıyorsun?</string>
+    <string name="onboarding_experience_subtitle">Egzersiz seçimini ve hacmi etkiler.</string>
+    <string name="experience_beginner">1 yıldan az</string>
+    <string name="experience_intermediate">1 - 3 yıl</string>
+    <string name="experience_advanced">3 yıldan fazla</string>
+
+    <string name="onboarding_equipment_title">Hangi ekipmanlarla çalışabilirsin?</string>
+    <string name="onboarding_equipment_subtitle">Programlara yalnızca bunlar dahil edilir.</string>
+    <string name="onboarding_equipment_none">Hiçbir şey seçilmezse yalnızca vücut ağırlığı kullanılır.</string>
+
+    <string name="onboarding_days_title">Haftada kaç gün?</string>
+    <string name="onboarding_days_subtitle">Kas gruplarını günlere dağıtmak için kullanılır.</string>
+    <string name="onboarding_days_value">%1$d gün</string>
+
+    <string name="onboarding_length_title">Bir antrenman ne kadar sürsün?</string>
+    <string name="onboarding_length_subtitle">Programlar bu süreye sığacak şekilde planlanır.</string>
+    <string name="onboarding_length_value">%1$d dakika</string>
+
+    <string name="onboarding_muscles_title">Odaklanmak istediğin bir bölge var mı?</string>
+    <string name="onboarding_muscles_subtitle">İsteğe bağlı, daha sonra değiştirilebilir.</string>
+    <string name="onboarding_avoid_title">Kaçınmak istediğin bir hareket veya bölge var mı?</string>
+    <string name="onboarding_avoid_subtitle">Sakatlıklar veya atladığın hareketler; asla programa dahil edilmez.</string>
+
+    <string name="onboarding_privacy">Her şey bu telefonda kalır. Hesap yok, yükleme yok.</string>
+</resources>

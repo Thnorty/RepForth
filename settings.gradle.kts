@@ -26,9 +26,11 @@ rootProject.name = "RepForth"
 
 // Modules are added as they earn their keep (§5: no empty modules for symmetry).
 include(":app")
+include(":core:common")
 include(":core:model")
 include(":core:database")
 include(":core:datastore")
 include(":core:designsystem")
 include(":core:exercise-data")
+include(":core:user-data")
 include(":feature:exercises")

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Onboarding flow strings -->
+<resources>
+    <string name="onboarding_title">Set up RepForth</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_finish">Finish</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_step">Step %1$d of %2$d</string>
+
+    <string name="onboarding_goal_title">What are you training for?</string>
+    <string name="onboarding_goal_subtitle">This shapes sets and reps.</string>
+    <string name="goal_strength">Strength</string>
+    <string name="goal_hypertrophy">Hypertrophy</string>
+    <string name="goal_endurance">Endurance</string>
+    <string name="goal_general_fitness">General fitness</string>
+
+    <string name="onboarding_experience_title">How long have you been training?</string>
+    <string name="onboarding_experience_subtitle">This affects exercise choice and volume.</string>
+    <string name="experience_beginner">Under a year</string>
+    <string name="experience_intermediate">1 to 3 years</string>
+    <string name="experience_advanced">More than 3 years</string>
+
+    <string name="onboarding_equipment_title">What can you train with?</string>
+    <string name="onboarding_equipment_subtitle">Only these will be programmed.</string>
+    <string name="onboarding_equipment_none">Choosing nothing means bodyweight only.</string>
+
+    <string name="onboarding_days_title">How many days a week?</string>
+    <string name="onboarding_days_subtitle">Used to spread muscle groups out.</string>
+    <string name="onboarding_days_value">%1$d days</string>
+
+    <string name="onboarding_length_title">How long is a session?</string>
+    <string name="onboarding_length_subtitle">Plans will fit inside this.</string>
+    <string name="onboarding_length_value">%1$d minutes</string>
+
+    <string name="onboarding_muscles_title">Anything to focus on?</string>
+    <string name="onboarding_muscles_subtitle">Optional, can be changed later.</string>
+    <string name="onboarding_avoid_title">Anything to avoid?</string>
+    <string name="onboarding_avoid_subtitle">Injuries or movements you skip; never programmed.</string>
+
+    <string name="onboarding_privacy">Everything stays on this phone. No account, nothing uploaded.</string>
+</resources>
