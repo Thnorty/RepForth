@@ -77,20 +77,6 @@ private fun TemplateExerciseEntity.toDomain() = PlannedExercise(
     id = id,
     exerciseId = ExerciseId(exerciseId),
     position = position,
-    target = toTarget(),
+    target = exerciseTargetOf(targetSets, targetReps, targetDurationMs, targetWeightKg),
     restMs = restMs,
 )
-
-/**
- * Reps wins when a row somehow has both.
- *
- * The schema allows it — two nullable columns cannot express "exactly one" — and
- * the domain type does not. Preferring reps is arbitrary but total; the
- * alternative is throwing, which would make one malformed row hide a whole plan.
- */
-private fun TemplateExerciseEntity.toTarget(): ExerciseTarget = when {
-    targetReps != null -> ExerciseTarget.Reps(targetSets, targetReps!!, targetWeightKg)
-    targetDurationMs != null -> ExerciseTarget.Duration(targetSets, targetDurationMs!!, targetWeightKg)
-    // Neither set: treat as a single-rep target rather than losing the exercise.
-    else -> ExerciseTarget.Reps(targetSets, reps = 1, weightKg = targetWeightKg)
-}

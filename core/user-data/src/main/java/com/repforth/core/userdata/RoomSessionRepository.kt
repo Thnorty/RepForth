@@ -139,7 +139,10 @@ private fun SessionExerciseWithSets.toDomain() = SessionExercise(
     id = exercise.id,
     exerciseId = ExerciseId(exercise.exerciseId),
     position = exercise.position,
-    target = exercise.toTarget(),
+    target = exerciseTargetOf(
+        exercise.targetSets, exercise.targetReps,
+        exercise.targetDurationMs, exercise.targetWeightKg,
+    ),
     restMs = exercise.restMs,
     sets = sets.sortedBy { it.position }.map { set ->
         SetOutcome(
@@ -153,14 +156,3 @@ private fun SessionExerciseWithSets.toDomain() = SessionExercise(
         )
     },
 )
-
-/** Reps wins if a row somehow has both; the schema allows it and the type does not. */
-private fun SessionExerciseEntity.toTarget(): ExerciseTarget {
-    val reps = targetReps
-    val duration = targetDurationMs
-    return when {
-        reps != null -> ExerciseTarget.Reps(targetSets, reps, targetWeightKg)
-        duration != null -> ExerciseTarget.Duration(targetSets, duration, targetWeightKg)
-        else -> ExerciseTarget.Reps(targetSets, reps = 1, weightKg = targetWeightKg)
-    }
-}
