@@ -281,6 +281,138 @@ to say this.
 
 ---
 
+## Phase 1 — Local workout core
+
+The phase that makes RepForth useful. §19 requires it to be **fully useful
+offline**: profile, manual builder, rules engine, the active-session state
+machine, timers, history, and export/delete.
+
+Ordered by dependency. Each slice is shippable on its own — the app should be
+usable at every step, not only at the end.
+
+### 1.1 — User-data schema (Room v2)
+
+The seven tables §7 lists that do not exist yet: `user_profile`,
+`movement_exclusion`, `workout_template`, `template_exercise`,
+`workout_session`, `session_exercise`, `set_record`.
+
+Every mutable table gets a UUID primary key, `createdAt` and `updatedAt`. Weights
+are stored in kilograms and durations in milliseconds, converted only for display
+(§7) — so no stored number depends on what the user had selected when they logged
+it.
+
+**No migration is needed, and that is a one-time freedom.** v1 has never been
+released, so the version can be bumped and the packaged catalog regenerated. From
+the first public release onward, §7 requires explicit migrations and forbids
+destructive ones. Worth writing the first migration test now, while the schema is
+small, rather than the day it first matters.
+
+Regenerating the catalog is not optional here: adding entities changes Room's
+identity hash, and the packaged asset carries the old one. `PackagedCatalogTest`
+will fail until `tools/import-dataset.py` is re-run — which is the guard working.
+
+**Done when:** the schema is exported, the catalog regenerated, and a migration
+test exists even though it has nothing to migrate yet.
+
+### 1.2 — Profile and onboarding
+
+Goals, experience, available equipment, training days, session length, preferred
+and excluded muscles (§3). Feeds the rules engine's constraints and the builder's
+defaults.
+
+Onboarding writes `onboardingComplete`, which already exists in preferences and
+is currently written by nothing.
+
+**Done when:** a fresh install walks to a profile, and re-opening skips it.
+
+### 1.3 — Manual workout builder
+
+`feature:workout-builder`. Pick exercises from the catalog, set targets, order
+them, save as a template. Reuses `core:exercise-data` — if the builder needs a
+query the catalog screen does not have, that is a repository method, not a DAO in
+a feature.
+
+The Coach mode (§12) is a *mode inside this screen*, and it stays absent until
+Phase 2. The screen must be complete without it.
+
+**Done when:** a plan can be built, saved, reopened and edited.
+
+### 1.4 — Rules engine
+
+`core:rules`. Candidate filtering by muscle, equipment, exclusions and
+experience; scoring; deterministic output for a given seed (§8).
+
+Pure Kotlin, no Android, no database — it takes candidates and constraints and
+returns a plan. That makes it exhaustively unit-testable, which matters because
+Phase 2's AI path validates its output against these same rules.
+
+**Done when:** the same seed and constraints always produce the same plan, and
+every hard constraint — excluded IDs, excluded muscles, unavailable equipment,
+duration ceiling — is proven unbreakable by tests.
+
+### 1.5 — Active workout session
+
+**The riskiest slice in the phase.** The state machine §10 specifies, with
+timers, an ongoing notification, and correct recovery.
+
+Four things that are easy to get wrong and hard to notice:
+
+- **Time must come from a monotonic deadline** (`elapsedRealtime`), not a
+  decrementing counter, or the countdown drifts whenever the process is paused
+  or the UI recomposes.
+- **Every meaningful transition persists transactionally before anything else
+  observes it**, so a process death mid-set cannot lose the set.
+- **Commands carry `sessionId`, `commandId` and `expectedRevision`, and are
+  idempotent.** This is not needed until the watch exists in Phase 4 — but
+  retrofitting idempotency into a state machine afterwards is far worse than
+  building it in.
+- **Android 14 foreground-service rules** need checking before design, not
+  after: the service type and its matching permission are not optional, and the
+  service must not outlive the workout.
+
+**Design constraint that makes this testable:** keep the state machine pure —
+states, events, transitions, and an injected time source. Then the whole of §10
+is unit-testable with a fake clock, and only the notification and service need a
+device.
+
+**Done when:** every transition in the §10 diagram is exercised by tests, a
+killed process restores mid-session, and the notification's pause and resume
+work from the lock screen.
+
+### 1.6 — History
+
+`feature:progress`. Completed sessions, volume, streaks, recent muscle activity
+(§3). Read-only over what 1.5 writes.
+
+**Done when:** finishing a workout makes it appear, and large-history query
+performance is measured rather than assumed (§17).
+
+### 1.7 — Export, import and delete
+
+Versioned JSON export of all user-created data. Import only after schema
+validation and a preview of what will change. "Delete all workout data" must not
+touch the bundled catalog; "Reset app" clears everything (§7).
+
+**Done when:** an export round-trips, a newer or malformed file is rejected with
+a real message, and deleting user data leaves 1,324 exercises intact.
+
+### Known risks in this phase
+
+- **1.5 is where the schedule goes wrong.** Process-death recovery and
+  foreground-service compliance are both areas where the correct answer changed
+  across recent Android versions. Budget for reading current documentation
+  rather than recalling it.
+- **The device is a Galaxy S23 on Android 14.** Samsung's background-execution
+  behaviour is stricter than stock. A workout notification that survives on a
+  Pixel may not survive here, and this is the device that matters.
+- **`run-as` is blocked by Knox**, so the app's database cannot be pulled off the
+  device for inspection. Debugging persistence bugs will need an in-app path or
+  an export.
+- **Instrumentation tests still do not exist.** A device is now attached, so the
+  excuse is gone; 1.5 is the slice that most needs them.
+
+---
+
 ## Decisions already made
 
 Closed. Reopen only with a reason, and update the guideline in the same change.
