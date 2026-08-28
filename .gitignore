@@ -19,3 +19,6 @@ captures/
 
 # Scratch space used while scaffolding.
 _staging/
+
+# Kotlin compiler session files (Kotlin 2.x daemon scratch)
+.kotlin/

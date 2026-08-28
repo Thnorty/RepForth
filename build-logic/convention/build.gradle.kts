@@ -19,6 +19,9 @@ dependencies {
     compileOnly(libs.android.gradlePlugin)
     compileOnly(libs.kotlin.gradlePlugin)
     compileOnly(libs.compose.gradlePlugin)
+    compileOnly(libs.ksp.gradlePlugin)
+    compileOnly(libs.room.gradlePlugin)
+    compileOnly(libs.hilt.gradlePlugin)
 }
 
 gradlePlugin {
@@ -34,6 +37,14 @@ gradlePlugin {
         register("androidCompose") {
             id = "repforth.android.compose"
             implementationClass = "AndroidComposeConventionPlugin"
+        }
+        register("androidHilt") {
+            id = "repforth.android.hilt"
+            implementationClass = "AndroidHiltConventionPlugin"
+        }
+        register("androidRoom") {
+            id = "repforth.android.room"
+            implementationClass = "AndroidRoomConventionPlugin"
         }
     }
 }
