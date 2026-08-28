@@ -52,4 +52,13 @@
     <string name="volume">Volume</string>
     <string name="prs">PRs this month</string>
     <string name="streak">Week streak</string>
+
+    <string name="nav_settings">Settings</string>
+    <string name="nav_back">Back</string>
+
+    <string name="placeholder_today">Your next workout and a quick start will live here.</string>
+    <string name="placeholder_plans">Saved plans, and where a new workout begins.</string>
+    <string name="placeholder_exercises">Search, filters and muscle browsing across the catalog.</string>
+    <string name="placeholder_progress">History, streaks, volume and recent muscle activity.</string>
+    <string name="placeholder_settings">Theme, language, units and the AI provider you supply.</string>
 </resources>

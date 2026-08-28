@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.repforth.android.application)
     alias(libs.plugins.repforth.android.compose)
     alias(libs.plugins.repforth.android.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -32,6 +33,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.kotlinx.serialization.core)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
