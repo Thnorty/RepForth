@@ -173,22 +173,49 @@ data corrected several:
 Confirmed as documented: 1,324 records, unique IDs, both languages non-empty
 everywhere, and every referenced image and video present in the tree.
 
-#### Open for review: the muscle synonym map
+#### Settled: synonymous muscles are merged for filtering
 
-`Muscle` has one constant per upstream string (50), and a hand-written map
-collapses nine unambiguous synonym pairs — `abdominals`→`abs`,
-`quadriceps`→`quads`, `latissimus dorsi`→`lats`, `trapezius`→`traps`,
-`deltoids`/`shoulders`→`delts`, `chest`→`pectorals`, `inner thighs`→`adductors`,
-`ankle stabilizers`→`ankles`.
+`Muscle` keeps one constant per upstream string — all 50 — so storage never
+loses which word the source used. A reviewed map collapses nine unambiguous
+synonym pairs for filtering: `abdominals`→`abs`, `quadriceps`→`quads`,
+`latissimus dorsi`→`lats`, `trapezius`→`traps`, `deltoids`/`shoulders`→`delts`,
+`chest`→`pectorals`, `inner thighs`→`adductors`, `ankle stabilizers`→`ankles`.
 
-Deliberately **not** merged, because these are nested rather than synonymous and
-merging them is a product decision about filter behaviour: `lower abs` vs `abs`,
-`rear deltoids` vs `delts`, `soleus` vs `calves`, `upper chest` vs `pectorals`,
-`rhomboids` vs `upper back`, `brachialis` vs `biceps`, `wrist extensors` and
-`wrist flexors` vs `forearms`, `grip muscles` vs `hands`.
+Terms that are *nested* rather than synonymous stay separate: `lower abs`,
+`rear deltoids`, `soleus`, `upper chest`, `rhomboids`, `brachialis`,
+`wrist extensors`/`wrist flexors`, `grip muscles`.
 
-Worth a decision before `feature:exercises` ships filters: should a user asking
-for "abs" see `lower abs` exercises too?
+For scale: 88 categorical terms in total — 10 body parts, 28 equipment, 50
+muscles. The 50 are a union of `target` (19), `muscle_group` (29) and
+`secondary_muscles` (40), which share 38 terms between them.
+
+#### Proposed: a body map for muscle selection
+
+Show *where* a muscle is while the user picks it, rather than a text chip alone.
+Not scheduled — recorded so the decision is not re-derived.
+
+The approach that fits this project is an authored vector body map: front and
+back silhouettes as vector drawables with one path per region, tinted from the
+colour tokens so it themes for free and costs a few KB. The alternatives are
+worse — third-party anatomy art brings a licence this project would have to
+honour, and the dataset itself ships only exercise thumbnails and animations, no
+anatomy diagrams at all.
+
+Two things it depends on:
+
+- **It needs the synonym merge**, which is why the two decisions above belong
+  together. A body map has exactly one abs region; `abs` and `abdominals` cannot
+  be separate highlightable areas because they are the same place.
+- **Regions are fewer than muscles.** Roughly 15–20 drawable areas cover the 50
+  terms, and some do not map to a place on a body at all — `cardiovascular
+  system`, `grip muscles`, `ankle stabilizers`. Those need a chip fallback, so
+  the map supplements the chips rather than replacing them.
+
+It also must not become colour-only selection (§12) or an unlabelled graphic:
+every region needs its text label and a content description.
+
+The artwork is a design asset, so it should be authored in Claude Design
+alongside the rest of the system and ported, rather than hand-drawn in Kotlin.
 
 ### 0.5 — `feature:exercises`
 
