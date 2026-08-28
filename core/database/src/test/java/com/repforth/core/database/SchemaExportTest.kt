@@ -46,9 +46,20 @@ class SchemaExportTest {
             "The schema's table set changed. If this is intentional, bump " +
                 "RepForthDatabase.VERSION, write the migration, and update this list.",
             sortedSetOf(
+                // Catalog — read-only, rebuilt when the dataset pin moves.
                 "exercise",
                 "exercise_instruction_step",
                 "exercise_secondary_muscle",
+                // User data — the only copy that exists anywhere.
+                "user_profile",
+                "profile_equipment",
+                "profile_preferred_muscle",
+                "movement_exclusion",
+                "workout_template",
+                "template_exercise",
+                "workout_session",
+                "session_exercise",
+                "set_record",
             ),
             tables,
         )

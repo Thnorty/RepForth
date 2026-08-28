@@ -123,6 +123,20 @@ class PackagedCatalogTest {
     }
 
     @Test
+    fun `the packaged database ships no user data`() {
+        // The asset is built by a script from a dataset. If a user table were
+        // ever non-empty in it, every fresh install would arrive carrying
+        // somebody else's rows.
+        listOf(
+            "user_profile", "profile_equipment", "profile_preferred_muscle",
+            "movement_exclusion", "workout_template", "template_exercise",
+            "workout_session", "session_exercise", "set_record",
+        ).forEach { table ->
+            assertEquals("$table must be empty in the packaged asset", 0, count("SELECT COUNT(*) FROM $table"))
+        }
+    }
+
+    @Test
     fun `no orphaned rows reference a missing exercise`() {
         assertEquals(0, count(
             "SELECT COUNT(*) FROM exercise_secondary_muscle m " +
