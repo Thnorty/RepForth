@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -19,10 +20,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -53,18 +50,18 @@ import com.repforth.core.model.region
 @Composable
 internal fun CatalogFilters(
     filter: CatalogFilter,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    view: BodyView,
+    onViewChange: (BodyView) -> Unit,
     onQueryChange: (String) -> Unit,
     onBodyPartSelected: (BodyPart?) -> Unit,
     onEquipmentSelected: (Equipment?) -> Unit,
     onMuscleToggled: (Muscle) -> Unit,
+    onRegionToggled: (BodyRegion) -> Unit,
     onClearFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // rememberSaveable: the expanded state and the chosen view survive rotation,
-    // so turning the phone does not collapse the filters someone is mid-way
-    // through setting.
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    var view by rememberSaveable { mutableStateOf(BodyView.FRONT) }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.s2)) {
         OutlinedTextField(
@@ -91,7 +88,7 @@ internal fun CatalogFilters(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = { expanded = !expanded }) {
+            TextButton(onClick = { onExpandedChange(!expanded) }) {
                 Text(stringResource(R.string.exercises_filters))
             }
             if (!filter.isEmpty) {
@@ -129,7 +126,7 @@ internal fun CatalogFilters(
                 BodyView.entries.forEachIndexed { index, candidate ->
                     SegmentedButton(
                         selected = view == candidate,
-                        onClick = { view = candidate },
+                        onClick = { onViewChange(candidate) },
                         shape = SegmentedButtonDefaults.itemShape(index, BodyView.entries.size),
                     ) {
                         Text(
@@ -146,7 +143,7 @@ internal fun CatalogFilters(
             BodyMap(
                 view = view,
                 selected = selectedRegions(filter.muscles),
-                onRegionClick = { region -> region.muscles.forEach(onMuscleToggled) },
+                onRegionClick = onRegionToggled,
                 modifier = Modifier
                     .height(Layout.bodyMapHeight)
                     // One description for the whole map. Announcing each path
@@ -155,11 +152,42 @@ internal fun CatalogFilters(
                     .semantics { contentDescription = mapDescription },
             )
 
-            // Every muscle, including the ones no silhouette can show.
+            // What is selected, shown separately and first.
+            //
+            // Tapping a region selects several muscles at once, and they were
+            // scattered through a scrolling row of 41 chips — so the map
+            // appeared to do nothing. Selected muscles now surface here, in
+            // canonical form so `pectorals` and `chest` are one chip rather than
+            // two names for the same thing.
+            val selected = filter.muscles.map { it.canonical }.distinct().sortedBy { it.slug }
+            if (selected.isNotEmpty()) {
+                FacetLabel(R.string.exercises_selected_muscles)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
+                    items(selected, key = { it.name }) { muscle ->
+                        val label = stringResource(muscle.labelRes)
+                        InputChip(
+                            selected = true,
+                            onClick = { onMuscleToggled(muscle) },
+                            label = { Text(label) },
+                            trailingIcon = {
+                                Icon(
+                                    painter = RfIcons.Close,
+                                    contentDescription =
+                                        stringResource(R.string.exercises_remove_muscle, label),
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+
+            // Everything not yet chosen, including the muscles no silhouette can
+            // show. Canonical only, so synonyms do not appear as separate chips.
+            val available = Muscle.entries.filter { it.canonical == it && it !in filter.muscles }
             LazyRow(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
-                items(Muscle.entries.filter { it.canonical == it }, key = { it.name }) { muscle ->
+                items(available, key = { it.name }) { muscle ->
                     FilterChip(
-                        selected = muscle in filter.muscles,
+                        selected = false,
                         onClick = { onMuscleToggled(muscle) },
                         label = { Text(stringResource(muscle.labelRes)) },
                     )

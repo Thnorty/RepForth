@@ -16,4 +16,6 @@
     <string name="exercises_loading">Katalog yükleniyor…</string>
     <string name="exercises_names_english">Egzersiz adları veri kümesinden geliyor ve İngilizcedir.</string>
     <string name="exercises_row_detail">%1$s · %2$s</string>
+    <string name="exercises_selected_muscles">Seçilenler</string>
+    <string name="exercises_remove_muscle">%1$s filtresini kaldır</string>
 </resources>

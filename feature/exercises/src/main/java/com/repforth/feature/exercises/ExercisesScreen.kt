@@ -16,6 +16,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -25,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
+import com.repforth.core.model.BodyView
 import com.repforth.core.model.ExerciseSummary
 
 /**
@@ -48,6 +52,7 @@ fun ExercisesRoute(
         onBodyPartSelected = viewModel::onBodyPartSelected,
         onEquipmentSelected = viewModel::onEquipmentSelected,
         onMuscleToggled = viewModel::onMuscleToggled,
+        onRegionToggled = viewModel::onRegionToggled,
         onClearFilters = viewModel::onClearFilters,
         modifier = modifier,
     )
@@ -63,9 +68,17 @@ internal fun ExercisesScreen(
     onBodyPartSelected: (com.repforth.core.model.BodyPart?) -> Unit,
     onEquipmentSelected: (com.repforth.core.model.Equipment?) -> Unit,
     onMuscleToggled: (com.repforth.core.model.Muscle) -> Unit,
+    onRegionToggled: (com.repforth.core.model.BodyRegion) -> Unit,
     onClearFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Hoisted above the LazyColumn deliberately. Held inside the filters item,
+    // this survived rotation only while that item happened to be on screen:
+    // LazyColumn retains saved state for a bounded number of disposed items, so
+    // scrolling down far enough evicted it and rotation collapsed the panel.
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var view by rememberSaveable { mutableStateOf(BodyView.FRONT) }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -77,10 +90,15 @@ internal fun ExercisesScreen(
         item(key = "filters") {
             CatalogFilters(
                 filter = state.filter,
+                expanded = expanded,
+                onExpandedChange = { expanded = it },
+                view = view,
+                onViewChange = { view = it },
                 onQueryChange = onQueryChange,
                 onBodyPartSelected = onBodyPartSelected,
                 onEquipmentSelected = onEquipmentSelected,
                 onMuscleToggled = onMuscleToggled,
+                onRegionToggled = onRegionToggled,
                 onClearFilters = onClearFilters,
             )
         }

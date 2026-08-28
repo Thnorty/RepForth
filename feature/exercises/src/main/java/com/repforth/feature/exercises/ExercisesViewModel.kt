@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.repforth.core.exercisedata.CatalogFilter
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.BodyPart
+import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Muscle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +40,7 @@ class ExercisesViewModel @Inject constructor(
 
     private val filter = MutableStateFlow(CatalogFilter())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private val results = filter
         // Typing a seven-letter word would otherwise run seven queries over
         // 1,324 rows and render six lists nobody reads. Debounce is on the
@@ -77,10 +79,32 @@ class ExercisesViewModel @Inject constructor(
         )
     }
 
-    fun onMuscleToggled(muscle: Muscle) {
+    /**
+     * Toggles the muscle's whole synonym group, not the single constant.
+     *
+     * `abs` and `abdominals` are one muscle under two upstream names, so
+     * selecting one and leaving the other behind would produce a filter that is
+     * half-applied and a chip row showing both words for the same thing.
+     */
+    fun onMuscleToggled(muscle: Muscle) = toggle(synonymGroup(muscle))
+
+    /**
+     * Selecting a region is one action, not one action per muscle in it.
+     *
+     * Toggling each muscle individually could leave a region half-selected if
+     * some of its muscles were already chosen, which reads on the map as a
+     * region that will not turn off.
+     */
+    fun onRegionToggled(region: BodyRegion) =
+        toggle(region.muscles.flatMapTo(mutableSetOf(), ::synonymGroup))
+
+    private fun synonymGroup(muscle: Muscle): Set<Muscle> =
+        Muscle.entries.filterTo(mutableSetOf()) { it.canonical == muscle.canonical }
+
+    private fun toggle(group: Set<Muscle>) {
         val current = filter.value.muscles
         filter.value = filter.value.copy(
-            muscles = if (muscle in current) current - muscle else current + muscle,
+            muscles = if (current.containsAll(group)) current - group else current + group,
         )
     }
 
