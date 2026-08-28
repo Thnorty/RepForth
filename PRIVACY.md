@@ -8,8 +8,8 @@ yet. If a claim here cannot be checked against the source, it should not be here
 
 **The app makes no network requests.** Not for analytics, not for crash
 reporting, not for updates, not for media. There is no networking library in the
-dependency graph. The exercise catalog is a 2.5 MB database compiled into the
-APK, so browsing it works in aeroplane mode on first launch.
+dependency graph. The exercise catalog is a database of roughly 2.6 MB compiled into
+the APK, so browsing it works in aeroplane mode on first launch.
 
 **There is no account and no server.** Nothing to sign into, nothing to sign into
 it with.

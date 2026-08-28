@@ -29,6 +29,10 @@ them, saying so in a pull request is genuinely useful.
 The rule that generates most of the others: **write it once.** A value that
 appears twice is a bug, not a style preference.
 
+Paths in this table are abbreviated: `core/designsystem/theme/Color.kt` means
+`core/designsystem/src/main/java/com/repforth/core/designsystem/theme/Color.kt`.
+Every module follows that layout.
+
 | Kind of thing | Its one home |
 |---|---|
 | Colours | `core/designsystem/theme/Color.kt` |
@@ -63,9 +67,10 @@ add one, break the thing it watches, watch it go red, and put it back. This has
 caught two real bugs in this repository where a guard silently did not run.
 
 **If a test reads a file at runtime**, that file must be declared as a task
-input in `GuardTestInputs.kt`. Gradle cannot see `java.io.File` reads, so without
-it the task reports UP-TO-DATE and passes on exactly the change it exists to
-catch. This has now happened twice; assume it will happen again.
+input in `build-logic/convention/src/main/kotlin/GuardTestInputs.kt`. Gradle
+cannot see `java.io.File` reads, so without it the task reports UP-TO-DATE and
+passes on exactly the change it exists to catch. This has now happened twice;
+assume it will happen again.
 
 ## Updating the pinned dataset
 
