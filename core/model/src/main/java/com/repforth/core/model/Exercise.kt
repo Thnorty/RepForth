@@ -31,3 +31,22 @@ value class ExerciseId(val value: String) {
         require(value.isNotBlank()) { "ExerciseId must not be blank" }
     }
 }
+
+/**
+ * What a catalog list row needs, and nothing more.
+ *
+ * Loading full [Exercise] objects for a list would pull both languages of every
+ * instruction step — 15,420 rows to render 1,324 names. The detail screen loads
+ * the whole thing; a list does not need it.
+ *
+ * [name] is not localised, and cannot be: the dataset translates instructions
+ * into ten languages but ships a single English `name` per record (§13 applies
+ * to text this project authors, and this text is upstream's).
+ */
+data class ExerciseSummary(
+    val id: ExerciseId,
+    val name: String,
+    val bodyPart: BodyPart,
+    val target: Muscle,
+    val equipment: Equipment,
+)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="exercises_title">Exercises</string>
+    <string name="exercises_search_hint">Search exercises</string>
+    <string name="exercises_clear_query">Clear search</string>
+    <string name="exercises_filters">Filters</string>
+    <string name="exercises_clear_filters">Clear all</string>
+    <string name="exercises_body_part">Body part</string>
+    <string name="exercises_equipment">Equipment</string>
+    <string name="exercises_muscles">Muscles</string>
+    <string name="exercises_view_front">Front</string>
+    <string name="exercises_view_back">Back</string>
+    <string name="exercises_body_map">Body map. Tap a region to filter by the muscles in it.</string>
+    <string name="exercises_results">%1$d exercises</string>
+    <string name="exercises_empty">No exercises match these filters.</string>
+    <string name="exercises_loading">Loading the catalog…</string>
+    <!--
+        The dataset translates instructions into ten languages but ships a single
+        English name per exercise, so search matches English names in every
+        locale. Said once, in the UI, rather than left for a user to discover.
+    -->
+    <string name="exercises_names_english">Exercise names come from the dataset and are in English.</string>
+    <string name="exercises_row_detail">%1$s · %2$s</string>
+</resources>

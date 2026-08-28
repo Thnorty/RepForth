@@ -8,14 +8,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.repforth.app.R
 import com.repforth.app.ui.screen.PlaceholderScreen
+import com.repforth.feature.exercises.ExercisesRoute
 
 /**
  * The app's single navigation graph.
  *
- * Feature screens will move into their own modules as they are built; the graph
- * stays here, because something has to know about all of them and a feature
- * module knowing about its siblings is the coupling the module boundaries exist
- * to prevent.
+ * Feature screens live in their own modules; the graph stays here, because
+ * something has to know about all of them and a feature module knowing about its
+ * siblings is the coupling the module boundaries exist to prevent. Exercises is
+ * the first real one — the rest are still placeholders.
  */
 @Composable
 fun RepForthNavHost(
@@ -34,7 +35,7 @@ fun RepForthNavHost(
             PlaceholderScreen(titleRes = R.string.plans, bodyRes = R.string.placeholder_plans)
         }
         composable<Destination.Exercises> {
-            PlaceholderScreen(titleRes = R.string.catalog, bodyRes = R.string.placeholder_exercises)
+            ExercisesRoute()
         }
         composable<Destination.Progress> {
             PlaceholderScreen(titleRes = R.string.progress, bodyRes = R.string.placeholder_progress)

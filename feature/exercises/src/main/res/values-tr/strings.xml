@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="exercises_title">Egzersizler</string>
+    <string name="exercises_search_hint">Egzersiz ara</string>
+    <string name="exercises_clear_query">Aramayı temizle</string>
+    <string name="exercises_filters">Filtreler</string>
+    <string name="exercises_clear_filters">Tümünü temizle</string>
+    <string name="exercises_body_part">Vücut bölgesi</string>
+    <string name="exercises_equipment">Ekipman</string>
+    <string name="exercises_muscles">Kaslar</string>
+    <string name="exercises_view_front">Ön</string>
+    <string name="exercises_view_back">Arka</string>
+    <string name="exercises_body_map">Vücut haritası. Bir bölgeye dokunarak o bölgedeki kaslara göre filtrele.</string>
+    <string name="exercises_results">%1$d egzersiz</string>
+    <string name="exercises_empty">Bu filtrelere uyan egzersiz yok.</string>
+    <string name="exercises_loading">Katalog yükleniyor…</string>
+    <string name="exercises_names_english">Egzersiz adları veri kümesinden geliyor ve İngilizcedir.</string>
+    <string name="exercises_row_detail">%1$s · %2$s</string>
+</resources>

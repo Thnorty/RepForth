@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Display names for upstream dataset categorical values.
+  Keys are generated from the pinned dataset vocabulary (BodyPart, Equipment, Muscle).
+-->
+<resources>
+    <!-- Body parts -->
+    <string name="body_part_back">Back</string>
+    <string name="body_part_cardio">Cardio</string>
+    <string name="body_part_chest">Chest</string>
+    <string name="body_part_lower_arms">Lower arms</string>
+    <string name="body_part_lower_legs">Lower legs</string>
+    <string name="body_part_neck">Neck</string>
+    <string name="body_part_shoulders">Shoulders</string>
+    <string name="body_part_upper_arms">Upper arms</string>
+    <string name="body_part_upper_legs">Upper legs</string>
+    <string name="body_part_waist">Waist</string>
+
+    <!-- Equipment -->
+    <string name="equipment_assisted">Assisted</string>
+    <string name="equipment_band">Band</string>
+    <string name="equipment_barbell">Barbell</string>
+    <string name="equipment_body_weight">Body weight</string>
+    <string name="equipment_bosu_ball">BOSU ball</string>
+    <string name="equipment_cable">Cable</string>
+    <string name="equipment_dumbbell">Dumbbell</string>
+    <string name="equipment_elliptical_machine">Elliptical machine</string>
+    <string name="equipment_ez_barbell">EZ barbell</string>
+    <string name="equipment_hammer">Hammer</string>
+    <string name="equipment_kettlebell">Kettlebell</string>
+    <string name="equipment_leverage_machine">Leverage machine</string>
+    <string name="equipment_medicine_ball">Medicine ball</string>
+    <string name="equipment_olympic_barbell">Olympic barbell</string>
+    <string name="equipment_resistance_band">Resistance band</string>
+    <string name="equipment_roller">Roller</string>
+    <string name="equipment_rope">Rope</string>
+    <string name="equipment_skierg_machine">SkiErg machine</string>
+    <string name="equipment_sled_machine">Sled machine</string>
+    <string name="equipment_smith_machine">Smith machine</string>
+    <string name="equipment_stability_ball">Stability ball</string>
+    <string name="equipment_stationary_bike">Stationary bike</string>
+    <string name="equipment_stepmill_machine">Stepmill machine</string>
+    <string name="equipment_tire">Tire</string>
+    <string name="equipment_trap_bar">Trap bar</string>
+    <string name="equipment_upper_body_ergometer">Upper body ergometer</string>
+    <string name="equipment_weighted">Weighted</string>
+    <string name="equipment_wheel_roller">Wheel roller</string>
+
+    <!-- Muscles -->
+    <string name="muscle_abdominals">Abdominals</string>
+    <string name="muscle_abductors">Abductors</string>
+    <string name="muscle_abs">Abs</string>
+    <string name="muscle_adductors">Adductors</string>
+    <string name="muscle_ankle_stabilizers">Ankle stabilizers</string>
+    <string name="muscle_ankles">Ankles</string>
+    <string name="muscle_back">Back</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_brachialis">Brachialis</string>
+    <string name="muscle_calves">Calves</string>
+    <string name="muscle_cardiovascular_system">Cardiovascular system</string>
+    <string name="muscle_chest">Chest</string>
+    <string name="muscle_core">Core</string>
+    <string name="muscle_deltoids">Deltoids</string>
+    <string name="muscle_delts">Delts</string>
+    <string name="muscle_feet">Feet</string>
+    <string name="muscle_forearms">Forearms</string>
+    <string name="muscle_glutes">Glutes</string>
+    <string name="muscle_grip_muscles">Grip muscles</string>
+    <string name="muscle_groin">Groin</string>
+    <string name="muscle_hamstrings">Hamstrings</string>
+    <string name="muscle_hands">Hands</string>
+    <string name="muscle_hip_flexors">Hip flexors</string>
+    <string name="muscle_inner_thighs">Inner thighs</string>
+    <string name="muscle_latissimus_dorsi">Latissimus dorsi</string>
+    <string name="muscle_lats">Lats</string>
+    <string name="muscle_levator_scapulae">Levator scapulae</string>
+    <string name="muscle_lower_abs">Lower abs</string>
+    <string name="muscle_lower_back">Lower back</string>
+    <string name="muscle_obliques">Obliques</string>
+    <string name="muscle_pectorals">Pectorals</string>
+    <string name="muscle_quadriceps">Quadriceps</string>
+    <string name="muscle_quads">Quads</string>
+    <string name="muscle_rear_deltoids">Rear deltoids</string>
+    <string name="muscle_rhomboids">Rhomboids</string>
+    <string name="muscle_rotator_cuff">Rotator cuff</string>
+    <string name="muscle_serratus_anterior">Serratus anterior</string>
+    <string name="muscle_shins">Shins</string>
+    <string name="muscle_shoulders">Shoulders</string>
+    <string name="muscle_soleus">Soleus</string>
+    <string name="muscle_spine">Spine</string>
+    <string name="muscle_sternocleidomastoid">Sternocleidomastoid</string>
+    <string name="muscle_trapezius">Trapezius</string>
+    <string name="muscle_traps">Traps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_upper_back">Upper back</string>
+    <string name="muscle_upper_chest">Upper chest</string>
+    <string name="muscle_wrist_extensors">Wrist extensors</string>
+    <string name="muscle_wrist_flexors">Wrist flexors</string>
+    <string name="muscle_wrists">Wrists</string>
+</resources>

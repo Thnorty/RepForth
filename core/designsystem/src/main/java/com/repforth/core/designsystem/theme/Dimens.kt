@@ -34,6 +34,9 @@ object Layout {
     val listRowGap = 8.dp
     val sectionGap = 24.dp
 
+    /** Tall enough for the silhouette to stay tappable inside a scrolling filter panel. */
+    val bodyMapHeight = 280.dp
+
     val appBarHeight = 64.dp
     val navBarHeight = 80.dp
     val fabSize = 56.dp

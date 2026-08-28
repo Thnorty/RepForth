@@ -3,6 +3,7 @@ package com.repforth.core.designsystem.component
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.List
+import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
@@ -41,6 +42,10 @@ object RfIcons {
 
     val Settings: Painter
         @Composable get() = rememberVectorPainter(Icons.Rounded.Settings)
+
+    /** Clears a field. `Clear` rather than `Close`: it empties, it does not dismiss. */
+    val Close: Painter
+        @Composable get() = rememberVectorPainter(Icons.Rounded.Clear)
 
     /** Auto-mirrored: the manifest declares RTL support, so back points the
      *  other way in an RTL locale. Same for [Plans]. */
