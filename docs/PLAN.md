@@ -20,7 +20,7 @@ which decisions are closed so they are not reopened.
 
 | Phase | Guideline | State |
 |---|---|---|
-| 0 — Foundation | §19 | **In progress.** Scaffold, tokens, DI, persistence and CI done; navigation and the dataset outstanding |
+| 0 — Foundation | §19 | **In progress.** Scaffold, tokens, DI, persistence, CI and navigation done; preferences and the dataset outstanding |
 | 1 — Local workout core | §19 | Not started. Blocked on 0 |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
@@ -42,10 +42,12 @@ claim instrumentation or screenshot coverage until that changes.
 | Exercise catalog schema and the domain types it maps to | `1b6b346` |
 | Guard tests re-run when the files they guard change | `28f7a26` |
 | English/Turkish string parity test | `c61b253` |
-| CI: wrapper validation, build, tests, lint, dependency review | pending |
+| CI: wrapper validation, build, tests, lint, dependency review | `cfb85b6` |
+| Icon indirection, with two hand-authored tab icons | `9f795a8` |
+| Navigation shell: four tabs, settings, back stack | `1075f23` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:designsystem`.
-12 unit tests, all passing. Room schema v1 exported and committed.
+15 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -92,18 +94,21 @@ cannot do these:**
   before merge, on a protected `main`. Until that is set, CI reports failures
   but cannot stop them landing.
 
-### 0.2 — Navigation shell
+### 0.2 — Navigation shell — **done**
 
-Four destinations — Today, Plans, Exercises, Progress — with Coach as a mode
-inside the builder rather than a tab (§12; settled, see Decisions).
+Four tabs, Settings reached from the top bar, type-safe `@Serializable` routes,
+and tab switching that saves and restores per-tab state. `RfIcons` gives the app
+one place where an icon is chosen, so the imported set can be dropped in later
+without touching call sites.
 
-Empty screens are acceptable here and only here: the shell is the frame every
-later feature lands into, and building it once beats retrofitting navigation
-around four finished screens.
+`NavigationStructureTest` fails if a fifth tab appears. That is deliberate: a
+fifth tab is a one-line change that looks like a UI tweak and is actually a
+reversal of the §12 Coach decision, so it should have to be argued.
 
-**Unblocks:** every feature module.
-**Done when:** all four destinations are reachable, state survives rotation, and
-back behaviour is correct from each tab.
+**Not verified here, and cannot be:** back behaviour, rotation, and state
+restoration are runtime properties needing an instrumented device. The structure
+is unit-tested; the behaviour is not. First thing to check when a device is
+available.
 
 ### 0.3 — `core:datastore`
 
