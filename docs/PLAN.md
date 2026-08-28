@@ -113,10 +113,9 @@ without touching call sites.
 fifth tab is a one-line change that looks like a UI tweak and is actually a
 reversal of the §12 Coach decision, so it should have to be argued.
 
-**Not verified here, and cannot be:** back behaviour, rotation, and state
-restoration are runtime properties needing an instrumented device. The structure
-is unit-tested; the behaviour is not. First thing to check when a device is
-available.
+**Verified on a Galaxy S23 (Android 14):** tab state survives switching, back
+from Settings returns to the previous tab, and back from the start destination
+exits rather than cycling.
 
 ### 0.3 — `core:datastore` — **done**
 
@@ -238,9 +237,21 @@ but ships one `name` per record, so search matches English names. And the body
 map is paired with muscle chips rather than replacing them, because
 `cardiovascular system` is not a place on a body.
 
-**Not verified here:** the screen has never been rendered. Everything is unit
-tested, but scrolling 1,324 rows, the debounce feeling right, and the body map
-being tappable at real size are runtime properties needing a device.
+**Verified on a Galaxy S23 (Android 14):** the packaged catalog loads and reports
+1,324 exercises, which is the proof that Room accepted its identity hash on real
+hardware. Filters compose correctly — chest gives 163, chest plus dumbbell gives
+44. Search is smooth at the 250 ms debounce, Turkish reads correctly, and nothing
+clips at maximum system font size.
+
+Device testing found two defects, both fixed. Rotating with the list scrolled
+down collapsed the filter panel, because its expanded flag was `rememberSaveable`
+inside a LazyColumn item and LazyColumn evicts saved state for items disposed
+long enough. And a body-map tap looked like it did nothing: it selected several
+muscles scattered through a row of 41 chips, so selected muscles now get their
+own row above the rest.
+
+It also disproved a worry. The neck region measures about 35 dp, under the 48 dp
+minimum, and I expected it to be hard to hit. On the device it is not.
 
 ### 0.6 — Repository documents — **done**
 
