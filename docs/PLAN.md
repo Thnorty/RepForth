@@ -20,7 +20,7 @@ which decisions are closed so they are not reopened.
 
 | Phase | Guideline | State |
 |---|---|---|
-| 0 — Foundation | §19 | **In progress.** Only `feature:exercises` and the repository documents remain |
+| 0 — Foundation | §19 | **In progress.** Only the repository documents remain |
 | 1 — Local workout core | §19 | Not started. Blocked on 0 |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
@@ -50,9 +50,11 @@ claim instrumentation or screenshot coverage until that changes.
 | Real categorical vocabulary: BodyPart, Equipment, Muscle | `3c77849` |
 | Body map: 19 regions, authored artwork, Compose component | `b58a631`, `f6c6c82` |
 | Dataset import: prepackaged catalog, media manifest, data tests | `d91241b` |
+| Exercise catalog screen: search, filters, bilingual terms | `3eb99aa` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
-`core:designsystem`. 48 unit tests, all passing. Room schema v1 exported and committed.
+`core:designsystem`, `core:exercise-data`, `feature:exercises`.
+59 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -220,14 +222,24 @@ every region needs its text label and a content description.
 The artwork is a design asset, so it should be authored in Claude Design
 alongside the rest of the system and ported, rather than hand-drawn in Kotlin.
 
-### 0.5 — `feature:exercises`
+### 0.5 — `feature:exercises` — **done**
 
-Bilingual browsing, search and filters against placeholder media. The first
-screen that reads real data end to end, and therefore the first real test of
-whether the module boundaries hold.
+Search plus body-part, equipment and muscle filters over the packaged catalog,
+in both languages. `core:exercise-data` owns the repository so features never
+touch a DAO; `feature:exercises` owns the screen.
 
-**Done when:** search and filters work in both locales, and the placeholder
-flavour renders correctly with `MediaRef.Unavailable` everywhere.
+The 88 categorical terms have display names in both locales, generated into an
+exhaustive `when` rather than resolved by name at runtime.
+
+**Two limitations, stated in the UI rather than hidden.** Exercise names are
+English in every locale — the dataset translates instructions into ten languages
+but ships one `name` per record, so search matches English names. And the body
+map is paired with muscle chips rather than replacing them, because
+`cardiovascular system` is not a place on a body.
+
+**Not verified here:** the screen has never been rendered. Everything is unit
+tested, but scrolling 1,324 rows, the debounce feeling right, and the body map
+being tappable at real size are runtime properties needing a device.
 
 ### 0.6 — Repository documents
 
