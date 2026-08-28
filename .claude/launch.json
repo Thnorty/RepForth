@@ -4,8 +4,26 @@
     {
       "name": "design-system-static",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8080", "--directory", "C:\\Users\\thnorty\\Documents\\RepForth\\design-system"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8080",
+        "--directory",
+        "C:\\Users\\thnorty\\Documents\\RepForth\\design-system"
+      ],
       "port": 8080
+    },
+    {
+      "name": "repo-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8081",
+        "--directory",
+        "C:\\Users\\thnorty\\Documents\\RepForth"
+      ],
+      "port": 8081
     }
   ]
 }
