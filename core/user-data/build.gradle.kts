@@ -13,6 +13,7 @@ dependencies {
     api(project(":core:model"))
     implementation(project(":core:common"))
     implementation(project(":core:database"))
+    api(project(":core:workout"))
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
