@@ -20,7 +20,7 @@ which decisions are closed so they are not reopened.
 
 | Phase | Guideline | State |
 |---|---|---|
-| 0 — Foundation | §19 | **In progress.** Scaffold, tokens, DI and persistence done; dataset, navigation, CI outstanding |
+| 0 — Foundation | §19 | **In progress.** Scaffold, tokens, DI, persistence and CI done; navigation and the dataset outstanding |
 | 1 — Local workout core | §19 | Not started. Blocked on 0 |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
@@ -40,9 +40,12 @@ claim instrumentation or screenshot coverage until that changes.
 | Archivo + Manrope replacing platform fallback fonts | `e412888` |
 | KSP, Hilt, Room as convention plugins | `8512c31` |
 | Exercise catalog schema and the domain types it maps to | `1b6b346` |
+| Guard tests re-run when the files they guard change | `28f7a26` |
+| English/Turkish string parity test | `c61b253` |
+| CI: wrapper validation, build, tests, lint, dependency review | pending |
 
 Modules today: `app`, `core:model`, `core:database`, `core:designsystem`.
-8 unit tests, all passing. Room schema v1 exported and committed.
+12 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -52,20 +55,42 @@ Ordered by dependency, not by appetite. Each slice names what it unblocks and
 how it is verified, because a slice with no check is a slice that silently
 half-lands.
 
-### 0.1 — CI
+### 0.1 — CI — **done**
 
-**Why first.** There is no CI at all right now, so every guarantee in this repo
-holds only as long as someone remembers to run `./gradlew test` locally. Every
-slice after this one is worth more if it lands behind a check.
+`.github/workflows/ci.yml` runs wrapper validation, a secret-hygiene check,
+`assemblePlaceholderDebug`, `test`, and `lint`, plus dependency review on pull
+requests. `licensed` is deliberately not built: it has no assets yet, and once
+it does they must not reach a public runner (§18).
 
-Start with the subset of §18 that can run today: assemble both flavours, run
-unit tests, Android lint. Add secret scanning and dependency review in the same
-pass — they are cheap and Phase 2 introduces API keys.
+Two things this slice turned up, both worth remembering:
 
-Defer screenshot and migration tests to the phases that create their subjects.
+- **`gradlew` was committed without the executable bit**, so `./gradlew` would
+  have failed with "Permission denied" on the first Linux runner. Fixed with
+  `git update-index --chmod=+x`.
+- **The guard tests did not re-run when the files they guard changed.** They
+  read those files at runtime through `java.io.File`, which Gradle cannot see,
+  so the test task reported UP-TO-DATE and passed on exactly the edit it exists
+  to catch. `configureGuardTestInputs()` now declares them. Both guards were
+  re-verified by mutation afterwards.
 
-**Done when:** a pull request cannot merge with a failing build, a failing test,
-or a new lint error.
+**Still outstanding from §18**, deliberately not done here:
+
+- *Formatting and static analysis.* ktlint or detekt needs a configuration and a
+  cleanup pass over existing code; bundling that into the CI slice would have
+  hidden a formatting sweep inside an infrastructure change. Its own slice.
+- *Screenshot tests and Room migration tests.* Nothing to screenshot yet, and
+  only one schema version exists. They belong to the phases that create their
+  subjects.
+
+**Requires the maintainer, in GitHub repository settings — a workflow file
+cannot do these:**
+
+- Enable secret scanning and push protection (free on public repositories).
+  The workflow's secret-hygiene step only catches credential-shaped *filenames*;
+  it does not scan file contents for token formats.
+- Require the `Build and test` and `Validate Gradle wrapper` checks to pass
+  before merge, on a protected `main`. Until that is set, CI reports failures
+  but cannot stop them landing.
 
 ### 0.2 — Navigation shell
 
@@ -132,11 +157,6 @@ actually leaves the device — write it last, and write it from the code.
 
 ### Small, unblocked, do when convenient
 
-- **String parity test.** `values/` and `values-tr/` currently differ by exactly
-  one key: `app_name`, deliberately untranslated because it is a brand name.
-  That is the correct state, so encode it — a test asserting the key sets match
-  except for a named allow-list turns §13's lockstep rule into something the
-  build enforces rather than something reviewers remember.
 - **Icons.** 56 distinct Material Symbols are referenced by the design system.
   Decision made (vector drawables, not the icon font); import is pending assets.
 
@@ -157,6 +177,8 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | No destructive migration, ever | Losing the only copy of a user's history is not an upgrade path | `SchemaExportTest.kt` |
 | Categorical values stay slugs until the import | Enum constants written before reading the dataset are guesses | `Exercise.kt` |
 | Hilt pinned below latest | Newer releases ship a plugin built against a newer Kotlin stdlib | `libs.versions.toml` |
+| CI builds `placeholder` only | §20's claim is that the public source builds with no private credentials; `licensed` assets must not reach a public runner | `.github/workflows/ci.yml` |
+| Guard tests declare their files as task inputs | Otherwise the task is UP-TO-DATE and passes on the exact change it guards | `GuardTestInputs.kt` |
 
 Still open, and fine to leave open (§21): final application ID, accent colour,
 app icon, and the exact licence.
@@ -175,6 +197,9 @@ app icon, and the exact licence.
 - **KSP is pinned to the Kotlin version.** Bumping `kotlin` without bumping
   `ksp` in the same commit fails the build in a way whose message does not
   mention the real cause.
+- **Nothing enforces CI yet.** Branch protection is a repository setting, so
+  until a maintainer turns it on, a red build reports the failure but does not
+  prevent the merge.
 - **Phase 2 introduces secrets.** Key handling must land with its own tests and
   a CI secret scan on day one, not as hardening later — §20 requires keys to be
   absent from Room, DataStore, logs, backups, exports, source, CI, and watch
