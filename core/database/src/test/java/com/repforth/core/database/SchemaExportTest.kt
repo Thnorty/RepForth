@@ -47,7 +47,6 @@ class SchemaExportTest {
                 "RepForthDatabase.VERSION, write the migration, and update this list.",
             sortedSetOf(
                 "exercise",
-                "exercise_instruction",
                 "exercise_instruction_step",
                 "exercise_secondary_muscle",
             ),

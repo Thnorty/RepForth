@@ -26,32 +26,39 @@ fun ExerciseWithDetails.toDomain(
 ): Exercise = Exercise(
     id = ExerciseId(exercise.id),
     name = exercise.name,
-    bodyPart = BodyPart(exercise.bodyPart),
-    target = Muscle(exercise.target),
-    muscleGroup = Muscle(exercise.muscleGroup),
-    secondaryMuscles = secondaryMuscles.mapTo(mutableSetOf()) { Muscle(it.muscle) },
-    equipment = Equipment(exercise.equipment),
+    bodyPart = exercise.bodyPart.toEnum(BodyPart::fromSlug, "body part"),
+    target = exercise.target.toEnum(Muscle::fromSlug, "muscle"),
+    muscleGroup = exercise.muscleGroup.toEnum(Muscle::fromSlug, "muscle"),
+    secondaryMuscles = secondaryMuscles.mapTo(mutableSetOf()) {
+        it.muscle.toEnum(Muscle::fromSlug, "muscle")
+    },
+    equipment = exercise.equipment.toEnum(Equipment::fromSlug, "equipment"),
     instructions = buildInstructions(),
     thumbnail = thumbnail,
     animation = animation,
-    attribution = exercise.attribution,
 )
 
+/**
+ * Slugs are validated at import, so an unmappable one here means the database
+ * and this build disagree about the vocabulary — a packaging fault, not user
+ * input. Failing loudly beats dropping the exercise from every filter silently.
+ */
+private inline fun <T> String.toEnum(lookup: (String) -> T?, kind: String): T =
+    lookup(this) ?: error("Unknown $kind slug '$this' in the packaged catalog")
+
 private fun ExerciseWithDetails.buildInstructions(): LocalizedInstructions {
-    val stepsByLanguage = steps
+    val byLanguage = steps
         .sortedBy { it.position }
         .groupBy { it.language }
-
-    val byLanguage = instructions.mapNotNull { row ->
-        // An unrecognised tag means the catalog holds a language this build does
-        // not know about. Dropping it is correct: LocalizedInstructions then
-        // fails loudly for the language that IS missing, which is the real fault.
-        val language = Language.fromTag(row.language) ?: return@mapNotNull null
-        language to InstructionText(
-            summary = row.summary,
-            steps = stepsByLanguage[row.language].orEmpty().map { it.text },
-        )
-    }.toMap()
+        .mapNotNull { (tag, rows) ->
+            // An unrecognised tag means the catalog carries a language this
+            // build does not know about; dropping it is right, because
+            // LocalizedInstructions then fails for the language that IS
+            // missing, which is the real fault.
+            val language = Language.fromTag(tag) ?: return@mapNotNull null
+            language to InstructionText(rows.map { it.text })
+        }
+        .toMap()
 
     return LocalizedInstructions(byLanguage)
 }

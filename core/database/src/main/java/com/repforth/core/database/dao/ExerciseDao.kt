@@ -6,7 +6,6 @@ import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
 import com.repforth.core.database.entity.ExerciseEntity
-import com.repforth.core.database.entity.ExerciseInstructionEntity
 import com.repforth.core.database.entity.ExerciseInstructionStepEntity
 import com.repforth.core.database.entity.ExerciseSecondaryMuscleEntity
 import kotlinx.coroutines.flow.Flow
@@ -20,9 +19,6 @@ import kotlinx.coroutines.flow.Flow
  */
 data class ExerciseWithDetails(
     @Embedded val exercise: ExerciseEntity,
-
-    @Relation(parentColumn = "id", entityColumn = "exercise_id")
-    val instructions: List<ExerciseInstructionEntity>,
 
     @Relation(parentColumn = "id", entityColumn = "exercise_id")
     val steps: List<ExerciseInstructionStepEntity>,

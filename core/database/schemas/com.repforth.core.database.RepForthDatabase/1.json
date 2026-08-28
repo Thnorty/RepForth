@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "f2e1c2bf55a5760e063f39c097d41c06",
+    "identityHash": "e66cc39f9039598ae64feb9ee55a34e3",
     "entities": [
       {
         "tableName": "exercise",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `body_part` TEXT NOT NULL, `target` TEXT NOT NULL, `muscle_group` TEXT NOT NULL, `equipment` TEXT NOT NULL, `attribution` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `body_part` TEXT NOT NULL, `target` TEXT NOT NULL, `muscle_group` TEXT NOT NULL, `equipment` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -41,12 +41,6 @@
           {
             "fieldPath": "equipment",
             "columnName": "equipment",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "attribution",
-            "columnName": "attribution",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -146,63 +140,8 @@
         ]
       },
       {
-        "tableName": "exercise_instruction",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`exercise_id` TEXT NOT NULL, `language` TEXT NOT NULL, `summary` TEXT NOT NULL, PRIMARY KEY(`exercise_id`, `language`), FOREIGN KEY(`exercise_id`) REFERENCES `exercise`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "exerciseId",
-            "columnName": "exercise_id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "language",
-            "columnName": "language",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "summary",
-            "columnName": "summary",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "exercise_id",
-            "language"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_exercise_instruction_language",
-            "unique": false,
-            "columnNames": [
-              "language"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_exercise_instruction_language` ON `${TABLE_NAME}` (`language`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "exercise",
-            "onDelete": "CASCADE",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "exercise_id"
-            ],
-            "referencedColumns": [
-              "id"
-            ]
-          }
-        ]
-      },
-      {
         "tableName": "exercise_instruction_step",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`exercise_id` TEXT NOT NULL, `language` TEXT NOT NULL, `position` INTEGER NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY(`exercise_id`, `language`, `position`), FOREIGN KEY(`exercise_id`, `language`) REFERENCES `exercise_instruction`(`exercise_id`, `language`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`exercise_id` TEXT NOT NULL, `language` TEXT NOT NULL, `position` INTEGER NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY(`exercise_id`, `language`, `position`), FOREIGN KEY(`exercise_id`) REFERENCES `exercise`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "exerciseId",
@@ -237,18 +176,36 @@
             "position"
           ]
         },
+        "indices": [
+          {
+            "name": "index_exercise_instruction_step_exercise_id",
+            "unique": false,
+            "columnNames": [
+              "exercise_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_exercise_instruction_step_exercise_id` ON `${TABLE_NAME}` (`exercise_id`)"
+          },
+          {
+            "name": "index_exercise_instruction_step_language",
+            "unique": false,
+            "columnNames": [
+              "language"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_exercise_instruction_step_language` ON `${TABLE_NAME}` (`language`)"
+          }
+        ],
         "foreignKeys": [
           {
-            "table": "exercise_instruction",
+            "table": "exercise",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "exercise_id",
-              "language"
+              "exercise_id"
             ],
             "referencedColumns": [
-              "exercise_id",
-              "language"
+              "id"
             ]
           }
         ]
@@ -256,7 +213,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f2e1c2bf55a5760e063f39c097d41c06')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e66cc39f9039598ae64feb9ee55a34e3')"
     ]
   }
 }

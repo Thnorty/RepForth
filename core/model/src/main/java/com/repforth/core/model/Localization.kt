@@ -35,8 +35,21 @@ data class LocalizedInstructions(
     operator fun get(language: Language): InstructionText = byLanguage.getValue(language)
 }
 
-/** One language's instructions: a short summary plus ordered steps. */
+/**
+ * One language's instructions, as ordered steps.
+ *
+ * Steps only. Upstream also ships an `instructions` string per language, but it
+ * is exactly `steps.joinToString(" ")` for all 1,324 records -- verified, not
+ * assumed -- so storing it would be storing the same text twice. [text] derives
+ * it on demand for the cases that want a paragraph rather than a list.
+ */
 data class InstructionText(
-    val summary: String,
     val steps: List<String>,
-)
+) {
+    init {
+        require(steps.isNotEmpty()) { "An exercise with no instruction steps is not usable" }
+    }
+
+    /** The steps as one paragraph, byte-identical to the upstream field. */
+    val text: String get() = steps.joinToString(" ")
+}

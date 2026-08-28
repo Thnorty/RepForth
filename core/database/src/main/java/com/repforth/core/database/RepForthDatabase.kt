@@ -4,7 +4,6 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.entity.ExerciseEntity
-import com.repforth.core.database.entity.ExerciseInstructionEntity
 import com.repforth.core.database.entity.ExerciseInstructionStepEntity
 import com.repforth.core.database.entity.ExerciseSecondaryMuscleEntity
 
@@ -29,7 +28,6 @@ import com.repforth.core.database.entity.ExerciseSecondaryMuscleEntity
     entities = [
         ExerciseEntity::class,
         ExerciseSecondaryMuscleEntity::class,
-        ExerciseInstructionEntity::class,
         ExerciseInstructionStepEntity::class,
     ],
 )

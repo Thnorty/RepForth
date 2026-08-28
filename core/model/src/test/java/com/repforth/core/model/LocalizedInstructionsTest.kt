@@ -12,15 +12,15 @@ import org.junit.Test
  */
 class LocalizedInstructionsTest {
 
-    private fun text(s: String) = InstructionText(summary = s, steps = listOf("$s step"))
+    private fun text(s: String) = InstructionText(steps = listOf(s, "$s step"))
 
     @Test
     fun `both languages present is accepted`() {
         val instructions = LocalizedInstructions(
             mapOf(Language.ENGLISH to text("Push"), Language.TURKISH to text("İt")),
         )
-        assertEquals("Push", instructions[Language.ENGLISH].summary)
-        assertEquals("İt", instructions[Language.TURKISH].summary)
+        assertEquals("Push", instructions[Language.ENGLISH].steps.first())
+        assertEquals("İt", instructions[Language.TURKISH].steps.first())
     }
 
     @Test
@@ -35,6 +35,18 @@ class LocalizedInstructionsTest {
     fun `language tags round-trip and unknown tags are rejected`() {
         Language.entries.forEach { assertEquals(it, Language.fromTag(it.tag)) }
         assertEquals(null, Language.fromTag("de"))
+    }
+
+    @Test
+    fun `instruction text joins its steps the way upstream does`() {
+        // Upstream ships the joined paragraph too; it must round-trip exactly,
+        // because that equivalence is why the paragraph is not stored.
+        assertEquals("Sit down. Push up.", InstructionText(listOf("Sit down.", "Push up.")).text)
+    }
+
+    @Test
+    fun `an exercise with no steps is rejected`() {
+        assertThrows(IllegalArgumentException::class.java) { InstructionText(emptyList()) }
     }
 
     @Test

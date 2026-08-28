@@ -18,7 +18,6 @@ data class Exercise(
     val instructions: LocalizedInstructions,
     val thumbnail: MediaRef,
     val animation: MediaRef,
-    val attribution: String,
 )
 
 /**
@@ -32,26 +31,3 @@ value class ExerciseId(val value: String) {
         require(value.isNotBlank()) { "ExerciseId must not be blank" }
     }
 }
-
-/*
- * Categorical values are normalised slugs rather than enums — for now.
- *
- * The guideline calls for enums or lookup tables, and that is the right end
- * state. But the vocabulary is the upstream dataset's, and it has not been
- * imported yet; inventing constants here would mean guessing at values the
- * importer will later contradict. The import task pins the real vocabulary, and
- * these become enums in the same change, with a data test asserting that every
- * value in the dataset maps to a constant.
- */
-
-/** Coarse region, e.g. the value behind "chest". */
-@JvmInline
-value class BodyPart(val slug: String)
-
-/** A specific muscle, used for both `target` and `secondaryMuscles`. */
-@JvmInline
-value class Muscle(val slug: String)
-
-/** Required equipment; the empty-equipment case is a normal value, not null. */
-@JvmInline
-value class Equipment(val slug: String)

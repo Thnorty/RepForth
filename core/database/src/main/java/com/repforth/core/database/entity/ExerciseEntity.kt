@@ -17,7 +17,14 @@ import androidx.room.PrimaryKey
  * Media deliberately does not appear here. URLs, hashes and sizes live in
  * `media-manifest.json` so that the licensing boundary (§6) is a real seam: a
  * `placeholder` build resolves media to [MediaRef.Unavailable] without the
- * catalog knowing anything about it.
+ * catalog knowing anything about it. Attribution goes there too: the dataset
+ * uses one identical string for every record, so a column would have stored the
+ * same sentence 1,324 times, and it describes the media rather than the
+ * exercise.
+ *
+ * Categorical columns hold the upstream slug, not an enum name. That is the
+ * original value (§6: preserve it), and it means a renamed Kotlin constant
+ * cannot invalidate a prepackaged database.
  */
 @Entity(tableName = "exercise")
 data class ExerciseEntity(
@@ -40,9 +47,6 @@ data class ExerciseEntity(
 
     @ColumnInfo(name = "equipment", index = true)
     val equipment: String,
-
-    @ColumnInfo(name = "attribution")
-    val attribution: String,
 )
 
 /**
