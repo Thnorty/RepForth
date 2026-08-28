@@ -46,9 +46,11 @@ claim instrumentation or screenshot coverage until that changes.
 | Icon indirection, with two hand-authored tab icons | `9f795a8` |
 | Navigation shell: four tabs, settings, back stack | `1075f23` |
 | Non-secret preferences, with the theme setting wired through | `4bb0bbe` |
+| Dataset pin, enforced as the single source of the commit | `b962bc3` |
+| Real categorical vocabulary: BodyPart, Equipment, Muscle | `3c77849` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
-`core:designsystem`. 21 unit tests, all passing. Room schema v1 exported and committed.
+`core:designsystem`. 31 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -134,27 +136,59 @@ covering slightly less. What that gives up is proof of real persistence — that
 is DataStore's guarantee rather than this project's, and confirming it needs a
 device. Add it to the on-device checklist with the navigation behaviour.
 
-### 0.4 — Dataset pin and import
+### 0.4 — Dataset pin and import — **in progress**
 
-The largest slice, and the one that makes the app more than a theme.
+**Done:** `dataset-version.toml` holds the pin, and `tools/verify-dataset-pin.sh`
+fails the build if the SHA appears anywhere else (it found two copies in the
+guideline on its first run). `tools/fetch-dataset.sh` downloads the whole
+repository as one tarball into a gitignored cache. The categorical vocabulary is
+now real enums, locked to the data by a committed vocabulary file.
 
-1. `dataset-version.toml` — the only file naming the pinned commit (§6). Every
-   URL and import path derives from it.
-2. `exercises.schema.json` and validation that fails loudly.
-3. An import task producing the prepackaged Room database.
-4. `media-manifest.json` — id, URLs, SHA-256, byte size, media version,
-   attribution.
-5. `DatabaseModule.provideDatabase` switches to `createFromAsset`, so a cold
-   start does not parse 1,324 records on the main thread (§16).
+**Remaining:** the importer itself —
 
-**This is where the categorical vocabulary gets pinned.** `BodyPart`, `Muscle`
-and `Equipment` are slug value classes today precisely because the dataset has
-not been read yet. Turning them into enums belongs in this slice, with a data
-test asserting every value in the dataset maps to a constant — not before, when
-the constants would be guesses.
+1. Validate `exercises.json` against the upstream `data/exercises.schema.json`.
+2. Emit the prepackaged Room database. Build the DDL from Room's own exported
+   schema JSON, including `room_master_table` and its identity hash, so the
+   packaged file cannot drift from the entity definitions.
+3. Emit `media-manifest.json`: id, both URLs, SHA-256, byte size, media version,
+   attribution once.
+4. Switch `provideDatabase` to `createFromAsset`.
+5. Data tests per §17: unique IDs, both languages present, every manifest entry
+   referenced, every referenced file hashed.
 
-**Done when:** CI fails on duplicate IDs, a missing translation, a bad path, a
-missing hash, or schema drift (§6, step 8).
+#### What reading the dataset actually changed
+
+The guideline's field names and counts came from the upstream README. Reading the
+data corrected several:
+
+| Assumption | Reality |
+|---|---|
+| We write `exercises.schema.json` | It ships upstream, so validation uses its author's own contract |
+| GIFs live in `gifs/` | `videos/` |
+| Two languages | Ten (`en es it tr ru zh hi pl ko fr`), all required; we keep two per §6 |
+| `instructions` is a summary | Exactly `steps.joinToString(" ")` in all 1,324 records |
+| `attribution` varies per record | One identical string across all 1,324 |
+| Categoricals share a vocabulary | `target`, `muscle_group` and `secondary_muscles` disagree with each other |
+
+Confirmed as documented: 1,324 records, unique IDs, both languages non-empty
+everywhere, and every referenced image and video present in the tree.
+
+#### Open for review: the muscle synonym map
+
+`Muscle` has one constant per upstream string (50), and a hand-written map
+collapses nine unambiguous synonym pairs — `abdominals`→`abs`,
+`quadriceps`→`quads`, `latissimus dorsi`→`lats`, `trapezius`→`traps`,
+`deltoids`/`shoulders`→`delts`, `chest`→`pectorals`, `inner thighs`→`adductors`,
+`ankle stabilizers`→`ankles`.
+
+Deliberately **not** merged, because these are nested rather than synonymous and
+merging them is a product decision about filter behaviour: `lower abs` vs `abs`,
+`rear deltoids` vs `delts`, `soleus` vs `calves`, `upper chest` vs `pectorals`,
+`rhomboids` vs `upper back`, `brachialis` vs `biceps`, `wrist extensors` and
+`wrist flexors` vs `forearms`, `grip muscles` vs `hands`.
+
+Worth a decision before `feature:exercises` ships filters: should a user asking
+for "abs" see `lower abs` exercises too?
 
 ### 0.5 — `feature:exercises`
 
