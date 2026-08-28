@@ -1,11 +1,21 @@
 [versions]
+# --- SDK levels. Single source of truth; consumed by the convention plugins. ---
+compileSdk = "36"
+targetSdk = "36"
+minSdkPhone = "28"   # §4: Android 9
+minSdkWear = "30"    # §4: Wear OS 3 baseline
+
+# --- Toolchain ---
 agp = "8.9.1"
 kotlin = "2.1.20"
+
+# --- Libraries ---
 coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.10.1"
 composeBom = "2025.04.00"
 navigationCompose = "2.8.9"
+junit = "4.13.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -22,8 +32,20 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+# Consumed by build-logic so the convention plugins can configure AGP/Kotlin.
+android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
+kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
+compose-gradlePlugin = { group = "org.jetbrains.kotlin", name = "compose-compiler-gradle-plugin", version.ref = "kotlin" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+# --- RepForth convention plugins (build-logic). Modules apply these, never raw config. ---
+repforth-android-application = { id = "repforth.android.application" }
+repforth-android-library = { id = "repforth.android.library" }
+repforth-android-compose = { id = "repforth.android.compose" }

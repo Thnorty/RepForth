@@ -124,6 +124,17 @@ Rules:
 - The phone’s active-session controller is the sole authority for workout state.
 - Every AI and watch result is treated as untrusted input and validated before it changes state.
 
+### Reuse and single source of truth
+
+Nothing in this project is written twice. When something must exist in two places, it is guarded.
+
+- **Values live once.** Colour, spacing, radii, type and motion are defined in `core:designsystem` and referenced everywhere else. Product code never writes a hex value, a raw dp, or a font size. Raw tones stay `internal`; only semantic roles are public, so a screen cannot reach past the semantic layer.
+- **Build configuration lives once.** SDK levels and the Java/Kotlin toolchain are declared in `gradle/libs.versions.toml` and applied by the convention plugins in `build-logic/`. A module's `build.gradle.kts` declares what the module *is* and what it *depends on* — never how the toolchain is configured.
+- **Dependencies have one door.** `core:designsystem` exposes the Compose stack with `api`. No feature module re-declares compose-ui, material3, or the BOM.
+- **Components before copies.** If a layout appears a second time it becomes a component in `core:designsystem`. The components in `design-system/components/` are the intended inventory — port them when a screen needs them; do not re-invent an equivalent per screen.
+- **Strings live once**, in `values/` and `values-tr/`, never inline (§13).
+- **Where the platform forces a duplicate, add a test.** The window needs a background colour before Compose starts, so `rf_launch_background` necessarily repeats `Tone.N6`. `LaunchBackgroundTest` fails the build if the two drift apart. Any future forced duplicate gets the same treatment.
+
 ### Suggested project modules
 
 ```text

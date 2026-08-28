@@ -1,4 +1,6 @@
 pluginManagement {
+    // Convention plugins live in a composite build so module files stay declarative.
+    includeBuild("build-logic")
     repositories {
         google {
             content {

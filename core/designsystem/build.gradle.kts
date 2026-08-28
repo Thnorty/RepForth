@@ -1,32 +1,15 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.repforth.android.library)
+    alias(libs.plugins.repforth.android.compose)
 }
 
 android {
     namespace = "com.repforth.core.designsystem"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 28
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
-    buildFeatures {
-        compose = true
-    }
 }
 
 dependencies {
+    // `api`, not `implementation`: this module is the single door to Compose for
+    // every consumer, so no feature module ever re-declares the Compose stack.
     api(platform(libs.androidx.compose.bom))
     api(libs.androidx.compose.ui)
     api(libs.androidx.compose.ui.graphics)
@@ -34,4 +17,5 @@ dependencies {
     api(libs.androidx.compose.ui.tooling.preview)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
 }

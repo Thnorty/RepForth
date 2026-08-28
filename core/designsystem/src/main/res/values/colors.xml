@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The ONE place a colour is duplicated outside Color.kt, and it is
+        unavoidable: the window needs a background before Compose starts, and the
+        platform can only read that from XML.
+
+        It must stay equal to Tone.N6 (surface-app, dark). LaunchBackgroundTest
+        fails the build if the two ever drift apart.
+    -->
+    <color name="rf_launch_background">#101408</color>
+</resources>
