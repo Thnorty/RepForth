@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.dao.ProfileDao
+import com.repforth.core.database.dao.TemplateDao
 import com.repforth.core.database.entity.ExerciseEntity
 import com.repforth.core.database.entity.ExerciseInstructionStepEntity
 import com.repforth.core.database.entity.ExerciseSecondaryMuscleEntity
@@ -69,6 +70,8 @@ abstract class RepForthDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
 
     abstract fun profileDao(): ProfileDao
+
+    abstract fun templateDao(): TemplateDao
 
     companion object {
         const val VERSION = 1
