@@ -21,7 +21,7 @@ which decisions are closed so they are not reopened.
 | Phase | Guideline | State |
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
-| 1 — Local workout core | §19 | **Next.** Unblocked |
+| 1 — Local workout core | §19 | **In progress.** Engines and data done; the four screens remain |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
@@ -52,10 +52,15 @@ claim instrumentation or screenshot coverage until that changes.
 | Dataset import: prepackaged catalog, media manifest, data tests | `d91241b` |
 | Exercise catalog screen: search, filters, bilingual terms | `3eb99aa` |
 | Repository documents; media licence terms corrected | `a0d9ba2` |
+| **Phase 1** — user-data schema | `59ceb30` |
+| **Phase 1** — profile data layer, two clocks | `af8ddcf` |
+| **Phase 1** — rules engine and validator | `ff9db3c` |
+| **Phase 1** — workout state machine and persistence | `4be4548` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
-`core:designsystem`, `core:exercise-data`, `feature:exercises`.
-59 unit tests, all passing. Room schema v1 exported and committed.
+`core:designsystem`, `core:exercise-data`, `core:common`, `core:rules`,
+`core:user-data`, `core:workout`, `feature:exercises`.
+126 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -290,111 +295,36 @@ machine, timers, history, and export/delete.
 Ordered by dependency. Each slice is shippable on its own — the app should be
 usable at every step, not only at the end.
 
-### 1.1 — User-data schema (Room v2)
+### Status after the first overnight run
 
-The seven tables §7 lists that do not exist yet: `user_profile`,
-`movement_exclusion`, `workout_template`, `template_exercise`,
-`workout_session`, `session_exercise`, `set_record`.
+**Done, and unit-tested without a device:**
 
-Every mutable table gets a UUID primary key, `createdAt` and `updatedAt`. Weights
-are stored in kilograms and durations in milliseconds, converted only for display
-(§7) — so no stored number depends on what the user had selected when they logged
-it.
+| Slice | State |
+|---|---|
+| 1.1 User-data schema | ✅ nine tables, five structural guards |
+| 1.2 Profile | ✅ model, DAO, repository, 8 tests. Onboarding **screen not built** |
+| 1.3 Templates | ✅ model, DAO, repository. Builder **screen not built** |
+| 1.4 Rules engine | ✅ complete — 26 tests |
+| 1.5 Session engine | ✅ state machine and persistence — 27 tests. **No UI, no service** |
 
-**No migration is needed, and that is a one-time freedom.** v1 has never been
-released, so the version can be bumped and the packaged catalog regenerated. From
-the first public release onward, §7 requires explicit migrations and forbids
-destructive ones. Worth writing the first migration test now, while the schema is
-small, rather than the day it first matters.
+**Deliberately not attempted without a device.** The engines are provable on the
+JVM; screens are not. Four things remain, and each needs hardware to be worth
+trusting:
 
-Regenerating the catalog is not optional here: adding entities changes Room's
-identity hash, and the packaged asset carries the old one. `PackagedCatalogTest`
-will fail until `tools/import-dataset.py` is re-run — which is the guard working.
+1. **Onboarding screen** — strings exist in both languages, nothing renders them.
+2. **Workout builder screen** — the repository is ready.
+3. **Active workout screen** — the engine is ready and tested.
+4. **Foreground service and ongoing notification** (§10) — this is the piece
+   that genuinely cannot be written blind. Android 14's foreground-service types
+   and their permissions changed recently, and a Samsung device manages
+   background execution more aggressively than stock, so the only meaningful
+   test is on the actual phone.
 
-**Done when:** the schema is exported, the catalog regenerated, and a migration
-test exists even though it has nothing to migrate yet.
-
-### 1.2 — Profile and onboarding
-
-Goals, experience, available equipment, training days, session length, preferred
-and excluded muscles (§3). Feeds the rules engine's constraints and the builder's
-defaults.
-
-Onboarding writes `onboardingComplete`, which already exists in preferences and
-is currently written by nothing.
-
-**Done when:** a fresh install walks to a profile, and re-opening skips it.
-
-### 1.3 — Manual workout builder
-
-`feature:workout-builder`. Pick exercises from the catalog, set targets, order
-them, save as a template. Reuses `core:exercise-data` — if the builder needs a
-query the catalog screen does not have, that is a repository method, not a DAO in
-a feature.
-
-The Coach mode (§12) is a *mode inside this screen*, and it stays absent until
-Phase 2. The screen must be complete without it.
-
-**Done when:** a plan can be built, saved, reopened and edited.
-
-### 1.4 — Rules engine
-
-`core:rules`. Candidate filtering by muscle, equipment, exclusions and
-experience; scoring; deterministic output for a given seed (§8).
-
-Pure Kotlin, no Android, no database — it takes candidates and constraints and
-returns a plan. That makes it exhaustively unit-testable, which matters because
-Phase 2's AI path validates its output against these same rules.
-
-**Done when:** the same seed and constraints always produce the same plan, and
-every hard constraint — excluded IDs, excluded muscles, unavailable equipment,
-duration ceiling — is proven unbreakable by tests.
-
-### 1.5 — Active workout session
-
-**The riskiest slice in the phase.** The state machine §10 specifies, with
-timers, an ongoing notification, and correct recovery.
-
-Four things that are easy to get wrong and hard to notice:
-
-- **Time must come from a monotonic deadline** (`elapsedRealtime`), not a
-  decrementing counter, or the countdown drifts whenever the process is paused
-  or the UI recomposes.
-- **Every meaningful transition persists transactionally before anything else
-  observes it**, so a process death mid-set cannot lose the set.
-- **Commands carry `sessionId`, `commandId` and `expectedRevision`, and are
-  idempotent.** This is not needed until the watch exists in Phase 4 — but
-  retrofitting idempotency into a state machine afterwards is far worse than
-  building it in.
-- **Android 14 foreground-service rules** need checking before design, not
-  after: the service type and its matching permission are not optional, and the
-  service must not outlive the workout.
-
-**Design constraint that makes this testable:** keep the state machine pure —
-states, events, transitions, and an injected time source. Then the whole of §10
-is unit-testable with a fake clock, and only the notification and service need a
-device.
-
-**Done when:** every transition in the §10 diagram is exercised by tests, a
-killed process restores mid-session, and the notification's pause and resume
-work from the lock screen.
-
-### 1.6 — History
-
-`feature:progress`. Completed sessions, volume, streaks, recent muscle activity
-(§3). Read-only over what 1.5 writes.
-
-**Done when:** finishing a workout makes it appear, and large-history query
-performance is measured rather than assumed (§17).
-
-### 1.7 — Export, import and delete
-
-Versioned JSON export of all user-created data. Import only after schema
-validation and a preview of what will change. "Delete all workout data" must not
-touch the bundled catalog; "Reset app" clears everything (§7).
-
-**Done when:** an export round-trips, a newer or malformed file is rejected with
-a real message, and deleting user data leaves 1,324 exercises intact.
+**The version bump nobody can skip.** Adding the user tables changed Room's
+identity hash. Anyone with the previous build installed must uninstall before
+installing again — Room refuses a database whose hash disagrees with the code,
+which is the protection that makes this safe after release and an inconvenience
+before it.
 
 ### Known risks in this phase
 
