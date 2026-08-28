@@ -62,6 +62,11 @@ jobs:
           fi
           echo "No credential-shaped files are tracked."
 
+      # §6 step 1: the pinned dataset commit lives in exactly one file, so
+      # metadata and media cannot drift to different commits.
+      - name: Verify dataset pin
+        run: tools/verify-dataset-pin.sh
+
       # §20: the public source must build with placeholder media and no private
       # credentials. Building the default flavour is the check for that claim.
       # `licensed` is deliberately not built here — it has no assets yet, and

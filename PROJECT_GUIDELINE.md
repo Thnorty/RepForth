@@ -20,7 +20,7 @@ This document is the implementation source of truth for a local-first, open-sour
 | API credentials | Bring your own key (BYOK), entered in Settings |
 | Initial AI support | Native Gemini adapter plus a generic OpenAI-compatible adapter |
 | Exercise data | `hasaneyldrm/exercises-dataset`, imported and versioned in the app project |
-| Dataset/media pin | Commit `7455efae41b330c265e7cd4b78dfa848e7ce5ebd`, recorded once in `dataset-version.toml` |
+| Dataset/media pin | Recorded once in `dataset-version.toml`; every path and URL derives from it |
 | Media | Licensed flavors download and cache images/GIFs on demand from the pinned upstream commit; placeholder flavors ship generated art and make no media requests |
 | Languages | English and Turkish app UI and exercise instructions |
 | Interface | Material 3, polished native motion, dark-first visual system |
@@ -187,7 +187,7 @@ Start with these boundaries, but do not create empty modules purely for symmetry
 ## 6. Exercise dataset integration
 
 Upstream: <https://github.com/hasaneyldrm/exercises-dataset>  
-Pinned commit: `7455efae41b330c265e7cd4b78dfa848e7ce5ebd`
+Pinned commit: see `dataset-version.toml`. It is deliberately not repeated here — `tools/verify-dataset-pin.sh` fails the build on a second copy.
 
 The upstream repository currently documents 1,324 records with exercise IDs, body part/category, equipment, target, muscle group, secondary muscles, English/Turkish instructions, thumbnails, and 180×180 GIFs. Treat its stable exercise ID as the external identifier.
 

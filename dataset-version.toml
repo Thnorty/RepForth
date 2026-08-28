@@ -1,0 +1,48 @@
+# The upstream exercise dataset this app is built from.
+#
+# This file is the ONLY place the pinned commit is written (§6, step 1). Every
+# import path and every media URL is derived from it, so metadata and media can
+# never drift to different commits. `tools/verify-dataset-pin.sh` fails the build
+# if the SHA appears anywhere else.
+#
+# Changing `commit` changes what the app ships. It requires its own reviewed pull
+# request, a re-run of the import, and a dataset diff (§18).
+
+[dataset]
+repository = "hasaneyldrm/exercises-dataset"
+
+# Immutable by construction. Never point a build at a branch: `main` is mutable,
+# so the media a user downloads next month could stop matching the metadata
+# compiled into their installed app.
+commit = "7455efae41b330c265e7cd4b78dfa848e7ce5ebd"
+
+# Asserted by the importer. The upstream README documents 1,324 records, and the
+# tree at this commit holds exactly 1,324 images and 1,324 videos. A mismatch
+# means the pin moved or the download truncated, and either should stop a build
+# rather than quietly shipping a short catalog.
+record_count = 1324
+
+# Code is MIT upstream; the images and videos are NOT (§6). They carry a separate
+# Gym visual copyright exception, which is why `placeholder` is the default
+# flavour and licensed media is never committed to this repository.
+metadata_license = "MIT"
+media_license = "gym-visual-exception"
+
+[paths]
+exercises = "data/exercises.json"
+# The schema ships upstream rather than being written here, so validation checks
+# the data against its own author's contract instead of against our reading of it.
+schema = "data/exercises.schema.json"
+images = "images"
+videos = "videos"
+
+[media]
+# Prefixed with the commit at import time to produce immutable URLs.
+# Kept as a template so moving to object storage or a CDN later (§9) is an edit
+# to this line, not to the importer.
+base_url_template = "https://raw.githubusercontent.com/{repository}/{commit}/"
+
+# Part of the on-device cache key, `mediaVersion/exerciseId/mediaType/sha256`
+# (§9). Bump it to invalidate every cached asset without changing the pin — for
+# example after fixing a generation bug in the placeholder art.
+version = 1
