@@ -20,7 +20,7 @@ which decisions are closed so they are not reopened.
 
 | Phase | Guideline | State |
 |---|---|---|
-| 0 — Foundation | §19 | **In progress.** Everything but the dataset is done; 0.4 and 0.5 remain |
+| 0 — Foundation | §19 | **In progress.** Only `feature:exercises` and the repository documents remain |
 | 1 — Local workout core | §19 | Not started. Blocked on 0 |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
@@ -48,9 +48,11 @@ claim instrumentation or screenshot coverage until that changes.
 | Non-secret preferences, with the theme setting wired through | `4bb0bbe` |
 | Dataset pin, enforced as the single source of the commit | `b962bc3` |
 | Real categorical vocabulary: BodyPart, Equipment, Muscle | `3c77849` |
+| Body map: 19 regions, authored artwork, Compose component | `b58a631`, `f6c6c82` |
+| Dataset import: prepackaged catalog, media manifest, data tests | `d91241b` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
-`core:designsystem`. 31 unit tests, all passing. Room schema v1 exported and committed.
+`core:designsystem`. 48 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -136,25 +138,26 @@ covering slightly less. What that gives up is proof of real persistence — that
 is DataStore's guarantee rather than this project's, and confirming it needs a
 device. Add it to the on-device checklist with the navigation behaviour.
 
-### 0.4 — Dataset pin and import — **in progress**
+### 0.4 — Dataset pin and import — **done**
 
-**Done:** `dataset-version.toml` holds the pin, and `tools/verify-dataset-pin.sh`
-fails the build if the SHA appears anywhere else (it found two copies in the
-guideline on its first run). `tools/fetch-dataset.sh` downloads the whole
-repository as one tarball into a gitignored cache. The categorical vocabulary is
-now real enums, locked to the data by a committed vocabulary file.
+`dataset-version.toml` holds the pin and `tools/verify-dataset-pin.sh` keeps it
+the only copy. `tools/fetch-dataset.sh` downloads the repository as one tarball
+into a gitignored cache. `tools/import-dataset.py` validates every record
+against the schema upstream ships, then emits:
 
-**Remaining:** the importer itself —
+| Artifact | Size | Committed |
+|---|---|---|
+| `core/database/src/main/assets/repforth.db` | 2.5 MB | yes — Room copies it on first launch |
+| `dataset/media-manifest.json` | 0.45 MB | yes — 2,648 SHA-256 hashes and sizes |
+| `dataset/import-report.json` | 1 KB | yes — what normalisation did (§6) |
 
-1. Validate `exercises.json` against the upstream `data/exercises.schema.json`.
-2. Emit the prepackaged Room database. Build the DDL from Room's own exported
-   schema JSON, including `room_master_table` and its identity hash, so the
-   packaged file cannot drift from the entity definitions.
-3. Emit `media-manifest.json`: id, both URLs, SHA-256, byte size, media version,
-   attribution once.
-4. Switch `provideDatabase` to `createFromAsset`.
-5. Data tests per §17: unique IDs, both languages present, every manifest entry
-   referenced, every referenced file hashed.
+The DDL comes from Room's own exported schema, identity hash included, so a
+packaged database built from different entities is refused rather than half-read.
+`PackagedCatalogTest` inspects the asset over JDBC — 10 data tests, no device.
+
+**Where the manifest lives is temporary.** It belongs to `core:media`, which does
+not exist yet, so it sits in `dataset/` and is not yet an app asset. Nothing
+reads it until the media layer lands in Phase 3.
 
 #### What reading the dataset actually changed
 
