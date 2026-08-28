@@ -33,7 +33,9 @@ import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.RepForthTheme
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

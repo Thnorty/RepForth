@@ -5,3 +5,7 @@ plugins {
 android {
     namespace = "com.repforth.core.model"
 }
+
+dependencies {
+    testImplementation(libs.junit)
+}
