@@ -20,8 +20,8 @@ which decisions are closed so they are not reopened.
 
 | Phase | Guideline | State |
 |---|---|---|
-| 0 — Foundation | §19 | **In progress.** Only the repository documents remain |
-| 1 — Local workout core | §19 | Not started. Blocked on 0 |
+| 0 — Foundation | §19 | **Complete.** All six slices done |
+| 1 — Local workout core | §19 | **Next.** Unblocked |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
@@ -51,6 +51,7 @@ claim instrumentation or screenshot coverage until that changes.
 | Body map: 19 regions, authored artwork, Compose component | `b58a631`, `f6c6c82` |
 | Dataset import: prepackaged catalog, media manifest, data tests | `d91241b` |
 | Exercise catalog screen: search, filters, bilingual terms | `3eb99aa` |
+| Repository documents; media licence terms corrected | `a0d9ba2` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `feature:exercises`.
@@ -241,13 +242,26 @@ map is paired with muscle chips rather than replacing them, because
 tested, but scrolling 1,324 rows, the debounce feeling right, and the body map
 being tappable at real size are runtime properties needing a device.
 
-### 0.6 — Repository documents
+### 0.6 — Repository documents — **done**
 
-`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `PRIVACY.md`, `LICENSE`,
-`NOTICE.md`, `.env.example` (§18). None exist yet.
+README, NOTICE, PRIVACY, CONTRIBUTING, SECURITY, `.env.example`.
 
-`PRIVACY.md` cannot be written honestly until 0.4 and Phase 2 settle what
-actually leaves the device — write it last, and write it from the code.
+**No `LICENSE` file, deliberately.** The project licence is an open decision
+(§21) and belongs to the maintainer; README says so rather than one being chosen
+by default. To adopt the recommended Apache-2.0, fetch the canonical text —
+do not let it be typed from memory.
+
+#### The media terms are stricter than §6 assumed
+
+Reading upstream's `NOTICE.md` at the pinned commit: the imagery is Gym visual's,
+redistributed upstream under a **separate written permission granted to that
+project**, at 180×180, with attribution required. Upstream states plainly that
+cloning its repository is not a licence.
+
+**So RepForth holds no rights to the media.** The `placeholder` flavour is a
+legal requirement, not a convenience, and `licensed` cannot be distributed
+without RepForth obtaining its own licence from Gym visual. §6 has been corrected
+to say this.
 
 ### Small, unblocked, do when convenient
 
