@@ -228,11 +228,14 @@ Use value classes/enums or normalized lookup tables for IDs and categorical valu
 
 ### Licensing boundary
 
-- Dataset structure, code, and instruction text are MIT-licensed according to the upstream project.
-- Images and GIFs are a separate Gym visual copyright exception.
-- Keep media attribution intact in the manifest and exercise detail UI.
-- Do not include or download protected media in public release builds until the required reuse permission is obtained.
-- Support a `placeholderMedia` build flavor so the open-source project remains buildable without licensed assets.
+Corrected against the upstream `NOTICE.md` at the pinned commit, which is more specific than the summary this section previously carried.
+
+- Dataset structure, code, and instruction text are MIT-licensed by the upstream project (© 2026 Hasan Emir Yıldırım).
+- Images and GIFs are the property of **Gym visual**, redistributed upstream under a **separate written permission granted to that project**, at 180×180 only, with the notice `© Gym visual — https://gymvisual.com/` required on every use.
+- **That permission is not transitive.** Upstream states that cloning its repository is not a licence. RepForth therefore has no rights to the media, and must obtain its own licence from Gym visual before distributing any build that ships or fetches it.
+- This makes the `placeholder` flavour a legal requirement rather than a convenience: it is the only flavour distributable from this source today, and the default for that reason.
+- Keep media attribution intact in the manifest and the exercise detail UI, and respect the 180×180 limit.
+- Never commit media bytes. The manifest carries URLs, SHA-256 hashes and sizes; the bytes stay upstream.
 
 ## 7. Local persistence
 
