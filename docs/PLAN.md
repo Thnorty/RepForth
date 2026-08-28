@@ -20,7 +20,7 @@ which decisions are closed so they are not reopened.
 
 | Phase | Guideline | State |
 |---|---|---|
-| 0 — Foundation | §19 | **In progress.** Scaffold, tokens, DI, persistence, CI and navigation done; preferences and the dataset outstanding |
+| 0 — Foundation | §19 | **In progress.** Everything but the dataset is done; 0.4 and 0.5 remain |
 | 1 — Local workout core | §19 | Not started. Blocked on 0 |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
@@ -45,9 +45,10 @@ claim instrumentation or screenshot coverage until that changes.
 | CI: wrapper validation, build, tests, lint, dependency review | `cfb85b6` |
 | Icon indirection, with two hand-authored tab icons | `9f795a8` |
 | Navigation shell: four tabs, settings, back stack | `1075f23` |
+| Non-secret preferences, with the theme setting wired through | `4bb0bbe` |
 
-Modules today: `app`, `core:model`, `core:database`, `core:designsystem`.
-15 unit tests, all passing. Room schema v1 exported and committed.
+Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
+`core:designsystem`. 21 unit tests, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -110,16 +111,28 @@ restoration are runtime properties needing an instrumented device. The structure
 is unit-tested; the behaviour is not. First thing to check when a device is
 available.
 
-### 0.3 — `core:datastore`
+### 0.3 — `core:datastore` — **done**
 
-Non-secret preferences only (§7). Language override, theme, unit display,
-onboarding-complete. API keys never touch this module — that is Phase 2 and a
-different storage mechanism entirely.
+Preferences DataStore holding theme, language override, units, keep-screen-on,
+reduced motion, haptics and onboarding-complete. Types live in `core:model`, so
+a screen reading the theme does not depend on the storage module.
 
-**Unblocks:** onboarding, settings, and the language switch that §13 requires to
-work without a reload.
-**Done when:** preferences survive process death and a test proves the default
-values, since a wrong default is invisible until a fresh install.
+`MainActivity` applies `themeMode`, which makes this the first preference that
+visibly does something. `keepScreenOn` is deliberately *not* wired: the string
+says "while a workout is running", so applying it app-wide would be the wrong
+behaviour. It belongs to the active workout screen in Phase 1.
+
+Every read falls back to its default instead of throwing — a renamed enum
+constant leaves an unparseable value on devices that wrote the old one, and
+those users should get the default, not a crash.
+
+**Tests run against an in-memory DataStore, not a file.** A file-backed store
+fails on a Windows host: DataStore renames a temp file onto the target and
+Windows refuses that once the target exists, so every second write threw. A test
+that passes on CI and fails on the maintainer's machine is worse than one
+covering slightly less. What that gives up is proof of real persistence — that
+is DataStore's guarantee rather than this project's, and confirming it needs a
+device. Add it to the on-device checklist with the navigation behaviour.
 
 ### 0.4 — Dataset pin and import
 
