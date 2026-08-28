@@ -28,6 +28,7 @@ dependencies {
     // re-declares compose-ui / material3 / the BOM.
     implementation(project(":core:designsystem"))
     implementation(project(":core:database"))
+    implementation(project(":core:datastore"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
