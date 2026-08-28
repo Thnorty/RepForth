@@ -24,14 +24,19 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    /** Produced by `tools/import-dataset.py`; see `dataset-version.toml`. */
+    private const val ASSET = "repforth.db"
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): RepForthDatabase =
         Room.databaseBuilder(context, RepForthDatabase::class.java, RepForthDatabase.NAME)
-            // The catalog will ship prepackaged (§6, step 6): once the import
-            // task emits the asset this becomes `createFromAsset(NAME)`, so a
-            // first launch does not parse 1,324 records on the main thread.
-            // Until the asset exists, an empty database is the honest state.
+            // The catalog ships prepackaged (§6, step 6), built by
+            // tools/import-dataset.py from the pinned commit. A first launch
+            // copies a file instead of parsing 1,324 records on the main thread
+            // (§16), and the asset carries Room's identity hash, so a database
+            // built from different entities is refused rather than half-read.
+            .createFromAsset(ASSET)
             .build()
 
     @Provides

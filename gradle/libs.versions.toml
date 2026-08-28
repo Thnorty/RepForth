@@ -23,6 +23,7 @@ navigationCompose = "2.8.9"
 kotlinxSerialization = "1.8.1"
 datastore = "1.1.7"
 coroutines = "1.10.2"
+sqliteJdbc = "3.49.1.0"
 room = "2.7.2"
 # Pinned to the Dagger release contemporary with Kotlin 2.1.20. Newer Hilt
 # releases ship a Gradle plugin built against a newer Kotlin stdlib.
@@ -57,6 +58,10 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerialization" }
+
+# Test-only: lets the packaged catalog be inspected on the JVM, so the data
+# tests §17 asks for do not need a device.
+sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 

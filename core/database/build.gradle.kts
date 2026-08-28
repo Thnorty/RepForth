@@ -13,4 +13,6 @@ dependencies {
     api(project(":core:model"))
 
     testImplementation(libs.junit)
+    testImplementation(libs.sqlite.jdbc)
+    testImplementation(libs.kotlinx.serialization.json)
 }

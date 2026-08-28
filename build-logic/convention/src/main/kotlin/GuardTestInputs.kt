@@ -21,7 +21,7 @@ import org.gradle.kotlin.dsl.withType
  * test runtime classpath and invalidates the task on its own.
  */
 internal fun Project.configureGuardTestInputs() {
-    val guarded = listOf("src/main/res", "schemas")
+    val guarded = listOf("src/main/res", "src/main/assets", "schemas")
 
     tasks.withType<Test>().configureEach {
         guarded.forEach { path ->

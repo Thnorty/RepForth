@@ -1,0 +1,26 @@
+{
+ "commit": "7455efae41b330c265e7cd4b78dfa848e7ce5ebd",
+ "records": 1324,
+ "languagesKept": [
+  "en",
+  "tr"
+ ],
+ "languagesAvailable": [
+  "en",
+  "es",
+  "fr",
+  "hi",
+  "it",
+  "ko",
+  "pl",
+  "ru",
+  "tr",
+  "zh"
+ ],
+ "instructionSteps": 15420,
+ "databaseVersion": 1,
+ "databaseBytes": 2633728,
+ "mediaFiles": 2648,
+ "mediaBytes": 137616454,
+ "normalisation": "whitespace collapsed in names and instruction steps; empty steps dropped; duplicate secondary muscles collapsed"
+}
