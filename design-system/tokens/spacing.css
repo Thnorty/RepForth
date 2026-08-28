@@ -1,0 +1,13 @@
+/* 4dp grid. Values are px = Android dp at 1x; components use these, never
+   raw numbers. Touch targets are a hard accessibility floor, not a preference. */
+:root{
+--space-0:0px;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;--space-16:64px;--space-20:80px;
+/* layout */
+--gutter-phone:16px;--gutter-phone-tight:12px;--gutter-wear:8px;
+--content-max-phone:412px;--content-max-readable:60ch;
+--list-row-gap:8px;--section-gap:24px;
+/* touch targets — 48dp minimum on phone, 52dp on Wear, 64dp for in-session */
+--target-min:48px;--target-session:64px;--target-wear:52px;--target-icon:40px;
+/* chrome */
+--appbar-h:64px;--navbar-h:80px;--fab-size:56px;--fab-size-lg:72px
+}

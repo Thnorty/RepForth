@@ -1,0 +1,7 @@
+/* Corner radii. Compact rounded cards (12–16), pill controls, M3 extra-large
+   for sheets and dialogs. Wear round screens use full-bleed arcs, not radii. */
+:root{
+--radius-xs:4px;--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px;--radius-2xl:28px;--radius-full:999px;
+--radius-card:12px;--radius-card-lg:16px;--radius-chip:999px;--radius-button:999px;--radius-button-square:16px;--radius-sheet:28px;--radius-media:12px;
+--stroke-hairline:1px;--stroke-thick:2px;--stroke-ring:8px;--stroke-ring-wear:6px
+}

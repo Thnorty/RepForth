@@ -1,0 +1,36 @@
+/* Workout domain: plan cards, exercise cards, set rows, rest timer.
+   Exercise media is strictly 1:1 and never blurred or used as a backdrop. */
+.rf-plan{display:flex;flex-direction:column;gap:var(--space-3)}
+.rf-plan__head{display:flex;align-items:flex-start;gap:var(--space-3)}
+.rf-plan__title{flex:1;min-width:0;font-family:var(--font-display);font-size:var(--title-lg);font-weight:var(--weight-bold);color:var(--text-strong);line-height:var(--leading-snug)}
+.rf-plan__meta{display:flex;align-items:center;gap:var(--space-4);flex-wrap:wrap}
+.rf-plan__chips{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.rf-plan--today{background:var(--color-surface-container-high);box-shadow:inset 0 0 0 var(--stroke-hairline) color-mix(in oklab,var(--color-primary) 35%,transparent)}
+
+.rf-ex{display:flex;gap:var(--space-3);align-items:center}
+.rf-ex__media{flex:none;width:72px;aspect-ratio:1/1;border-radius:var(--radius-media);overflow:hidden;background:var(--color-surface-container-highest);display:grid;place-items:center;color:var(--color-on-surface-variant)}
+.rf-ex__media img{width:100%;height:100%;object-fit:cover;display:block}
+.rf-ex__media--lg{width:100%}
+.rf-ex__body{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.rf-ex__name{font-size:var(--body-lg);font-weight:var(--weight-bold);color:var(--text-body);line-height:var(--leading-snug)}
+.rf-ex__chips{display:flex;flex-wrap:wrap;gap:var(--space-1)}
+.rf-ex__sets{display:flex;align-items:baseline;gap:var(--space-1);font-family:var(--font-numeric);font-weight:var(--weight-bold);font-variant-numeric:tabular-nums;font-size:var(--numeric-xs);color:var(--numeric-color)}
+
+.rf-set{display:grid;grid-template-columns:32px 1fr 1fr 56px;align-items:center;gap:var(--space-2);min-height:var(--target-min);padding:var(--space-1) var(--space-2);border-radius:var(--radius-sm)}
+.rf-set--done{background:color-mix(in oklab,var(--color-secondary-container) 55%,transparent)}
+.rf-set--active{background:var(--color-surface-container-high);box-shadow:inset 0 0 0 var(--stroke-thick) var(--color-primary)}
+.rf-set__idx{font-family:var(--font-numeric);font-weight:var(--weight-bold);font-variant-numeric:tabular-nums;font-size:var(--numeric-xs);color:var(--text-quiet);text-align:center}
+.rf-set__cell{display:flex;flex-direction:column;gap:0;min-width:0}
+.rf-set__val{font-family:var(--font-numeric);font-weight:var(--numeric-weight);font-variant-numeric:tabular-nums;letter-spacing:var(--numeric-tracking);font-size:var(--numeric-sm);color:var(--numeric-color);line-height:var(--numeric-leading);display:flex;align-items:baseline;gap:2px}
+.rf-set__unit{font-family:var(--font-ui);font-size:var(--label-sm);font-weight:var(--weight-semibold);color:var(--text-quiet)}
+.rf-set__prev{font-family:var(--font-ui);font-size:var(--label-sm);color:var(--text-quiet);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rf-set__check{width:var(--target-min);height:var(--target-min);justify-self:end;border:none;border-radius:var(--radius-md);background:var(--color-surface-container-highest);color:var(--color-on-surface-variant);display:grid;place-items:center;cursor:pointer;transition:background-color var(--dur-short) var(--ease-standard),transform var(--dur-short) var(--ease-spring)}
+.rf-set__check:hover{background:color-mix(in oklab,var(--color-surface-container-highest) 86%,var(--color-on-surface))}
+.rf-set--done .rf-set__check{background:var(--color-primary);color:var(--color-on-primary);animation:rf-set-complete var(--dur-medium) var(--ease-spring)}
+.rf-set__head{display:grid;grid-template-columns:32px 1fr 1fr 56px;gap:var(--space-2);padding:0 var(--space-2) var(--space-1)}
+.rf-set__head span{font-family:var(--font-ui);font-size:var(--label-sm);font-weight:var(--weight-bold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-quiet)}
+
+.rf-rest{display:flex;flex-direction:column;align-items:center;gap:var(--space-5);padding:var(--space-6) var(--space-4)}
+.rf-rest__label{font-family:var(--font-ui);font-size:var(--label-lg);font-weight:var(--weight-bold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-tertiary)}
+.rf-rest__next{font-size:var(--body-md);color:var(--text-quiet);text-align:center;text-wrap:pretty}
+.rf-rest__actions{display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap;justify-content:center}

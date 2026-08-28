@@ -1,0 +1,45 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Feedback — ring, progress, dialog, snackbar" subtitle="Timer ring tones, segmented set progress, modal and transient messages" -->
+<!DOCTYPE html><html data-theme="dark"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{background:var(--surface-app);padding:20px;margin:0}.k{font:700 11px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-quiet)}.sec{display:flex;flex-direction:column;gap:8px}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.stage{position:relative;width:300px;height:250px;border-radius:16px;background:var(--color-surface);overflow:hidden}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script></head><body><div id="root"></div>
+<script type="text/babel">
+const { ProgressRing, ProgressBar, Dialog, Snackbar, EmptyState, StatBlock, Button } = window.RepForthDesignSystem_c95a40;
+function Demo(){
+  const [v,setV]=React.useState(.62);
+  React.useEffect(()=>{const t=setInterval(()=>setV(x=>x<=0?1:x-0.01),120);return()=>clearInterval(t)},[]);
+  return (<div style={{display:'grid',gridTemplateColumns:'auto auto 1fr',gap:24,alignItems:'start'}}>
+    <div className="sec"><span className="k">Set ring</span>
+      <ProgressRing value={0.75} size={140} label="Set 3 of 4">
+        <StatBlock value="3/4" label="Sets" size="md" align="center" />
+      </ProgressRing></div>
+    <div className="sec"><span className="k">Rest ring</span>
+      <ProgressRing value={v} size={140} tone="rest" label="Rest remaining">
+        <StatBlock value={Math.floor(v*90/60)+':'+String(Math.floor(v*90)%60).padStart(2,'0')} label="Rest" size="md" align="center" />
+      </ProgressRing></div>
+    <div className="sec" style={{gap:16}}>
+      <div className="sec"><span className="k">Progress</span>
+        <ProgressBar label="Exercises" value={3} total={6} />
+        <ProgressBar segmented label="Sets" value={2} total={5} current={2} /></div>
+      <div className="sec"><span className="k">Snackbar</span>
+        <Snackbar icon="check_circle" message="Set logged" actionLabel="Undo" />
+        <Snackbar tone="error" icon="error" message="Watch disconnected" actionLabel="Retry" /></div>
+    </div>
+    <div className="sec" style={{gridColumn:'1 / -1'}}><span className="k">Dialog · empty state</span>
+      <div className="row" style={{alignItems:'stretch'}}>
+        <div className="stage">
+          <Dialog open title="Discard this workout?" actions={<><Button variant="text">Keep going</Button><Button variant="danger">Discard</Button></>}>
+            Logged sets stay on this phone. Nothing is uploaded.
+          </Dialog>
+        </div>
+        <div className="stage" style={{display:'grid',placeItems:'center'}}>
+          <EmptyState icon="event_note" title="No workouts yet" body="Build one from the catalog, or let RepForth draft it." action={<Button variant="filled" icon="add">New workout</Button>} />
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

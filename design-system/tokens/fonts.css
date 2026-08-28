@@ -1,0 +1,10 @@
+/* RepForth type sources.
+   SUBSTITUTION NOTICE: no font binaries were supplied with the brief.
+   Archivo (display + numerals) and Manrope (UI text) are Google Fonts
+   nearest matches for "numbers are the hero, quiet supporting labels".
+   Both cover Latin Extended (Turkish ı İ ş ğ ç ö ü). Swap the two @imports
+   for self-hosted @font-face rules once real files land. */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,75..125,100..900;1,75..125,100..900&family=Manrope:wght@400..800&display=swap");
+/* Icon font: Material Symbols Rounded — see readme ICONOGRAPHY. */
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..200&display=block");
+:root{--font-display:"Archivo","Noto Sans",system-ui,sans-serif;--font-numeric:"Archivo","Noto Sans",system-ui,sans-serif;--font-ui:"Manrope","Noto Sans",system-ui,sans-serif;--font-mono:ui-monospace,monospace;--font-icon:"Material Symbols Rounded"}

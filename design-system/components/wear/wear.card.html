@@ -1,0 +1,53 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Wear OS — screens, arc, rows, actions" subtitle="Round, square and ambient watch primitives" -->
+<!DOCTYPE html><html data-theme="dark"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{background:var(--surface-app);padding:20px;margin:0}.k{font:700 11px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-quiet)}.sec{display:flex;flex-direction:column;gap:8px}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script></head><body><div id="root"></div>
+<script type="text/babel">
+const { WearScreen, WearBody, WearValue, WearArc, WearList, WearListItem, WearAction } = window.RepForthDesignSystem_c95a40;
+function Demo(){
+  const [v,setV]=React.useState(.66);
+  React.useEffect(()=>{const t=setInterval(()=>setV(x=>x<=0?1:x-0.01),150);return()=>clearInterval(t)},[]);
+  return (<div className="row" style={{gap:20,alignItems:'flex-start'}}>
+    <div className="sec"><span className="k">Round · rest</span>
+      <WearScreen shape="round" size={200}>
+        <WearArc value={v} tone="rest" />
+        <WearBody>
+          <span className="rf-wear__title">Dinlenme</span>
+          <WearValue value={'0:'+String(Math.floor(v*60)).padStart(2,'0')} caption="Bench press · Set 3" />
+          <WearAction actions={[{icon:'skip_next',label:'Skip rest',tone:'primary'}]} />
+        </WearBody>
+      </WearScreen></div>
+    <div className="sec"><span className="k">Round · set remote</span>
+      <WearScreen shape="round" size={200}>
+        <WearArc value={0.75} />
+        <WearBody>
+          <span className="rf-wear__title">Set 3 / 4</span>
+          <WearValue value="82.5" unit="kg" caption="× 8 reps" size={38} />
+          <WearAction actions={[{icon:'check',label:'Complete set',tone:'primary'}]} />
+        </WearBody>
+      </WearScreen></div>
+    <div className="sec"><span className="k">Square · list</span>
+      <WearScreen shape="square" size={192}>
+        <WearBody>
+          <WearList>
+            <WearListItem primary icon="play_arrow" label="Devam et" />
+            <WearListItem icon="fitness_center" label="Bench press" value="3/4" />
+            <WearListItem icon="timer" label="Dinlenme" value="90s" />
+          </WearList>
+        </WearBody>
+      </WearScreen></div>
+    <div className="sec"><span className="k">Ambient</span>
+      <WearScreen shape="round" size={200} ambient>
+        <WearArc value={0.66} tone="rest" />
+        <WearBody>
+          <span className="rf-wear__title">Rest</span>
+          <WearValue value="0:42" caption="Set 3 · Bench press" />
+        </WearBody>
+      </WearScreen></div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

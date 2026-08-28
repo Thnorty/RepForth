@@ -1,0 +1,13 @@
+/* Raw tone palette. Never reference these directly in product UI — use the
+   semantic roles in colors.css. Tone numbers follow Material 3 (0 = black,
+   100 = white); the neutral ramp carries a faint green cast so charcoal
+   surfaces sit in the same family as the lime accent. */
+:root{
+--lime-10:#182100;--lime-20:#2F4000;--lime-30:#476000;--lime-35:#4A6600;--lime-40:#5F8000;--lime-50:#7BA800;--lime-60:#94C222;--lime-70:#ADDB3F;--lime-80:#C6F45C;--lime-90:#DFFF9B;--lime-95:#EEFFC6;--lime-99:#FBFFEF;
+--sage-10:#181E08;--sage-20:#2C331A;--sage-30:#424A2F;--sage-40:#5A6146;--sage-70:#A8B08C;--sage-80:#C3CCA6;--sage-90:#DFE8C1;
+--amber-10:#241A00;--amber-20:#3F2E00;--amber-30:#5A4400;--amber-40:#6F5300;--amber-70:#DFAB3C;--amber-80:#F0C36B;--amber-90:#FFDFA0;
+--sky-10:#001B3D;--sky-30:#1C4E9C;--sky-40:#2B5EA7;--sky-80:#A6C8FF;--sky-90:#D6E3FF;
+--red-10:#410002;--red-20:#690005;--red-30:#93000A;--red-40:#BA1A1A;--red-80:#FFB4AB;--red-90:#FFDAD6;
+--n-0:#000000;--n-4:#0B0F07;--n-6:#101408;--n-10:#14180E;--n-12:#191E12;--n-17:#23281B;--n-22:#2E3325;--n-30:#43483A;--n-40:#5A6050;--n-50:#737968;--n-60:#8D9381;--n-70:#A7AE9A;--n-80:#C3CAB4;--n-90:#DFE6CF;--n-94:#EDF4DC;--n-96:#F3FAE2;--n-98:#FAFFE9;--n-100:#FFFFFF;
+--nv-20:#2A2F20;--nv-30:#454A3C;--nv-50:#757B69;--nv-60:#8F9582;--nv-80:#C5CBB4;--nv-90:#E1E7D0
+}

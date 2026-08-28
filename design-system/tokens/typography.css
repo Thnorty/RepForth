@@ -1,0 +1,32 @@
+/* Type system. Two roles only:
+   NUMERIC (Archivo, tabular, heavy) — reps, weight, sets, countdowns. The hero.
+   UI (Manrope, 400–700) — everything else, deliberately quiet.
+   All sizes are rem so Android/browser font scaling to 200% just works;
+   never set a fixed px height on a container that holds scalable text. */
+:root{
+/* numeric scale — read at arm's length, mid-set */
+--numeric-hero:6rem;--numeric-xl:4.5rem;--numeric-lg:3.5rem;--numeric-md:2.5rem;--numeric-sm:1.75rem;--numeric-xs:1.25rem;
+--numeric-weight:800;--numeric-weight-quiet:600;--numeric-tracking:-.02em;--numeric-leading:.92;
+/* UI scale (Material 3 names) */
+--display-lg:3.5625rem;--display-md:2.8125rem;--display-sm:2.25rem;
+--headline-lg:2rem;--headline-md:1.75rem;--headline-sm:1.5rem;
+--title-lg:1.375rem;--title-md:1rem;--title-sm:.875rem;
+--body-lg:1rem;--body-md:.875rem;--body-sm:.75rem;
+--label-lg:.875rem;--label-md:.75rem;--label-sm:.6875rem;
+--leading-tight:1.15;--leading-snug:1.3;--leading-normal:1.45;--leading-loose:1.6;
+--weight-regular:400;--weight-medium:500;--weight-semibold:600;--weight-bold:700;--weight-black:800;
+--tracking-label:.01em;--tracking-caps:.08em
+}
+.rf-numeric{font-family:var(--font-numeric);font-weight:var(--numeric-weight);letter-spacing:var(--numeric-tracking);line-height:var(--numeric-leading);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;color:var(--numeric-color)}
+.rf-numeric-hero{font-size:var(--numeric-hero)}
+.rf-numeric-xl{font-size:var(--numeric-xl)}
+.rf-numeric-lg{font-size:var(--numeric-lg)}
+.rf-numeric-md{font-size:var(--numeric-md)}
+.rf-numeric-sm{font-size:var(--numeric-sm)}
+.rf-numeric-xs{font-size:var(--numeric-xs)}
+.rf-unit{font-family:var(--font-ui);font-size:var(--label-md);font-weight:var(--weight-semibold);color:var(--text-quiet);letter-spacing:var(--tracking-label)}
+.rf-headline{font-family:var(--font-display);font-size:var(--headline-sm);font-weight:var(--weight-bold);line-height:var(--leading-tight);color:var(--text-strong);letter-spacing:-.01em}
+.rf-title{font-family:var(--font-ui);font-size:var(--title-md);font-weight:var(--weight-semibold);line-height:var(--leading-snug);color:var(--text-body)}
+.rf-body{font-family:var(--font-ui);font-size:var(--body-md);font-weight:var(--weight-regular);line-height:var(--leading-normal);color:var(--text-body);text-wrap:pretty}
+.rf-label{font-family:var(--font-ui);font-size:var(--label-md);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-label);color:var(--text-quiet)}
+.rf-overline{font-family:var(--font-ui);font-size:var(--label-sm);font-weight:var(--weight-bold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--text-quiet)}

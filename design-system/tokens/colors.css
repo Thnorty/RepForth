@@ -1,0 +1,52 @@
+/* Material 3 semantic colour roles. DARK IS THE DEFAULT (:root).
+   Light theme is a full peer, not a tint: set data-theme="light" on <html>
+   (or add .theme-light to any subtree) — every role below is re-declared.
+   Every text/background pair here clears WCAG AA (4.5:1 body, 3:1 large
+   and non-text). Never signal state with colour alone: pair with an icon,
+   label, or shape. */
+:root{
+--color-primary:var(--lime-80);--color-on-primary:#253300;--color-primary-container:var(--lime-30);--color-on-primary-container:var(--lime-90);
+--color-secondary:var(--sage-80);--color-on-secondary:var(--sage-20);--color-secondary-container:var(--sage-30);--color-on-secondary-container:var(--sage-90);
+--color-tertiary:var(--amber-80);--color-on-tertiary:var(--amber-20);--color-tertiary-container:var(--amber-30);--color-on-tertiary-container:var(--amber-90);
+--color-error:var(--red-80);--color-on-error:var(--red-20);--color-error-container:var(--red-30);--color-on-error-container:var(--red-90);
+--color-info:var(--sky-80);--color-on-info:var(--sky-10);--color-info-container:var(--sky-30);--color-on-info-container:var(--sky-90);
+--color-surface:var(--n-10);--color-on-surface:var(--n-90);--color-on-surface-variant:var(--nv-80);
+--color-surface-container-lowest:var(--n-4);--color-surface-container-low:var(--n-10);--color-surface-container:var(--n-12);--color-surface-container-high:var(--n-17);--color-surface-container-highest:var(--n-22);
+--color-surface-dim:var(--n-6);--color-surface-bright:var(--n-30);
+--color-outline:var(--nv-60);--color-outline-variant:var(--nv-30);
+--color-inverse-surface:var(--n-90);--color-inverse-on-surface:var(--n-12);--color-inverse-primary:var(--lime-35);
+--color-scrim:#000000;--scrim-opacity:.62; /* @kind other */
+--color-shadow:#000000;
+/* Semantic aliases used by components and kits */
+--text-strong:var(--n-98);--text-body:var(--color-on-surface);--text-quiet:var(--color-on-surface-variant);--text-disabled:color-mix(in oklab,var(--color-on-surface) 38%,transparent);
+--surface-app:var(--n-6);--surface-card:var(--color-surface-container);--surface-card-raised:var(--color-surface-container-high);--surface-sunken:var(--color-surface-container-lowest);
+--border-quiet:var(--color-outline-variant);--border-loud:var(--color-outline);
+--accent:var(--color-primary);--on-accent:var(--color-on-primary);--accent-quiet:var(--color-primary-container);
+--numeric-color:var(--n-98);--numeric-accent:var(--color-primary);
+--track:color-mix(in oklab,var(--color-on-surface) 14%,transparent);
+--state-hover:color-mix(in oklab,var(--color-on-surface) 8%,transparent);
+--state-press:color-mix(in oklab,var(--color-on-surface) 12%,transparent);
+--state-accent-hover:color-mix(in oklab,var(--color-on-primary) 8%,transparent);
+--state-accent-press:color-mix(in oklab,var(--color-on-primary) 12%,transparent);
+--focus-ring:var(--lime-80);
+/* Wear OS ambient mode: pure black, dimmed monochrome, no fills */
+--ambient-bg:#000000;--ambient-fg:#DDE3D2;--ambient-quiet:#7E8474;--ambient-outline:#4A4F42
+}
+[data-theme="light"],.theme-light{
+--color-primary:var(--lime-35);--color-on-primary:#FFFFFF;--color-primary-container:var(--lime-90);--color-on-primary-container:var(--lime-10);
+--color-secondary:var(--sage-40);--color-on-secondary:#FFFFFF;--color-secondary-container:var(--sage-90);--color-on-secondary-container:var(--sage-10);
+--color-tertiary:var(--amber-40);--color-on-tertiary:#FFFFFF;--color-tertiary-container:var(--amber-90);--color-on-tertiary-container:var(--amber-10);
+--color-error:var(--red-40);--color-on-error:#FFFFFF;--color-error-container:var(--red-90);--color-on-error-container:var(--red-10);
+--color-info:var(--sky-30);--color-on-info:#FFFFFF;--color-info-container:var(--sky-90);--color-on-info-container:var(--sky-10);
+--color-surface:var(--n-98);--color-on-surface:#1A1E14;--color-on-surface-variant:#454A3C;
+--color-surface-container-lowest:#FFFFFF;--color-surface-container-low:var(--n-98);--color-surface-container:var(--n-96);--color-surface-container-high:var(--n-94);--color-surface-container-highest:#E7EED6;
+--color-surface-dim:#DDE4CD;--color-surface-bright:var(--n-98);
+--color-outline:var(--nv-50);--color-outline-variant:var(--nv-80);
+--color-inverse-surface:var(--n-17);--color-inverse-on-surface:var(--n-94);--color-inverse-primary:var(--lime-80);
+--scrim-opacity:.42; /* @kind other */
+--text-strong:#10140A;--text-disabled:color-mix(in oklab,#1A1E14 38%,transparent);
+--surface-app:var(--n-96);--surface-card:#FFFFFF;--surface-card-raised:#FFFFFF;--surface-sunken:var(--n-94);
+--numeric-color:#10140A;--numeric-accent:var(--lime-35);
+--track:color-mix(in oklab,#1A1E14 12%,transparent);
+--focus-ring:var(--lime-35)
+}

@@ -1,0 +1,48 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Core — buttons, chips, stats" subtitle="Actions, chips, badges and the numeric hero primitive" -->
+<!DOCTYPE html><html data-theme="dark"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{background:var(--surface-app);padding:20px;display:flex;flex-direction:column;gap:18px}.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.sec{display:flex;flex-direction:column;gap:8px}.k{font:700 11px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-quiet)}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const { Button, IconButton, FAB, Chip, Badge, Card, StatBlock, Divider } = window.RepForthDesignSystem_c95a40;
+function Demo(){
+  const [sel,setSel]=React.useState({Dumbbell:true,Chest:false});
+  return (<div style={{display:'flex',flexDirection:'column',gap:18}}>
+    <div className="sec"><span className="k">Buttons</span><div className="row">
+      <Button variant="filled" icon="play_arrow">Start</Button>
+      <Button variant="tonal" icon="auto_awesome">Generate</Button>
+      <Button variant="outlined">Duplicate</Button>
+      <Button variant="text">Cancel</Button>
+      <Button variant="danger" icon="delete">Discard</Button>
+      <Button disabled>Disabled</Button>
+    </div></div>
+    <div className="sec"><span className="k">Sizes · sm 40 / md 48 / lg 56 / session 64</span><div className="row">
+      <Button size="sm" variant="tonal">Sets</Button><Button size="md" variant="tonal">Sets</Button>
+      <Button size="lg" variant="filled">Log set</Button><Button size="session" variant="filled" icon="check">Set bitti</Button>
+    </div></div>
+    <div className="sec"><span className="k">Icon buttons · FAB</span><div className="row">
+      <IconButton icon="more_vert" label="Options" /><IconButton icon="bookmark" label="Save" selected /><IconButton icon="tune" label="Filters" variant="outlined" />
+      <IconButton icon="skip_next" label="Skip rest" variant="tonal" size="session" />
+      <FAB icon="add" label="New workout" extended /><FAB icon="play_arrow" label="Resume" />
+    </div></div>
+    <div className="sec"><span className="k">Chips · badges</span><div className="row">
+      <Chip icon="fitness_center" label="Dumbbell" count={214} selected={sel.Dumbbell} onClick={()=>setSel(s=>({...s,Dumbbell:!s.Dumbbell}))} />
+      <Chip icon="accessibility_new" label="Göğüs" count={96} selected={sel.Chest} onClick={()=>setSel(s=>({...s,Chest:!s.Chest}))} />
+      <Chip icon="exercise" label="Barbell" size="sm" />
+      <Badge tone="accent" icon="trending_up" label="PR" /><Badge tone="amber" icon="schedule" label="90s" /><Badge label="Week 4" />
+    </div></div>
+    <div className="sec"><span className="k">Cards · numeric hero</span><div className="row" style={{alignItems:'stretch'}}>
+      <Card style={{display:'flex',gap:24,alignItems:'center'}}>
+        <StatBlock value="82.5" unit="kg" label="Working weight" size="lg" />
+        <Divider vertical />
+        <StatBlock value="3/5" label="Sets" size="lg" tone="accent" />
+      </Card>
+      <Card variant="outlined" interactive style={{width:200}}><div style={{fontWeight:700}}>Push Day A</div><div className="rf-label">6 exercises · 48 min</div></Card>
+    </div></div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

@@ -1,0 +1,21 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+
+# Never commit provider credentials (§8, §18).
+.env
+*.env
+!.env.example
+
+# Scratch space used while scaffolding.
+_staging/

@@ -1,0 +1,35 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Forms — fields, toggles, stepper" subtitle="48dp rows, 64dp session stepper, error state with icon" -->
+<!DOCTYPE html><html data-theme="dark"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<style>body{background:var(--surface-app);padding:20px;margin:0}.k{font:700 11px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-quiet)}.sec{display:flex;flex-direction:column;gap:8px}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script></head><body><div id="root"></div>
+<script type="text/babel">
+const { TextField, SelectField, Checkbox, Radio, Switch, Stepper, Slider, SegmentedButtons } = window.RepForthDesignSystem_c95a40;
+function Demo(){
+  const [w,setW]=React.useState(82.5),[r,setR]=React.useState(10),[rest,setRest]=React.useState(90);
+  const [unit,setUnit]=React.useState('kg'),[chk,setChk]=React.useState(true),[sw,setSw]=React.useState(true),[goal,setGoal]=React.useState('hyp');
+  return (<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'20px 28px'}}>
+    <div className="sec"><span className="k">Text fields</span>
+      <TextField label="Search exercises" icon="search" placeholder="Bench press" />
+      <TextField label="Weight" numeric suffix="kg" value={w} onChange={e=>setW(e.target.value)} />
+      <TextField label="Workout name" value="Push Day A" error="Bu ad zaten kullanılıyor" />
+      <SelectField label="Dil / Language" options={[{value:'en',label:'English'},{value:'tr',label:'Türkçe'}]} icon="translate" />
+    </div>
+    <div className="sec"><span className="k">Selection</span>
+      <SegmentedButtons label="Units" value={unit} onChange={setUnit} options={[{value:'kg',label:'kg'},{value:'lb',label:'lb'}]} />
+      <Checkbox label="Warm-up sets" description="Isınma setlerini de kaydet" checked={chk} onChange={setChk} />
+      <Radio label="Hypertrophy · 8–12 reps" checked={goal==='hyp'} onChange={()=>setGoal('hyp')} />
+      <Radio label="Strength · 3–6 reps" checked={goal==='str'} onChange={()=>setGoal('str')} />
+      <Switch label="Keep screen on" description="Antrenman sırasında" checked={sw} onChange={setSw} />
+    </div>
+    <div className="sec"><span className="k">Stepper · md 48dp</span><Stepper label="Reps" value={r} unit="reps" step={1} onChange={setR} /></div>
+    <div className="sec"><span className="k">Stepper · session 64dp</span><Stepper label="Weight" size="session" value={w} unit="kg" step={2.5} onChange={setW} /></div>
+    <div className="sec" style={{gridColumn:'1 / -1'}}><span className="k">Slider</span>
+      <Slider label="Rest" value={rest} min={15} max={300} step={15} onChange={setRest} format={s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0')} />
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script></body></html>

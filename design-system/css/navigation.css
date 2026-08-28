@@ -1,0 +1,33 @@
+/* App chrome: top bar, bottom navigation, list rows, tabs. */
+.rf-appbar{display:flex;align-items:center;gap:var(--space-2);min-height:var(--appbar-h);padding:0 var(--space-2);background:var(--surface-app);color:var(--text-body)}
+.rf-appbar--scrolled{background:var(--color-surface-container);box-shadow:var(--elev-1)}
+.rf-appbar__title{flex:1;min-width:0;font-family:var(--font-display);font-size:var(--title-lg);font-weight:var(--weight-bold);color:var(--text-strong);line-height:var(--leading-snug);padding:0 var(--space-2)}
+.rf-appbar__sub{display:block;font-family:var(--font-ui);font-size:var(--label-md);font-weight:var(--weight-semibold);color:var(--text-quiet)}
+.rf-appbar--large{flex-direction:column;align-items:stretch;padding-bottom:var(--space-4)}
+.rf-appbar--large .rf-appbar__row{display:flex;align-items:center;gap:var(--space-2);min-height:var(--appbar-h)}
+.rf-appbar--large .rf-appbar__display{font-family:var(--font-display);font-size:var(--headline-md);font-weight:var(--weight-black);letter-spacing:-.02em;color:var(--text-strong);padding:0 var(--space-4)}
+
+.rf-navbar{display:flex;align-items:stretch;gap:2px;min-height:var(--navbar-h);padding:var(--space-2) var(--space-1);background:var(--color-surface-container);border-top:var(--stroke-hairline) solid var(--border-quiet)}
+.rf-navbar__item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;border:none;background:transparent;color:var(--text-quiet);font-family:var(--font-ui);font-size:var(--label-md);font-weight:var(--weight-semibold);cursor:pointer;padding:0 2px}
+.rf-navbar__pill{display:grid;place-items:center;width:56px;height:32px;border-radius:var(--radius-full);transition:background-color var(--dur-short) var(--ease-standard)}
+.rf-navbar__item[aria-current="page"]{color:var(--text-strong)}
+.rf-navbar__item[aria-current="page"] .rf-navbar__pill{background:var(--color-primary-container);color:var(--color-on-primary-container)}
+.rf-navbar__label{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.rf-row{display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:var(--target-min);padding:var(--space-2) var(--space-3);border:none;border-radius:var(--radius-md);background:transparent;color:var(--text-body);font-family:var(--font-ui);text-align:left;cursor:pointer;transition:background-color var(--dur-short) var(--ease-standard)}
+.rf-row:hover{background:var(--state-hover)}
+.rf-row--static{cursor:default}
+.rf-row--static:hover{background:transparent}
+.rf-row__media{flex:none;width:48px;height:48px;border-radius:var(--radius-sm);overflow:hidden;background:var(--color-surface-container-high);display:grid;place-items:center;color:var(--color-on-surface-variant)}
+.rf-row__media img{width:100%;height:100%;object-fit:cover;display:block}
+.rf-row__text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rf-row__title{font-size:var(--body-lg);font-weight:var(--weight-semibold);color:var(--text-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rf-row__sub{font-size:var(--label-md);color:var(--text-quiet);display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
+.rf-row__trail{flex:none;display:flex;align-items:center;gap:var(--space-2);color:var(--text-quiet)}
+
+.rf-tabs{display:flex;gap:var(--space-1);border-bottom:var(--stroke-hairline) solid var(--border-quiet);padding:0 var(--space-2)}
+.rf-tabs__item{position:relative;flex:1;min-height:var(--target-min);border:none;background:transparent;color:var(--text-quiet);font-family:var(--font-ui);font-size:var(--label-lg);font-weight:var(--weight-bold);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:0 var(--space-3);white-space:nowrap}
+.rf-tabs__item[aria-selected="true"]{color:var(--color-primary)}
+.rf-tabs__item[aria-selected="true"]::after{content:"";position:absolute;left:var(--space-3);right:var(--space-3);bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--color-primary)}
+.rf-tabs--scroll{overflow-x:auto;scrollbar-width:none}
+.rf-tabs--scroll .rf-tabs__item{flex:none}
