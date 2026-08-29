@@ -49,5 +49,17 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+
+    // §17: instrumentation. These run on a device, against the real navigation
+    // graph and the real Hilt graph — which is where every defect found by hand
+    // so far has lived.
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.hilt.android.testing)
+    kspAndroidTest(libs.hilt.compiler)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(project(":core:testing"))
 }

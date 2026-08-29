@@ -19,6 +19,13 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             configureKotlinAndroid(this)
             defaultConfig.targetSdk = libs.int("targetSdk")
 
+            // §17's instrumentation tests run against a real Hilt graph, which
+            // needs an Application the test framework builds rather than the
+            // app's own. Named here rather than in the module so that a second
+            // application module cannot forget it and get the puzzling failure
+            // that follows — an injected field that is simply never set.
+            defaultConfig.testInstrumentationRunner = "com.repforth.app.RepForthTestRunner"
+
             flavorDimensions += "media"
             productFlavors {
                 create("placeholder") {

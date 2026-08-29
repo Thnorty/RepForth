@@ -30,6 +30,11 @@ room = "2.7.2"
 # releases ship a Gradle plugin built against a newer Kotlin stdlib.
 hilt = "2.56.2"
 junit = "4.13.2"
+# §17 asks for instrumentation tests. These are the smallest set that runs a
+# real activity with a real Hilt graph on a real device.
+androidxTestJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
+espresso = "3.6.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -67,6 +72,14 @@ kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 sqlite-jdbc = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqliteJdbc" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+
+# Instrumentation. compose-ui-test-junit4 takes its version from the Compose BOM.
+androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
 
 # Consumed by build-logic so the convention plugins can configure AGP/Kotlin.
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }

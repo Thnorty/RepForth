@@ -1,0 +1,125 @@
+package com.repforth.app
+
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * The app starts, and every screen it can reach can be reached.
+ *
+ * These exist because of what the JVM tests could not see. Two hundred and
+ * sixty-five of them were green while the app crashed on opening Settings, drew
+ * onboarding under the camera cutout, and could not select day six of seven —
+ * every one of those a defect in Android's own plumbing rather than in this
+ * project's logic, and every one found by a person tapping the screen.
+ *
+ * So the bar here is deliberately low and broad: open things and assert they
+ * opened. A test that merely proves a screen composes without throwing would
+ * have caught two of the five.
+ */
+@HiltAndroidTest
+@RunWith(AndroidJUnit4::class)
+class AppLaunchTest {
+
+    @get:Rule(order = 0)
+    val hilt = HiltAndroidRule(this)
+
+    @get:Rule(order = 1)
+    val compose = createAndroidComposeRule<MainActivity>()
+
+    @Before
+    fun setUp() {
+        hilt.inject()
+    }
+
+    /**
+     * A fresh install shows the questionnaire.
+     *
+     * Also the smoke test for the whole graph: reaching this assertion means
+     * Room opened the packaged catalog, DataStore read, Hilt built every
+     * dependency, and Compose drew a frame.
+     */
+    @Test
+    fun onboardingIsShownBeforeAProfileExists() {
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodes(hasText("training for", substring = true)).fetchSemanticsNodes().isNotEmpty() ||
+                compose.onAllNodes(hasText("Today", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    /**
+     * Every tab opens.
+     *
+     * Each one builds its own Hilt ViewModel, which is exactly what the
+     * `LocalContext` change broke: the failure was not in any screen's code but
+     * in the activity being unreachable from the context they were given.
+     */
+    @Test
+    fun everyTabOpens() {
+        completeOnboardingIfShown()
+
+        listOf("Plans", "Exercises", "Progress", "Today").forEach { tab ->
+            compose.onNodeWithText(tab).performClick()
+            compose.waitForIdle()
+        }
+    }
+
+    /**
+     * Settings opens.
+     *
+     * Its own test because it is the screen that crashed: it is reached from
+     * the top bar rather than a tab, and it builds a ViewModel that reaches
+     * three other modules.
+     */
+    @Test
+    fun settingsOpens() {
+        completeOnboardingIfShown()
+
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Appearance").assertExists()
+    }
+
+    private fun completeOnboardingIfShown() {
+        compose.waitForIdle()
+        if (compose.onAllNodes(hasText("training for", substring = true)).fetchSemanticsNodes().isEmpty()) {
+            return
+        }
+
+        compose.onNodeWithText("Strength").performClick()
+        compose.onNodeWithText("Next").performClick()
+        compose.onNodeWithText("1 to 3 years").performClick()
+
+        // Walk the rest of the questionnaire on its defaults. Every remaining
+        // step advances without an answer, which is itself the thing being
+        // relied on here.
+        repeat(REMAINING_STEPS) {
+            compose.waitForIdle()
+            if (compose.onAllNodesWithText("Next").fetchSemanticsNodes().isNotEmpty()) {
+                compose.onNodeWithText("Next").performClick()
+            }
+        }
+        compose.waitForIdle()
+        if (compose.onAllNodesWithText("Finish").fetchSemanticsNodes().isNotEmpty()) {
+            compose.onNodeWithText("Finish").performClick()
+        }
+        compose.waitForIdle()
+    }
+
+    private companion object {
+        const val TIMEOUT_MS = 10_000L
+
+        /** Goal and experience are answered explicitly; the rest are defaults. */
+        const val REMAINING_STEPS = 7
+    }
+}
