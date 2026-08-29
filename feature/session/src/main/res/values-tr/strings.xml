@@ -29,7 +29,7 @@
     <string name="session_none">Devam eden bir antrenman yok.</string>
 
     <string name="session_confirm_abandon_title">Bu antrenman sonlandırılsın mı?</string>
-    <string name="session_confirm_abandon_body">Kaydettiğin setler korunur.</string>
+    <string name="session_confirm_abandon_body">Kaydettiğin setler geçmişinde kalır. Yalnızca antrenmanın kalanı bırakılır.</string>
     <string name="session_confirm_abandon_yes">Sonlandır</string>
     <string name="session_confirm_abandon_no">Devam et</string>
 

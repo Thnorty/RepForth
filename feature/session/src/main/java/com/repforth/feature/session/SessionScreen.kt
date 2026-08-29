@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -140,6 +141,15 @@ internal fun SessionScreen(
     }
 
     var confirmingAbandon by rememberSaveable { mutableStateOf(false) }
+
+    // Back asks the same question the button does.
+    //
+    // Without this, back left the workout running and returned to Plans, where
+    // Start resumed it — which reads as the workout having been abandoned and
+    // then quietly coming back. Worse, Start on a *different* plan resumed the
+    // old one, because a session in progress is never replaced. One way out,
+    // and it asks first.
+    BackHandler(enabled = !confirmingAbandon) { confirmingAbandon = true }
 
     Column(
         modifier = modifier

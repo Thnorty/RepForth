@@ -29,7 +29,7 @@
     <string name="session_none">No workout is running.</string>
 
     <string name="session_confirm_abandon_title">End this workout?</string>
-    <string name="session_confirm_abandon_body">The sets you have logged are kept.</string>
+    <string name="session_confirm_abandon_body">Sets you already logged stay in your history. Only the rest of the workout is dropped.</string>
     <string name="session_confirm_abandon_yes">End it</string>
     <string name="session_confirm_abandon_no">Keep going</string>
 

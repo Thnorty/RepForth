@@ -62,3 +62,17 @@ the dataset or from any third-party anatomy illustration.
 ## Application code
 
 See [`README.md`](README.md#licence). A project licence has not yet been chosen.
+
+## Material Symbols
+
+The interface icons are [Material Symbols](https://fonts.google.com/icons) in the
+Rounded style, by Google, under the **Apache License 2.0**.
+
+They are not bundled as the icon font. `tools/fetch-icons.sh` downloads the
+individual SVGs named in `tools/icons.txt` and `tools/svg-to-vector.py` converts
+each one into an Android vector drawable, so the app ships 53 paths rather than
+a font containing several thousand glyphs it does not use.
+
+The drawables in `core/designsystem/src/main/res/drawable/rf_sym_*.xml` are
+generated. Do not edit them by hand; change `tools/icons.txt` and rerun the
+script.

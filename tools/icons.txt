@@ -1,0 +1,72 @@
+# Material Symbols used by RepForth, one per line.
+#
+# Extracted from the design system's components, guideline cards and phone UI
+# kit, which name glyphs by ligature. Kept as a list rather than rediscovered on
+# each run so that adding or dropping an icon shows up in a diff.
+#
+# Fetched and converted by tools/fetch-icons.sh.
+
+# Navigation and structure
+today
+list_alt
+fitness_center
+insights
+settings
+arrow_back
+close
+more_vert
+expand_more
+expand_less
+search
+tune
+drag_handle
+
+# Actions
+add
+remove
+edit
+delete
+save
+check
+check_circle
+play_arrow
+skip_next
+timer
+schedule
+flag
+bookmark
+
+# Muscles, as the design system maps them
+accessibility_new
+airline_seat_recline_normal
+sports_martial_arts
+exercise
+sports_gymnastics
+directions_run
+self_improvement
+
+# Equipment
+cable
+precision_manufacturing
+accessibility
+
+# Settings, state and feedback
+dark_mode
+light_mode
+translate
+straighten
+error
+help
+auto_awesome
+bolt
+trending_up
+event_note
+person_off
+code
+
+# Connectivity and the watch
+watch
+phone_android
+wifi
+signal_cellular_alt
+battery_5_bar

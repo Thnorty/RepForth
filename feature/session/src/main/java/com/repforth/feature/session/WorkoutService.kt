@@ -154,7 +154,7 @@ class WorkoutService : Service() {
             // keeps the alpha and throws the colour away. The dumbbell is
             // already a single monochrome path, so it survives that; a launcher
             // icon would arrive as a white blob.
-            .setSmallIcon(com.repforth.core.designsystem.R.drawable.rf_ic_exercises)
+            .setSmallIcon(com.repforth.core.designsystem.R.drawable.rf_sym_fitness_center)
             .setContentTitle(snapshot?.let { names[it.currentExercise?.exerciseId?.value] }
                 ?: getString(R.string.session_title))
             .setOngoing(true)
