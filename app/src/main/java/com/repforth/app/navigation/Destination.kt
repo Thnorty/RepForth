@@ -30,6 +30,17 @@ sealed interface Destination {
      * tab was showing, without any of that being written by hand.
      */
     @Serializable data object Settings : Destination
+
+    /**
+     * The workout builder (§12): not a tab, opened from Plans and Today, and
+     * from the edit action on a saved plan.
+     *
+     * [planId] carries which plan is being edited, or null for a new one. It is
+     * an argument rather than two destinations because the screen is the same
+     * either way — §12 requires a generated or saved plan to be editable in the
+     * same cards a new one is built from.
+     */
+    @Serializable data class Builder(val planId: String? = null) : Destination
 }
 
 /**

@@ -41,6 +41,20 @@ class NavigationStructureTest {
         )
     }
 
+    /**
+     * §12: "The workout builder is not a top-level destination; it opens from
+     * Plans, from Today, and from the edit action on any saved or generated
+     * plan." Promoting it to a tab is the same one-line reversal Coach is
+     * guarded against above.
+     */
+    @Test
+    fun `the builder is reachable but is not a tab`() {
+        assertFalse(
+            "The builder opens from Plans and Today (§12), not the bottom bar.",
+            TopLevelDestination.entries.any { it.route is Destination.Builder },
+        )
+    }
+
     @Test
     fun `every top level destination has a distinct label`() {
         val labels = TopLevelDestination.entries.map { it.labelRes }

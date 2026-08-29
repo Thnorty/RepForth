@@ -8,6 +8,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.repforth.app.R
 import com.repforth.app.ui.screen.PlaceholderScreen
+import androidx.navigation.toRoute
+import com.repforth.feature.builder.BuilderRoute
+import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
 
 /**
@@ -32,7 +35,20 @@ fun RepForthNavHost(
             PlaceholderScreen(titleRes = R.string.today, bodyRes = R.string.placeholder_today)
         }
         composable<Destination.Plans> {
-            PlaceholderScreen(titleRes = R.string.plans, bodyRes = R.string.placeholder_plans)
+            PlansRoute(
+                onNewWorkout = { navController.navigate(Destination.Builder()) },
+                onEditPlan = { planId -> navController.navigate(Destination.Builder(planId)) },
+            )
+        }
+        composable<Destination.Builder> { entry ->
+            val route = entry.toRoute<Destination.Builder>()
+            BuilderRoute(
+                planId = route.planId,
+                // Saving returns to wherever the builder was opened from, which
+                // is Plans today and Today tomorrow. popBackStack rather than a
+                // navigate keeps that true without this knowing either.
+                onSaved = { navController.popBackStack() },
+            )
         }
         composable<Destination.Exercises> {
             ExercisesRoute()

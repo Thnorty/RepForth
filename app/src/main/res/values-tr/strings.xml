@@ -52,11 +52,11 @@
     <string name="prs">Bu ayın rekorları</string>
     <string name="streak">Haftalık seri</string>
 
+    <string name="nav_builder">Antrenman</string>
     <string name="nav_settings">Ayarlar</string>
     <string name="nav_back">Geri</string>
 
     <string name="placeholder_today">Sıradaki antrenmanın ve hızlı başlangıç burada olacak.</string>
-    <string name="placeholder_plans">Kayıtlı programlar ve yeni antrenmanın başladığı yer.</string>
     <string name="placeholder_exercises">Katalog genelinde arama, filtreler ve kas grubuna göre gezinme.</string>
     <string name="placeholder_progress">Geçmiş, seriler, hacim ve son çalışılan kaslar.</string>
     <string name="placeholder_settings">Tema, dil, birimler ve kendi sağladığın yapay zeka sağlayıcısı.</string>

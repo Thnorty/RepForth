@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Antrenman oluşturucu ve onu açan plan listesi. -->
+<resources>
+    <string name="builder_new_title">Yeni antrenman</string>
+    <string name="builder_edit_title">Antrenmanı düzenle</string>
+    <string name="builder_name_label">Ad</string>
+    <string name="builder_name_placeholder">İtiş günü</string>
+    <string name="builder_add_exercise">Egzersiz ekle</string>
+    <string name="builder_save">Antrenmanı kaydet</string>
+    <string name="builder_empty">Henüz egzersiz yok. Başlamak için bir tane ekle.</string>
+    <string name="builder_name_required">Antrenmana bir ad ver.</string>
+
+    <string name="builder_sets">Set</string>
+    <string name="builder_reps">Tekrar</string>
+    <string name="builder_weight">Ağırlık (kg)</string>
+    <string name="builder_rest">Dinlenme (saniye)</string>
+    <string name="builder_seconds">Saniye</string>
+    <string name="builder_mode_reps">Tekrar</string>
+    <string name="builder_mode_duration">Süre</string>
+
+    <string name="builder_remove">%1$s egzersizini kaldır</string>
+    <string name="builder_move_up">%1$s egzersizini yukarı taşı</string>
+    <string name="builder_move_down">%1$s egzersizini aşağı taşı</string>
+    <string name="builder_position">%2$d egzersizden %1$d.</string>
+
+    <string name="builder_estimate">Yaklaşık %1$d dk</string>
+    <string name="builder_over_ceiling">Belirlediğin %1$d dakikadan uzun.</string>
+
+    <string name="builder_pick_title">Egzersiz ekle</string>
+    <string name="builder_pick_search">Egzersiz ara</string>
+    <string name="builder_pick_close">Kapat</string>
+    <string name="builder_pick_empty">Eşleşen bir şey yok.</string>
+    <string name="builder_pick_added">%1$s eklendi</string>
+
+    <string name="plans_new">Yeni antrenman</string>
+    <string name="plans_empty">Henüz kayıtlı antrenman yok.</string>
+    <string name="plans_empty_action">Bir tane oluştur, burada görünsün.</string>
+    <string name="plans_summary">%1$d egzersiz · yaklaşık %2$d dk</string>
+    <string name="plans_delete">%1$s antrenmanını sil</string>
+</resources>

@@ -32,6 +32,7 @@ dependencies {
     // Only to answer "has onboarding happened?" — the app shell reads the
     // profile's existence, never its contents.
     implementation(project(":core:user-data"))
+    implementation(project(":feature:builder"))
     implementation(project(":feature:exercises"))
     implementation(project(":feature:onboarding"))
 

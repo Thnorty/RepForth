@@ -1,5 +1,6 @@
 package com.repforth.app.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -51,9 +52,7 @@ fun RepForthApp(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(stringResource(currentTopLevel?.labelRes ?: R.string.settings_title))
-                },
+                title = { Text(stringResource(currentDestination.titleRes(currentTopLevel))) },
                 navigationIcon = {
                     if (currentTopLevel == null) {
                         IconButton(onClick = { navController.navigateUp() }) {
@@ -113,3 +112,18 @@ fun RepForthApp(
  */
 private fun NavDestination?.isOn(destination: TopLevelDestination): Boolean =
     this?.hierarchy?.any { it.hasRoute(destination.route::class) } == true
+
+/**
+ * The app bar title for wherever we are.
+ *
+ * Every destination is named explicitly rather than falling back to Settings.
+ * The fallback worked only while Settings was the single non-tab destination;
+ * the moment the builder was added it titled itself "Settings", which is the
+ * failure mode of a default that happens to be right once.
+ */
+@StringRes
+private fun NavDestination?.titleRes(topLevel: TopLevelDestination?): Int = when {
+    topLevel != null -> topLevel.labelRes
+    this?.hasRoute(Destination.Builder::class) == true -> R.string.nav_builder
+    else -> R.string.settings_title
+}

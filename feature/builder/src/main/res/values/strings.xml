@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Workout builder and the plan library that opens it. -->
+<resources>
+    <string name="builder_new_title">New workout</string>
+    <string name="builder_edit_title">Edit workout</string>
+    <string name="builder_name_label">Name</string>
+    <string name="builder_name_placeholder">Push day</string>
+    <string name="builder_add_exercise">Add exercise</string>
+    <string name="builder_save">Save workout</string>
+    <string name="builder_empty">No exercises yet. Add one to get started.</string>
+    <string name="builder_name_required">Give the workout a name.</string>
+
+    <string name="builder_sets">Sets</string>
+    <string name="builder_reps">Reps</string>
+    <string name="builder_weight">Weight (kg)</string>
+    <string name="builder_rest">Rest (seconds)</string>
+    <string name="builder_seconds">Seconds</string>
+    <string name="builder_mode_reps">Reps</string>
+    <string name="builder_mode_duration">Time</string>
+
+    <string name="builder_remove">Remove %1$s</string>
+    <string name="builder_move_up">Move %1$s earlier</string>
+    <string name="builder_move_down">Move %1$s later</string>
+    <string name="builder_position">%1$d of %2$d</string>
+
+    <string name="builder_estimate">About %1$d min</string>
+    <string name="builder_over_ceiling">Longer than the %1$d min you set up.</string>
+
+    <string name="builder_pick_title">Add an exercise</string>
+    <string name="builder_pick_search">Search exercises</string>
+    <string name="builder_pick_close">Close</string>
+    <string name="builder_pick_empty">Nothing matches that.</string>
+    <string name="builder_pick_added">%1$s added</string>
+
+    <string name="plans_new">New workout</string>
+    <string name="plans_empty">No saved workouts yet.</string>
+    <string name="plans_empty_action">Build one and it will appear here.</string>
+    <string name="plans_summary">%1$d exercises · about %2$d min</string>
+    <string name="plans_delete">Delete %1$s</string>
+</resources>
