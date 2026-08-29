@@ -57,9 +57,20 @@ class OnboardingViewModelTest {
         viewModel.onExperienceSelected(ExperienceLevel.INTERMEDIATE)
     }
 
+    /**
+     * Walks forward to a step, and gives up rather than spinning.
+     *
+     * The bound is not defensive padding. The unbounded version span forever the
+     * first time a step legitimately refused to advance — a hung test task with
+     * no output, which is a far worse thing to debug than a failed assertion.
+     */
     private fun advanceTo(target: OnboardingStep) {
         answerRequiredQuestions()
-        while (state.step != target) viewModel.onNext()
+        repeat(OnboardingStep.ordered.size) {
+            if (state.step == target) return
+            viewModel.onNext()
+        }
+        assertEquals("Could not reach $target; stuck on ${state.step}", target, state.step)
     }
 
     @Test
@@ -132,12 +143,12 @@ class OnboardingViewModelTest {
 
     @Test
     fun `skipping an optional question keeps its answers empty and moves on`() {
-        advanceTo(OnboardingStep.EQUIPMENT)
+        advanceTo(OnboardingStep.MUSCLES)
 
         viewModel.onSkip()
 
-        assertEquals(OnboardingStep.DAYS, state.step)
-        assertTrue("Skip must not invent an answer", state.equipment.isEmpty())
+        assertEquals(OnboardingStep.AVOID, state.step)
+        assertTrue("Skip must not invent an answer", state.preferredMuscles.isEmpty())
     }
 
     /**
@@ -165,10 +176,42 @@ class OnboardingViewModelTest {
     @Test
     fun `equipment toggles on and off`() {
         viewModel.onEquipmentToggled(Equipment.DUMBBELL)
-        assertEquals(setOf(Equipment.DUMBBELL), state.equipment)
+        assertTrue(Equipment.DUMBBELL in state.equipment)
 
         viewModel.onEquipmentToggled(Equipment.DUMBBELL)
-        assertTrue(state.equipment.isEmpty())
+        assertTrue(Equipment.DUMBBELL !in state.equipment)
+    }
+
+    /**
+     * Everyone has their own body weight, so there is no honest empty answer to
+     * this question. Choosing it for them is also what lets the saved profile be
+     * exactly what the screen showed.
+     */
+    @Test
+    fun `body weight is chosen before the question is asked`() {
+        assertEquals(setOf(Equipment.BODY_WEIGHT), state.equipment)
+    }
+
+    @Test
+    fun `the equipment question cannot be left empty`() {
+        advanceTo(OnboardingStep.EQUIPMENT)
+        assertTrue(state.canAdvance)
+
+        viewModel.onEquipmentToggled(Equipment.BODY_WEIGHT)
+
+        assertTrue("Deselecting the last one must leave the set empty", state.equipment.isEmpty())
+        assertFalse("Next must refuse an empty answer", state.canAdvance)
+
+        viewModel.onNext()
+        assertEquals(OnboardingStep.EQUIPMENT, state.step)
+
+        viewModel.onEquipmentToggled(Equipment.KETTLEBELL)
+        assertTrue(state.canAdvance)
+    }
+
+    @Test
+    fun `equipment has no skip, because it has no empty answer`() {
+        assertFalse(OnboardingStep.EQUIPMENT.optional)
     }
 
     @Test
@@ -234,7 +277,7 @@ class OnboardingViewModelTest {
         assertEquals(ExperienceLevel.ADVANCED, saved.experience)
         assertEquals(5, saved.trainingDaysPerWeek)
         assertEquals("60 minutes must be stored as milliseconds", 3_600_000L, saved.sessionLengthMs)
-        assertEquals(setOf(Equipment.BARBELL), saved.availableEquipment)
+        assertEquals(setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL), saved.availableEquipment)
         assertTrue(saved.id.isNotBlank())
     }
 
@@ -297,19 +340,23 @@ class OnboardingViewModelTest {
      * the screen promised a bodyweight plan and the engine would have
      * programmed barbells.
      */
+    /**
+     * The profile is saved as shown, with no step in between that could disagree
+     * with it. That equality is the point of pre-selecting rather than
+     * substituting: an empty set still means "unrestricted" to the rules engine,
+     * and onboarding no longer produces one.
+     */
     @Test
-    fun `choosing no equipment saves body weight rather than nothing`() = runTest(dispatcher) {
+    fun `the saved equipment is exactly what the screen showed`() = runTest(dispatcher) {
         answerRequiredQuestions()
+        viewModel.onEquipmentToggled(Equipment.KETTLEBELL)
+        val shown = state.equipment
 
         viewModel.onFinish()
         testScheduler.advanceUntilIdle()
 
-        assertEquals(
-            "An empty set means unrestricted to the rules engine, which is the " +
-                "opposite of what the screen promised",
-            setOf(Equipment.BODY_WEIGHT),
-            profiles.saved.single().availableEquipment,
-        )
+        assertEquals(shown, profiles.saved.single().availableEquipment)
+        assertTrue(profiles.saved.single().availableEquipment.isNotEmpty())
     }
 
     @Test
@@ -320,7 +367,10 @@ class OnboardingViewModelTest {
         viewModel.onFinish()
         testScheduler.advanceUntilIdle()
 
-        assertEquals(setOf(Equipment.DUMBBELL), profiles.saved.single().availableEquipment)
+        assertEquals(
+            setOf(Equipment.BODY_WEIGHT, Equipment.DUMBBELL),
+            profiles.saved.single().availableEquipment,
+        )
     }
 
     @Test

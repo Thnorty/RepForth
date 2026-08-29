@@ -199,9 +199,9 @@ internal fun OnboardingScreen(
                             onToggled = onEquipmentToggled,
                         )
                     }
-                    // Skipping used to be a silent act: nothing on screen said
-                    // what had been recorded, so there was no way to tell a
-                    // deliberate "none" from a tap that missed.
+                    // Reports its own state, and says what to do when the
+                    // answer is empty rather than leaving a disabled Next
+                    // unexplained.
                     Hint(
                         if (state.equipment.isEmpty()) {
                             stringResource(R.string.onboarding_equipment_none)
@@ -426,17 +426,11 @@ private fun ReviewList(state: OnboardingUiState, onJumpTo: (OnboardingStep) -> U
         )
         ReviewRow(
             label = stringResource(R.string.onboarding_review_equipment),
-            // Says what will be saved, not what was tapped. An empty choice
-            // becomes body weight on the way to the profile, and a review
-            // reporting "nothing chosen" would describe a profile that never
-            // exists.
-            value = if (state.equipment.isEmpty()) {
-                stringResource(R.string.onboarding_review_body_weight_only)
-            } else {
-                state.equipment.sortedBy { it.slug }
-                    .map { stringResource(it.labelRes) }
-                    .joinToString()
-            },
+            // No translation here any more. The step refuses to be left empty,
+            // so what the screen shows is what the profile gets.
+            value = state.equipment.sortedBy { it.slug }
+                .map { stringResource(it.labelRes) }
+                .joinToString(),
             onClick = { onJumpTo(OnboardingStep.EQUIPMENT) },
         )
         ReviewRow(

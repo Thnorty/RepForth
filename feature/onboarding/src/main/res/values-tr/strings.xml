@@ -26,8 +26,8 @@
     <string name="experience_advanced">3 yıldan fazla</string>
 
     <string name="onboarding_equipment_title">Hangi ekipmanlarla çalışabilirsin?</string>
-    <string name="onboarding_equipment_subtitle">Programlara yalnızca bunlar dahil edilir.</string>
-    <string name="onboarding_equipment_none">Hiçbir şey seçilmedi. Yalnızca vücut ağırlığı egzersizleri verilecek.</string>
+    <string name="onboarding_equipment_subtitle">Programlara yalnızca bunlar dahil edilir. Vücut ağırlığı zaten seçili.</string>
+    <string name="onboarding_equipment_none">En az bir tane seç. Vücut ağırlığı da sayılır.</string>
 
     <string name="onboarding_days_title">Haftada kaç gün?</string>
     <string name="onboarding_days_subtitle">Kas gruplarını günlere dağıtmak için kullanılır.</string>
@@ -57,5 +57,4 @@
     <string name="onboarding_review_focus">Odak</string>
     <string name="onboarding_review_avoid">Kaçınılanlar</string>
     <string name="onboarding_review_none">Seçim yok</string>
-    <string name="onboarding_review_body_weight_only">Yalnızca vücut ağırlığı</string>
 </resources>

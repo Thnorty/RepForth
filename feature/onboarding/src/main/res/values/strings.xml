@@ -26,8 +26,8 @@
     <string name="experience_advanced">More than 3 years</string>
 
     <string name="onboarding_equipment_title">What can you train with?</string>
-    <string name="onboarding_equipment_subtitle">Only these will be programmed.</string>
-    <string name="onboarding_equipment_none">Nothing selected. You will get body weight exercises only.</string>
+    <string name="onboarding_equipment_subtitle">Only these will be programmed. Body weight is already on.</string>
+    <string name="onboarding_equipment_none">Pick at least one. Body weight counts.</string>
 
     <string name="onboarding_days_title">How many days a week?</string>
     <string name="onboarding_days_subtitle">Used to spread muscle groups out.</string>
@@ -57,5 +57,4 @@
     <string name="onboarding_review_focus">Focus on</string>
     <string name="onboarding_review_avoid">Avoiding</string>
     <string name="onboarding_review_none">Nothing chosen</string>
-    <string name="onboarding_review_body_weight_only">Body weight only</string>
 </resources>

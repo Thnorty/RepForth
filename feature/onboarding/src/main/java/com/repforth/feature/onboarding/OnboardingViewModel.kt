@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 enum class OnboardingStep(val optional: Boolean = false) {
     GOAL,
     EXPERIENCE,
-    EQUIPMENT(optional = true),
+    EQUIPMENT,
     DAYS,
     LENGTH,
     MUSCLES(optional = true),
@@ -69,7 +69,13 @@ data class OnboardingUiState(
     val step: OnboardingStep = OnboardingStep.GOAL,
     val goal: TrainingGoal? = null,
     val experience: ExperienceLevel? = null,
-    val equipment: Set<Equipment> = emptySet(),
+    /**
+     * Body weight is chosen for you, and is the reason this question has no
+     * Skip: everyone has their own body weight, so there is no honest empty
+     * answer. Pre-selecting it also makes the saved profile identical to what
+     * the screen shows, rather than something translated on the way past.
+     */
+    val equipment: Set<Equipment> = setOf(Equipment.BODY_WEIGHT),
     val trainingDaysPerWeek: Int = DEFAULT_DAYS,
     val sessionLengthMinutes: Int = DEFAULT_SESSION_MINUTES,
     val preferredMuscles: Set<Muscle> = emptySet(),
@@ -90,6 +96,10 @@ data class OnboardingUiState(
         get() = when (step) {
             OnboardingStep.GOAL -> goal != null
             OnboardingStep.EXPERIENCE -> experience != null
+            // Deselectable down to nothing, but not past it. Blocking here says
+            // why, where silently re-adding body weight would look like a tap
+            // that did not register.
+            OnboardingStep.EQUIPMENT -> equipment.isNotEmpty()
             else -> true
         }
 
@@ -213,14 +223,7 @@ class OnboardingViewModel @Inject constructor(
                     experience = experience,
                     trainingDaysPerWeek = state.trainingDaysPerWeek,
                     sessionLengthMs = state.sessionLengthMinutes * MS_PER_MINUTE,
-                    // The screen says choosing nothing means body weight only,
-                    // and an empty set does not mean that — UserProfile reads it
-                    // as "not stated" and the rules engine then allows every
-                    // piece of equipment there is. Saying it explicitly is what
-                    // makes the promise on screen true.
-                    availableEquipment = state.equipment.ifEmpty {
-                        setOf(Equipment.BODY_WEIGHT)
-                    },
+                    availableEquipment = state.equipment,
                     preferredMuscles = state.preferredMuscles,
                     exclusions = state.avoidedMuscles
                         .map { MovementExclusion(ExclusionKind.MUSCLE, it.slug) }
