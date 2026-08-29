@@ -72,6 +72,7 @@ internal val OnboardingStep.titleRes: Int
         OnboardingStep.LENGTH -> R.string.onboarding_length_title
         OnboardingStep.MUSCLES -> R.string.onboarding_muscles_title
         OnboardingStep.AVOID -> R.string.onboarding_avoid_title
+        OnboardingStep.REVIEW -> R.string.onboarding_review_title
     }
 
 @get:StringRes
@@ -84,4 +85,5 @@ internal val OnboardingStep.subtitleRes: Int
         OnboardingStep.LENGTH -> R.string.onboarding_length_subtitle
         OnboardingStep.MUSCLES -> R.string.onboarding_muscles_subtitle
         OnboardingStep.AVOID -> R.string.onboarding_avoid_subtitle
+        OnboardingStep.REVIEW -> R.string.onboarding_review_subtitle
     }

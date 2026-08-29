@@ -1,6 +1,7 @@
 ﻿package com.repforth.feature.onboarding
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,6 +90,7 @@ fun OnboardingRoute(
         onPreferredRegionToggled = viewModel::onPreferredRegionToggled,
         onAvoidedMuscleToggled = viewModel::onAvoidedMuscleToggled,
         onAvoidedRegionToggled = viewModel::onAvoidedRegionToggled,
+        onJumpTo = viewModel::onJumpTo,
         onBack = viewModel::onBack,
         onNext = viewModel::onNext,
         onSkip = viewModel::onSkip,
@@ -110,6 +112,7 @@ internal fun OnboardingScreen(
     onPreferredRegionToggled: (BodyRegion) -> Unit,
     onAvoidedMuscleToggled: (Muscle) -> Unit,
     onAvoidedRegionToggled: (BodyRegion) -> Unit,
+    onJumpTo: (OnboardingStep) -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
     onSkip: () -> Unit,
@@ -196,7 +199,19 @@ internal fun OnboardingScreen(
                             onToggled = onEquipmentToggled,
                         )
                     }
-                    Hint(stringResource(R.string.onboarding_equipment_none))
+                    // Skipping used to be a silent act: nothing on screen said
+                    // what had been recorded, so there was no way to tell a
+                    // deliberate "none" from a tap that missed.
+                    Hint(
+                        if (state.equipment.isEmpty()) {
+                            stringResource(R.string.onboarding_equipment_none)
+                        } else {
+                            stringResource(
+                                R.string.onboarding_equipment_count,
+                                state.equipment.size,
+                            )
+                        },
+                    )
                 }
 
                 OnboardingStep.DAYS -> ValueSlider(
@@ -238,6 +253,10 @@ internal fun OnboardingScreen(
                         onRegionToggled = onAvoidedRegionToggled,
                         labelOf = { stringResource(it.labelRes) },
                     )
+                }
+
+                OnboardingStep.REVIEW -> {
+                    ReviewList(state = state, onJumpTo = onJumpTo)
                     Hint(stringResource(R.string.onboarding_privacy))
                 }
             }
@@ -380,6 +399,104 @@ private fun <T> SingleChoice(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Every answer, with the step that owns it one tap away.
+ *
+ * The questions are one per screen, which is good for answering and bad for
+ * checking: by the seventh you cannot see the first. This is the only place the
+ * whole profile is visible, and until settings can edit it, the only place it is
+ * ever visible at all.
+ */
+@Composable
+private fun ReviewList(state: OnboardingUiState, onJumpTo: (OnboardingStep) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_goal),
+            value = state.goal?.let { stringResource(it.labelRes) },
+            onClick = { onJumpTo(OnboardingStep.GOAL) },
+        )
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_experience),
+            value = state.experience?.let { stringResource(it.labelRes) },
+            onClick = { onJumpTo(OnboardingStep.EXPERIENCE) },
+        )
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_equipment),
+            // Says what will be saved, not what was tapped. An empty choice
+            // becomes body weight on the way to the profile, and a review
+            // reporting "nothing chosen" would describe a profile that never
+            // exists.
+            value = if (state.equipment.isEmpty()) {
+                stringResource(R.string.onboarding_review_body_weight_only)
+            } else {
+                state.equipment.sortedBy { it.slug }
+                    .map { stringResource(it.labelRes) }
+                    .joinToString()
+            },
+            onClick = { onJumpTo(OnboardingStep.EQUIPMENT) },
+        )
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_days),
+            value = stringResource(R.string.onboarding_days_value, state.trainingDaysPerWeek),
+            onClick = { onJumpTo(OnboardingStep.DAYS) },
+        )
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_length),
+            value = stringResource(R.string.onboarding_length_value, state.sessionLengthMinutes),
+            onClick = { onJumpTo(OnboardingStep.LENGTH) },
+        )
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_focus),
+            value = state.preferredMuscles.muscleSummary(),
+            onClick = { onJumpTo(OnboardingStep.MUSCLES) },
+        )
+        ReviewRow(
+            label = stringResource(R.string.onboarding_review_avoid),
+            value = state.avoidedMuscles.muscleSummary(),
+            onClick = { onJumpTo(OnboardingStep.AVOID) },
+        )
+    }
+}
+
+/** Canonical names only, so a synonym pair is not listed as two muscles. */
+@Composable
+private fun Set<Muscle>.muscleSummary(): String? = map { it.canonical }
+    .distinct()
+    .sortedBy { it.slug }
+    .takeIf { it.isNotEmpty() }
+    ?.map { stringResource(it.labelRes) }
+    ?.joinToString()
+
+@Composable
+private fun ReviewRow(label: String, value: String?, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Target.min)
+            .clickable(onClick = onClick),
+    ) {
+        Column(
+            modifier = Modifier.padding(Space.s4),
+            verticalArrangement = Arrangement.spacedBy(Space.s1),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = value ?: stringResource(R.string.onboarding_review_none),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (value == null) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    LocalContentColor.current
+                },
+            )
         }
     }
 }

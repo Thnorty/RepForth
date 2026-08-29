@@ -123,11 +123,11 @@ class OnboardingViewModelTest {
 
     @Test
     fun `next stops at the last step rather than walking off the end`() {
-        advanceTo(OnboardingStep.AVOID)
+        advanceTo(OnboardingStep.REVIEW)
         assertTrue(state.isLastStep)
 
         viewModel.onNext()
-        assertEquals(OnboardingStep.AVOID, state.step)
+        assertEquals(OnboardingStep.REVIEW, state.step)
     }
 
     @Test
@@ -138,6 +138,28 @@ class OnboardingViewModelTest {
 
         assertEquals(OnboardingStep.DAYS, state.step)
         assertTrue("Skip must not invent an answer", state.equipment.isEmpty())
+    }
+
+    /**
+     * Review is last so that the last thing before committing is a look at what
+     * is being committed. If a question is ever added after it, the flow ends on
+     * a question again and the review stops being a review.
+     */
+    @Test
+    fun `review is the final step and is where finish lives`() {
+        assertEquals(OnboardingStep.REVIEW, OnboardingStep.ordered.last())
+
+        advanceTo(OnboardingStep.REVIEW)
+        assertTrue(state.isLastStep)
+    }
+
+    @Test
+    fun `jumping from the review goes straight to that question and back again`() {
+        advanceTo(OnboardingStep.REVIEW)
+
+        viewModel.onJumpTo(OnboardingStep.DAYS)
+        assertEquals(OnboardingStep.DAYS, state.step)
+        assertEquals("Jumping must not discard an answer", TrainingGoal.STRENGTH, state.goal)
     }
 
     @Test

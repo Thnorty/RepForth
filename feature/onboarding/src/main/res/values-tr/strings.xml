@@ -27,7 +27,7 @@
 
     <string name="onboarding_equipment_title">Hangi ekipmanlarla çalışabilirsin?</string>
     <string name="onboarding_equipment_subtitle">Programlara yalnızca bunlar dahil edilir.</string>
-    <string name="onboarding_equipment_none">Hiçbir şey seçilmezse yalnızca vücut ağırlığı kullanılır.</string>
+    <string name="onboarding_equipment_none">Hiçbir şey seçilmedi. Yalnızca vücut ağırlığı egzersizleri verilecek.</string>
 
     <string name="onboarding_days_title">Haftada kaç gün?</string>
     <string name="onboarding_days_subtitle">Kas gruplarını günlere dağıtmak için kullanılır.</string>
@@ -45,4 +45,17 @@
     <string name="onboarding_privacy">Her şey bu telefonda kalır. Hesap yok, yükleme yok.</string>
     <string name="onboarding_equipment_more">%1$d tane daha göster</string>
     <string name="onboarding_equipment_fewer">Daha az göster</string>
+    <string name="onboarding_equipment_count">%1$d tanesi seçildi.</string>
+
+    <string name="onboarding_review_title">Bunlar doğru mu?</string>
+    <string name="onboarding_review_subtitle">Değiştirmek için üzerine dokun.</string>
+    <string name="onboarding_review_goal">Hedef</string>
+    <string name="onboarding_review_experience">Deneyim</string>
+    <string name="onboarding_review_equipment">Ekipman</string>
+    <string name="onboarding_review_days">Haftalık gün</string>
+    <string name="onboarding_review_length">Antrenman süresi</string>
+    <string name="onboarding_review_focus">Odak</string>
+    <string name="onboarding_review_avoid">Kaçınılanlar</string>
+    <string name="onboarding_review_none">Seçim yok</string>
+    <string name="onboarding_review_body_weight_only">Yalnızca vücut ağırlığı</string>
 </resources>

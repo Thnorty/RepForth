@@ -39,6 +39,17 @@ enum class OnboardingStep(val optional: Boolean = false) {
     LENGTH,
     MUSCLES(optional = true),
     AVOID(optional = true),
+
+    /**
+     * Every answer, before any of it is written.
+     *
+     * Added because there was no way to check your own work: skipping a question
+     * told you nothing about what had been recorded for you, and the profile is
+     * not visible anywhere afterwards either. Finish lives here rather than on
+     * the last question, so the last thing before committing is seeing what is
+     * being committed.
+     */
+    REVIEW,
     ;
 
     companion object {
@@ -164,6 +175,9 @@ class OnboardingViewModel @Inject constructor(
             preferredMuscles = preferredMuscles - region.allMuscles(),
         )
     }
+
+    /** Jumps straight to a question, so the review can be edited in one tap. */
+    fun onJumpTo(step: OnboardingStep) = update { copy(step = step) }
 
     fun onBack() = update {
         if (isFirstStep) this else copy(step = OnboardingStep.ordered[stepNumber - 2])

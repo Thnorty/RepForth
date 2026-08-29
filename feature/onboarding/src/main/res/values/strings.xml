@@ -27,7 +27,7 @@
 
     <string name="onboarding_equipment_title">What can you train with?</string>
     <string name="onboarding_equipment_subtitle">Only these will be programmed.</string>
-    <string name="onboarding_equipment_none">Choosing nothing means body weight only.</string>
+    <string name="onboarding_equipment_none">Nothing selected. You will get body weight exercises only.</string>
 
     <string name="onboarding_days_title">How many days a week?</string>
     <string name="onboarding_days_subtitle">Used to spread muscle groups out.</string>
@@ -45,4 +45,17 @@
     <string name="onboarding_privacy">Everything stays on this phone. No account, nothing uploaded.</string>
     <string name="onboarding_equipment_more">Show %1$d more</string>
     <string name="onboarding_equipment_fewer">Show fewer</string>
+    <string name="onboarding_equipment_count">%1$d selected.</string>
+
+    <string name="onboarding_review_title">Does this look right?</string>
+    <string name="onboarding_review_subtitle">Tap anything to change it.</string>
+    <string name="onboarding_review_goal">Goal</string>
+    <string name="onboarding_review_experience">Training for</string>
+    <string name="onboarding_review_equipment">Equipment</string>
+    <string name="onboarding_review_days">Days a week</string>
+    <string name="onboarding_review_length">Session length</string>
+    <string name="onboarding_review_focus">Focus on</string>
+    <string name="onboarding_review_avoid">Avoiding</string>
+    <string name="onboarding_review_none">Nothing chosen</string>
+    <string name="onboarding_review_body_weight_only">Body weight only</string>
 </resources>
