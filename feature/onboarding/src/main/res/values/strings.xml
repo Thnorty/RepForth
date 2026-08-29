@@ -57,4 +57,10 @@
     <string name="onboarding_review_focus">Focus on</string>
     <string name="onboarding_review_avoid">Avoiding</string>
     <string name="onboarding_review_none">Nothing chosen</string>
+    <string name="onboarding_notifications_title">Keep the timer running</string>
+    <string name="onboarding_notifications_subtitle">One notification, only while a workout is on.</string>
+    <string name="onboarding_notifications_body">RepForth shows the current set and the rest countdown, with pause and resume. Without it the rest timer stops when you lock the screen.</string>
+    <string name="onboarding_notifications_allow">Allow notifications</string>
+    <string name="onboarding_notifications_granted">Allowed. You can turn it off in system settings at any time.</string>
+    <string name="onboarding_notifications_denied">Not allowed. Workouts still work; the rest timer will stop when the screen goes off.</string>
 </resources>

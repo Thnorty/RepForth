@@ -82,9 +82,11 @@ fun SessionRoute(
 
     val context = LocalContext.current
 
-    // Asked for at the moment it is needed, not on first launch: a permission
-    // prompt before the user has done anything is a prompt with no context.
-    // Refusing it costs the notification, not the workout.
+    // Onboarding asks for this, with a reason beside the button. This is the
+    // net for profiles created before that step existed: launching when the
+    // permission is already granted returns immediately and shows nothing, and
+    // after a refusal the system does not ask again — so this cannot become a
+    // prompt anyone sees twice.
     val notifications = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { }

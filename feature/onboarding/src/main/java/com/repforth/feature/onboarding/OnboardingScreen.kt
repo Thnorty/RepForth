@@ -1,5 +1,12 @@
 ﻿package com.repforth.feature.onboarding
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -255,6 +262,8 @@ internal fun OnboardingScreen(
                     )
                 }
 
+                OnboardingStep.NOTIFICATIONS -> NotificationPermission()
+
                 OnboardingStep.REVIEW -> {
                     ReviewList(state = state, onJumpTo = onJumpTo)
                     Hint(stringResource(R.string.onboarding_privacy))
@@ -399,6 +408,64 @@ private fun <T> SingleChoice(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Asks for the notification permission, with the reason next to the button.
+ *
+ * The system dialog says only "Allow RepForth to send you notifications?", which
+ * is a question nobody can answer well. What is actually being asked is whether
+ * the rest timer may keep running with the screen off, so that is what the
+ * screen says.
+ *
+ * Below Android 13 there is no permission to ask for; the step then explains
+ * what the notification is for and nothing else, rather than showing a button
+ * that would do nothing.
+ */
+@Composable
+private fun NotificationPermission() {
+    val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    val context = LocalContext.current
+
+    var granted by rememberSaveable {
+        mutableStateOf(
+            !needsPermission || ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    var asked by rememberSaveable { mutableStateOf(false) }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { result ->
+        granted = result
+        asked = true
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(Space.s3)) {
+        Text(
+            text = stringResource(R.string.onboarding_notifications_body),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        if (needsPermission && !granted) {
+            Button(
+                onClick = { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
+            ) {
+                Text(stringResource(R.string.onboarding_notifications_allow))
+            }
+        }
+
+        when {
+            granted -> Hint(stringResource(R.string.onboarding_notifications_granted))
+            // Only after a refusal. Saying what is lost before anyone has
+            // declined reads as pressure.
+            asked -> Hint(stringResource(R.string.onboarding_notifications_denied))
         }
     }
 }

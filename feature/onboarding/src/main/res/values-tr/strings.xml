@@ -57,4 +57,10 @@
     <string name="onboarding_review_focus">Odak</string>
     <string name="onboarding_review_avoid">Kaçınılanlar</string>
     <string name="onboarding_review_none">Seçim yok</string>
+    <string name="onboarding_notifications_title">Sayaç çalışmaya devam etsin</string>
+    <string name="onboarding_notifications_subtitle">Yalnızca antrenman sürerken tek bir bildirim.</string>
+    <string name="onboarding_notifications_body">RepForth mevcut seti ve dinlenme sayacını duraklat ve devam et düğmeleriyle gösterir. Bu izin olmadan ekranı kilitlediğinde dinlenme sayacı durur.</string>
+    <string name="onboarding_notifications_allow">Bildirimlere izin ver</string>
+    <string name="onboarding_notifications_granted">İzin verildi. Sistem ayarlarından istediğin zaman kapatabilirsin.</string>
+    <string name="onboarding_notifications_denied">İzin verilmedi. Antrenmanlar yine çalışır; ekran kapanınca dinlenme sayacı durur.</string>
 </resources>

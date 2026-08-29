@@ -156,6 +156,21 @@ class OnboardingViewModelTest {
      * is being committed. If a question is ever added after it, the flow ends on
      * a question again and the review stops being a review.
      */
+    /**
+     * Declining notifications must not block the flow: what it costs is the
+     * background timer, not the app.
+     */
+    @Test
+    fun `the notification step can be skipped`() {
+        advanceTo(OnboardingStep.NOTIFICATIONS)
+
+        assertTrue(OnboardingStep.NOTIFICATIONS.optional)
+        assertTrue(state.canAdvance)
+
+        viewModel.onSkip()
+        assertEquals(OnboardingStep.REVIEW, state.step)
+    }
+
     @Test
     fun `review is the final step and is where finish lives`() {
         assertEquals(OnboardingStep.REVIEW, OnboardingStep.ordered.last())

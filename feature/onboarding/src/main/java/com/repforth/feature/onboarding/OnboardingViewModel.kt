@@ -41,6 +41,19 @@ enum class OnboardingStep(val optional: Boolean = false) {
     AVOID(optional = true),
 
     /**
+     * Asks to show the workout notification.
+     *
+     * Optional in the sense that it can be declined and the app still works —
+     * what is lost is the rest timer continuing while the screen is off, and
+     * later the watch, which drives its countdown from the phone's session.
+     *
+     * Asked here rather than at the moment a workout starts because a permission
+     * prompt in the middle of the first set is a prompt with no room for a
+     * reason.
+     */
+    NOTIFICATIONS(optional = true),
+
+    /**
      * Every answer, before any of it is written.
      *
      * Added because there was no way to check your own work: skipping a question

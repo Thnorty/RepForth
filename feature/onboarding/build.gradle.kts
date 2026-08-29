@@ -20,6 +20,10 @@ dependencies {
     // The one door to the profile this screen exists to write.
     implementation(project(":core:user-data"))
 
+    // The notification permission is asked for here, with a reason beside it.
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)
