@@ -27,9 +27,15 @@ which decisions are closed so they are not reopened.
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
 
-Nothing runs on a device yet — no device is connected to the development
-machine. Everything below is verified by build and JVM unit tests only. Do not
-claim instrumentation or screenshot coverage until that changes.
+**A Galaxy S23 is attached and in use.** Onboarding and the catalog have been
+exercised on it by hand and by `adb input tap`, and three defects were found
+that way and no other: the launch crash from Auto Backup restoring an old
+database, onboarding drawing under the camera cutout, and a slider whose sixth
+value could not be selected.
+
+Instrumentation and screenshot tests still do not exist, so "verified on a
+device" here means someone looked, not that a test would catch a regression.
+Those three defects are the argument for building them.
 
 ### Built so far
 
@@ -56,11 +62,22 @@ claim instrumentation or screenshot coverage until that changes.
 | **Phase 1** — profile data layer, two clocks | `af8ddcf` |
 | **Phase 1** — rules engine and validator | `ff9db3c` |
 | **Phase 1** — workout state machine and persistence | `4be4548` |
+| **Phase 1** — shared target mapping | `14681f5` |
+| Auto Backup turned off; it restored a database Room refuses to open | `b3a9ca2` |
+| `codex` subagent wrapper, on a report contract shared with `agy` | `8f0d64d` |
+| **Phase 1** — onboarding questionnaire, and the profile gate | `5ab9eb0` |
+| Onboarding insets, the unreachable sixth day, wording gaps | `fe36aaa` |
+| Equipment explained and grouped; muscles on the body map | `be97627` |
+| Two bugs from a `codex` audit; the synonym rule put in one place | `815b43d` |
+| A review of every answer before the profile is written | `5ba58aa` |
+| Body weight pre-selected, so nothing is translated on save | `77162c3` |
 
 Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:common`, `core:rules`,
-`core:user-data`, `core:workout`, `feature:exercises`.
-126 unit tests, all passing. Room schema v1 exported and committed.
+`core:testing`, `core:user-data`, `core:workout`, `feature:exercises`,
+`feature:onboarding`.
+167 unit tests across 23 classes, all passing. Room schema v1 exported and
+committed.
 
 ---
 
@@ -302,7 +319,7 @@ usable at every step, not only at the end.
 | Slice | State |
 |---|---|
 | 1.1 User-data schema | ✅ nine tables, five structural guards |
-| 1.2 Profile | ✅ model, DAO, repository, 8 tests, **and the onboarding screen** — 15 more |
+| 1.2 Profile | ✅ model, DAO, repository, and the onboarding screen — 8 steps, device-tested |
 | 1.3 Templates | ✅ model, DAO, repository. Builder **screen not built** |
 | 1.4 Rules engine | ✅ complete — 26 tests |
 | 1.5 Session engine | ✅ state machine and persistence — 27 tests. **No UI, no service** |
@@ -311,11 +328,10 @@ usable at every step, not only at the end.
 JVM; screens are not. Four things remain, and each needs hardware to be worth
 trusting:
 
-1. ~~**Onboarding screen**~~ — built. Seven steps, wired to the profile
-   repository, 15 unit tests. **Not yet seen on a device**: the phone was
-   disconnected before it could be installed, so nothing here is confirmed
-   beyond compiling and passing tests.
-2. **Workout builder screen** — the repository is ready.
+1. ~~**Onboarding screen**~~ — done, and tested on the phone through two rounds
+   of feedback. Eight steps ending in a review of every answer, because the
+   first version gave no way to check what it had recorded.
+2. **Workout builder screen** — the repository is ready. Next.
 3. **Active workout screen** — the engine is ready and tested.
 4. **Foreground service and ongoing notification** (§10) — this is the piece
    that genuinely cannot be written blind. Android 14's foreground-service types
@@ -365,6 +381,15 @@ afterwards. That gap is what instrumentation tests are for.
   contract each module subclasses. The lesson generalises: a guard that covers
   one module is not a guard on the rule, and adding a module is the moment to
   ask which guards it is missing.
+- **Three of the last four defects were invisible to the JVM.** The Auto Backup
+  crash, the insets, and the unselectable sixth day were all found on hardware,
+  and the unit test written for the last of them passes with the bug present.
+  Anything that renders or that the platform touches is currently unguarded.
+- **A UI promise and a stored value can disagree without either looking wrong.**
+  The equipment step said "body weight only" while saving a set the rules engine
+  read as unrestricted. Both halves were internally consistent, both had tests,
+  and the contradiction lived in the space between them. When a screen states a
+  consequence, something should assert the consequence, not the wording.
 
 ---
 
