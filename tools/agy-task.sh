@@ -4,14 +4,15 @@
 # Everything the subagent does in between (tool calls, file diffs, its own
 # reasoning and chatter) stays inside the child process and never reaches the
 # caller's context. What comes back is a one-line telemetry header plus the
-# structured report defined in agy-report.schema.json.
+# structured report defined in subagent-report.schema.json, which codex-task.sh
+# also uses so both subagents answer in the same shape.
 #
 # Usage:
 #   tools/agy-task.sh "<prompt>"
 #
 # Env overrides:
 #   AGY_MODEL    model id            (default: gemini-3.7-flash-medium)
-#   AGY_SCHEMA   path to JSON schema (default: tools/agy-report.schema.json)
+#   AGY_SCHEMA   path to JSON schema (default: tools/subagent-report.schema.json)
 #   AGY_TIMEOUT  print-mode timeout  (default: 15m)
 #   AGY_RAW      set to 1 to dump the raw agy JSON instead of the formatted report
 
@@ -19,7 +20,7 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODEL="${AGY_MODEL:-gemini-3.7-flash-medium}"
-SCHEMA="${AGY_SCHEMA:-$HERE/agy-report.schema.json}"
+SCHEMA="${AGY_SCHEMA:-$HERE/subagent-report.schema.json}"
 TIMEOUT="${AGY_TIMEOUT:-15m}"
 
 if [ $# -lt 1 ] || [ -z "${1:-}" ]; then

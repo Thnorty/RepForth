@@ -7,7 +7,9 @@
     },
     "files_changed": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Paths that were actually created or modified, relative to the repository root (e.g. 'app/src/main/java/Foo.kt'). Do NOT use absolute paths. Empty array if nothing was changed."
     },
     "verification": {
@@ -16,14 +18,27 @@
     },
     "issues": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Problems encountered, assumptions made, or work deliberately left undone. Empty array if none. Do not invent filler."
     },
     "status": {
       "type": "string",
-      "enum": ["complete", "partial", "blocked"],
+      "enum": [
+        "complete",
+        "partial",
+        "blocked"
+      ],
       "description": "complete = the whole task is done; partial = some done, some not; blocked = could not proceed."
     }
   },
-  "required": ["summary", "files_changed", "verification", "issues", "status"]
+  "required": [
+    "summary",
+    "files_changed",
+    "verification",
+    "issues",
+    "status"
+  ],
+  "additionalProperties": false
 }
