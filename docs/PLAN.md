@@ -302,7 +302,7 @@ usable at every step, not only at the end.
 | Slice | State |
 |---|---|
 | 1.1 User-data schema | ✅ nine tables, five structural guards |
-| 1.2 Profile | ✅ model, DAO, repository, 8 tests. Onboarding **screen not built** |
+| 1.2 Profile | ✅ model, DAO, repository, 8 tests, **and the onboarding screen** — 15 more |
 | 1.3 Templates | ✅ model, DAO, repository. Builder **screen not built** |
 | 1.4 Rules engine | ✅ complete — 26 tests |
 | 1.5 Session engine | ✅ state machine and persistence — 27 tests. **No UI, no service** |
@@ -311,7 +311,10 @@ usable at every step, not only at the end.
 JVM; screens are not. Four things remain, and each needs hardware to be worth
 trusting:
 
-1. **Onboarding screen** — strings exist in both languages, nothing renders them.
+1. ~~**Onboarding screen**~~ — built. Seven steps, wired to the profile
+   repository, 15 unit tests. **Not yet seen on a device**: the phone was
+   disconnected before it could be installed, so nothing here is confirmed
+   beyond compiling and passing tests.
 2. **Workout builder screen** — the repository is ready.
 3. **Active workout screen** — the engine is ready and tested.
 4. **Foreground service and ongoing notification** (§10) — this is the piece
@@ -356,6 +359,12 @@ afterwards. That gap is what instrumentation tests are for.
   an export.
 - **Instrumentation tests still do not exist.** A device is now attached, so the
   excuse is gone; 1.5 is the slice that most needs them.
+- **String parity was guarded in one module out of three.** `feature:exercises`
+  shipped unguarded Turkish for its whole life, and nobody noticed because the
+  guard that existed was passing. The checks now live in `core:testing` as a
+  contract each module subclasses. The lesson generalises: a guard that covers
+  one module is not a guard on the rule, and adding a module is the moment to
+  ask which guards it is missing.
 
 ---
 
