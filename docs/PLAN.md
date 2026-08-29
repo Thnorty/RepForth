@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
-| 2 — AI providers | §19 | Not started |
+| 2 — AI providers | §19 | **In progress.** Key storage done; providers and pipeline remain |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
@@ -93,14 +93,17 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 1** — the Today tab; the last placeholder deleted | `75ba4a7` |
 | Pinned footers kept out from under the keyboard | `07c9c97` |
 | Counted nouns use plurals, in both languages | `1607efc` |
+| **Phase 1** — Coach: the rules engine reaches the catalog | `9a4b829` |
+| Instrumentation tests that interact, and a FAB nobody could name | `2d0ba1c` |
+| **Phase 2** — secret storage, and a CI scan for key-shaped content | pending |
 
 Modules today: `app`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-313 unit tests across 42 classes, plus three instrumentation tests, all
-passing. Room schema v1 exported and committed.
+313 unit tests across 42 classes, plus six instrumentation tests on a Galaxy
+S23, all passing. Room schema v1 exported and committed.
 
 ---
 
@@ -491,6 +494,65 @@ button as well as drawn inside it.
 
 Worth generalising: a test that cannot find a control by its visible name is
 usually reporting an accessibility bug rather than a test-writing problem.
+
+---
+
+## Phase 2 — AI providers
+
+§19 wants secure key storage and provider settings, a Gemini adapter, a generic
+OpenAI-compatible adapter, structured contracts with validation, a local
+fallback, and the coach UI. Ordered so that nothing handles a key before there
+is somewhere safe to put it.
+
+### 2.1 — `core:secrets` — **done**
+
+Tink AEAD under a non-exportable Android Keystore master key. Ciphertext in a
+file under `filesDir`, deliberately not DataStore and not Room: §20 requires
+keys to be absent from both, and "it is only the encrypted form" is the argument
+that erodes a rule like that.
+
+The secret's id is the AEAD's associated data, so ciphertext copied from one
+provider's slot to another fails to decrypt instead of quietly answering as the
+wrong key.
+
+Eight instrumentation tests, because there is nothing to test on the JVM: the
+whole point is that the master key lives in platform storage, and mocking that
+away leaves the assertion "Tink encrypts things", which is Google's test rather
+than ours. Two were watched failing — removing the associated data fails the
+slot-binding test, and writing plaintext fails the assertion that the raw secret
+never reaches disk.
+
+CI now greps tracked *content* for the two key shapes this app accepts, not just
+credential-shaped filenames. Verified against a planted key.
+
+**Nothing calls it yet, and that is the risk to watch.** This is exactly the
+shape the rules engine was in for a whole phase — finished, tested, unreachable.
+2.2 is what makes it reachable, and it should follow immediately rather than
+after anything else.
+
+### 2.2 — Provider settings — next
+
+The `ProviderConfig` model, and the Settings UI §8 describes: provider choice,
+masked key, model id, base URL for the generic provider only, test connection
+with actionable errors, delete key, delete all provider settings, and the
+disclosure that prompts go to a third party.
+
+### 2.3 — Provider adapters
+
+`AiProvider`, a direct HTTP client rather than a vendor SDK, `GeminiProvider`,
+`OpenAiCompatibleProvider`, and `FakeAiProvider` for tests. HTTPS only, with
+cleartext confined to a developer setting for a loopback model server.
+
+### 2.4 — The generation pipeline
+
+Typed intent, local candidate filter, hard rules before the model, structured
+output against a versioned schema, local validation, one retry, and the
+rules-only fallback that already exists. §8's diagram is the specification.
+
+### 2.5 — Coach UI
+
+Muscle-specific generation through a provider, arriving in the builder as the
+same editable draft the rules engine already produces.
 
 ---
 

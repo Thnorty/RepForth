@@ -62,6 +62,19 @@ jobs:
           fi
           echo "No credential-shaped files are tracked."
 
+          # Phase 2 lets a user paste a provider key into the app, which makes
+          # a key pasted into a fixture, a test, or a doc a live risk rather
+          # than a hypothetical one. Filenames cannot catch that; content can.
+          # These are the two shapes this app actually accepts (§8), and both
+          # are recognisable enough to match without false positives.
+          keys=$(git grep -nIE 'AIza[0-9A-Za-z_-]{35}|sk-[A-Za-z0-9]{32,}' -- . || true)
+          if [ -n "$keys" ]; then
+            echo "::error::Something shaped like a provider API key is committed:"
+            echo "$keys"
+            exit 1
+          fi
+          echo "No provider keys found in tracked content."
+
       # §6 step 1: the pinned dataset commit lives in exactly one file, so
       # metadata and media cannot drift to different commits.
       - name: Verify dataset pin
