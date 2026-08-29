@@ -41,9 +41,18 @@
     <string name="settings_import_title">Bu dosya içe aktarılsın mı?</string>
     <string name="settings_import_profile">Profilinin yerine geçer</string>
     <string name="settings_import_profile_new">Bir profil ekler</string>
-    <string name="settings_import_new_plans">%1$d yeni plan</string>
-    <string name="settings_import_replaced_plans">%1$d plan değiştirilecek</string>
-    <string name="settings_import_sessions">%1$d antrenman</string>
+    <plurals name="settings_import_new_plans">
+        <item quantity="one">%1$d yeni plan</item>
+        <item quantity="other">%1$d yeni plan</item>
+    </plurals>
+    <plurals name="settings_import_replaced_plans">
+        <item quantity="one">%1$d plan değiştirilecek</item>
+        <item quantity="other">%1$d plan değiştirilecek</item>
+    </plurals>
+    <plurals name="settings_import_sessions">
+        <item quantity="one">%1$d antrenman</item>
+        <item quantity="other">%1$d antrenman</item>
+    </plurals>
     <string name="settings_import_nothing">Bu dosyanın içinde bir şey yok.</string>
     <string name="settings_import_confirm">İçe aktar</string>
     <string name="settings_imported">İçe aktarıldı.</string>

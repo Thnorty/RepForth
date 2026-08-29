@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -192,7 +193,11 @@ private fun WorkoutRow(workout: WorkoutSummary) {
                     if (workout.setsSkipped > 0) {
                         stringResourceOf(workout)
                     } else {
-                        stringResource(R.string.progress_sets, workout.setsCompleted)
+                        pluralStringResource(
+                            R.plurals.progress_sets,
+                            workout.setsCompleted,
+                            workout.setsCompleted,
+                        )
                     },
                 )
                 workout.durationMs?.let {
@@ -213,8 +218,9 @@ private fun WorkoutRow(workout: WorkoutSummary) {
 }
 
 @Composable
-private fun stringResourceOf(workout: WorkoutSummary): String = stringResource(
-    R.string.progress_sets_with_skipped,
+private fun stringResourceOf(workout: WorkoutSummary): String = pluralStringResource(
+    R.plurals.progress_sets_with_skipped,
+    workout.setsCompleted,
     workout.setsCompleted,
     workout.setsSkipped,
 )

@@ -4,8 +4,14 @@
     <string name="session_title">Antrenman</string>
     <string name="session_exercise_of">%2$d egzersizden %1$d.</string>
     <string name="session_set_of">%2$d setten %1$d.</string>
-    <string name="session_target_reps">%1$d tekrar</string>
-    <string name="session_target_time">%1$d saniye</string>
+    <plurals name="session_target_reps">
+        <item quantity="one">%1$d tekrar</item>
+        <item quantity="other">%1$d tekrar</item>
+    </plurals>
+    <plurals name="session_target_time">
+        <item quantity="one">%1$d saniye</item>
+        <item quantity="other">%1$d saniye</item>
+    </plurals>
     <string name="session_target_weight">%1$s %2$s</string>
 
     <string name="session_seconds">Saniye</string>

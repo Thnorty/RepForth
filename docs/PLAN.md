@@ -394,9 +394,11 @@ afterwards. That gap is what instrumentation tests are for.
 - **String parity was guarded in one module out of three.** `feature:exercises`
   shipped unguarded Turkish for its whole life, and nobody noticed because the
   guard that existed was passing. The checks now live in `core:testing` as a
-  contract each module subclasses. The lesson generalises: a guard that covers
-  one module is not a guard on the rule, and adding a module is the moment to
-  ask which guards it is missing.
+  contract each module subclasses; string and plurals keys share the same
+  parity and duplicate checks, and plurals must declare matching quantity sets
+  in both locales. The lesson generalises: a guard that covers one module is not
+  a guard on the rule, and adding a module is the moment to ask which guards it
+  is missing.
 - **Three of the last four defects were invisible to the JVM.** The Auto Backup
   crash, the insets, and the unselectable sixth day were all found on hardware,
   and the unit test written for the last of them passes with the bug present.

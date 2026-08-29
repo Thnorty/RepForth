@@ -35,7 +35,10 @@
     <string name="plans_new">Yeni antrenman</string>
     <string name="plans_empty">Henüz kayıtlı antrenman yok.</string>
     <string name="plans_empty_action">Bir tane oluştur, burada görünsün.</string>
-    <string name="plans_summary">%1$d egzersiz · yaklaşık %2$d dk</string>
+    <plurals name="plans_summary">
+        <item quantity="one">%1$d egzersiz · yaklaşık %2$d dk</item>
+        <item quantity="other">%1$d egzersiz · yaklaşık %2$d dk</item>
+    </plurals>
     <string name="plans_start_short">Başlat</string>
     <string name="plans_delete">%1$s antrenmanını sil</string>
 </resources>

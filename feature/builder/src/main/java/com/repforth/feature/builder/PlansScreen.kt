@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -143,8 +144,9 @@ private fun PlanCard(
             ) {
                 Text(text = plan.name, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = stringResource(
-                        R.string.plans_summary,
+                    text = pluralStringResource(
+                        R.plurals.plans_summary,
+                        plan.exercises.size,
                         plan.exercises.size,
                         (plan.estimatedDurationMs / 60_000L).toInt(),
                     ),

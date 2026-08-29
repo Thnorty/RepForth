@@ -50,6 +50,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -222,8 +223,9 @@ internal fun OnboardingScreen(
                 OnboardingStep.DAYS -> ValueSlider(
                     value = state.trainingDaysPerWeek,
                     range = OnboardingUiState.DAYS_RANGE,
-                    label = stringResource(
-                        R.string.onboarding_days_value,
+                    label = pluralStringResource(
+                        R.plurals.onboarding_days_value,
+                        state.trainingDaysPerWeek,
                         state.trainingDaysPerWeek,
                     ),
                     onValueChange = onDaysChanged,
@@ -233,8 +235,9 @@ internal fun OnboardingScreen(
                     value = state.sessionLengthMinutes,
                     range = OnboardingUiState.SESSION_MINUTES_RANGE,
                     step = SESSION_STEP_MINUTES,
-                    label = stringResource(
-                        R.string.onboarding_length_value,
+                    label = pluralStringResource(
+                        R.plurals.onboarding_length_value,
+                        state.sessionLengthMinutes,
                         state.sessionLengthMinutes,
                     ),
                     onValueChange = onSessionLengthChanged,
@@ -490,12 +493,20 @@ private fun ReviewList(state: OnboardingUiState, onJumpTo: (OnboardingStep) -> U
         )
         ReviewRow(
             label = stringResource(R.string.onboarding_review_days),
-            value = stringResource(R.string.onboarding_days_value, state.trainingDaysPerWeek),
+            value = pluralStringResource(
+                R.plurals.onboarding_days_value,
+                state.trainingDaysPerWeek,
+                state.trainingDaysPerWeek,
+            ),
             onClick = { onJumpTo(OnboardingStep.DAYS) },
         )
         ReviewRow(
             label = stringResource(R.string.onboarding_review_length),
-            value = stringResource(R.string.onboarding_length_value, state.sessionLengthMinutes),
+            value = pluralStringResource(
+                R.plurals.onboarding_length_value,
+                state.sessionLengthMinutes,
+                state.sessionLengthMinutes,
+            ),
             onClick = { onJumpTo(OnboardingStep.LENGTH) },
         )
         ReviewRow(

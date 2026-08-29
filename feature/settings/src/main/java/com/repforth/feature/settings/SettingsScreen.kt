@@ -28,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -318,18 +319,31 @@ private fun ImportDialog(pending: PendingImport, onConfirm: () -> Unit, onDismis
                     )
                 }
                 if (preview.newTemplates > 0) {
-                    Text(stringResource(R.string.settings_import_new_plans, preview.newTemplates))
+                    Text(
+                        pluralStringResource(
+                            R.plurals.settings_import_new_plans,
+                            preview.newTemplates,
+                            preview.newTemplates,
+                        ),
+                    )
                 }
                 if (preview.replacedTemplates > 0) {
                     Text(
-                        stringResource(
-                            R.string.settings_import_replaced_plans,
+                        pluralStringResource(
+                            R.plurals.settings_import_replaced_plans,
+                            preview.replacedTemplates,
                             preview.replacedTemplates,
                         ),
                     )
                 }
                 if (preview.sessions > 0) {
-                    Text(stringResource(R.string.settings_import_sessions, preview.sessions))
+                    Text(
+                        pluralStringResource(
+                            R.plurals.settings_import_sessions,
+                            preview.sessions,
+                            preview.sessions,
+                        ),
+                    )
                 }
             }
         },

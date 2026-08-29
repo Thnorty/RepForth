@@ -41,9 +41,18 @@
     <string name="settings_import_title">Import this file?</string>
     <string name="settings_import_profile">Replaces your profile</string>
     <string name="settings_import_profile_new">Adds a profile</string>
-    <string name="settings_import_new_plans">%1$d new plans</string>
-    <string name="settings_import_replaced_plans">%1$d plans replaced</string>
-    <string name="settings_import_sessions">%1$d workouts</string>
+    <plurals name="settings_import_new_plans">
+        <item quantity="one">%1$d new plan</item>
+        <item quantity="other">%1$d new plans</item>
+    </plurals>
+    <plurals name="settings_import_replaced_plans">
+        <item quantity="one">%1$d plan replaced</item>
+        <item quantity="other">%1$d plans replaced</item>
+    </plurals>
+    <plurals name="settings_import_sessions">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
     <string name="settings_import_nothing">This file has nothing in it.</string>
     <string name="settings_import_confirm">Import</string>
     <string name="settings_imported">Imported.</string>

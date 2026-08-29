@@ -13,6 +13,10 @@ import org.junit.Test
  * module that has strings, which is why the checks live here rather than in the
  * one module that happened to get them first: `feature:exercises` shipped
  * unguarded strings for exactly as long as this was a single file in `:app`.
+ * Plural quantities are checked separately because matching names can still
+ * hide a `<plurals>`/`<string>` mismatch or a count case present in only one
+ * locale; Android selects those cases at runtime, after ordinary key parity has
+ * already passed.
  *
  * A module joins by subclassing:
  *
@@ -45,10 +49,25 @@ abstract class StringParityContract {
             "Expected ${file.absolutePath} to exist; is the unit test running from the module dir?",
             file.exists(),
         )
-        return STRING_KEY_REGEX
+        return RESOURCE_KEY_REGEX
             .findAll(file.readText())
             .map { it.groupValues[1] }
             .toList()
+    }
+
+    private fun extractPluralQuantities(file: File): Map<String, Set<String>> {
+        assertTrue(
+            "Expected ${file.absolutePath} to exist; is the unit test running from the module dir?",
+            file.exists(),
+        )
+        return PLURALS_REGEX
+            .findAll(file.readText())
+            .associate { plural ->
+                plural.groupValues[1] to QUANTITY_REGEX
+                    .findAll(plural.groupValues[2])
+                    .map { it.groupValues[1] }
+                    .toSortedSet()
+            }
     }
 
     private fun findDuplicates(keys: List<String>): Set<String> =
@@ -93,6 +112,24 @@ abstract class StringParityContract {
     }
 
     @Test
+    fun `plurals declare the same quantities in both languages`() {
+        val englishQuantities = extractPluralQuantities(englishFile)
+        val turkishQuantities = extractPluralQuantities(turkishFile)
+        val mismatches = (englishQuantities.keys + turkishQuantities.keys)
+            .sorted()
+            .mapNotNull { key ->
+                val english = englishQuantities[key]
+                val turkish = turkishQuantities[key]
+                if (english == turkish) null else "$key: English=$english, Turkish=$turkish"
+            }
+
+        assertTrue(
+            "Plural quantity mismatch: $mismatches",
+            mismatches.isEmpty(),
+        )
+    }
+
+    @Test
     fun `every intentional exception exists in english strings`() {
         val stale = intentionalExceptions - extractKeys(englishFile).toSet()
 
@@ -103,6 +140,11 @@ abstract class StringParityContract {
     }
 
     private companion object {
-        val STRING_KEY_REGEX = Regex("""<string\b[^>]*\bname="([^"]+)"""")
+        val RESOURCE_KEY_REGEX = Regex("""<(?:string|plurals)\s+[^>]*\bname="([^"]+)"""")
+        val PLURALS_REGEX = Regex(
+            """<plurals\s+[^>]*\bname="([^"]+)"[^>]*>(.*?)</plurals>""",
+            RegexOption.DOT_MATCHES_ALL,
+        )
+        val QUANTITY_REGEX = Regex("""<item\s+[^>]*\bquantity="([^"]+)"""")
     }
 }

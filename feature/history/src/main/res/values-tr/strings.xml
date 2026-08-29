@@ -12,8 +12,14 @@
     <string name="progress_history">Geçmiş</string>
     <string name="progress_most_performed">En çok yapılanlar</string>
 
-    <string name="progress_sets">%1$d set</string>
-    <string name="progress_sets_with_skipped">%1$d set · %2$d atlandı</string>
+    <plurals name="progress_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d set</item>
+    </plurals>
+    <plurals name="progress_sets_with_skipped">
+        <item quantity="one">%1$d set · %2$d atlandı</item>
+        <item quantity="other">%1$d set · %2$d atlandı</item>
+    </plurals>
     <string name="progress_duration">%1$d dk</string>
     <string name="progress_abandoned">Erken bitirildi</string>
 </resources>

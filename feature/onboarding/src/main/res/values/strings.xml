@@ -30,11 +30,17 @@
 
     <string name="onboarding_days_title">How many days a week?</string>
     <string name="onboarding_days_subtitle">Used to spread muscle groups out.</string>
-    <string name="onboarding_days_value">%1$d days</string>
+    <plurals name="onboarding_days_value">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
 
     <string name="onboarding_length_title">How long is a session?</string>
     <string name="onboarding_length_subtitle">Plans will fit inside this.</string>
-    <string name="onboarding_length_value">%1$d minutes</string>
+    <plurals name="onboarding_length_value">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
 
     <string name="onboarding_muscles_title">Anything to focus on?</string>
     <string name="onboarding_muscles_subtitle">Optional, can be changed later.</string>

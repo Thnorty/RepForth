@@ -8,7 +8,10 @@
     <string name="exercises_body_part">Vücut bölgesi</string>
     <string name="exercises_equipment">Ekipman</string>
     <string name="exercises_muscles">Kaslar</string>
-    <string name="exercises_results">%1$d egzersiz</string>
+    <plurals name="exercises_results">
+        <item quantity="one">%1$d egzersiz</item>
+        <item quantity="other">%1$d egzersiz</item>
+    </plurals>
     <string name="exercises_empty">Bu filtrelere uyan egzersiz yok.</string>
     <string name="exercises_loading">Katalog yükleniyor…</string>
     <string name="exercises_names_english">Egzersiz adları veri kümesinden geliyor ve İngilizcedir.</string>

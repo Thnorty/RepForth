@@ -12,8 +12,14 @@
     <string name="progress_history">History</string>
     <string name="progress_most_performed">Most performed</string>
 
-    <string name="progress_sets">%1$d sets</string>
-    <string name="progress_sets_with_skipped">%1$d sets · %2$d skipped</string>
+    <plurals name="progress_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <plurals name="progress_sets_with_skipped">
+        <item quantity="one">%1$d set · %2$d skipped</item>
+        <item quantity="other">%1$d sets · %2$d skipped</item>
+    </plurals>
     <string name="progress_duration">%1$d min</string>
     <string name="progress_abandoned">Ended early</string>
 </resources>

@@ -4,8 +4,14 @@
     <string name="session_title">Workout</string>
     <string name="session_exercise_of">Exercise %1$d of %2$d</string>
     <string name="session_set_of">Set %1$d of %2$d</string>
-    <string name="session_target_reps">%1$d reps</string>
-    <string name="session_target_time">%1$d seconds</string>
+    <plurals name="session_target_reps">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <plurals name="session_target_time">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
     <string name="session_target_weight">%1$s %2$s</string>
 
     <string name="session_seconds">Seconds</string>

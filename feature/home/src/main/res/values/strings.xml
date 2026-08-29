@@ -8,7 +8,10 @@
     <string name="today_next">Up next</string>
     <string name="today_never_done">Not done yet</string>
     <string name="today_last_done">Last done %1$s</string>
-    <string name="today_plan_summary">%1$d exercises · about %2$d min</string>
+    <plurals name="today_plan_summary">
+        <item quantity="one">%1$d exercise · about %2$d min</item>
+        <item quantity="other">%1$d exercises · about %2$d min</item>
+    </plurals>
     <string name="today_start">Start</string>
 
     <string name="today_empty_title">Nothing planned yet</string>
@@ -18,6 +21,9 @@
     <string name="today_week">This week</string>
     <string name="today_week_none">No workouts this week yet.</string>
     <string name="today_week_count">%1$d done</string>
-    <string name="today_week_of_target">%1$d of %2$d days</string>
+    <plurals name="today_week_of_target">
+        <item quantity="one">%1$d of %2$d day</item>
+        <item quantity="other">%1$d of %2$d days</item>
+    </plurals>
     <string name="today_streak">%1$d week streak</string>
 </resources>

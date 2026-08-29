@@ -8,7 +8,10 @@
     <string name="today_next">Sırada</string>
     <string name="today_never_done">Henüz yapılmadı</string>
     <string name="today_last_done">Son yapılan: %1$s</string>
-    <string name="today_plan_summary">%1$d egzersiz · yaklaşık %2$d dk</string>
+    <plurals name="today_plan_summary">
+        <item quantity="one">%1$d egzersiz · yaklaşık %2$d dk</item>
+        <item quantity="other">%1$d egzersiz · yaklaşık %2$d dk</item>
+    </plurals>
     <string name="today_start">Başlat</string>
 
     <string name="today_empty_title">Henüz bir plan yok</string>
@@ -18,6 +21,9 @@
     <string name="today_week">Bu hafta</string>
     <string name="today_week_none">Bu hafta henüz antrenman yok.</string>
     <string name="today_week_count">%1$d tamamlandı</string>
-    <string name="today_week_of_target">%2$d günden %1$d.</string>
+    <plurals name="today_week_of_target">
+        <item quantity="one">%2$d günden %1$d.</item>
+        <item quantity="other">%2$d günden %1$d.</item>
+    </plurals>
     <string name="today_streak">%1$d haftalık seri</string>
 </resources>

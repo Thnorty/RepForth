@@ -8,7 +8,10 @@
     <string name="exercises_body_part">Body part</string>
     <string name="exercises_equipment">Equipment</string>
     <string name="exercises_muscles">Muscles</string>
-    <string name="exercises_results">%1$d exercises</string>
+    <plurals name="exercises_results">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
     <string name="exercises_empty">No exercises match these filters.</string>
     <string name="exercises_loading">Loading the catalog…</string>
     <!--

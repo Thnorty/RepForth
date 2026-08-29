@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -157,8 +158,9 @@ private fun NextCard(state: TodayUiState, onStart: () -> Unit) {
             )
             Text(text = next.name, style = MaterialTheme.typography.headlineSmall)
             Text(
-                text = stringResource(
-                    R.string.today_plan_summary,
+                text = pluralStringResource(
+                    R.plurals.today_plan_summary,
+                    next.exercises.size,
                     next.exercises.size,
                     (next.estimatedDurationMs / 60_000L).toInt(),
                 ),
@@ -254,8 +256,12 @@ private fun WeekCard(state: TodayUiState) {
                         // "2 of 4 days" answers a question that "2 done" does
                         // not.
                         text = state.trainingDaysPerWeek?.let { target ->
-                            stringResource(
-                                R.string.today_week_of_target,
+                            // The target governs the quantity, not the count
+                            // done: "1 of 1 day" is the reachable case, since
+                            // onboarding offers one day a week.
+                            pluralStringResource(
+                                R.plurals.today_week_of_target,
+                                target,
                                 state.progress.workoutsThisWeek,
                                 target,
                             )
