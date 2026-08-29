@@ -442,6 +442,13 @@ app icon, and the exact licence.
 - **No device.** Instrumentation, screenshot, and paired-watch tests cannot run
   here at all. Phase 4 is unverifiable on this machine; plan for that rather
   than discovering it.
+- **uiautomator is not a reliable oracle near the bottom of the screen.** It
+  reports the legacy application frame as the window (1080x2266 on a 1080x2400
+  phone) and clips anything below it to `bounds=[0,0][0,0]`, whether or not the
+  system reserves that space. The bottom navigation labels report zero bounds
+  while being plainly visible and tappable. A zero-bounds reading down there
+  means take a screenshot, not that the element is missing — chasing one as a
+  layout bug cost a wrong diagnosis and a build.
 - **KSP is pinned to the Kotlin version.** Bumping `kotlin` without bumping
   `ksp` in the same commit fails the build in a way whose message does not
   mention the real cause.

@@ -2,7 +2,12 @@ package com.repforth.app.ui
 
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +57,28 @@ fun RepForthApp(
         .firstOrNull { currentDestination.isOn(it) }
 
     Scaffold(
+        // The bottom edge is the app's to defend. enableEdgeToEdge() turns off
+        // decor-fits-system-windows, so the window is no longer resized when the
+        // keyboard opens, and nothing else moves out of its way: a footer pinned
+        // to the bottom of a screen is simply drawn underneath the IME.
+        //
+        // Found on a device. The builder's Save button sat behind the keyboard
+        // the whole time the name field was focused — enabled, invisible, and
+        // untappable — so a workout could be built and never saved. With this,
+        // the footer measures to y=1285 instead of y=2162 while the keyboard is
+        // up, which is above it.
+        //
+        // safeDrawing rather than imePadding(): it is the union of the IME, the
+        // navigation bar and the display cutout, so the same line also covers a
+        // device that reserves the bottom for three-button navigation. This one
+        // does not — it uses gesture navigation and reserves nothing — so
+        // imePadding() alone would have looked equally correct here and been
+        // wrong on a phone that does. Bottom only: the top bar draws its own
+        // status bar inset, and taking it here would strip the colour from
+        // behind the clock.
+        modifier = Modifier.windowInsetsPadding(
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom),
+        ),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(currentDestination.titleRes(currentTopLevel))) },
