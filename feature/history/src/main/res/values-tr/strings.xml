@@ -8,8 +8,6 @@
     <string name="progress_streak">Haftalık seri</string>
     <string name="progress_volume">Hacim</string>
     <string name="progress_this_week">Bu hafta</string>
-    <string name="progress_volume_kg">%1$s kg</string>
-    <string name="progress_volume_tonnes">%1$s t</string>
 
     <string name="progress_history">Geçmiş</string>
     <string name="progress_most_performed">En çok yapılanlar</string>

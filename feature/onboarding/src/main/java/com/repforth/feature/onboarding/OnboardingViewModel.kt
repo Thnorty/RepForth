@@ -137,6 +137,25 @@ class OnboardingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState.asStateFlow()
 
+    /** Whether this instance has already written a profile. */
+    private var wrote = false
+
+    init {
+        // This ViewModel outlives the profile: it is scoped to the activity, and
+        // the app chooses between onboarding and the app by whether a profile
+        // exists. So when one is deleted — "reset the app" — the questionnaire
+        // has to start over. Without this it sat on the review step of the run
+        // that had just been erased, with nothing enabled.
+        viewModelScope.launch {
+            profiles.observeProfile().collect { profile ->
+                if (profile == null && wrote) {
+                    wrote = false
+                    _uiState.value = OnboardingUiState()
+                }
+            }
+        }
+    }
+
     fun onGoalSelected(goal: TrainingGoal) = update { copy(goal = goal) }
 
     fun onExperienceSelected(level: ExperienceLevel) = update { copy(experience = level) }
@@ -244,6 +263,11 @@ class OnboardingViewModel @Inject constructor(
                         .toSet(),
                 ),
             )
+            // Cleared because the write is over. Leaving it true was harmless
+            // while the app navigated away immediately, and became a dead end
+            // the moment the profile could be deleted underneath this.
+            wrote = true
+            _uiState.value = _uiState.value.copy(saving = false)
         }
     }
 

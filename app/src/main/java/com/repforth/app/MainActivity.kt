@@ -13,6 +13,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.CompositionLocalProvider
+import com.repforth.core.designsystem.theme.LocalUnitSystem
+import com.repforth.app.ui.LocalizedContent
 import com.repforth.app.ui.RepForthApp
 import com.repforth.feature.onboarding.OnboardingRoute
 import com.repforth.core.datastore.UserPreferencesDataSource
@@ -50,6 +53,12 @@ class MainActivity : ComponentActivity() {
             RepForthTheme(
                 darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme()),
             ) {
+                // The language and the unit system are display decisions that
+                // reach almost every screen, so they are provided here rather
+                // than carried through a dozen ViewModels that have no other
+                // reason to know about them.
+                LocalizedContent(language = preferences.language) {
+                CompositionLocalProvider(LocalUnitSystem provides preferences.unitSystem) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
@@ -57,17 +66,20 @@ class MainActivity : ComponentActivity() {
                     val appViewModel: AppViewModel = viewModel()
                     val appState by appViewModel.uiState.collectAsStateWithLifecycle()
 
-                    when (appState) {
-                        // Nothing, on purpose. The window is already painted
-                        // rf_launch_background, so an empty frame here is the
-                        // launch screen continuing rather than a blank flash —
-                        // and a spinner for a local database read would be
-                        // longer-lived than the read itself.
-                        AppUiState.Loading -> Unit
+                        when (appState) {
+                            // Nothing, on purpose. The window is already
+                            // painted rf_launch_background, so an empty frame
+                            // here is the launch screen continuing rather than
+                            // a blank flash — and a spinner for a local
+                            // database read would be longer-lived than the read
+                            // itself.
+                            AppUiState.Loading -> Unit
 
-                        AppUiState.Onboarding -> OnboardingRoute()
+                            AppUiState.Onboarding -> OnboardingRoute()
 
-                        AppUiState.Ready -> RepForthApp()
+                            AppUiState.Ready -> RepForthApp()
+                        }
+                    }
                     }
                 }
             }

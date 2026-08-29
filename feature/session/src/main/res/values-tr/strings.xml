@@ -6,11 +6,11 @@
     <string name="session_set_of">%2$d setten %1$d.</string>
     <string name="session_target_reps">%1$d tekrar</string>
     <string name="session_target_time">%1$d saniye</string>
-    <string name="session_target_weight">%1$s kg</string>
+    <string name="session_target_weight">%1$s %2$s</string>
 
     <string name="session_seconds">Saniye</string>
     <string name="session_reps">Tekrar</string>
-    <string name="session_weight">Ağırlık (kg)</string>
+    <string name="session_weight">Ağırlık (%1$s)</string>
     <string name="session_log_set">Seti kaydet</string>
     <string name="session_skip_set">Seti atla</string>
     <string name="session_next_exercise">Sonraki egzersiz</string>

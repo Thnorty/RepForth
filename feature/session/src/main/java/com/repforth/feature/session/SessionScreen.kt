@@ -40,6 +40,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.theme.LocalUnitSystem
+import com.repforth.core.designsystem.theme.formatWeight
+import com.repforth.core.designsystem.theme.symbol
+import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
@@ -303,10 +307,12 @@ private fun TargetPanel(state: SessionUiState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         target.weightKg?.let { weight ->
+            val units = LocalUnitSystem.current
             Text(
                 text = stringResource(
                     R.string.session_target_weight,
-                    if (weight % 1.0 == 0.0) weight.toInt().toString() else weight.toString(),
+                    units.formatWeight(weight),
+                    units.symbol,
                 ),
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -337,6 +343,7 @@ private fun SessionControls(
 ) {
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
+    val units = LocalUnitSystem.current
 
     Column(
         modifier = Modifier
@@ -359,7 +366,9 @@ private fun SessionControls(
                     onValueChange = {
                         weight = it.filter { c -> c.isDigit() || c == '.' }.take(MAX_DIGITS)
                     },
-                    label = { Text(stringResource(R.string.session_weight)) },
+                    label = {
+                        Text(stringResource(R.string.session_weight, units.symbol))
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
@@ -391,7 +400,8 @@ private fun SessionControls(
                     // during the one activity where typing is hardest.
                     onCompleteSet(
                         reps.toIntOrNull(),
-                        weight.toDoubleOrNull(),
+                        // Typed in the user's unit, stored in kilograms (§7).
+                        weight.toDoubleOrNull()?.let(units::toKilograms),
                         (state.target as? ExerciseTarget.Duration)?.durationMs,
                     )
                     reps = ""

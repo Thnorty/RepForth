@@ -401,6 +401,39 @@ class OnboardingViewModelTest {
         )
     }
 
+    /**
+     * Found on a device: resetting the app dropped the user at the *end* of
+     * onboarding with every button greyed out.
+     *
+     * This ViewModel outlives the profile — it is scoped to the activity, and
+     * the app decides between onboarding and the app by whether a profile
+     * exists. So after a reset the questionnaire was still sitting on the review
+     * step of the run that had just been erased, with `saving` left true from a
+     * write that had long since finished, which disabled the only button left.
+     */
+    @Test
+    fun `deleting the profile starts the questionnaire again`() = runTest(dispatcher) {
+        answerRequiredQuestions()
+        while (!state.isLastStep) viewModel.onNext()
+        viewModel.onFinish()
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, profiles.saved.size)
+        assertFalse("Saving must not stay true after the write", state.saving)
+
+        profiles.deleteAll()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("A reset asks the questions again", OnboardingStep.GOAL, state.step)
+        assertNull(state.goal)
+        assertNull(state.experience)
+        assertFalse(state.saving)
+        assertEquals(
+            "Even the pre-selected answer starts over",
+            setOf(Equipment.BODY_WEIGHT),
+            state.equipment,
+        )
+    }
+
     @Test
     fun `finishing without the required answers writes nothing`() = runTest(dispatcher) {
         viewModel.onFinish()

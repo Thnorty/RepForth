@@ -3,18 +3,18 @@
 <resources>
     <string name="settings_appearance">Görünüm</string>
     <string name="settings_theme">Tema</string>
-    <string name="settings_theme_system">Sistemi izle</string>
+    <string name="settings_theme_system">Sistem</string>
     <string name="settings_theme_light">Açık</string>
     <string name="settings_theme_dark">Koyu</string>
 
     <string name="settings_language">Dil</string>
-    <string name="settings_language_system">Sistemi izle</string>
+    <string name="settings_language_system">Sistem</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_tr">Türkçe</string>
 
     <string name="settings_units">Birimler</string>
-    <string name="settings_units_metric">Kilogram</string>
-    <string name="settings_units_imperial">Pound</string>
+    <string name="settings_units_metric">kg</string>
+    <string name="settings_units_imperial">lb</string>
 
     <string name="settings_workout">Antrenmanlar</string>
     <string name="settings_keep_awake">Ekran açık kalsın</string>

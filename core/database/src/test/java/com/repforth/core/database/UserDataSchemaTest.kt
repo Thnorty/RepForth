@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -134,5 +135,30 @@ class UserDataSchemaTest {
                 .map { "${table(entity)} -> ${it.getValue("table").jsonPrimitive.content}" }
         }
         assertEquals(emptyList<String>(), notCascading)
+    }
+
+    /**
+     * Nothing can delete the catalog.
+     *
+     * §7 requires "delete all workout data" to leave the bundled exercises
+     * alone, and the strongest form of that promise is that no code path
+     * exists: `ExerciseDao` has no delete or update at all. A test on the DAO's
+     * surface catches the day someone adds one for convenience, which is how
+     * this kind of guarantee is usually lost.
+     */
+    @Test
+    fun `the catalog dao offers no way to delete or modify the catalog`() {
+        val dao = File("src/main/java/com/repforth/core/database/dao/ExerciseDao.kt")
+        assertTrue("Expected ${dao.absolutePath} to exist", dao.exists())
+        val source = dao.readText()
+
+        listOf("DELETE FROM", "@Delete", "@Update", "@Insert", "INSERT INTO", "UPDATE ")
+            .forEach { forbidden ->
+                assertFalse(
+                    "ExerciseDao contains \"$forbidden\". The catalog is the app's data, " +
+                        "not the user's, and nothing should be able to remove it.",
+                    source.contains(forbidden),
+                )
+            }
     }
 }

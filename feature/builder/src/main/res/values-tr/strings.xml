@@ -12,7 +12,7 @@
 
     <string name="builder_sets">Set</string>
     <string name="builder_reps">Tekrar</string>
-    <string name="builder_weight">Ağırlık (kg)</string>
+    <string name="builder_weight">Ağırlık (%1$s)</string>
     <string name="builder_rest">Dinlenme (saniye)</string>
     <string name="builder_seconds">Saniye</string>
     <string name="builder_mode_reps">Tekrar</string>

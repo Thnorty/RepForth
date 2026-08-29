@@ -8,8 +8,6 @@
     <string name="progress_streak">Week streak</string>
     <string name="progress_volume">Volume</string>
     <string name="progress_this_week">This week</string>
-    <string name="progress_volume_kg">%1$s kg</string>
-    <string name="progress_volume_tonnes">%1$s t</string>
 
     <string name="progress_history">History</string>
     <string name="progress_most_performed">Most performed</string>

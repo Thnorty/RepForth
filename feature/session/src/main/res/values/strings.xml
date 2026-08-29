@@ -6,11 +6,11 @@
     <string name="session_set_of">Set %1$d of %2$d</string>
     <string name="session_target_reps">%1$d reps</string>
     <string name="session_target_time">%1$d seconds</string>
-    <string name="session_target_weight">%1$s kg</string>
+    <string name="session_target_weight">%1$s %2$s</string>
 
     <string name="session_seconds">Seconds</string>
     <string name="session_reps">Reps</string>
-    <string name="session_weight">Weight (kg)</string>
+    <string name="session_weight">Weight (%1$s)</string>
     <string name="session_log_set">Log set</string>
     <string name="session_skip_set">Skip set</string>
     <string name="session_next_exercise">Next exercise</string>

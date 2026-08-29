@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
+import com.repforth.core.designsystem.theme.LocalUnitSystem
+import com.repforth.core.designsystem.theme.formatVolume
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.workout.ProgressSummary
@@ -218,22 +220,17 @@ private fun stringResourceOf(workout: WorkoutSummary): String = stringResource(
 )
 
 /**
- * Kilograms, or tonnes once the number stops being readable.
+ * A total, in whatever unit the user reads, with its own symbol.
  *
- * A season of training runs to six figures of kilograms, and "128,450 kg" is a
- * number nobody parses at a glance. §12 wants the figure to be the content, and
- * a figure too long to read is not.
+ * The conversion and the threshold live in the design system so the builder and
+ * the running workout cannot disagree with this screen about what a weight is.
  */
 @Composable
 private fun formatVolume(kg: Double): String {
-    val format = NumberFormat.getNumberInstance(Locale.getDefault())
-    return if (kg >= TONNE_THRESHOLD_KG) {
-        format.maximumFractionDigits = 1
-        stringResource(R.string.progress_volume_tonnes, format.format(kg / 1000.0))
-    } else {
-        format.maximumFractionDigits = 0
-        stringResource(R.string.progress_volume_kg, format.format(kg))
-    }
+    val units = LocalUnitSystem.current
+    val (value, symbol) = units.formatVolume(kg)
+    return NumberFormat.getNumberInstance(Locale.getDefault())
+        .format(value.toDouble()) + " " + symbol
 }
 
 @Composable

@@ -40,6 +40,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.core.designsystem.theme.LocalUnitSystem
+import com.repforth.core.designsystem.theme.formatWeight
+import com.repforth.core.designsystem.theme.symbol
+import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -342,7 +346,7 @@ private fun ExerciseCard(
             Row(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
                 DecimalField(
                     value = draft.weightKg,
-                    label = stringResource(R.string.builder_weight),
+                    label = stringResource(R.string.builder_weight, LocalUnitSystem.current.symbol),
                     onValueChange = onWeightChange,
                     modifier = Modifier.weight(1f),
                 )
@@ -403,6 +407,12 @@ private fun NumberField(
 }
 
 /** The same ownership rule as [NumberField]; blank clears the weight. */
+/**
+ * A weight, shown and typed in the user's unit but stored in kilograms.
+ *
+ * §7 keeps kilograms as the stored unit and converts only for display, so the
+ * conversion happens on the way in and out of this field and nowhere else.
+ */
 @Composable
 private fun DecimalField(
     value: Double?,
@@ -410,11 +420,14 @@ private fun DecimalField(
     onValueChange: (Double?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var text by remember { mutableStateOf(TextFieldValue(value.asText())) }
+    val units = LocalUnitSystem.current
+    fun shown(kg: Double?) = kg?.let { units.formatWeight(it) } ?: ""
 
-    LaunchedEffect(value) {
-        if (text.text.toDoubleOrNull() != value) {
-            text = TextFieldValue(value.asText(), TextRange(value.asText().length))
+    var text by remember { mutableStateOf(TextFieldValue(shown(value))) }
+
+    LaunchedEffect(value, units) {
+        if (text.text != shown(value)) {
+            text = TextFieldValue(shown(value), TextRange(shown(value).length))
         }
     }
 
@@ -423,20 +436,15 @@ private fun DecimalField(
         onValueChange = { typed ->
             val cleaned = typed.text.filter { it.isDigit() || it == '.' }.take(MAX_DIGITS)
             text = typed.copy(text = cleaned)
-            onValueChange(if (cleaned.isBlank()) null else cleaned.toDoubleOrNull())
+            onValueChange(
+                if (cleaned.isBlank()) null else cleaned.toDoubleOrNull()?.let(units::toKilograms),
+            )
         },
         label = { Text(label) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = modifier,
     )
-}
-
-/** Whole kilograms lose the ".0"; nobody writes their bench as 60.0. */
-private fun Double?.asText(): String = when {
-    this == null -> ""
-    this % 1.0 == 0.0 -> toInt().toString()
-    else -> toString()
 }
 
 private const val MAX_DIGITS = 6

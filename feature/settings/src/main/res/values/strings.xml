@@ -3,18 +3,18 @@
 <resources>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_system">System</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
 
     <string name="settings_language">Language</string>
-    <string name="settings_language_system">Follow system</string>
+    <string name="settings_language_system">System</string>
     <string name="settings_language_en">English</string>
     <string name="settings_language_tr">Türkçe</string>
 
     <string name="settings_units">Units</string>
-    <string name="settings_units_metric">Kilograms</string>
-    <string name="settings_units_imperial">Pounds</string>
+    <string name="settings_units_metric">kg</string>
+    <string name="settings_units_imperial">lb</string>
 
     <string name="settings_workout">Workouts</string>
     <string name="settings_keep_awake">Keep the screen on</string>
