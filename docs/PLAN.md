@@ -95,7 +95,7 @@ padding removed. Screenshot tests still do not exist.
 | Counted nouns use plurals, in both languages | `1607efc` |
 | **Phase 1** — Coach: the rules engine reaches the catalog | `9a4b829` |
 | Instrumentation tests that interact, and a FAB nobody could name | `2d0ba1c` |
-| **Phase 2** — secret storage, and a CI scan for key-shaped content | pending |
+| **Phase 2** — secret storage, and a CI scan for key-shaped content | `2eb17e0` |
 
 Modules today: `app`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
