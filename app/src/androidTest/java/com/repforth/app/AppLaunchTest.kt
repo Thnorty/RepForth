@@ -1,7 +1,6 @@
 package com.repforth.app
 
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -66,7 +65,7 @@ class AppLaunchTest {
      */
     @Test
     fun everyTabOpens() {
-        completeOnboardingIfShown()
+        compose.completeOnboardingIfShown()
 
         listOf("Plans", "Exercises", "Progress", "Today").forEach { tab ->
             compose.onNodeWithText(tab).performClick()
@@ -83,43 +82,14 @@ class AppLaunchTest {
      */
     @Test
     fun settingsOpens() {
-        completeOnboardingIfShown()
+        compose.completeOnboardingIfShown()
 
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Appearance").assertExists()
     }
 
-    private fun completeOnboardingIfShown() {
-        compose.waitForIdle()
-        if (compose.onAllNodes(hasText("training for", substring = true)).fetchSemanticsNodes().isEmpty()) {
-            return
-        }
-
-        compose.onNodeWithText("Strength").performClick()
-        compose.onNodeWithText("Next").performClick()
-        compose.onNodeWithText("1 to 3 years").performClick()
-
-        // Walk the rest of the questionnaire on its defaults. Every remaining
-        // step advances without an answer, which is itself the thing being
-        // relied on here.
-        repeat(REMAINING_STEPS) {
-            compose.waitForIdle()
-            if (compose.onAllNodesWithText("Next").fetchSemanticsNodes().isNotEmpty()) {
-                compose.onNodeWithText("Next").performClick()
-            }
-        }
-        compose.waitForIdle()
-        if (compose.onAllNodesWithText("Finish").fetchSemanticsNodes().isNotEmpty()) {
-            compose.onNodeWithText("Finish").performClick()
-        }
-        compose.waitForIdle()
-    }
-
     private companion object {
         const val TIMEOUT_MS = 10_000L
-
-        /** Goal and experience are answered explicitly; the rest are defaults. */
-        const val REMAINING_STEPS = 7
     }
 }

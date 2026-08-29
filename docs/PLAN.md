@@ -39,9 +39,10 @@ when the locale was overridden, and the builder's Save button sitting behind the
 keyboard — enabled, invisible, and untappable, so a plan could not be saved at
 all.
 
-Three instrumentation tests now exist and they open screens; they would not have
-caught any of the five. Screenshot tests still do not exist. "Verified on a
-device" here means someone looked.
+Six instrumentation tests now exist. Three open screens and would not have
+caught any of the five; three interact — type, tap, save — and the keyboard one
+is a direct regression guard for the fifth, watched failing with the shell's
+padding removed. Screenshot tests still do not exist.
 
 ### Built so far
 
@@ -444,8 +445,21 @@ plan at 180s rest, 32 minutes against the session ceiling, saved and listed.
   is only correct while it is on screen. It is stated in `SessionViewModel`
   rather than hidden, and it is the main reason the service is the next slice
   rather than a polish item.
-- **Instrumentation tests still do not exist.** A device is now attached, so the
-  excuse is gone; 1.5 is the slice that most needs them.
+- **A test that only opens a screen proves almost nothing.** The three original
+  instrumentation tests were green while a workout could not be saved at all.
+  The button composed, measured, reported itself enabled, and sat under the
+  keyboard — and `assertIsDisplayed()` would have agreed it was fine, because
+  the window is never resized when the IME opens, so Compose's root keeps its
+  full height and the button stays inside it. Only the window insets know the
+  difference. Any future guard for something the platform draws over has to ask
+  the platform, not the composition.
+- **`waitForIdle()` does not wait for this app to have decided what to show.**
+  Until the profile is read, `MainActivity` renders nothing on purpose, and that
+  state comes from a Room flow that Compose's idling resource cannot see — so
+  `waitForIdle()` returns onto a root node with no children. Three tests raced
+  it, asked whether onboarding was showing, were told no because *nothing* was
+  showing, and walked into an undrawn screen. `awaitFirstScreen()` exists for
+  this; use it before asking what is on screen.
 - **String parity was guarded in one module out of three.** `feature:exercises`
   shipped unguarded Turkish for its whole life, and nobody noticed because the
   guard that existed was passing. The checks now live in `core:testing` as a
@@ -463,6 +477,20 @@ plan at 180s rest, 32 minutes against the session ceiling, saved and listed.
   read as unrestricted. Both halves were internally consistent, both had tests,
   and the contradiction lived in the space between them. When a screen states a
   consequence, something should assert the consequence, not the wording.
+
+---
+
+### What the interaction tests found
+
+Writing them turned up a defect nothing else had: the app's only floating action
+button reached accessibility services as an unnamed "Button". Material3 wraps an
+extended FAB's icon and text in `clearAndSetSemantics {}`, so the words drawn
+across it never reach the merged node — the test could not find the button by
+the label written on it, and neither could TalkBack. The label is now set on the
+button as well as drawn inside it.
+
+Worth generalising: a test that cannot find a control by its visible name is
+usually reporting an accessibility bug rather than a test-writing problem.
 
 ---
 

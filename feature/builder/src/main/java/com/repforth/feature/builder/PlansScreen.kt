@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -115,13 +117,21 @@ internal fun PlansScreen(
             }
         }
 
+        // The label is set on the button as well as drawn inside it, because
+        // Material3 wraps an extended FAB's icon and text in
+        // `clearAndSetSemantics {}` — so the text on screen never reaches the
+        // merged node, and the whole thing arrives at TalkBack as an unnamed
+        // "Button". Found by an instrumentation test that could not locate the
+        // app's only FAB by the words written across it.
+        val newWorkout = stringResource(R.string.plans_new)
         ExtendedFloatingActionButton(
             onClick = onNewWorkout,
             icon = { Icon(painter = RfIcons.Add, contentDescription = null) },
-            text = { Text(stringResource(R.string.plans_new)) },
+            text = { Text(newWorkout) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(Layout.gutterPhone),
+                .padding(Layout.gutterPhone)
+                .semantics { contentDescription = newWorkout },
         )
     }
 }
