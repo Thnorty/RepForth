@@ -46,7 +46,7 @@ if [ "${AGY_RAW:-0}" = "1" ]; then
   exit $RC
 fi
 
-printf '%s' "$OUT" | python -c "
+printf '%s' "$OUT" | PYTHONIOENCODING=utf-8 python -c "
 import sys, json
 
 raw = sys.stdin.read()

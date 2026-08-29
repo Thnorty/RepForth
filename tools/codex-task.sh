@@ -93,7 +93,7 @@ if [ $RC -eq 124 ]; then
 fi
 
 MODEL="$MODEL" EFFORT="$EFFORT" ELAPSED="$ELAPSED" RC="$RC" \
-REPORT="$REPORT" LOG="$LOG" python -c "
+REPORT="$REPORT" LOG="$LOG" PYTHONIOENCODING=utf-8 python -c "
 import json, os, re, sys
 
 report_path, log_path = os.environ['REPORT'], os.environ['LOG']
