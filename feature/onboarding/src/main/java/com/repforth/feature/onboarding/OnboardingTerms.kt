@@ -25,6 +25,22 @@ internal val TrainingGoal.labelRes: Int
     }
 
 /**
+ * What choosing this goal will actually do to the programming.
+ *
+ * "Hypertrophy" is a word the app would otherwise use for months at someone who
+ * does not know it, and the cost of guessing wrong here is every plan the rules
+ * engine builds. The detail names the consequence rather than defining the term.
+ */
+@get:StringRes
+internal val TrainingGoal.detailRes: Int
+    get() = when (this) {
+        TrainingGoal.STRENGTH -> R.string.goal_strength_detail
+        TrainingGoal.HYPERTROPHY -> R.string.goal_hypertrophy_detail
+        TrainingGoal.ENDURANCE -> R.string.goal_endurance_detail
+        TrainingGoal.GENERAL_FITNESS -> R.string.goal_general_fitness_detail
+    }
+
+/**
  * Phrased as elapsed time rather than as a self-assessment.
  *
  * "Under a year" is a fact the user knows; "beginner" is a judgement they may

@@ -14,6 +14,10 @@
     <string name="goal_hypertrophy">Hipertrofi</string>
     <string name="goal_endurance">Dayanıklılık</string>
     <string name="goal_general_fitness">Genel kondisyon</string>
+    <string name="goal_strength_detail">Daha ağır yük, daha az tekrar, daha uzun dinlenme.</string>
+    <string name="goal_hypertrophy_detail">Kas hacmi. Orta yük, orta tekrar.</string>
+    <string name="goal_endurance_detail">Daha hafif yük, daha çok tekrar, kısa dinlenme.</string>
+    <string name="goal_general_fitness_detail">Dengeli bir karışım. İyi bir başlangıç.</string>
 
     <string name="onboarding_experience_title">Ne kadar süredir antrenman yapıyorsun?</string>
     <string name="onboarding_experience_subtitle">Egzersiz seçimini ve hacmi etkiler.</string>
