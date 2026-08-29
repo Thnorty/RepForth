@@ -1,6 +1,9 @@
 package com.repforth.app.ui
 
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -12,24 +15,38 @@ import java.util.Locale
 /**
  * Renders its content in the language the user chose (§13).
  *
- * The preference was being stored and then ignored: picking Türkçe changed a row
- * in DataStore and nothing on screen. Resources are resolved from the context
- * and configuration Compose provides, so overriding both here is what makes the
- * choice mean anything.
+ * The preference was stored and then ignored: picking Türkçe changed a row in
+ * DataStore and nothing on screen. Resources are resolved from the context
+ * Compose provides, so that is what has to change.
+ *
+ * **It has to stay a wrapper around the activity.** The first version provided
+ * `createConfigurationContext(...)` directly, which returns a bare `ContextImpl`
+ * — and everything that needs the activity finds it by walking `baseContext` up
+ * the `ContextWrapper` chain. Severing that chain crashed every screen with a
+ * ViewModel the moment a language was chosen:
+ *
+ * ```
+ * Expected an activity context for creating a HiltViewModelFactory
+ * ```
+ *
+ * A `ContextWrapper` whose base *is* the activity keeps that walk working while
+ * still answering [getResources] in the chosen language.
  *
  * Done this way rather than by recreating the activity, or by adding AppCompat
  * for `setApplicationLocales`: this app has no AppCompat and needs none, and a
- * recreate would drop the running workout's screen state to change a label. The
- * cost is that only Compose content is translated — a system dialog this app
- * shows would still follow the device — which is acceptable while every screen
- * is Compose, and is the thing to revisit if that stops being true.
- *
- * [Language] `null` means follow the device, which is the default, so the
- * context is left exactly as it arrived rather than being overridden with
- * whatever the device currently is.
+ * recreate would drop a running workout's screen state to change a label. The
+ * cost is that only Compose content follows the choice — which is every screen
+ * this app has — and that `Locale.getDefault()` still reports the device's
+ * locale, so a number formatted through it groups digits the device's way. That
+ * is the smaller wrong of the two: setting the JVM default from inside
+ * composition is a global mutation on a shared process, and it is what makes
+ * Turkish famous for breaking `"I".lowercase()` in unrelated code.
  */
 @Composable
 fun LocalizedContent(language: Language?, content: @Composable () -> Unit) {
+    // Null means follow the device, which is the default, so nothing is
+    // overridden rather than the device's own locale being re-applied over
+    // itself.
     if (language == null) {
         content()
         return
@@ -38,16 +55,33 @@ fun LocalizedContent(language: Language?, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
-    val localized = remember(language, configuration) {
-        val locale = Locale.forLanguageTag(language.tag)
-        Locale.setDefault(locale)
-        val updated = Configuration(configuration).apply { setLocale(locale) }
-        context.createConfigurationContext(updated) to updated
+    val localizedConfiguration = remember(language, configuration) {
+        Configuration(configuration).apply { setLocale(Locale.forLanguageTag(language.tag)) }
+    }
+    val localizedContext = remember(context, localizedConfiguration) {
+        LocalizedContext(context, localizedConfiguration)
     }
 
     CompositionLocalProvider(
-        LocalContext provides localized.first,
-        LocalConfiguration provides localized.second,
+        LocalContext provides localizedContext,
+        LocalConfiguration provides localizedConfiguration,
         content = content,
     )
+}
+
+/**
+ * The activity, answering in a different language.
+ *
+ * Everything is delegated to [base] except [getResources]; keeping the activity
+ * as the base is what lets `findActivity()`-style lookups still succeed.
+ */
+private class LocalizedContext(
+    base: Context,
+    configuration: Configuration,
+) : ContextWrapper(base) {
+
+    private val localizedResources: Resources =
+        base.createConfigurationContext(configuration).resources
+
+    override fun getResources(): Resources = localizedResources
 }
