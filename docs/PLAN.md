@@ -72,11 +72,12 @@ Those three defects are the argument for building them.
 | A review of every answer before the profile is written | `5ba58aa` |
 | Body weight pre-selected, so nothing is translated on save | `77162c3` |
 
-Modules today: `app`, `core:model`, `core:database`, `core:datastore`,
-`core:designsystem`, `core:exercise-data`, `core:common`, `core:rules`,
-`core:testing`, `core:user-data`, `core:workout`, `feature:exercises`,
-`feature:onboarding`.
-167 unit tests across 23 classes, all passing. Room schema v1 exported and
+Modules today: `app`, `core:common`, `core:database`, `core:datastore`,
+`core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
+`core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
+`feature:builder`, `feature:exercises`, `feature:history`,
+`feature:onboarding`, `feature:session`.
+245 unit tests across 32 classes, all passing. Room schema v1 exported and
 committed.
 
 ---
@@ -323,7 +324,7 @@ usable at every step, not only at the end.
 | 1.3 Templates | ✅ model, DAO, repository, and the builder — plus a real Plans library |
 | 1.4 Rules engine | ✅ complete — 26 tests |
 | 1.5 Session engine | ✅ state machine, persistence, **and the running workout screen**. No service yet |
-| 1.6 History | ⬜ not started |
+| 1.6 History | ✅ statistics in `core:workout`, Progress tab in `feature:history` |
 | 1.7 Export / import / delete | ✅ `core:transfer` — format, validation, preview, both deletes. **No Settings UI** |
 
 **Deliberately not attempted without a device.** The engines are provable on the
@@ -340,7 +341,9 @@ trusting:
 4. **Settings screen** — `core:transfer` has export, import and both deletes
    with 14 tests, and nothing calls them. The screen also needs the system file
    pickers, which is device work: a file chooser cannot be verified on the JVM.
-5. **Foreground service and ongoing notification** (§10) — this is the piece
+5. **Today tab** — still a placeholder. §12 wants the current or recommended
+   workout and a quick start; every piece it would need now exists.
+6. **Foreground service and ongoing notification** (§10) — this is the piece
    that genuinely cannot be written blind. Android 14's foreground-service types
    and their permissions changed recently, and a Samsung device manages
    background execution more aggressively than stock, so the only meaningful
