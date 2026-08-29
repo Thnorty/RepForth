@@ -320,9 +320,9 @@ usable at every step, not only at the end.
 |---|---|
 | 1.1 User-data schema | ✅ nine tables, five structural guards |
 | 1.2 Profile | ✅ model, DAO, repository, and the onboarding screen — 8 steps, device-tested |
-| 1.3 Templates | ✅ model, DAO, repository. Builder **screen not built** |
+| 1.3 Templates | ✅ model, DAO, repository, and the builder — plus a real Plans library |
 | 1.4 Rules engine | ✅ complete — 26 tests |
-| 1.5 Session engine | ✅ state machine and persistence — 27 tests. **No UI, no service** |
+| 1.5 Session engine | ✅ state machine, persistence, **and the running workout screen**. No service yet |
 
 **Deliberately not attempted without a device.** The engines are provable on the
 JVM; screens are not. Four things remain, and each needs hardware to be worth
@@ -331,8 +331,10 @@ trusting:
 1. ~~**Onboarding screen**~~ — done, and tested on the phone through two rounds
    of feedback. Eight steps ending in a review of every answer, because the
    first version gave no way to check what it had recorded.
-2. **Workout builder screen** — the repository is ready. Next.
-3. **Active workout screen** — the engine is ready and tested.
+2. ~~**Workout builder screen**~~ — built, with the Plans library that opens
+   it. Not yet seen on a device.
+3. ~~**Active workout screen**~~ — built on the tested engine. Not yet seen on
+   a device.
 4. **Foreground service and ongoing notification** (§10) — this is the piece
    that genuinely cannot be written blind. Android 14's foreground-service types
    and their permissions changed recently, and a Samsung device manages
@@ -373,6 +375,12 @@ afterwards. That gap is what instrumentation tests are for.
 - **`run-as` is blocked by Knox**, so the app's database cannot be pulled off the
   device for inspection. Debugging persistence bugs will need an in-app path or
   an export.
+- **Rest does not advance while nothing is watching.** The countdown ticks
+  from the screen, so a backgrounded workout stops counting down. That is the
+  gap §10's foreground service closes, and until it exists the running workout
+  is only correct while it is on screen. It is stated in `SessionViewModel`
+  rather than hidden, and it is the main reason the service is the next slice
+  rather than a polish item.
 - **Instrumentation tests still do not exist.** A device is now attached, so the
   excuse is gone; 1.5 is the slice that most needs them.
 - **String parity was guarded in one module out of three.** `feature:exercises`
