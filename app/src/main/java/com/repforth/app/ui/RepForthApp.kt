@@ -1,5 +1,6 @@
 package com.repforth.app.ui
 
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ fun RepForthApp(
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
 
     // The bottom bar belongs to the four tabs. On Settings, which is reached
     // from the top bar, it would offer a way out that is not "back" — so it
@@ -55,7 +57,15 @@ fun RepForthApp(
                 title = { Text(stringResource(currentDestination.titleRes(currentTopLevel))) },
                 navigationIcon = {
                     if (currentTopLevel == null) {
-                        IconButton(onClick = { navController.navigateUp() }) {
+                        // Dispatched as a back press rather than navigateUp().
+                        //
+                        // A screen that intercepts back — the running workout,
+                        // which asks before ending — was intercepting only the
+                        // gesture, so this arrow walked straight past the
+                        // question and out of the workout. Going through the
+                        // dispatcher means one way back, and any screen that
+                        // wants to handle it handles both.
+                        IconButton(onClick = { backDispatcher?.onBackPressed() }) {
                             Icon(
                                 painter = RfIcons.Back,
                                 contentDescription = stringResource(R.string.nav_back),

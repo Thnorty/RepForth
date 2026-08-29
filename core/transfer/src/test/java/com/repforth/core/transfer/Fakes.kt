@@ -71,7 +71,7 @@ internal class FakeSessions : SessionRepository {
 
     override suspend fun restoreActive(): SessionSnapshot? = null
 
-    override fun observeCompleted(): Flow<List<SessionSnapshot>> = completed
+    override fun observeFinished(): Flow<List<SessionSnapshot>> = completed
 
     override suspend fun persist(snapshot: SessionSnapshot) {
         stored.removeAll { it.sessionId == snapshot.sessionId }

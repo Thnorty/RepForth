@@ -87,7 +87,7 @@ internal class DefaultDataTransfer @Inject constructor(
             exportedAt = time.now(),
             profile = profiles.getProfile()?.toDto(),
             templates = templates.observeAll().first().map { it.toDto() },
-            sessions = sessions.observeCompleted().first().map { it.toDto() },
+            sessions = sessions.observeFinished().first().map { it.toDto() },
         ),
     )
 

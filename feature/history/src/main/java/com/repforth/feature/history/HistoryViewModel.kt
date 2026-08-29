@@ -49,7 +49,7 @@ class HistoryViewModel @Inject constructor(
     private val zone: ZoneId,
 ) : ViewModel() {
 
-    val uiState: StateFlow<HistoryUiState> = sessions.observeCompleted()
+    val uiState: StateFlow<HistoryUiState> = sessions.observeFinished()
         .map { history ->
             HistoryUiState(
                 progress = history.toProgress(time.now(), zone),

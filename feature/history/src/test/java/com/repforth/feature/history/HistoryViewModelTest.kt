@@ -134,6 +134,32 @@ class HistoryViewModelTest {
             assertEquals("The workout itself is still listed", 2, state.workouts.size)
         }
 
+    /**
+     * Abandoning keeps the sets that were performed, and history that hides
+     * them makes that promise untrue. The query behind this returned only
+     * COMPLETED, so an ended-early workout was in the database and nowhere on
+     * screen — which is what "the sets are kept" was quietly failing to mean.
+     */
+    @Test
+    fun `a workout that ended early is listed, and marked as not completed`() =
+        runTest(dispatcher) {
+            sessions.emit(
+                listOf(
+                    session("finished", 1_000),
+                    session("ended-early", 2_000, phase = SessionPhase.ABANDONED),
+                ),
+            )
+
+            val state = stateOf(viewModel())
+
+            assertEquals(2, state.workouts.size)
+            assertEquals(2, state.progress.workouts)
+
+            val early = state.workouts.first { it.sessionId == "ended-early" }
+            assertFalse("It should be labelled, not hidden", early.completed)
+            assertEquals("Its sets still count", 1, early.setsCompleted)
+        }
+
     @Test
     fun `totals reach the screen`() = runTest(dispatcher) {
         sessions.emit(
@@ -158,12 +184,13 @@ class HistoryViewModelTest {
     private fun session(
         id: String,
         startedAt: Long,
+        phase: SessionPhase = SessionPhase.COMPLETED,
         exerciseId: String = "bench",
         sets: List<SetOutcome> = listOf(SetOutcome(0, false, reps = 10, weightKg = 50.0, recordedAt = 0)),
     ) = SessionSnapshot(
         sessionId = id,
         templateId = null,
-        phase = SessionPhase.COMPLETED,
+        phase = phase,
         exercises = listOf(
             SessionExercise(
                 id = "se-$id",
@@ -190,7 +217,7 @@ private class FakeSessions : SessionRepository {
 
     override suspend fun restoreActive(): SessionSnapshot? = null
 
-    override fun observeCompleted(): Flow<List<SessionSnapshot>> = completed
+    override fun observeFinished(): Flow<List<SessionSnapshot>> = completed
 
     override suspend fun persist(snapshot: SessionSnapshot) = Unit
 

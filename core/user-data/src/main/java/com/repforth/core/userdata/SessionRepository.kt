@@ -25,7 +25,13 @@ interface SessionRepository {
      */
     suspend fun restoreActive(): SessionSnapshot?
 
-    fun observeCompleted(): Flow<List<SessionSnapshot>>
+    /**
+     * Every workout that ended, newest first — finished and abandoned alike.
+     *
+     * Abandoned sessions belong here. The engine keeps the sets that were
+     * performed, and history that hides them makes that promise untrue.
+     */
+    fun observeFinished(): Flow<List<SessionSnapshot>>
 
     suspend fun persist(snapshot: SessionSnapshot)
 

@@ -60,10 +60,23 @@ interface SessionDao {
     @Query("SELECT * FROM workout_session WHERE id = :id")
     suspend fun findById(id: String): SessionWithDetails?
 
-    /** History, newest first. */
+    /**
+     * Everything that finished, newest first — completed *and* abandoned.
+     *
+     * Abandoning is not deleting: the engine keeps every set that was performed,
+     * and a query that returned only `COMPLETED` made that promise false from
+     * where the user stands. Their workout was in the database and nowhere on
+     * screen, and it was missing from exports too.
+     */
     @Transaction
-    @Query("SELECT * FROM workout_session WHERE state = 'COMPLETED' ORDER BY ended_at DESC")
-    fun observeCompleted(): Flow<List<SessionWithDetails>>
+    @Query(
+        """
+        SELECT * FROM workout_session
+        WHERE state IN ('COMPLETED', 'ABANDONED')
+        ORDER BY ended_at DESC
+        """
+    )
+    fun observeFinished(): Flow<List<SessionWithDetails>>
 
     /**
      * Writes a whole session state in one transaction.

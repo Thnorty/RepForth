@@ -340,7 +340,7 @@ private class RecordingSessionRepository : SessionRepository {
     override suspend fun restoreActive(): SessionSnapshot? =
         persisted.lastOrNull()?.takeIf { !it.phase.isTerminal }
 
-    override fun observeCompleted(): Flow<List<SessionSnapshot>> = emptyFlow()
+    override fun observeFinished(): Flow<List<SessionSnapshot>> = emptyFlow()
 
     override suspend fun persist(snapshot: SessionSnapshot) {
         persisted += snapshot

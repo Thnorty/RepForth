@@ -33,8 +33,8 @@ internal class RoomSessionRepository @Inject constructor(
         return engine.restore(row.toSnapshot(), row.session.deadlineAt)
     }
 
-    override fun observeCompleted(): Flow<List<SessionSnapshot>> =
-        dao.observeCompleted().map { rows -> rows.map(SessionWithDetails::toSnapshot) }
+    override fun observeFinished(): Flow<List<SessionSnapshot>> =
+        dao.observeFinished().map { rows -> rows.map(SessionWithDetails::toSnapshot) }
 
     override suspend fun persist(snapshot: SessionSnapshot) {
         val now = time.now()
