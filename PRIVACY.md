@@ -55,12 +55,22 @@ Wear Data Layer. That traffic stays between your paired devices.
 
 ## Android Auto Backup
 
-Not yet configured, and it needs to be before release. Android backs up app files
-by default, which would eventually include workout history and — critically —
-must never include encrypted key material. Excluding that is Phase 2 work,
-tracked in [`docs/PLAN.md`](docs/PLAN.md).
+Off. `android:allowBackup="false"` in the manifest, held there by
+`BackupPolicyTest`. Nothing this app stores is copied to Google's servers, which
+is what makes the rest of this page true rather than merely intended — the
+default is `true`, and the default would have uploaded the workout database.
 
-Until it is configured, treat backup behaviour as unspecified.
+That also removes the question of what to do about encrypted key material when
+Phase 2 adds it: it cannot leak through a channel that is closed.
+
+The cost is that a new phone does not inherit your history automatically. The
+replacement is the versioned JSON export in §7 — deliberately manual, because a
+copy you made is a copy you know about.
+
+One practical consequence, found on a device rather than reasoned about: while
+backup was on, reinstalling restored the old database over a schema Room had
+already moved past, and the app died on launch. Auto Backup restores across
+schema versions; Room refuses to open across them.
 
 ## Verifying any of this
 

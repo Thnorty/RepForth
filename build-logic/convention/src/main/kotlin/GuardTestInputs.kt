@@ -9,7 +9,8 @@ import org.gradle.kotlin.dsl.withType
  * This repo has a deliberate pattern: where the platform forces a value to be
  * duplicated outside Kotlin, a test reads the other copy off disk and asserts
  * they agree. `LaunchBackgroundTest` reads `colors.xml`, `StringParityTest`
- * reads both `strings.xml`, `SchemaExportTest` reads the exported Room schema.
+ * reads both `strings.xml`, `SchemaExportTest` reads the exported Room schema,
+ * `BackupPolicyTest` reads the manifest.
  *
  * Those reads happen through `java.io.File` at runtime, so Gradle cannot see
  * them. Without this, editing `values-tr/strings.xml` and running the tests
@@ -21,10 +22,15 @@ import org.gradle.kotlin.dsl.withType
  * test runtime classpath and invalidates the task on its own.
  */
 internal fun Project.configureGuardTestInputs() {
-    val guarded = listOf("src/main/res", "src/main/assets", "schemas")
+    val guardedDirs = listOf("src/main/res", "src/main/assets", "schemas")
+
+    // Whole directories cover most guards, but the manifest is a single file and
+    // its parent holds the entire source tree; declaring that as an input would
+    // make every test task rerun on any source edit.
+    val guardedFiles = listOf("src/main/AndroidManifest.xml")
 
     tasks.withType<Test>().configureEach {
-        guarded.forEach { path ->
+        guardedDirs.forEach { path ->
             val dir = layout.projectDirectory.dir(path)
             if (dir.asFile.isDirectory) {
                 inputs.dir(dir)
@@ -32,6 +38,14 @@ internal fun Project.configureGuardTestInputs() {
                     // RELATIVE, not ABSOLUTE: the build cache must still hit
                     // when the same content is checked out at a different path,
                     // which is the normal case on CI.
+                    .withPathSensitivity(PathSensitivity.RELATIVE)
+            }
+        }
+        guardedFiles.forEach { path ->
+            val file = layout.projectDirectory.file(path)
+            if (file.asFile.isFile) {
+                inputs.file(file)
+                    .withPropertyName("guardedFile-" + path.replace('/', '-'))
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             }
         }

@@ -326,6 +326,22 @@ installing again — Room refuses a database whose hash disagrees with the code,
 which is the protection that makes this safe after release and an inconvenience
 before it.
 
+**And uninstalling was not enough.** Verified on the device: a clean uninstall
+and reinstall still crashed at launch, because `android:allowBackup` was at its
+default of `true` and Android restored the previous schema's database from
+Google's servers into a directory Room had just been told to fill from the
+packaged asset. Room found hash `e66cc39…` where it wanted `0020ed9c…` and threw.
+
+Fixed by turning Auto Backup off, which §4 wanted anyway — cloud backup is an
+explicit MVP non-goal, and §7 asked for this decision to be made rather than
+defaulted. `BackupPolicyTest` now holds it, and the guard was proven to fail on
+an XML-only edit. `PRIVACY.md` no longer says backup behaviour is unspecified.
+
+Worth noting what this says about the guards: every schema test passed, the
+packaged asset was correct inside the APK, and the app still could not start.
+The tests cover what the build produces, not what the platform does to it
+afterwards. That gap is what instrumentation tests are for.
+
 ### Known risks in this phase
 
 - **1.5 is where the schedule goes wrong.** Process-death recovery and
@@ -357,6 +373,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Room v1 is catalog-only | User tables ship with the code that writes them, not before | `RepForthDatabase.kt` |
 | No destructive migration, ever | Losing the only copy of a user's history is not an upgrade path | `SchemaExportTest.kt` |
 | Categorical values stay slugs until the import | Enum constants written before reading the dataset are guesses | `Exercise.kt` |
+| Android Auto Backup is off | Cloud backup is an MVP non-goal (§4), and a restore across a schema change is a guaranteed launch crash | `BackupPolicyTest.kt` |
 | Hilt pinned below latest | Newer releases ship a plugin built against a newer Kotlin stdlib | `libs.versions.toml` |
 | CI builds `placeholder` only | §20's claim is that the public source builds with no private credentials; `licensed` assets must not reach a public runner | `.github/workflows/ci.yml` |
 | Guard tests declare their files as task inputs | Otherwise the task is UP-TO-DATE and passes on the exact change it guards | `GuardTestInputs.kt` |
