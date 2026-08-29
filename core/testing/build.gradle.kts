@@ -11,4 +11,7 @@ dependencies {
     // annotations to whichever module subclasses them, so a consumer that only
     // declared this module would not compile without it.
     api(libs.junit)
+
+    // FakePreferencesStore implements DataStore, so consumers see those types.
+    api(libs.androidx.datastore.preferences)
 }

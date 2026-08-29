@@ -62,6 +62,16 @@ class UserPreferencesDataSource @Inject constructor(
         it[Keys.ONBOARDING_COMPLETE] = complete
     }
 
+    /**
+     * Forgets every preference (§7's "reset app").
+     *
+     * `clear()` rather than writing each default back, so a key added later is
+     * removed without anyone remembering to add it here. Reading afterwards
+     * yields [UserPreferences.Default], because absence is what the defaults
+     * mean.
+     */
+    suspend fun clear() = edit { it.clear() }
+
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         dataStore.edit(block)
     }

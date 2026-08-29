@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.repforth.core.testing.FakePreferencesStore
 import com.repforth.core.model.Language
 import com.repforth.core.model.ThemeMode
 import com.repforth.core.model.UnitSystem
@@ -20,26 +21,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * Covers the part of preference storage this project owns: the mapping between
  * `Preferences` keys and [UserPreferences], the defaults, and the fallbacks.
  *
- * Backed by an in-memory [DataStore] rather than a file. A file-backed store was
- * tried first and fails on a Windows host — DataStore's `java.io` storage
- * renames a temp file onto the target, and Windows refuses that once the target
- * exists, so every second write threw. Rather than have a test that passes on CI
- * and fails on the maintainer's machine, this exercises the same public API
- * against storage that behaves identically everywhere.
- *
- * What that gives up is real persistence: whether the bytes survive a restart is
- * DataStore's guarantee, not this project's, and confirming it needs a device.
+ * Backed by [FakePreferencesStore] rather than a file; the reasoning for that,
+ * and what it gives up, is documented there.
  */
 class UserPreferencesDataSourceTest {
-
-    /** Minimal in-memory [DataStore]; `edit {}` works on it like any other. */
-    private class FakePreferencesStore : DataStore<Preferences> {
-        private val state = MutableStateFlow(emptyPreferences())
-        override val data: Flow<Preferences> = state
-        override suspend fun updateData(
-            transform: suspend (t: Preferences) -> Preferences,
-        ): Preferences = transform(state.value).also { state.value = it }
-    }
 
     private fun store(): DataStore<Preferences> = FakePreferencesStore()
 
