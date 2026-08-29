@@ -5,14 +5,20 @@ plugins {
 }
 
 android {
-    namespace = "com.repforth.feature.exercises"
+    namespace = "com.repforth.feature.onboarding"
 }
 
 dependencies {
-    // The Compose stack arrives through core:designsystem's `api`, and the
-    // catalog through core:exercise-data's. Neither is re-declared here.
+    // The Compose stack and core:model arrive through core:designsystem's `api`.
     implementation(project(":core:designsystem"))
+
+    // For Equipment.labelRes and Muscle.labelRes: the catalog owns the display
+    // names of the vocabulary, and onboarding asks about the same vocabulary the
+    // catalog filters by. Two lists of equipment names would drift.
     implementation(project(":core:exercise-data"))
+
+    // The one door to the profile this screen exists to write.
+    implementation(project(":core:user-data"))
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
