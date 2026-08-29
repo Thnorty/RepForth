@@ -41,6 +41,16 @@ sealed interface Destination {
      * same cards a new one is built from.
      */
     @Serializable data class Builder(val planId: String? = null) : Destination
+
+    /**
+     * The running workout (§10). Not a tab either: it is a mode the app is in,
+     * reached by starting a plan, and left by finishing or abandoning.
+     *
+     * [templateId] is the plan to start. Null means "show whatever is already
+     * running", which is how the screen is re-entered after leaving it — the
+     * session lives in the database, not on the back stack.
+     */
+    @Serializable data class Session(val templateId: String? = null) : Destination
 }
 
 /**

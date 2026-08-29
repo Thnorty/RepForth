@@ -125,5 +125,6 @@ private fun NavDestination?.isOn(destination: TopLevelDestination): Boolean =
 private fun NavDestination?.titleRes(topLevel: TopLevelDestination?): Int = when {
     topLevel != null -> topLevel.labelRes
     this?.hasRoute(Destination.Builder::class) == true -> R.string.nav_builder
+    this?.hasRoute(Destination.Session::class) == true -> R.string.nav_session
     else -> R.string.settings_title
 }

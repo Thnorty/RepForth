@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Devam eden antrenman. -->
+<resources>
+    <string name="session_title">Antrenman</string>
+    <string name="session_exercise_of">%2$d egzersizden %1$d.</string>
+    <string name="session_set_of">%2$d setten %1$d.</string>
+    <string name="session_target_reps">%1$d tekrar</string>
+    <string name="session_target_time">%1$d saniye</string>
+    <string name="session_target_weight">%1$s kg</string>
+
+    <string name="session_seconds">Saniye</string>
+    <string name="session_reps">Tekrar</string>
+    <string name="session_weight">Ağırlık (kg)</string>
+    <string name="session_log_set">Seti kaydet</string>
+    <string name="session_skip_set">Seti atla</string>
+    <string name="session_next_exercise">Sonraki egzersiz</string>
+
+    <string name="session_resting">Dinlenme</string>
+    <string name="session_skip_rest">Dinlenmeyi atla</string>
+    <string name="session_rest_over">Dinlenme bitti</string>
+
+    <string name="session_pause">Duraklat</string>
+    <string name="session_resume">Devam et</string>
+    <string name="session_paused">Duraklatıldı</string>
+    <string name="session_finish">Antrenmanı bitir</string>
+    <string name="session_abandon">Bitirmeden çık</string>
+
+    <string name="session_completing">Son set tamam. Hazır olduğunda bitir.</string>
+    <string name="session_none">Devam eden bir antrenman yok.</string>
+
+    <string name="session_confirm_abandon_title">Bu antrenman sonlandırılsın mı?</string>
+    <string name="session_confirm_abandon_body">Kaydettiğin setler korunur.</string>
+    <string name="session_confirm_abandon_yes">Sonlandır</string>
+    <string name="session_confirm_abandon_no">Devam et</string>
+
+    <string name="plans_start">%1$s antrenmanını başlat</string>
+</resources>

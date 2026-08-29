@@ -12,6 +12,7 @@ import androidx.navigation.toRoute
 import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
+import com.repforth.feature.session.SessionRoute
 
 /**
  * The app's single navigation graph.
@@ -38,6 +39,14 @@ fun RepForthNavHost(
             PlansRoute(
                 onNewWorkout = { navController.navigate(Destination.Builder()) },
                 onEditPlan = { planId -> navController.navigate(Destination.Builder(planId)) },
+                onStartPlan = { planId -> navController.navigate(Destination.Session(planId)) },
+            )
+        }
+        composable<Destination.Session> { entry ->
+            val route = entry.toRoute<Destination.Session>()
+            SessionRoute(
+                templateId = route.templateId,
+                onExit = { navController.popBackStack() },
             )
         }
         composable<Destination.Builder> { entry ->

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -43,6 +44,7 @@ import com.repforth.core.model.WorkoutTemplate
 fun PlansRoute(
     onNewWorkout: () -> Unit,
     onEditPlan: (String) -> Unit,
+    onStartPlan: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlansViewModel = hiltViewModel(),
 ) {
@@ -52,6 +54,7 @@ fun PlansRoute(
         plans = plans,
         onNewWorkout = onNewWorkout,
         onEditPlan = onEditPlan,
+        onStartPlan = onStartPlan,
         onDelete = viewModel::onDelete,
         modifier = modifier,
     )
@@ -62,6 +65,7 @@ internal fun PlansScreen(
     plans: List<WorkoutTemplate>,
     onNewWorkout: () -> Unit,
     onEditPlan: (String) -> Unit,
+    onStartPlan: (String) -> Unit,
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -104,6 +108,7 @@ internal fun PlansScreen(
                 PlanCard(
                     plan = plan,
                     onClick = { onEditPlan(plan.id) },
+                    onStart = { onStartPlan(plan.id) },
                     onDelete = { onDelete(plan.id) },
                 )
             }
@@ -121,7 +126,12 @@ internal fun PlansScreen(
 }
 
 @Composable
-private fun PlanCard(plan: WorkoutTemplate, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun PlanCard(
+    plan: WorkoutTemplate,
+    onClick: () -> Unit,
+    onStart: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
             modifier = Modifier.padding(Space.s4),
@@ -141,6 +151,15 @@ private fun PlanCard(plan: WorkoutTemplate, onClick: () -> Unit, onDelete: () ->
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            // Start is the primary thing to do with a saved plan; tapping the
+            // card edits it. A plan is opened to be run far more often than to
+            // be changed, so running it is the button and editing is the body.
+            Button(
+                onClick = onStart,
+                modifier = Modifier.heightIn(min = Target.min),
+            ) {
+                Text(stringResource(R.string.plans_start_short))
             }
             IconButton(
                 onClick = onDelete,

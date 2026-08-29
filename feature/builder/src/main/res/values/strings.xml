@@ -36,5 +36,6 @@
     <string name="plans_empty">No saved workouts yet.</string>
     <string name="plans_empty_action">Build one and it will appear here.</string>
     <string name="plans_summary">%1$d exercises · about %2$d min</string>
+    <string name="plans_start_short">Start</string>
     <string name="plans_delete">Delete %1$s</string>
 </resources>

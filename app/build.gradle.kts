@@ -35,6 +35,7 @@ dependencies {
     implementation(project(":feature:builder"))
     implementation(project(":feature:exercises"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:session"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

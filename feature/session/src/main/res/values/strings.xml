@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The running workout. -->
+<resources>
+    <string name="session_title">Workout</string>
+    <string name="session_exercise_of">Exercise %1$d of %2$d</string>
+    <string name="session_set_of">Set %1$d of %2$d</string>
+    <string name="session_target_reps">%1$d reps</string>
+    <string name="session_target_time">%1$d seconds</string>
+    <string name="session_target_weight">%1$s kg</string>
+
+    <string name="session_seconds">Seconds</string>
+    <string name="session_reps">Reps</string>
+    <string name="session_weight">Weight (kg)</string>
+    <string name="session_log_set">Log set</string>
+    <string name="session_skip_set">Skip set</string>
+    <string name="session_next_exercise">Next exercise</string>
+
+    <string name="session_resting">Rest</string>
+    <string name="session_skip_rest">Skip rest</string>
+    <string name="session_rest_over">Rest is over</string>
+
+    <string name="session_pause">Pause</string>
+    <string name="session_resume">Resume</string>
+    <string name="session_paused">Paused</string>
+    <string name="session_finish">Finish workout</string>
+    <string name="session_abandon">End without finishing</string>
+
+    <string name="session_completing">Last set done. Finish when you are ready.</string>
+    <string name="session_none">No workout is running.</string>
+
+    <string name="session_confirm_abandon_title">End this workout?</string>
+    <string name="session_confirm_abandon_body">The sets you have logged are kept.</string>
+    <string name="session_confirm_abandon_yes">End it</string>
+    <string name="session_confirm_abandon_no">Keep going</string>
+
+    <string name="plans_start">Start %1$s</string>
+</resources>
