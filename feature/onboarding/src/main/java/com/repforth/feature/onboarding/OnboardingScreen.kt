@@ -62,14 +62,14 @@ import com.repforth.core.model.TrainingGoal
 import kotlin.math.roundToInt
 
 /**
- * The first-run questionnaire (Â§3).
+ * The first-run questionnaire (§3).
  *
  * Seven questions, one per screen. One-per-screen rather than a single long form
  * because every answer here is a constraint the rules engine will obey for
  * months, and a form invites scrolling past a question rather than answering it.
  *
  * There is no navigation out of this flow. The app shows onboarding while no
- * profile exists, so writing the profile is what ends it â€” see `AppViewModel`.
+ * profile exists, so writing the profile is what ends it — see `AppViewModel`.
  */
 @Composable
 fun OnboardingRoute(
@@ -548,10 +548,15 @@ private fun SegmentedProgress(completed: Int, total: Int, label: String) {
  * The value a slider position stands for.
  *
  * Rounding, not truncating. A snapped stop arrives as a float built by
- * interpolation, so the sixth stop of seven is 5.9999995 rather than 6.0 â€”
- * `toInt()` floored it and the day simply could not be chosen. Every other day
- * of the week landed on an exact float, which is why it looked like one broken
- * value rather than a broken conversion.
+ * interpolation, and at least one of them lands just below the whole number it
+ * represents, so `toInt()` floors it to the stop before. Measured on a device
+ * with the days slider: rebuilt with `toInt()` and swept across the track, the
+ * reachable values were 1, 2, 3, 4, 5, 7 — the entire band that should have
+ * read six read five instead.
+ *
+ * Which stop is inexact is Compose's business and is not worth naming here; a
+ * float32 model of the obvious interpolation says none of them are, and that
+ * model is demonstrably not what Compose computes.
  *
  * Internal rather than inlined at the call site so that
  * `ValueSliderConversionTest` exercises this exact function, and changing it
