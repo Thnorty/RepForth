@@ -17,6 +17,11 @@ dependencies {
     // The one door to plans and the profile.
     implementation(project(":core:user-data"))
 
+    // Coach's rules-only half (§3): the builder is where a generated plan
+    // lands, because §12 makes Coach a mode inside the builder rather than a
+    // screen of its own.
+    implementation(project(":core:rules"))
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)

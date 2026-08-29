@@ -41,4 +41,15 @@
     </plurals>
     <string name="plans_start_short">Start</string>
     <string name="plans_delete">Delete %1$s</string>
+    <string name="coach_open">Build one for me</string>
+    <string name="coach_title">What do you want to work?</string>
+    <string name="coach_close">Close</string>
+    <string name="coach_any">Pick the muscles you want, or leave the body map alone and Coach uses your goal, equipment and session length from onboarding.</string>
+    <string name="coach_generate">Build it</string>
+    <string name="coach_default_name">Coach plan</string>
+    <string name="coach_failed_no_profile">Finish onboarding first — Coach builds from your goal, equipment and session length.</string>
+    <string name="coach_failed_equipment">Nothing in the catalog uses the equipment you have. Add some in Settings, or pick different muscles.</string>
+    <string name="coach_failed_exclusions">Everything that fits is on your avoid list. Loosen it in Settings and try again.</string>
+    <string name="coach_failed_muscles">Nothing matched those muscles with your equipment. Try picking more of the body map.</string>
+    <string name="coach_failed_nothing">Coach could not build a workout from these constraints.</string>
 </resources>

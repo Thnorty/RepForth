@@ -72,17 +72,27 @@ fun BuilderRoute(
         if (state.saved) onSaved()
     }
 
-    if (state.picking) {
-        ExercisePicker(
+    when {
+        state.picking -> ExercisePicker(
             onPicked = { id, name -> viewModel.onExerciseAdded(id, name) },
             onClose = viewModel::onPickerClose,
             modifier = modifier,
         )
-    } else {
-        BuilderScreen(
+
+        state.coaching -> CoachScreen(
+            state = state,
+            onMuscleToggled = viewModel::onCoachMuscleToggled,
+            onRegionToggled = viewModel::onCoachRegionToggled,
+            onGenerate = viewModel::onGenerate,
+            onClose = viewModel::onCoachClose,
+            modifier = modifier,
+        )
+
+        else -> BuilderScreen(
             state = state,
             onNameChange = viewModel::onNameChange,
             onAddExercise = viewModel::onPickerOpen,
+            onCoach = viewModel::onCoachOpen,
             onRemove = viewModel::onRemove,
             onMove = viewModel::onMove,
             onSetsChange = viewModel::onSetsChange,
@@ -103,6 +113,7 @@ internal fun BuilderScreen(
     state: BuilderUiState,
     onNameChange: (String) -> Unit,
     onAddExercise: () -> Unit,
+    onCoach: () -> Unit,
     onRemove: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
     onSetsChange: (Int, Int) -> Unit,
@@ -172,6 +183,21 @@ internal fun BuilderScreen(
                         .heightIn(min = Target.min),
                 ) {
                     Text(stringResource(R.string.builder_add_exercise))
+                }
+            }
+
+            item(key = "coach") {
+                // Offered on the same footing as adding one by hand, not as a
+                // banner above it. §3 makes the rules engine the default rather
+                // than a fallback, and §12 puts it inside the builder — so it
+                // reads as the other way to fill this list, which is what it is.
+                OutlinedButton(
+                    onClick = onCoach,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Target.min),
+                ) {
+                    Text(stringResource(R.string.coach_open))
                 }
             }
         }

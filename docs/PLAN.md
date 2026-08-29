@@ -21,21 +21,27 @@ which decisions are closed so they are not reopened.
 | Phase | Guideline | State |
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
-| 1 — Local workout core | §19 | **In progress.** Engines and data done; the four screens remain |
+| 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
 | 2 — AI providers | §19 | Not started |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
 
-**A Galaxy S23 is attached and in use.** Onboarding and the catalog have been
-exercised on it by hand and by `adb input tap`, and three defects were found
-that way and no other: the launch crash from Auto Backup restoring an old
-database, onboarding drawing under the camera cutout, and a slider whose sixth
-value could not be selected.
+**Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
+and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
+larger than they sound. Every screen has been exercised on hardware by hand and
+by `adb input tap`.
 
-Instrumentation and screenshot tests still do not exist, so "verified on a
-device" here means someone looked, not that a test would catch a regression.
-Those three defects are the argument for building them.
+**Five defects have been found on a device and by nothing else:** the launch
+crash from Auto Backup restoring an old database, onboarding drawing under the
+camera cutout, a slider whose sixth value could not be selected, the Hilt crash
+when the locale was overridden, and the builder's Save button sitting behind the
+keyboard — enabled, invisible, and untappable, so a plan could not be saved at
+all.
+
+Three instrumentation tests now exist and they open screens; they would not have
+caught any of the five. Screenshot tests still do not exist. "Verified on a
+device" here means someone looked.
 
 ### Built so far
 
@@ -71,14 +77,29 @@ Those three defects are the argument for building them.
 | Two bugs from a `codex` audit; the synonym rule put in one place | `815b43d` |
 | A review of every answer before the profile is written | `5ba58aa` |
 | Body weight pre-selected, so nothing is translated on save | `77162c3` |
+| **Phase 1** — the workout builder and the plan library | `c445c76` |
+| **Phase 1** — the running workout screen | `614f638` |
+| **Phase 1** — export, import and the two deletes | `98ea28b` |
+| **Phase 1** — the Progress tab | `77a71bf` |
+| A second run of a plan no longer erases the first one's history | `91333a9` |
+| Workouts survive the screen going off, behind one owner of the engine | `68d4d5e` |
+| Notification permission asked for in onboarding, with its reason | `24a0a91` |
+| The icon set, a launcher icon, and back that asks before ending | `7360ce0` |
+| **Phase 1** — the Settings screen | `a9b6bde` |
+| Language and units do something; reset starts over | `b954a5e` |
+| The activity stays reachable when the locale is overridden | `032feee` |
+| Instrumentation tests, watched failing | `7c32abc`, `7ccea64` |
+| **Phase 1** — the Today tab; the last placeholder deleted | `75ba4a7` |
+| Pinned footers kept out from under the keyboard | `07c9c97` |
+| Counted nouns use plurals, in both languages | `1607efc` |
 
 Modules today: `app`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
-`feature:builder`, `feature:exercises`, `feature:history`,
-`feature:onboarding`, `feature:session`.
-245 unit tests across 32 classes, all passing. Room schema v1 exported and
-committed.
+`feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
+`feature:onboarding`, `feature:session`, `feature:settings`.
+313 unit tests across 42 classes, plus three instrumentation tests, all
+passing. Room schema v1 exported and committed.
 
 ---
 
@@ -326,6 +347,7 @@ usable at every step, not only at the end.
 | 1.5 Session engine | ✅ state machine, persistence, **and the running workout screen**. No service yet |
 | 1.6 History | ✅ statistics in `core:workout`, Progress tab in `feature:history` |
 | 1.7 Export / import / delete | ✅ `core:transfer`, **and the Settings screen that calls it** |
+| 1.8 Coach (rules-only) | ✅ the engine reaches the catalog, and the builder reaches the engine |
 
 **Deliberately not attempted without a device.** The engines are provable on the
 JVM; screens are not. Four things remain, and each needs hardware to be worth
@@ -343,11 +365,11 @@ trusting:
 5. ~~**Today tab**~~ — built. The workout in progress if there is one, otherwise
    the stalest saved plan with a quick start, otherwise a way to build one.
    `PlaceholderScreen` is deleted: every destination is now a real screen.
-6. **Foreground service and ongoing notification** (§10) — this is the piece
-   that genuinely cannot be written blind. Android 14's foreground-service types
-   and their permissions changed recently, and a Samsung device manages
-   background execution more aggressively than stock, so the only meaningful
-   test is on the actual phone.
+6. ~~**Foreground service and ongoing notification**~~ (§10) — built and
+   tested on hardware. A `specialUse` foreground service owned by a singleton
+   engine, so the screen and the service cannot disagree about the session, and
+   the countdown keeps running with the screen off.
+7. ~~**Coach, the rules-only half**~~ (§3, §8) — built. See 1.8 below.
 
 **The version bump nobody can skip.** Adding the user tables changed Room's
 identity hash. Anyone with the previous build installed must uninstall before
@@ -370,6 +392,39 @@ Worth noting what this says about the guards: every schema test passed, the
 packaged asset was correct inside the APK, and the app still could not start.
 The tests cover what the build produces, not what the platform does to it
 afterwards. That gap is what instrumentation tests are for.
+
+### 1.8 — Coach, the rules-only half — **done**
+
+The rules engine was finished, tested twenty-six ways, and had no callers. Its
+`generate` takes `List<ExerciseCandidate>` and `ExerciseRepository` had no method
+that produced one, so the app could not build a workout at all — §3 lists
+rules-only generation as MVP, and it was the last thing missing from it.
+
+Three pieces, all small, which is what made it easy to leave undone:
+
+- `ExerciseDao.candidates()` — a projection one column wider than the catalog
+  list's and every relation narrower than the detail query's. Unfiltered on
+  purpose: the engine's own filters are what produce §8's audit trail, and a
+  `WHERE` clause here would discard the reasoning before anyone could be shown
+  it.
+- `ExerciseRepository.candidates()` — two flat reads grouped once, rather than a
+  join that returns a row per secondary muscle and leaves the grouping to do
+  anyway.
+- Coach itself, inside the builder, because §12 already decided it is a mode
+  rather than a screen. It asks one question — which muscles, optional — and
+  drops the result in as ordinary editable rows through the same `toDrafts`
+  the saved-plan path uses. Nothing is written until the user saves.
+
+**It asks one question and no more.** The profile already holds the goal, the
+experience, the session length and the equipment. Asking again would be asking
+someone to repeat themselves, and letting the answers disagree with onboarding
+would be worse than not asking.
+
+**A failure names the constraint that caused it.** The engine records a reason
+per rejected candidate; Coach shows the one that dominated, so someone whose
+whole catalog was refused on equipment is told about equipment rather than
+"nothing matched". Verified on the device: profile defaults produced a 2×5×5
+plan at 180s rest, 32 minutes against the session ceiling, saved and listed.
 
 ### Known risks in this phase
 

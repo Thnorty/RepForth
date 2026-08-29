@@ -1,8 +1,10 @@
 package com.repforth.core.exercisedata
 
+import com.repforth.core.database.dao.ExerciseCandidateRow
 import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.dao.ExerciseSummaryRow
 import com.repforth.core.database.dao.ExerciseWithDetails
+import com.repforth.core.database.dao.SecondaryMuscleRow
 import com.repforth.core.model.ExerciseId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -28,6 +30,10 @@ class BatchSummaryTest {
         override suspend fun count(): Int = known.size
 
         override suspend fun findById(id: String): ExerciseWithDetails? = null
+
+        override suspend fun candidates(): List<ExerciseCandidateRow> = emptyList()
+
+        override suspend fun allSecondaryMuscles(): List<SecondaryMuscleRow> = emptyList()
 
         override fun observePage(limit: Int, offset: Int): Flow<List<ExerciseWithDetails>> =
             emptyFlow()

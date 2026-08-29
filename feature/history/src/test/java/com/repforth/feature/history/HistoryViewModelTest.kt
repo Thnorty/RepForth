@@ -6,6 +6,7 @@ import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
@@ -230,6 +231,8 @@ private class FakeExercises : ExerciseRepository {
     override fun observeCatalog(filter: CatalogFilter): Flow<List<ExerciseSummary>> = emptyFlow()
 
     override suspend fun find(id: ExerciseId): Exercise? = null
+
+    override suspend fun candidates(): List<ExerciseCandidate> = emptyList()
 
     override suspend fun summaries(
         ids: Collection<ExerciseId>,

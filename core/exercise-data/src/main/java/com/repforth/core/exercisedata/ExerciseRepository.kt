@@ -1,6 +1,7 @@
 package com.repforth.core.exercisedata
 
 import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import kotlinx.coroutines.flow.Flow
@@ -34,4 +35,14 @@ interface ExerciseRepository {
      * a list would silently shorten.
      */
     suspend fun summaries(ids: Collection<ExerciseId>): Map<ExerciseId, ExerciseSummary>
+
+    /**
+     * The whole catalog, in the shape the rules engine judges (§8).
+     *
+     * Everything, unfiltered: the engine records why each candidate was refused,
+     * and narrowing the list here would discard that reasoning before anyone
+     * could be shown it. 1,324 rows is small enough to hand over whole, and
+     * generation is a button press rather than something on a hot path.
+     */
+    suspend fun candidates(): List<ExerciseCandidate>
 }

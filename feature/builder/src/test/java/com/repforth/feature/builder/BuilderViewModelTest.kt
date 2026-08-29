@@ -5,6 +5,11 @@ import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.Exercise
+import com.repforth.core.common.time.FakeTimeSource
+import com.repforth.core.model.BodyRegion
+import com.repforth.core.model.allMuscles
+import com.repforth.core.model.synonyms
+import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
@@ -20,11 +25,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -42,13 +49,17 @@ class BuilderViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var templates: RecordingTemplateRepository
+    private lateinit var catalog: FakeExercises
+    private lateinit var profiles: FakeProfiles
     private lateinit var viewModel: BuilderViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         templates = RecordingTemplateRepository()
-        viewModel = BuilderViewModel(templates, FakeExercises(), FakeProfiles())
+        catalog = FakeExercises()
+        profiles = FakeProfiles()
+        viewModel = BuilderViewModel(templates, catalog, profiles, FakeTimeSource())
     }
 
     @After
@@ -57,6 +68,131 @@ class BuilderViewModelTest {
     }
 
     private val state get() = viewModel.uiState.value
+
+    // ---- Coach (§3, §8): the rules engine reaching the builder ----
+
+    private fun candidate(id: String, muscle: Muscle, equipment: Equipment = Equipment.BODY_WEIGHT) =
+        ExerciseCandidate(
+            id = ExerciseId(id),
+            name = "Exercise $id",
+            bodyPart = BodyPart.entries.first(),
+            target = muscle,
+            muscleGroup = muscle,
+            secondaryMuscles = emptySet(),
+            equipment = equipment,
+        )
+
+    @Test
+    fun `a generated plan arrives as editable drafts`() = runTest(dispatcher) {
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS), candidate("b", Muscle.LATS))
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertTrue("Coach produced rows", state.exercises.isNotEmpty())
+        assertNull(state.coachFailure)
+        assertFalse("The sheet closes on success", state.coaching)
+        assertFalse(state.generating)
+    }
+
+    /**
+     * The whole reason Coach lives inside the builder: nothing is written until
+     * the user says so, and every number stays editable first.
+     */
+    @Test
+    fun `generating saves nothing on its own`() = runTest(dispatcher) {
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertTrue("Nothing was persisted", templates.saved.isEmpty())
+    }
+
+    @Test
+    fun `a name the user typed survives generation`() = runTest(dispatcher) {
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+        viewModel.onNameChange("Leg day")
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertEquals("Leg day", state.name)
+    }
+
+    @Test
+    fun `an empty name takes the default`() = runTest(dispatcher) {
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertEquals("Coach plan", state.name)
+    }
+
+    @Test
+    fun `no profile is reported rather than generating from nothing`() = runTest(dispatcher) {
+        profiles.profile = null
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertEquals(CoachFailure.NO_PROFILE, state.coachFailure)
+        assertTrue("Nothing was generated from a profile that does not exist", state.exercises.isEmpty())
+        assertFalse(state.generating)
+    }
+
+    /**
+     * The dominant rejection is the one worth showing. A catalog refused
+     * entirely on equipment must not be reported as a muscle problem.
+     */
+    @Test
+    fun `an unusable catalog reports the constraint that blocked it`() = runTest(dispatcher) {
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS, Equipment.BARBELL),
+            candidate("b", Muscle.LATS, Equipment.BARBELL),
+        )
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertEquals(CoachFailure.EQUIPMENT, state.coachFailure)
+        assertTrue(state.exercises.isEmpty())
+    }
+
+    @Test
+    fun `an empty catalog does not crash`() = runTest(dispatcher) {
+        catalog.catalog = emptyList()
+
+        viewModel.onGenerate("Coach plan")
+        advanceUntilIdle()
+
+        assertEquals(CoachFailure.NOTHING, state.coachFailure)
+    }
+
+    /**
+     * A muscle the dataset names twice must be selected under both names, or the
+     * engine honours half the request and silently skips the rest.
+     */
+    @Test
+    fun `toggling a muscle takes its synonyms with it`() {
+        viewModel.onCoachMuscleToggled(Muscle.PECTORALS)
+
+        assertEquals(Muscle.PECTORALS.synonyms, state.coachMuscles)
+
+        viewModel.onCoachMuscleToggled(Muscle.PECTORALS)
+
+        assertTrue("Toggling off clears the whole group", state.coachMuscles.isEmpty())
+    }
+
+    @Test
+    fun `a region selects every muscle in it`() {
+        viewModel.onCoachRegionToggled(BodyRegion.entries.first())
+
+        assertEquals(BodyRegion.entries.first().allMuscles(), state.coachMuscles)
+    }
+
 
     private fun addExercises(count: Int) {
         repeat(count) { index ->
@@ -286,6 +422,10 @@ private class RecordingTemplateRepository : TemplateRepository {
 }
 
 private class FakeExercises : ExerciseRepository {
+    var catalog: List<ExerciseCandidate> = emptyList()
+
+    override suspend fun candidates(): List<ExerciseCandidate> = catalog
+
     override suspend fun count(): Int = 0
 
     override fun observeCatalog(filter: CatalogFilter): Flow<List<ExerciseSummary>> = emptyFlow()
@@ -308,20 +448,27 @@ private class FakeExercises : ExerciseRepository {
 }
 
 private class FakeProfiles : ProfileRepository {
-    override fun observeProfile(): Flow<UserProfile?> = MutableStateFlow(null)
+    /** Null models someone who has not finished onboarding. */
+    var profile: UserProfile? = DEFAULT_PROFILE
 
-    override suspend fun getProfile(): UserProfile = UserProfile(
-        id = "p",
-        goal = com.repforth.core.model.TrainingGoal.STRENGTH,
-        experience = com.repforth.core.model.ExperienceLevel.INTERMEDIATE,
-        trainingDaysPerWeek = 3,
-        sessionLengthMs = FAKE_CEILING_MINUTES * 60_000L,
-        availableEquipment = setOf(Equipment.BODY_WEIGHT),
-        preferredMuscles = emptySet(),
-        exclusions = emptySet(),
-    )
+    override fun observeProfile(): Flow<UserProfile?> = MutableStateFlow(profile)
+
+    override suspend fun getProfile(): UserProfile? = profile
 
     override suspend fun save(profile: UserProfile) = Unit
 
     override suspend fun deleteAll() = Unit
+
+    private companion object {
+        val DEFAULT_PROFILE = UserProfile(
+            id = "p",
+            goal = com.repforth.core.model.TrainingGoal.STRENGTH,
+            experience = com.repforth.core.model.ExperienceLevel.INTERMEDIATE,
+            trainingDaysPerWeek = 3,
+            sessionLengthMs = FAKE_CEILING_MINUTES * 60_000L,
+            availableEquipment = setOf(Equipment.BODY_WEIGHT),
+            preferredMuscles = emptySet(),
+            exclusions = emptySet(),
+        )
+    }
 }

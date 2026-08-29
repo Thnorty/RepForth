@@ -41,4 +41,15 @@
     </plurals>
     <string name="plans_start_short">Başlat</string>
     <string name="plans_delete">%1$s antrenmanını sil</string>
+    <string name="coach_open">Benim için oluştur</string>
+    <string name="coach_title">Neyi çalışmak istiyorsun?</string>
+    <string name="coach_close">Kapat</string>
+    <string name="coach_any">İstediğin kasları seç ya da vücut haritasına hiç dokunma; Koç, açılıştaki hedefini, ekipmanını ve antrenman süreni kullansın.</string>
+    <string name="coach_generate">Oluştur</string>
+    <string name="coach_default_name">Koç planı</string>
+    <string name="coach_failed_no_profile">Önce açılış sorularını tamamla — Koç senin hedefine, ekipmanına ve antrenman süresine göre kuruyor.</string>
+    <string name="coach_failed_equipment">Katalogda sahip olduğun ekipmanla yapılabilecek bir şey yok. Ayarlar\'dan ekipman ekle ya da başka kaslar seç.</string>
+    <string name="coach_failed_exclusions">Uyan her şey kaçındığın listesinde. Ayarlar\'dan listeyi gevşetip tekrar dene.</string>
+    <string name="coach_failed_muscles">Bu kaslar için ekipmanına uyan bir şey bulunamadı. Vücut haritasından daha fazla yer seçmeyi dene.</string>
+    <string name="coach_failed_nothing">Koç bu kısıtlarla bir antrenman kuramadı.</string>
 </resources>

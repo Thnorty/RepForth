@@ -1,11 +1,13 @@
 package com.repforth.core.exercisedata
 
 import com.repforth.core.database.dao.ExerciseDao
+import com.repforth.core.database.dao.ExerciseCandidateRow
 import com.repforth.core.database.dao.ExerciseSummaryRow
 import com.repforth.core.database.mapping.toDomain
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Muscle
@@ -55,6 +57,23 @@ internal class RoomExerciseRepository @Inject constructor(
             .associate { row -> ExerciseId(row.id) to row.toSummary() }
     }
 
+    /**
+     * Two queries and a join in memory, rather than one query with a join.
+     *
+     * A LEFT JOIN onto the secondary-muscle table would return one row per
+     * muscle and leave this reassembling the groups anyway, over roughly four
+     * times the rows. Reading both tables flat and grouping once is less work
+     * and says plainly what it is doing.
+     */
+    override suspend fun candidates(): List<ExerciseCandidate> {
+        val secondaryByExercise = dao.allSecondaryMuscles()
+            .groupBy(
+                keySelector = { it.exerciseId },
+                valueTransform = { Muscle.fromSlug(it.muscle) ?: error("Unknown muscle '${it.muscle}'") },
+            )
+        return dao.candidates().map { row -> row.toCandidate(secondaryByExercise[row.id].orEmpty()) }
+    }
+
     private companion object {
         /** SQLite's default parameter ceiling is 999; this stays well clear. */
         const val SQLITE_VARIABLE_LIMIT = 500
@@ -71,5 +90,15 @@ private fun ExerciseSummaryRow.toSummary() = ExerciseSummary(
     name = name,
     bodyPart = BodyPart.fromSlug(bodyPart) ?: error("Unknown body part '$bodyPart'"),
     target = Muscle.fromSlug(target) ?: error("Unknown muscle '$target'"),
+    equipment = Equipment.fromSlug(equipment) ?: error("Unknown equipment '$equipment'"),
+)
+
+private fun ExerciseCandidateRow.toCandidate(secondary: List<Muscle>) = ExerciseCandidate(
+    id = ExerciseId(id),
+    name = name,
+    bodyPart = BodyPart.fromSlug(bodyPart) ?: error("Unknown body part '$bodyPart'"),
+    target = Muscle.fromSlug(target) ?: error("Unknown muscle '$target'"),
+    muscleGroup = Muscle.fromSlug(muscleGroup) ?: error("Unknown muscle '$muscleGroup'"),
+    secondaryMuscles = secondary.toSet(),
     equipment = Equipment.fromSlug(equipment) ?: error("Unknown equipment '$equipment'"),
 )

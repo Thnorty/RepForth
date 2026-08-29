@@ -2,12 +2,22 @@ package com.repforth.feature.builder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.common.time.TimeSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.ExerciseId
+import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.model.toggleRegion
+import com.repforth.core.model.toggleSynonyms
+import com.repforth.core.model.BodyRegion
+import com.repforth.core.rules.GenerationRequest
+import com.repforth.core.rules.Rejection
+import com.repforth.core.rules.RejectionReason
+import com.repforth.core.rules.RulesEngine
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,6 +70,25 @@ data class DraftExercise(
     }
 }
 
+/**
+ * Why Coach came back empty.
+ *
+ * A generated plan that fails silently is indistinguishable from one that is
+ * still thinking, and "no exercises matched" is useless to someone who has
+ * excluded most of the catalog without realising. The engine records a reason
+ * per rejected candidate (§8); this is the one that dominated, which is the
+ * one worth putting on screen.
+ */
+enum class CoachFailure {
+    /** Onboarding has not run, so there are no constraints to build from. */
+    NO_PROFILE,
+    EQUIPMENT,
+    EXCLUSIONS,
+    MUSCLES,
+    /** The catalog is empty, or nothing fitted the session length. */
+    NOTHING,
+}
+
 data class BuilderUiState(
     /** Null while building a new plan; set when editing a saved one. */
     val planId: String? = null,
@@ -70,6 +99,13 @@ data class BuilderUiState(
     val saved: Boolean = false,
     /** The user's session ceiling in minutes, or null before onboarding. */
     val sessionCeilingMinutes: Int? = null,
+    /** Coach's sheet is open. */
+    val coaching: Boolean = false,
+    /** Muscles asked for. Empty means "anything my profile allows". */
+    val coachMuscles: Set<Muscle> = emptySet(),
+    val generating: Boolean = false,
+    /** Why the last generation produced nothing, or null. */
+    val coachFailure: CoachFailure? = null,
 ) {
     val isEditing: Boolean get() = planId != null
 
@@ -121,6 +157,7 @@ class BuilderViewModel @Inject constructor(
     private val templates: TemplateRepository,
     private val exercises: ExerciseRepository,
     private val profiles: ProfileRepository,
+    private val time: TimeSource,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuilderUiState())
@@ -149,21 +186,7 @@ class BuilderViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 planId = template.id,
                 name = template.name,
-                exercises = template.exercises.map { planned ->
-                    val reps = planned.target as? ExerciseTarget.Reps
-                    val duration = planned.target as? ExerciseTarget.Duration
-                    DraftExercise(
-                        id = planned.id,
-                        exerciseId = planned.exerciseId,
-                        name = names[planned.exerciseId]?.name ?: planned.exerciseId.value,
-                        sets = planned.target.sets,
-                        reps = reps?.reps ?: 10,
-                        durationSeconds = ((duration?.durationMs ?: 30_000L) / 1000L).toInt(),
-                        weightKg = planned.target.weightKg,
-                        restSeconds = (planned.restMs / 1000L).toInt(),
-                        timed = duration != null,
-                    )
-                },
+                exercises = template.exercises.toDrafts(names),
             )
         }
     }
@@ -173,6 +196,87 @@ class BuilderViewModel @Inject constructor(
     fun onPickerOpen() = update { copy(picking = true) }
 
     fun onPickerClose() = update { copy(picking = false) }
+
+    fun onCoachOpen() = update { copy(coaching = true, coachFailure = null) }
+
+    fun onCoachClose() = update { copy(coaching = false) }
+
+    /**
+     * Toggling one muscle toggles its synonyms with it.
+     *
+     * The catalog names the same muscle more than one way, and a request for
+     * "pecs" that leaves "chest" unselected would silently exclude half the
+     * exercises someone just asked for. The rule lives in `core:model` so the
+     * onboarding and Coach cannot drift apart about what a muscle is.
+     */
+    fun onCoachMuscleToggled(muscle: Muscle) = update {
+        copy(coachMuscles = coachMuscles.toggleSynonyms(muscle), coachFailure = null)
+    }
+
+    fun onCoachRegionToggled(region: BodyRegion) = update {
+        copy(coachMuscles = coachMuscles.toggleRegion(region), coachFailure = null)
+    }
+
+    /**
+     * Builds a plan from the profile and the rules engine (§3, §8).
+     *
+     * The result lands as the same draft list the manual path produces, so it
+     * is editable before it is saved and nothing is written until the user says
+     * so. That is the point of putting Coach inside the builder rather than
+     * beside it: a generated plan is a starting point, not a decision.
+     *
+     * [defaultName] comes from the screen because it is a translated string and
+     * this class has no resources. It is used only when the field is empty —
+     * overwriting a name someone typed would be the generator taking a decision
+     * that was not its to take.
+     */
+    fun onGenerate(defaultName: String) {
+        if (_uiState.value.generating) return
+        viewModelScope.launch {
+            update { copy(generating = true, coachFailure = null) }
+            val profile = profiles.getProfile()
+            if (profile == null) {
+                update { copy(generating = false, coachFailure = CoachFailure.NO_PROFILE) }
+                return@launch
+            }
+
+            val request = GenerationRequest(
+                profile = profile,
+                targetMuscles = _uiState.value.coachMuscles,
+                // §8 requires a seed to be reproducible, not that it be fixed.
+                // Taking it from the clock is what makes a second tap a second
+                // answer rather than the same plan again.
+                seed = time.now(),
+            )
+            val outcome = RulesEngine().generate(
+                request = request,
+                candidates = exercises.candidates(),
+                planName = _uiState.value.name.ifBlank { defaultName },
+            )
+
+            val plan = outcome.plan
+            if (plan == null) {
+                update {
+                    copy(generating = false, coachFailure = outcome.rejections.dominantFailure())
+                }
+                return@launch
+            }
+
+            val names = exercises.summaries(plan.exercises.map { it.exerciseId })
+            update {
+                copy(
+                    // Already resolved: planName above is the typed name when
+                    // there is one and the default when there is not, so
+                    // re-deciding it here would be the same rule written twice.
+                    name = plan.name,
+                    exercises = plan.exercises.toDrafts(names),
+                    generating = false,
+                    coaching = false,
+                    coachFailure = null,
+                )
+            }
+        }
+    }
 
     fun onExerciseAdded(id: ExerciseId, name: String) = update {
         copy(
@@ -287,3 +391,53 @@ class BuilderViewModel @Inject constructor(
         val REST_RANGE = 0..600
     }
 }
+
+/**
+ * A saved or generated plan, as editable rows.
+ *
+ * One mapping, used by both paths. A generated plan is not a different kind of
+ * thing from a stored one — §12 asks for it to be editable before it starts,
+ * and the cheapest way to guarantee that is for it to arrive as the same type
+ * through the same function.
+ *
+ * An exercise the catalog no longer has keeps its id as a name rather than
+ * vanishing: losing a row silently would let someone save a shorter plan than
+ * the one they opened, without being told.
+ */
+private fun List<PlannedExercise>.toDrafts(
+    names: Map<ExerciseId, ExerciseSummary>,
+): List<DraftExercise> = map { planned ->
+    val reps = planned.target as? ExerciseTarget.Reps
+    val duration = planned.target as? ExerciseTarget.Duration
+    DraftExercise(
+        id = planned.id,
+        exerciseId = planned.exerciseId,
+        name = names[planned.exerciseId]?.name ?: planned.exerciseId.value,
+        sets = planned.target.sets,
+        reps = reps?.reps ?: DEFAULT_DRAFT_REPS,
+        durationSeconds = ((duration?.durationMs ?: DEFAULT_DRAFT_DURATION_MS) / 1000L).toInt(),
+        weightKg = planned.target.weightKg,
+        restSeconds = (planned.restMs / 1000L).toInt(),
+        timed = duration != null,
+    )
+}
+
+/**
+ * The reason to show when nothing could be built.
+ *
+ * The most common rejection, because that is the constraint actually doing the
+ * blocking: someone whose whole catalog was refused on equipment is told about
+ * equipment, not about the muscle they picked.
+ */
+private fun List<Rejection>.dominantFailure(): CoachFailure {
+    val reason = groupingBy { it.reason }.eachCount().maxByOrNull { it.value }?.key
+    return when (reason) {
+        RejectionReason.EQUIPMENT_UNAVAILABLE -> CoachFailure.EQUIPMENT
+        RejectionReason.EXCLUDED_EXERCISE, RejectionReason.EXCLUDED_MUSCLE -> CoachFailure.EXCLUSIONS
+        RejectionReason.WRONG_MUSCLE -> CoachFailure.MUSCLES
+        else -> CoachFailure.NOTHING
+    }
+}
+
+private const val DEFAULT_DRAFT_REPS = 10
+private const val DEFAULT_DRAFT_DURATION_MS = 30_000L

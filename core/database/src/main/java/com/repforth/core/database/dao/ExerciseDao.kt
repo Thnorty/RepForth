@@ -43,6 +43,30 @@ data class ExerciseSummaryRow(
     @ColumnInfo(name = "equipment") val equipment: String,
 )
 
+/**
+ * A row the rules engine can judge (§8).
+ *
+ * Wider than [ExerciseSummaryRow] by one column - `muscle_group`, which the
+ * generator needs to spread work across a body and the catalog list does not
+ * show - and narrower than [ExerciseWithDetails] by every relation. Generating
+ * a plan reads the whole catalog, so pulling instruction steps for 1,324 rows
+ * to choose eight of them is the difference between a query and a stall.
+ */
+data class ExerciseCandidateRow(
+    @ColumnInfo(name = "id") val id: String,
+    @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "body_part") val bodyPart: String,
+    @ColumnInfo(name = "target") val target: String,
+    @ColumnInfo(name = "muscle_group") val muscleGroup: String,
+    @ColumnInfo(name = "equipment") val equipment: String,
+)
+
+/** One exercise's secondary muscle, joined back up in the repository. */
+data class SecondaryMuscleRow(
+    @ColumnInfo(name = "exercise_id") val exerciseId: String,
+    @ColumnInfo(name = "muscle") val muscle: String,
+)
+
 @Dao
 interface ExerciseDao {
 
@@ -120,4 +144,29 @@ interface ExerciseDao {
         """
     )
     suspend fun summariesFor(ids: List<String>): List<ExerciseSummaryRow>
+
+    /**
+     * Every exercise, as something the rules engine can accept.
+     *
+     * Unfiltered on purpose. The engine's own filters produce the audit trail
+     * §8 requires - which candidate was dropped and why - and a WHERE clause
+     * here would throw that away before it could be recorded, leaving "nothing
+     * matched" as the only thing left to tell someone who has excluded most of
+     * the catalog without realising.
+     *
+     * Ordered by id so a generated plan cannot depend on the order SQLite
+     * happened to return rows in; §8 requires the same seed to give the same
+     * plan.
+     */
+    @Query(
+        """
+        SELECT id, name, body_part, target, muscle_group, equipment FROM exercise
+        ORDER BY id
+        """
+    )
+    suspend fun candidates(): List<ExerciseCandidateRow>
+
+    /** Every secondary muscle in the catalog, for [candidates] to join. */
+    @Query("SELECT exercise_id, muscle FROM exercise_secondary_muscle")
+    suspend fun allSecondaryMuscles(): List<SecondaryMuscleRow>
 }
