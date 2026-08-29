@@ -2,22 +2,16 @@ package com.repforth.feature.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.repforth.core.common.time.TimeSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.ExerciseTarget
-import com.repforth.core.userdata.SessionRepository
-import com.repforth.core.userdata.TemplateRepository
-import com.repforth.core.workout.CommandResult
 import com.repforth.core.workout.SessionCommand
-import com.repforth.core.workout.SessionEngine
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** What the running workout screen draws. */
@@ -47,148 +41,102 @@ data class SessionUiState(
 }
 
 /**
- * Drives the workout state machine and writes down what it says (§10).
+ * The running workout screen's half of the session.
  *
- * The engine is pure and holds nothing, so this is the piece that gives it a
- * clock and a database. Two rules from §10 shape it:
- *
- * Every applied transition is persisted before anything else acts on it. The
- * snapshot is written first and the UI state updated after, so a process death
- * between them loses a frame rather than a set.
- *
- * The rest timer is not a countdown. The engine holds an absolute monotonic
- * deadline and this recomputes the remainder on a tick, so a recomposition, a
- * slow frame, or a few seconds of the process being frozen cannot make the
- * clock drift.
+ * The state machine, the clock and the database belong to [SessionController],
+ * which the foreground service shares. This turns snapshots into something
+ * drawable and taps into commands, and owns nothing that could disagree with the
+ * service while both are running.
  */
 @HiltViewModel
 class SessionViewModel @Inject constructor(
-    private val sessions: SessionRepository,
-    private val templates: TemplateRepository,
+    private val controller: SessionController,
     private val exercises: ExerciseRepository,
-    private val time: TimeSource,
 ) : ViewModel() {
 
-    private val engine = SessionEngine(time)
     private val _uiState = MutableStateFlow(SessionUiState())
-
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            val restored = sessions.restoreActive()
+            val restored = controller.restore()
             if (restored != null) {
                 adopt(restored)
             } else {
                 _uiState.value = SessionUiState(loading = false)
             }
+
+            // Whatever the service does arrives here, so a rest that ended while
+            // the app was in the background is already applied by the time the
+            // screen is looked at again.
+            controller.state.collect { snapshot ->
+                if (snapshot != null) adopt(snapshot)
+            }
         }
     }
 
-    /**
-     * Starts a workout from a plan, unless one is already running.
-     *
-     * At most one session is active at a time, which the repository also
-     * enforces. Refusing here rather than replacing means tapping Start twice,
-     * or returning to the screen, cannot discard a workout in progress.
-     */
     fun start(templateId: String) {
-        if (_uiState.value.snapshot?.phase?.isTerminal == false) return
         viewModelScope.launch {
-            val template = templates.find(templateId) ?: return@launch
-            val snapshot = engine.start(UUID.randomUUID().toString(), template)
-            sessions.persist(snapshot)
-            adopt(snapshot)
-            dispatch(SessionCommand.Begin(newCommandId()))
+            val started = controller.start(templateId) ?: return@launch
+            adopt(started)
+            controller.dispatch(SessionCommand.Begin(controller.newCommandId()))
         }
     }
 
     fun onCompleteSet(reps: Int?, weightKg: Double?, durationMs: Long?) = dispatch(
         SessionCommand.CompleteSet(
-            commandId = newCommandId(),
+            commandId = controller.newCommandId(),
             reps = reps,
             weightKg = weightKg,
             durationMs = durationMs,
         ),
     )
 
-    fun onSkipSet() = dispatch(SessionCommand.SkipSet(newCommandId()))
+    fun onSkipSet() = dispatch(SessionCommand.SkipSet(controller.newCommandId()))
 
-    fun onSkipRest() = dispatch(SessionCommand.SkipRest(newCommandId()))
+    fun onSkipRest() = dispatch(SessionCommand.SkipRest(controller.newCommandId()))
 
-    fun onNextExercise() = dispatch(SessionCommand.NextExercise(newCommandId()))
+    fun onNextExercise() = dispatch(SessionCommand.NextExercise(controller.newCommandId()))
 
-    fun onPause() = dispatch(SessionCommand.Pause(newCommandId()))
+    fun onPause() = dispatch(SessionCommand.Pause(controller.newCommandId()))
 
-    fun onResume() = dispatch(SessionCommand.Resume(newCommandId()))
+    fun onResume() = dispatch(SessionCommand.Resume(controller.newCommandId()))
 
-    fun onFinish() = dispatch(SessionCommand.Finish(newCommandId()))
+    fun onFinish() = dispatch(SessionCommand.Finish(controller.newCommandId()))
 
-    fun onAbandon() = dispatch(SessionCommand.Abandon(newCommandId()))
+    fun onAbandon() = dispatch(SessionCommand.Abandon(controller.newCommandId()))
 
     /**
-     * Applies a command and writes the result down.
+     * Refreshes the rest remainder, and lets the controller end the rest.
      *
-     * A rejected or duplicate command changes nothing and is not persisted:
-     * writing an unchanged snapshot would bump nothing but would still be a
-     * transaction, and §10's idempotency guarantee is that a replay is
-     * *harmless*, not that it is recorded.
+     * Called by the screen on a timer rather than looped here. An unbounded loop
+     * in a ViewModel never lets a test's virtual clock go idle, and the first
+     * test written against one hung rather than failing.
      */
-    private fun dispatch(command: SessionCommand) {
-        val current = _uiState.value.snapshot ?: return
-        when (val result = engine.apply(current, command)) {
-            is CommandResult.Applied -> viewModelScope.launch {
-                sessions.persist(result.state)
-                adopt(result.state)
-            }
-
-            is CommandResult.Unchanged, is CommandResult.Rejected -> Unit
+    fun onTick() {
+        viewModelScope.launch {
+            controller.onRestTick()
+            _uiState.value = _uiState.value.copy(restRemainingMs = controller.restRemaining())
         }
     }
 
+    private fun dispatch(command: SessionCommand) {
+        viewModelScope.launch { controller.dispatch(command) }
+    }
+
     private suspend fun adopt(snapshot: SessionSnapshot) {
-        val names = if (_uiState.value.names.isEmpty()) {
+        val names = _uiState.value.names.ifEmpty {
             exercises.summaries(snapshot.exercises.map { it.exerciseId })
                 .entries.associate { (id, summary) -> id.value to summary.name }
-        } else {
-            _uiState.value.names
         }
         _uiState.value = _uiState.value.copy(
             snapshot = snapshot,
             names = names,
-            restRemainingMs = snapshot.restRemaining(time.elapsedRealtime()),
+            restRemainingMs = controller.restRemaining(),
             loading = false,
-            finished = snapshot.phase == SessionPhase.COMPLETED ||
-                snapshot.phase == SessionPhase.ABANDONED,
+            finished = snapshot.phase.isTerminal,
         )
     }
-
-    /**
-     * Refreshes the rest remainder, and tells the engine when it reaches zero.
-     *
-     * Called by the screen on a timer rather than looped here. The engine has no
-     * clock to notice with — it is a pure function — so someone has to watch and
-     * say so, and putting the loop in the ViewModel made it unbounded: a test's
-     * virtual clock never went idle and the first test written against it hung
-     * instead of failing. A plain function is also directly testable, which a
-     * loop is not.
-     *
-     * The consequence is that rest does not advance while nothing is watching.
-     * That is exactly the gap §10's foreground service exists to close, and it
-     * is not built yet — recorded in docs/PLAN.md rather than papered over.
-     */
-    fun onTick() {
-        val snapshot = _uiState.value.snapshot ?: return
-        if (snapshot.phase != SessionPhase.RESTING) return
-
-        val remaining = snapshot.restRemaining(time.elapsedRealtime())
-        _uiState.value = _uiState.value.copy(restRemainingMs = remaining)
-        if (remaining != null && remaining <= 0L) {
-            dispatch(SessionCommand.RestElapsed(newCommandId()))
-        }
-    }
-
-    private fun newCommandId() = UUID.randomUUID().toString()
 
     internal companion object {
         /**

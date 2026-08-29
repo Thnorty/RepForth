@@ -34,4 +34,6 @@
     <string name="session_confirm_abandon_no">Devam et</string>
 
     <string name="plans_start">%1$s antrenmanını başlat</string>
+    <string name="session_channel_name">Devam eden antrenman</string>
+    <string name="session_channel_description">Antrenman sürerken mevcut seti ve dinlenme sayacını gösterir.</string>
 </resources>

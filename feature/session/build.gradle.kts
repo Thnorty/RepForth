@@ -19,6 +19,13 @@ dependencies {
     implementation(project(":core:user-data"))
     implementation(project(":core:common"))
 
+    // NotificationCompat and ContextCompat, for the ongoing workout
+    // notification the foreground service posts.
+    implementation(libs.androidx.core.ktx)
+
+    // rememberLauncherForActivityResult, for the notification permission.
+    implementation(libs.androidx.activity.compose)
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)

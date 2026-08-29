@@ -47,13 +47,15 @@ class SessionViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val time = FakeTimeSource()
     private lateinit var sessions: RecordingSessionRepository
+    private lateinit var controller: SessionController
     private lateinit var viewModel: SessionViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         sessions = RecordingSessionRepository()
-        viewModel = SessionViewModel(sessions, FakeTemplates(), FakeExercises(), time)
+        controller = SessionController(sessions, FakeTemplates(), time)
+        viewModel = SessionViewModel(controller, FakeExercises())
     }
 
     @After
@@ -209,7 +211,10 @@ class SessionViewModelTest {
         testScheduler.advanceUntilIdle()
         val running = sessions.persisted.last()
 
-        val revived = SessionViewModel(sessions, FakeTemplates(), FakeExercises(), time)
+        val revived = SessionViewModel(
+            SessionController(sessions, FakeTemplates(), time),
+            FakeExercises(),
+        )
         testScheduler.advanceUntilIdle()
 
         assertNotNull(revived.uiState.value.snapshot)

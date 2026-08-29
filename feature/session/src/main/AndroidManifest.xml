@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        §10 wants a foreground service only where background-execution rules
+        require one for a user-visible active session. A running workout is
+        exactly that: the rest countdown has to keep running with the screen off.
+
+        specialUse rather than health. health is the obvious reading of
+        "workout", but its prerequisites are BODY_SENSORS, ACTIVITY_RECOGNITION
+        or HIGH_SAMPLING_RATE_SENSORS — sensitive permissions for hardware §3
+        lists as non-goals. Requesting one to run a timer would claim a
+        capability this app does not have.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <service
+            android:name=".WorkoutService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps a workout timer and its rest countdown running while the
+                    screen is off. The app has no sensor, location or health-data access." />
+        </service>
+    </application>
+
+</manifest>

@@ -1,5 +1,10 @@
 package com.repforth.feature.session
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -66,12 +71,36 @@ fun SessionRoute(
         if (state.finished) onExit()
     }
 
-    // The countdown's heartbeat. Keyed on whether we are resting, so it exists
-    // only while there is something to count and stops when the screen leaves.
+    // The countdown's heartbeat while the screen is up. The service keeps its
+    // own, coarser one for when it is not.
     LaunchedEffect(state.isResting) {
         while (state.isResting) {
             viewModel.onTick()
             delay(SessionViewModel.TICK_MS)
+        }
+    }
+
+    val context = LocalContext.current
+
+    // Asked for at the moment it is needed, not on first launch: a permission
+    // prompt before the user has done anything is a prompt with no context.
+    // Refusing it costs the notification, not the workout.
+    val notifications = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // §10: the service lives exactly as long as the workout does.
+    LaunchedEffect(state.snapshot?.phase) {
+        val phase = state.snapshot?.phase
+        if (phase != null && !phase.isTerminal) {
+            WorkoutService.start(context)
+        } else {
+            WorkoutService.stop(context)
         }
     }
 

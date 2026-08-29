@@ -34,4 +34,6 @@
     <string name="session_confirm_abandon_no">Keep going</string>
 
     <string name="plans_start">Start %1$s</string>
+    <string name="session_channel_name">Active workout</string>
+    <string name="session_channel_description">Shows the current set and rest timer while a workout is running.</string>
 </resources>
