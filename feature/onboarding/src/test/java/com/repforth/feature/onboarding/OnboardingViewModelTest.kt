@@ -141,14 +141,18 @@ class OnboardingViewModelTest {
         assertEquals(OnboardingStep.REVIEW, state.step)
     }
 
+    /**
+     * Optional means Next works without an answer, not that a second button
+     * exists to say so.
+     */
     @Test
-    fun `skipping an optional question keeps its answers empty and moves on`() {
+    fun `an optional question can be passed without answering it`() {
         advanceTo(OnboardingStep.MUSCLES)
 
-        viewModel.onSkip()
+        viewModel.onNext()
 
         assertEquals(OnboardingStep.AVOID, state.step)
-        assertTrue("Skip must not invent an answer", state.preferredMuscles.isEmpty())
+        assertTrue("Moving on must not invent an answer", state.preferredMuscles.isEmpty())
     }
 
     /**
@@ -161,13 +165,12 @@ class OnboardingViewModelTest {
      * background timer, not the app.
      */
     @Test
-    fun `the notification step can be skipped`() {
+    fun `the notification step never blocks`() {
         advanceTo(OnboardingStep.NOTIFICATIONS)
 
-        assertTrue(OnboardingStep.NOTIFICATIONS.optional)
         assertTrue(state.canAdvance)
 
-        viewModel.onSkip()
+        viewModel.onNext()
         assertEquals(OnboardingStep.REVIEW, state.step)
     }
 
@@ -225,8 +228,18 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `equipment has no skip, because it has no empty answer`() {
-        assertFalse(OnboardingStep.EQUIPMENT.optional)
+    fun `every question except goal and experience and equipment can be passed`() {
+        answerRequiredQuestions()
+        OnboardingStep.ordered
+            .filterNot {
+                it == OnboardingStep.GOAL ||
+                    it == OnboardingStep.EXPERIENCE ||
+                    it == OnboardingStep.EQUIPMENT
+            }
+            .forEach { step ->
+                while (state.step != step) viewModel.onNext()
+                assertTrue("$step should not require an answer", state.canAdvance)
+            }
     }
 
     @Test

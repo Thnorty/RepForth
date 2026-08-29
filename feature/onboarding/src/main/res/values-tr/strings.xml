@@ -5,7 +5,6 @@
     <string name="onboarding_next">İleri</string>
     <string name="onboarding_back">Geri</string>
     <string name="onboarding_finish">Tamamla</string>
-    <string name="onboarding_skip">Atla</string>
     <string name="onboarding_step">Adım %1$d / %2$d</string>
 
     <string name="onboarding_goal_title">Ne için antrenman yapıyorsun?</string>

@@ -100,7 +100,6 @@ fun OnboardingRoute(
         onJumpTo = viewModel::onJumpTo,
         onBack = viewModel::onBack,
         onNext = viewModel::onNext,
-        onSkip = viewModel::onSkip,
         onFinish = viewModel::onFinish,
         modifier = modifier,
     )
@@ -122,7 +121,6 @@ internal fun OnboardingScreen(
     onJumpTo: (OnboardingStep) -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
-    onSkip: () -> Unit,
     onFinish: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -275,7 +273,6 @@ internal fun OnboardingScreen(
             state = state,
             onBack = onBack,
             onNext = onNext,
-            onSkip = onSkip,
             onFinish = onFinish,
         )
     }
@@ -315,7 +312,6 @@ private fun StepFooter(
     state: OnboardingUiState,
     onBack: () -> Unit,
     onNext: () -> Unit,
-    onSkip: () -> Unit,
     onFinish: () -> Unit,
 ) {
     Row(
@@ -328,14 +324,6 @@ private fun StepFooter(
         if (!state.isFirstStep) {
             TextButton(onClick = onBack) {
                 Text(stringResource(R.string.onboarding_back))
-            }
-        }
-
-        // Skip sits beside Back rather than beside the primary action, so the
-        // button under the thumb is never the one that discards the question.
-        if (state.step.optional && !state.isLastStep) {
-            TextButton(onClick = onSkip) {
-                Text(stringResource(R.string.onboarding_skip))
             }
         }
 

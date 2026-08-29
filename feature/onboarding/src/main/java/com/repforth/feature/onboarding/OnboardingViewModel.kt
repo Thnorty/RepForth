@@ -24,21 +24,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * The questions, in order, and which of them may be left unanswered.
+ * The questions, in order.
  *
  * An enum rather than an integer, so a step cannot be added without the `when`
- * that renders it failing to compile. [optional] drives whether Skip appears —
- * the last two shape a plan but a person with no answer to them should not be
- * stuck at the door.
+ * that renders it failing to compile.
+ *
+ * There is no "optional" flag and no Skip button. Whether a question can be
+ * left unanswered is [OnboardingUiState.canAdvance], and Next already obeys it
+ * — a Skip beside it did exactly the same thing under a word that implies
+ * giving something up.
  */
-enum class OnboardingStep(val optional: Boolean = false) {
+enum class OnboardingStep {
     GOAL,
     EXPERIENCE,
     EQUIPMENT,
     DAYS,
     LENGTH,
-    MUSCLES(optional = true),
-    AVOID(optional = true),
+    MUSCLES,
+    AVOID,
 
     /**
      * Asks to show the workout notification.
@@ -51,7 +54,7 @@ enum class OnboardingStep(val optional: Boolean = false) {
      * prompt in the middle of the first set is a prompt with no room for a
      * reason.
      */
-    NOTIFICATIONS(optional = true),
+    NOTIFICATIONS,
 
     /**
      * Every answer, before any of it is written.
@@ -210,8 +213,6 @@ class OnboardingViewModel @Inject constructor(
         if (isLastStep || !canAdvance) this else copy(step = OnboardingStep.ordered[stepNumber])
     }
 
-    /** Skip is Next with the current step's answers left as they are. */
-    fun onSkip() = onNext()
 
     /**
      * Writes the profile.
