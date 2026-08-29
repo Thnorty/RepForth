@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Today: what to do now, and the way into it. -->
+<resources>
+    <string name="today_resume_title">Workout in progress</string>
+    <string name="today_resume_body">Exercise %1$d of %2$d · set %3$d of %4$d</string>
+    <string name="today_resume">Back to workout</string>
+
+    <string name="today_next">Up next</string>
+    <string name="today_never_done">Not done yet</string>
+    <string name="today_last_done">Last done %1$s</string>
+    <string name="today_plan_summary">%1$d exercises · about %2$d min</string>
+    <string name="today_start">Start</string>
+
+    <string name="today_empty_title">Nothing planned yet</string>
+    <string name="today_empty_body">Build a workout and it will show up here, ready to start.</string>
+    <string name="today_build">Build a workout</string>
+
+    <string name="today_week">This week</string>
+    <string name="today_week_none">No workouts this week yet.</string>
+    <string name="today_week_count">%1$d done</string>
+    <string name="today_week_of_target">%1$d of %2$d days</string>
+    <string name="today_streak">%1$d week streak</string>
+</resources>

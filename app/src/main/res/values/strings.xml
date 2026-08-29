@@ -58,6 +58,4 @@
     <string name="nav_settings">Settings</string>
     <string name="nav_back">Back</string>
 
-    <string name="placeholder_today">Your next workout and a quick start will live here.</string>
-    <string name="placeholder_exercises">Search, filters and muscle browsing across the catalog.</string>
 </resources>

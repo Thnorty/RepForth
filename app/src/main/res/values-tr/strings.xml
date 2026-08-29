@@ -57,6 +57,4 @@
     <string name="nav_settings">Ayarlar</string>
     <string name="nav_back">Geri</string>
 
-    <string name="placeholder_today">Sıradaki antrenmanın ve hızlı başlangıç burada olacak.</string>
-    <string name="placeholder_exercises">Katalog genelinde arama, filtreler ve kas grubuna göre gezinme.</string>
 </resources>

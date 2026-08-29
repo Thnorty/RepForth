@@ -7,12 +7,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.repforth.app.R
-import com.repforth.app.ui.screen.PlaceholderScreen
 import androidx.navigation.toRoute
 import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
 import com.repforth.feature.history.HistoryRoute
+import com.repforth.feature.home.TodayRoute
 import com.repforth.feature.session.SessionRoute
 import com.repforth.feature.settings.SettingsRoute
 
@@ -35,7 +35,13 @@ fun RepForthNavHost(
         modifier = modifier,
     ) {
         composable<Destination.Today> {
-            PlaceholderScreen(titleRes = R.string.today, bodyRes = R.string.placeholder_today)
+            TodayRoute(
+                // Null template: the session screen shows whatever is already
+                // running rather than starting anything.
+                onResumeWorkout = { navController.navigate(Destination.Session()) },
+                onStartPlan = { planId -> navController.navigate(Destination.Session(planId)) },
+                onBuildWorkout = { navController.navigate(Destination.Builder()) },
+            )
         }
         composable<Destination.Plans> {
             PlansRoute(

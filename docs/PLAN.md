@@ -340,8 +340,9 @@ trusting:
    a device.
 4. ~~**Settings screen**~~ — built. Appearance, workout behaviour, and the four
    data actions. The file picker itself is the system's and needs a device.
-5. **Today tab** — still a placeholder. §12 wants the current or recommended
-   workout and a quick start; every piece it would need now exists.
+5. ~~**Today tab**~~ — built. The workout in progress if there is one, otherwise
+   the stalest saved plan with a quick start, otherwise a way to build one.
+   `PlaceholderScreen` is deleted: every destination is now a real screen.
 6. **Foreground service and ongoing notification** (§10) — this is the piece
    that genuinely cannot be written blind. Android 14's foreground-service types
    and their permissions changed recently, and a Samsung device manages
