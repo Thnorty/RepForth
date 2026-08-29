@@ -8,6 +8,7 @@
     <string name="rf_body_view_front">Front</string>
     <string name="rf_body_view_back">Back</string>
     <string name="rf_body_map">Body map. Tap a region to choose the muscles in it.</string>
+    <string name="rf_body_map_hint">Tap the body to choose muscles.</string>
     <string name="rf_selected_muscles">Selected</string>
     <string name="rf_remove_muscle">Remove %1$s</string>
 </resources>

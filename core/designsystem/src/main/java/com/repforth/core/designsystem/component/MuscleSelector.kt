@@ -79,6 +79,15 @@ fun MuscleSelector(
             }
         }
 
+        // The map does not look tappable. It was reported as unclear on a
+        // device, and a silhouette gives no affordance the way a chip does, so
+        // the invitation is written rather than implied.
+        Text(
+            text = stringResource(R.string.rf_body_map_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
         val mapDescription = stringResource(R.string.rf_body_map)
         BodyMap(
             view = view,

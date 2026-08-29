@@ -4,6 +4,7 @@
     <string name="rf_body_view_front">Ön</string>
     <string name="rf_body_view_back">Arka</string>
     <string name="rf_body_map">Vücut haritası. Bir bölgeye dokunarak o bölgedeki kasları seç.</string>
+    <string name="rf_body_map_hint">Kasları seçmek için vücuda dokun.</string>
     <string name="rf_selected_muscles">Seçilenler</string>
     <string name="rf_remove_muscle">%1$s seçimini kaldır</string>
 </resources>
