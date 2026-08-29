@@ -258,6 +258,56 @@ class SessionViewModelTest {
             assertEquals(SessionPhase.ABANDONED, state.phase)
         }
 
+    /**
+     * Found on a device: after ending a workout early, Start did nothing — the
+     * screen opened and bounced straight back to Plans.
+     *
+     * The controller is a singleton, so the abandoned snapshot stayed in it. A
+     * newly opened screen restored that snapshot, saw a terminal phase, decided
+     * the workout had just finished, and navigated away before anything could
+     * start. A finished session is history, not the active one.
+     */
+    @Test
+    fun `a new workout can be started after abandoning the last one`() = runTest(dispatcher) {
+        viewModel.start(TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+        viewModel.onAbandon()
+        testScheduler.advanceUntilIdle()
+        assertEquals(SessionPhase.ABANDONED, state.phase)
+
+        // The screen is gone and comes back, as navigation would rebuild it.
+        val next = SessionViewModel(controller, FakeExercises())
+        testScheduler.advanceUntilIdle()
+        assertEquals(
+            "A finished session must not be restored as the running one",
+            null,
+            next.uiState.value.snapshot,
+        )
+
+        next.start(TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SessionPhase.ACTIVE, next.uiState.value.phase)
+    }
+
+    @Test
+    fun `a new workout can be started after finishing one`() = runTest(dispatcher) {
+        viewModel.start(SHORT_TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+        viewModel.onCompleteSet(null, null, null)
+        testScheduler.advanceUntilIdle()
+        viewModel.onFinish()
+        testScheduler.advanceUntilIdle()
+        assertEquals(SessionPhase.COMPLETED, state.phase)
+
+        val next = SessionViewModel(controller, FakeExercises())
+        testScheduler.advanceUntilIdle()
+        next.start(TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SessionPhase.ACTIVE, next.uiState.value.phase)
+    }
+
     @Test
     fun `abandoning keeps the sets already performed`() = runTest(dispatcher) {
         viewModel.start(TEMPLATE_ID)

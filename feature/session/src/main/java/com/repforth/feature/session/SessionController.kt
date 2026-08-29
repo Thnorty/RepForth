@@ -38,6 +38,17 @@ class SessionController @Inject constructor(
     private val engine = SessionEngine(time)
     private val mutex = Mutex()
 
+    /**
+     * The session in progress, or null.
+     *
+     * Null the moment a session ends. A finished workout is history, and leaving
+     * it here made a newly opened screen restore it, conclude the workout had
+     * just ended, and navigate away before a new one could start — so Start
+     * appeared to do nothing after ending a workout early.
+     *
+     * The terminal snapshot is still returned by [dispatch], which is how the
+     * screen that was watching learns it finished.
+     */
     private val _state = MutableStateFlow<SessionSnapshot?>(null)
     val state: StateFlow<SessionSnapshot?> = _state.asStateFlow()
 
@@ -47,7 +58,7 @@ class SessionController @Inject constructor(
     suspend fun restore(): SessionSnapshot? = mutex.withLock {
         if (!restored) {
             restored = true
-            _state.value = sessions.restoreActive()
+            _state.value = sessions.restoreActive()?.takeIf { !it.phase.isTerminal }
         }
         _state.value
     }
@@ -81,7 +92,10 @@ class SessionController @Inject constructor(
         when (val result = engine.apply(current, command)) {
             is CommandResult.Applied -> {
                 sessions.persist(result.state)
-                _state.value = result.state
+                // Persist first, then stop calling it active. The row is written
+                // either way; what changes is whether anything still treats it
+                // as the workout in progress.
+                _state.value = result.state.takeIf { !it.phase.isTerminal }
                 result.state
             }
 

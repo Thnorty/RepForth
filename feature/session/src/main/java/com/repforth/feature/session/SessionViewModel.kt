@@ -120,8 +120,15 @@ class SessionViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The returned snapshot is adopted directly, including a terminal one.
+     *
+     * The controller drops a finished session from its state, so the terminal
+     * snapshot never arrives through the flow — and this screen still has to
+     * learn that the workout ended in order to leave.
+     */
     private fun dispatch(command: SessionCommand) {
-        viewModelScope.launch { controller.dispatch(command) }
+        viewModelScope.launch { controller.dispatch(command)?.let { adopt(it) } }
     }
 
     private suspend fun adopt(snapshot: SessionSnapshot) {

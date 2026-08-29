@@ -168,14 +168,29 @@ class WorkoutService : Service() {
             ),
         )
 
-        val remaining = snapshot.restRemainingMsOrNull()
-        if (remaining != null) {
-            // The system renders the countdown from a deadline, so it stays
-            // right without this process waking up to redraw it every second.
-            builder.setUsesChronometer(true)
-                .setChronometerCountDown(true)
-                .setWhen(System.currentTimeMillis() + remaining)
-                .setShowWhen(true)
+        // Rest is shown whether it is running or paused, but not the same way.
+        // A chronometer is a deadline the system counts towards, so it cannot be
+        // stopped — leaving it on while paused would show a timer ticking down
+        // during a pause, which is worse than showing none. Paused rest is
+        // written out instead, frozen at whatever is left.
+        val remaining = snapshot.restRemaining(SystemClock.elapsedRealtime())
+        when {
+            snapshot.phase == SessionPhase.RESTING && remaining != null -> {
+                builder.setUsesChronometer(true)
+                    .setChronometerCountDown(true)
+                    .setWhen(System.currentTimeMillis() + remaining)
+                    .setShowWhen(true)
+            }
+
+            snapshot.phase == SessionPhase.PAUSED && remaining != null -> {
+                builder.setUsesChronometer(false)
+                    .setShowWhen(false)
+                    .setSubText(
+                        getString(R.string.session_paused_rest, remaining.asClock()),
+                    )
+            }
+
+            else -> builder.setShowWhen(false)
         }
 
         if (snapshot.phase == SessionPhase.PAUSED) {
@@ -187,8 +202,11 @@ class WorkoutService : Service() {
         return builder.build()
     }
 
-    private fun SessionSnapshot.restRemainingMsOrNull(): Long? =
-        restRemaining(SystemClock.elapsedRealtime())?.takeIf { phase == SessionPhase.RESTING }
+    /** Milliseconds as m:ss, the way a rest timer is read. */
+    private fun Long.asClock(): String {
+        val totalSeconds = (this / 1000L).coerceAtLeast(0)
+        return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+    }
 
     private fun action(name: String): PendingIntent = PendingIntent.getService(
         this,
