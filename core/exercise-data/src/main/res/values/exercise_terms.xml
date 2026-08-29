@@ -97,4 +97,37 @@
     <string name="muscle_wrist_extensors">Wrist extensors</string>
     <string name="muscle_wrist_flexors">Wrist flexors</string>
     <string name="muscle_wrists">Wrists</string>
+
+
+    <!-- What each piece of kit actually is. Gym equipment is not common
+         knowledge, and a name alone leaves someone guessing at a choice that
+         decides what they are programmed for months. -->
+    <string name="equipment_assisted_detail">Machine that takes some of your weight, for pull-ups and dips.</string>
+    <string name="equipment_band_detail">Elastic loop or tube that adds resistance.</string>
+    <string name="equipment_barbell_detail">Long bar you load with plates at both ends.</string>
+    <string name="equipment_body_weight_detail">No equipment at all. Just you.</string>
+    <string name="equipment_bosu_ball_detail">Half a rubber ball on a flat base, used for balance.</string>
+    <string name="equipment_cable_detail">Weight stack pulled through a pulley on a handle.</string>
+    <string name="equipment_dumbbell_detail">Short bar with weight at each end, one per hand.</string>
+    <string name="equipment_elliptical_machine_detail">Cardio machine with gliding foot pedals.</string>
+    <string name="equipment_ez_barbell_detail">Short bar with a zig-zag grip, easier on the wrists.</string>
+    <string name="equipment_hammer_detail">Sledgehammer, usually swung at a tyre.</string>
+    <string name="equipment_kettlebell_detail">Cast iron ball with a handle on top.</string>
+    <string name="equipment_leverage_machine_detail">Plate-loaded gym machine that moves on a fixed path.</string>
+    <string name="equipment_medicine_ball_detail">Weighted ball, thrown or held.</string>
+    <string name="equipment_olympic_barbell_detail">Competition barbell with rotating sleeves.</string>
+    <string name="equipment_resistance_band_detail">Flat elastic band, usually with handles.</string>
+    <string name="equipment_roller_detail">Foam cylinder you roll a muscle over.</string>
+    <string name="equipment_rope_detail">Heavy battle rope, or a rope handle on a cable.</string>
+    <string name="equipment_skierg_machine_detail">Cardio machine that mimics cross-country skiing.</string>
+    <string name="equipment_sled_machine_detail">Weighted sled you push or drag.</string>
+    <string name="equipment_smith_machine_detail">Barbell fixed on vertical rails.</string>
+    <string name="equipment_stability_ball_detail">Large inflatable ball, also called a Swiss ball.</string>
+    <string name="equipment_stationary_bike_detail">Exercise bike.</string>
+    <string name="equipment_stepmill_machine_detail">Rotating staircase.</string>
+    <string name="equipment_tire_detail">Large tractor tyre, flipped or struck.</string>
+    <string name="equipment_trap_bar_detail">Six-sided bar you stand inside of.</string>
+    <string name="equipment_upper_body_ergometer_detail">Arm crank machine — pedalling with your hands.</string>
+    <string name="equipment_weighted_detail">Your own body weight plus added load, such as a weight belt.</string>
+    <string name="equipment_wheel_roller_detail">Small wheel with handles, for ab rollouts.</string>
 </resources>

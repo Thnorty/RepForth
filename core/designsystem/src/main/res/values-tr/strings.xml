@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reusable component strings in Turkish. -->
+<resources>
+    <string name="rf_body_view_front">Ön</string>
+    <string name="rf_body_view_back">Arka</string>
+    <string name="rf_body_map">Vücut haritası. Bir bölgeye dokunarak o bölgedeki kasları seç.</string>
+    <string name="rf_selected_muscles">Seçilenler</string>
+    <string name="rf_remove_muscle">%1$s seçimini kaldır</string>
+</resources>

@@ -25,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.repforth.core.designsystem.component.BodyMap
+import com.repforth.core.designsystem.component.MuscleSelector
 import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
@@ -122,77 +122,14 @@ internal fun CatalogFilters(
             }
 
             FacetLabel(R.string.exercises_muscles)
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                BodyView.entries.forEachIndexed { index, candidate ->
-                    SegmentedButton(
-                        selected = view == candidate,
-                        onClick = { onViewChange(candidate) },
-                        shape = SegmentedButtonDefaults.itemShape(index, BodyView.entries.size),
-                    ) {
-                        Text(
-                            stringResource(
-                                if (candidate == BodyView.FRONT) R.string.exercises_view_front
-                                else R.string.exercises_view_back,
-                            ),
-                        )
-                    }
-                }
-            }
-
-            val mapDescription = stringResource(R.string.exercises_body_map)
-            BodyMap(
+            MuscleSelector(
+                selected = filter.muscles,
                 view = view,
-                selected = selectedRegions(filter.muscles),
-                onRegionClick = onRegionToggled,
-                modifier = Modifier
-                    .height(Layout.bodyMapHeight)
-                    // One description for the whole map. Announcing each path
-                    // would bury the chips below, which are what actually works
-                    // with a screen reader.
-                    .semantics { contentDescription = mapDescription },
+                onViewChange = onViewChange,
+                onMuscleToggled = onMuscleToggled,
+                onRegionToggled = onRegionToggled,
+                labelOf = { stringResource(it.labelRes) },
             )
-
-            // What is selected, shown separately and first.
-            //
-            // Tapping a region selects several muscles at once, and they were
-            // scattered through a scrolling row of 41 chips — so the map
-            // appeared to do nothing. Selected muscles now surface here, in
-            // canonical form so `pectorals` and `chest` are one chip rather than
-            // two names for the same thing.
-            val selected = filter.muscles.map { it.canonical }.distinct().sortedBy { it.slug }
-            if (selected.isNotEmpty()) {
-                FacetLabel(R.string.exercises_selected_muscles)
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
-                    items(selected, key = { it.name }) { muscle ->
-                        val label = stringResource(muscle.labelRes)
-                        InputChip(
-                            selected = true,
-                            onClick = { onMuscleToggled(muscle) },
-                            label = { Text(label) },
-                            trailingIcon = {
-                                Icon(
-                                    painter = RfIcons.Close,
-                                    contentDescription =
-                                        stringResource(R.string.exercises_remove_muscle, label),
-                                )
-                            },
-                        )
-                    }
-                }
-            }
-
-            // Everything not yet chosen, including the muscles no silhouette can
-            // show. Canonical only, so synonyms do not appear as separate chips.
-            val available = Muscle.entries.filter { it.canonical == it && it !in filter.muscles }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
-                items(available, key = { it.name }) { muscle ->
-                    FilterChip(
-                        selected = false,
-                        onClick = { onMuscleToggled(muscle) },
-                        label = { Text(stringResource(muscle.labelRes)) },
-                    )
-                }
-            }
         }
     }
 }

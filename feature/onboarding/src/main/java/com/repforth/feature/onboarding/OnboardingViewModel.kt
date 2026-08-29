@@ -2,6 +2,7 @@ package com.repforth.feature.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExperienceLevel
@@ -135,6 +136,25 @@ class OnboardingViewModel @Inject constructor(
         )
     }
 
+    /**
+     * Selecting a region is one action, not one action per muscle in it.
+     *
+     * Toggling each muscle individually could leave a region half-selected when
+     * some of its muscles were already chosen, which reads on the map as a
+     * region that will not turn off.
+     */
+    fun onPreferredRegionToggled(region: BodyRegion) = update {
+        copy(preferredMuscles = preferredMuscles.toggleRegion(region))
+    }
+
+    fun onAvoidedRegionToggled(region: BodyRegion) = update {
+        val group = region.muscles.flatMapTo(mutableSetOf(), ::synonymGroup)
+        copy(
+            avoidedMuscles = avoidedMuscles.toggleRegion(region),
+            preferredMuscles = preferredMuscles - group,
+        )
+    }
+
     fun onBack() = update {
         if (isFirstStep) this else copy(step = OnboardingStep.ordered[stepNumber - 2])
     }
@@ -188,6 +208,11 @@ class OnboardingViewModel @Inject constructor(
 
     private fun Set<Muscle>.toggleGroup(muscle: Muscle): Set<Muscle> {
         val group = synonymGroup(muscle)
+        return if (containsAll(group)) this - group else this + group
+    }
+
+    private fun Set<Muscle>.toggleRegion(region: BodyRegion): Set<Muscle> {
+        val group = region.muscles.flatMapTo(mutableSetOf(), ::synonymGroup)
         return if (containsAll(group)) this - group else this + group
     }
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Strings owned by reusable components. Wording is deliberately neutral about
+    what the selection is for: the catalog filters by it, onboarding saves it as
+    a preference, and one component serves both.
+-->
+<resources>
+    <string name="rf_body_view_front">Front</string>
+    <string name="rf_body_view_back">Back</string>
+    <string name="rf_body_map">Body map. Tap a region to choose the muscles in it.</string>
+    <string name="rf_selected_muscles">Selected</string>
+    <string name="rf_remove_muscle">Remove %1$s</string>
+</resources>

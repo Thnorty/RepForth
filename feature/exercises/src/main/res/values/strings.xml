@@ -8,9 +8,6 @@
     <string name="exercises_body_part">Body part</string>
     <string name="exercises_equipment">Equipment</string>
     <string name="exercises_muscles">Muscles</string>
-    <string name="exercises_view_front">Front</string>
-    <string name="exercises_view_back">Back</string>
-    <string name="exercises_body_map">Body map. Tap a region to filter by the muscles in it.</string>
     <string name="exercises_results">%1$d exercises</string>
     <string name="exercises_empty">No exercises match these filters.</string>
     <string name="exercises_loading">Loading the catalog…</string>
@@ -21,6 +18,4 @@
     -->
     <string name="exercises_names_english">Exercise names come from the dataset and are in English.</string>
     <string name="exercises_row_detail">%1$s · %2$s</string>
-    <string name="exercises_selected_muscles">Selected</string>
-    <string name="exercises_remove_muscle">Remove %1$s</string>
 </resources>

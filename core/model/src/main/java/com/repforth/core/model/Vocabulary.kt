@@ -69,6 +69,38 @@ enum class Equipment(val slug: String) {
 
     companion object {
         fun fromSlug(slug: String): Equipment? = entries.firstOrNull { it.slug == slug }
+
+        /**
+         * The equipment worth asking about without being asked.
+         *
+         * Measured from the packaged catalog rather than guessed: each of these
+         * accounts for at least 2% of the 1,324 exercises, and together they
+         * cover 91%. The remaining eighteen share 9% between them, and eight of
+         * those have a single exercise each — so a screen that lists all
+         * twenty-eight as equals is mostly noise, and the profile it collects is
+         * worse for it.
+         *
+         * A fact about the catalog rather than a layout choice, which is why it
+         * lives beside the vocabulary and not in the screen that renders it.
+         * `EquipmentCoverageTest` re-derives the share from the database, so a
+         * dataset update that changes what is common fails rather than quietly
+         * leaving this stale.
+         */
+        val COMMON: List<Equipment> = listOf(
+            BODY_WEIGHT,
+            DUMBBELL,
+            CABLE,
+            BARBELL,
+            LEVERAGE_MACHINE,
+            BAND,
+            SMITH_MACHINE,
+            KETTLEBELL,
+            WEIGHTED,
+            STABILITY_BALL,
+        )
+
+        /** Everything else, alphabetically. Reachable, but behind a disclosure. */
+        val UNCOMMON: List<Equipment> = entries.filterNot { it in COMMON }.sortedBy { it.slug }
     }
 }
 

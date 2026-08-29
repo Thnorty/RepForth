@@ -29,7 +29,16 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Checkbox
+import com.repforth.core.exercisedata.detailRes
 import androidx.compose.runtime.getValue
+import com.repforth.core.model.BodyView
+import com.repforth.core.model.BodyRegion
+import com.repforth.core.designsystem.component.MuscleSelector
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,7 +86,9 @@ fun OnboardingRoute(
         onDaysChanged = viewModel::onDaysChanged,
         onSessionLengthChanged = viewModel::onSessionLengthChanged,
         onPreferredMuscleToggled = viewModel::onPreferredMuscleToggled,
+        onPreferredRegionToggled = viewModel::onPreferredRegionToggled,
         onAvoidedMuscleToggled = viewModel::onAvoidedMuscleToggled,
+        onAvoidedRegionToggled = viewModel::onAvoidedRegionToggled,
         onBack = viewModel::onBack,
         onNext = viewModel::onNext,
         onSkip = viewModel::onSkip,
@@ -96,13 +107,21 @@ internal fun OnboardingScreen(
     onDaysChanged: (Int) -> Unit,
     onSessionLengthChanged: (Int) -> Unit,
     onPreferredMuscleToggled: (Muscle) -> Unit,
+    onPreferredRegionToggled: (BodyRegion) -> Unit,
     onAvoidedMuscleToggled: (Muscle) -> Unit,
+    onAvoidedRegionToggled: (BodyRegion) -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
     onSkip: () -> Unit,
     onFinish: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Shared by both muscle steps on purpose: turning the body round to pick a
+    // muscle to focus on, then being turned back to the front to pick one to
+    // avoid, is a small thing that feels broken.
+    var bodyView by rememberSaveable { mutableStateOf(BodyView.FRONT) }
+    var moreEquipment by rememberSaveable { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -143,12 +162,40 @@ internal fun OnboardingScreen(
                 )
 
                 OnboardingStep.EQUIPMENT -> {
-                    ChipChoice(
-                        options = Equipment.entries,
+                    MultiChoice(
+                        options = Equipment.COMMON,
                         isSelected = { it in state.equipment },
                         labelOf = { stringResource(it.labelRes) },
+                        detailOf = { stringResource(it.detailRes) },
                         onToggled = onEquipmentToggled,
                     )
+
+                    // The long tail is collapsed rather than dropped. Between
+                    // them these account for 5% of the catalog and eight of
+                    // them have a single exercise each, so they do not deserve
+                    // equal billing with dumbbells — but someone who owns a
+                    // sled should still be able to say so.
+                    TextButton(onClick = { moreEquipment = !moreEquipment }) {
+                        Text(
+                            stringResource(
+                                if (moreEquipment) {
+                                    R.string.onboarding_equipment_fewer
+                                } else {
+                                    R.string.onboarding_equipment_more
+                                },
+                                Equipment.UNCOMMON.size,
+                            ),
+                        )
+                    }
+                    if (moreEquipment) {
+                        MultiChoice(
+                            options = Equipment.UNCOMMON,
+                            isSelected = { it in state.equipment },
+                            labelOf = { stringResource(it.labelRes) },
+                            detailOf = { stringResource(it.detailRes) },
+                            onToggled = onEquipmentToggled,
+                        )
+                    }
                     Hint(stringResource(R.string.onboarding_equipment_none))
                 }
 
@@ -173,19 +220,23 @@ internal fun OnboardingScreen(
                     onValueChange = onSessionLengthChanged,
                 )
 
-                OnboardingStep.MUSCLES -> ChipChoice(
-                    options = canonicalMuscles,
-                    isSelected = { it in state.preferredMuscles },
+                OnboardingStep.MUSCLES -> MuscleSelector(
+                    selected = state.preferredMuscles,
+                    view = bodyView,
+                    onViewChange = { bodyView = it },
+                    onMuscleToggled = onPreferredMuscleToggled,
+                    onRegionToggled = onPreferredRegionToggled,
                     labelOf = { stringResource(it.labelRes) },
-                    onToggled = onPreferredMuscleToggled,
                 )
 
                 OnboardingStep.AVOID -> {
-                    ChipChoice(
-                        options = canonicalMuscles,
-                        isSelected = { it in state.avoidedMuscles },
+                    MuscleSelector(
+                        selected = state.avoidedMuscles,
+                        view = bodyView,
+                        onViewChange = { bodyView = it },
+                        onMuscleToggled = onAvoidedMuscleToggled,
+                        onRegionToggled = onAvoidedRegionToggled,
                         labelOf = { stringResource(it.labelRes) },
-                        onToggled = onAvoidedMuscleToggled,
                     )
                     Hint(stringResource(R.string.onboarding_privacy))
                 }
@@ -333,6 +384,64 @@ private fun <T> SingleChoice(
     }
 }
 
+/**
+ * Any number of answers, each explained.
+ *
+ * Rows rather than chips: the answer to "what is a leverage machine?" is a
+ * sentence, and a sentence does not fit in a chip.
+ */
+@Composable
+private fun <T> MultiChoice(
+    options: List<T>,
+    isSelected: (T) -> Boolean,
+    labelOf: @Composable (T) -> String,
+    detailOf: @Composable (T) -> String,
+    onToggled: (T) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+        options.forEach { option ->
+            val selected = isSelected(option)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Target.min)
+                    .toggleable(
+                        value = selected,
+                        role = Role.Checkbox,
+                        onValueChange = { onToggled(option) },
+                    ),
+                colors = if (selected) {
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                } else {
+                    CardDefaults.cardColors()
+                },
+            ) {
+                Row(
+                    modifier = Modifier.padding(Space.s4),
+                    horizontalArrangement = Arrangement.spacedBy(Space.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = selected, onCheckedChange = null)
+                    Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
+                        Text(
+                            text = labelOf(option),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            text = detailOf(option),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LocalContentColor.current.copy(alpha = DETAIL_ALPHA),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Any number of answers, from a long list. Wraps rather than scrolling sideways. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -399,15 +508,6 @@ private fun Hint(text: String) {
         modifier = Modifier.padding(top = Space.s2),
     )
 }
-
-/**
- * One chip per muscle, not one per upstream name.
- *
- * `abs` and `abdominals` are the same muscle under two labels; showing both
- * would ask the same question twice and let it be answered two ways.
- */
-private val canonicalMuscles: List<Muscle> =
-    Muscle.entries.filter { it.canonical == it }.sortedBy { it.slug }
 
 /**
  * Progress as one segment per question, filled as they are answered.

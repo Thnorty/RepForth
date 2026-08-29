@@ -43,4 +43,6 @@
     <string name="onboarding_avoid_subtitle">Injuries or movements you skip; never programmed.</string>
 
     <string name="onboarding_privacy">Everything stays on this phone. No account, nothing uploaded.</string>
+    <string name="onboarding_equipment_more">Show %1$d more</string>
+    <string name="onboarding_equipment_fewer">Show fewer</string>
 </resources>

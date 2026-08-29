@@ -43,4 +43,6 @@
     <string name="onboarding_avoid_subtitle">Sakatlıklar veya atladığın hareketler; asla programa dahil edilmez.</string>
 
     <string name="onboarding_privacy">Her şey bu telefonda kalır. Hesap yok, yükleme yok.</string>
+    <string name="onboarding_equipment_more">%1$d tane daha göster</string>
+    <string name="onboarding_equipment_fewer">Daha az göster</string>
 </resources>

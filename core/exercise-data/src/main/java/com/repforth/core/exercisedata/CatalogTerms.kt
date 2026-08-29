@@ -70,6 +70,50 @@ val Equipment.labelRes: Int
     Equipment.WHEEL_ROLLER -> R.string.equipment_wheel_roller
     }
 
+/**
+ * A one-line explanation of what this piece of kit actually is.
+ *
+ * Gym equipment is not common knowledge. Onboarding asks people to name what
+ * they can train with, and that answer decides what they are programmed for
+ * months — so the obscure two thirds of the list need to say what they are
+ * rather than assume it. An icon would not help here: most of this kit has no
+ * recognisable glyph, and a line drawing of a trap bar does not teach anyone
+ * what a trap bar is.
+ *
+ * Exhaustive, so adding a constant without an explanation fails to compile.
+ */
+val Equipment.detailRes: Int
+    @StringRes get() = when (this) {
+    Equipment.ASSISTED -> R.string.equipment_assisted_detail
+    Equipment.BAND -> R.string.equipment_band_detail
+    Equipment.BARBELL -> R.string.equipment_barbell_detail
+    Equipment.BODY_WEIGHT -> R.string.equipment_body_weight_detail
+    Equipment.BOSU_BALL -> R.string.equipment_bosu_ball_detail
+    Equipment.CABLE -> R.string.equipment_cable_detail
+    Equipment.DUMBBELL -> R.string.equipment_dumbbell_detail
+    Equipment.ELLIPTICAL_MACHINE -> R.string.equipment_elliptical_machine_detail
+    Equipment.EZ_BARBELL -> R.string.equipment_ez_barbell_detail
+    Equipment.HAMMER -> R.string.equipment_hammer_detail
+    Equipment.KETTLEBELL -> R.string.equipment_kettlebell_detail
+    Equipment.LEVERAGE_MACHINE -> R.string.equipment_leverage_machine_detail
+    Equipment.MEDICINE_BALL -> R.string.equipment_medicine_ball_detail
+    Equipment.OLYMPIC_BARBELL -> R.string.equipment_olympic_barbell_detail
+    Equipment.RESISTANCE_BAND -> R.string.equipment_resistance_band_detail
+    Equipment.ROLLER -> R.string.equipment_roller_detail
+    Equipment.ROPE -> R.string.equipment_rope_detail
+    Equipment.SKIERG_MACHINE -> R.string.equipment_skierg_machine_detail
+    Equipment.SLED_MACHINE -> R.string.equipment_sled_machine_detail
+    Equipment.SMITH_MACHINE -> R.string.equipment_smith_machine_detail
+    Equipment.STABILITY_BALL -> R.string.equipment_stability_ball_detail
+    Equipment.STATIONARY_BIKE -> R.string.equipment_stationary_bike_detail
+    Equipment.STEPMILL_MACHINE -> R.string.equipment_stepmill_machine_detail
+    Equipment.TIRE -> R.string.equipment_tire_detail
+    Equipment.TRAP_BAR -> R.string.equipment_trap_bar_detail
+    Equipment.UPPER_BODY_ERGOMETER -> R.string.equipment_upper_body_ergometer_detail
+    Equipment.WEIGHTED -> R.string.equipment_weighted_detail
+    Equipment.WHEEL_ROLLER -> R.string.equipment_wheel_roller_detail
+    }
+
 
 /**
  * The localised display name for this muscle.
