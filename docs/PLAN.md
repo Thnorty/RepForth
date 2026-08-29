@@ -564,7 +564,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 |---|---|---|
 | Plans is a tab; Coach is a mode inside the builder | Coach is an input method for building a plan, not a place | Guideline §12 |
 | Dynamic/wallpaper colour disabled | Breaks the single-accent rule and the measured AA pairs | `Theme.kt` |
-| Vector drawables, not the Material Symbols font | 56 icons used; the font ships ~3,300 glyphs, and `res/font` cannot feed `Icon()` | This file, above |
+| Vector drawables, not the Material Symbols font | 53 icons used; the font ships ~3,300 glyphs, and `res/font` cannot feed `Icon()` | This file, above |
 | Static font weights, not variable | 614 KB vs. ~1.5 MB for weights the tokens never ask for | `Type.kt` |
 | Media lives in the manifest, not the catalog tables | Keeps the licensing boundary a type seam, not a convention | `ExerciseEntity.kt` |
 | Room v1 is catalog-only | User tables ship with the code that writes them, not before | `RepForthDatabase.kt` |
@@ -582,13 +582,14 @@ app icon, and the exact licence.
 
 ## Known risks
 
-- **The dataset is unread.** Every count, field name and categorical value in
-  the guideline comes from upstream documentation, not from the file. Expect
-  0.4 to contradict something, and treat the dataset as the authority when it
-  does.
-- **No device.** Instrumentation, screenshot, and paired-watch tests cannot run
-  here at all. Phase 4 is unverifiable on this machine; plan for that rather
-  than discovering it.
+- **Screenshot tests are still the untested category.** Unit tests and
+  instrumentation both run; nothing yet asserts what a screen looks like, so
+  every layout regression found so far was found by a person holding a phone.
+- **Two devices, and they disagree.** A Galaxy S23 (API 34) runs the
+  instrumentation suite; the Xiaomi (API 30) hangs on it, because MIUI refuses
+  an activity start from instrumentation and the permission that would allow it
+  cannot be set over adb. Paired-watch tests still have no hardware at all, so
+  Phase 4 remains unverifiable here.
 - **uiautomator is not a reliable oracle near the bottom of the screen.** It
   reports the legacy application frame as the window (1080x2266 on a 1080x2400
   phone) and clips anything below it to `bounds=[0,0][0,0]`, whether or not the
