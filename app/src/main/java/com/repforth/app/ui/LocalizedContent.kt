@@ -44,22 +44,27 @@ import java.util.Locale
  */
 @Composable
 fun LocalizedContent(language: Language?, content: @Composable () -> Unit) {
-    // Null means follow the device, which is the default, so nothing is
-    // overridden rather than the device's own locale being re-applied over
-    // itself.
-    if (language == null) {
-        content()
-        return
-    }
-
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
 
+    // Null means follow the device, which is the default. It still goes through
+    // the provider with the values unchanged rather than calling content()
+    // directly.
+    //
+    // That is not tidiness. A composable that calls its content in two
+    // structurally different places recomposes it from scratch when it moves
+    // between them, and the subtree here contains the NavHost — so switching
+    // to or from "System" threw away the back stack and dropped the user on
+    // Today, while switching between two real languages did not.
     val localizedConfiguration = remember(language, configuration) {
-        Configuration(configuration).apply { setLocale(Locale.forLanguageTag(language.tag)) }
+        if (language == null) {
+            configuration
+        } else {
+            Configuration(configuration).apply { setLocale(Locale.forLanguageTag(language.tag)) }
+        }
     }
-    val localizedContext = remember(context, localizedConfiguration) {
-        LocalizedContext(context, localizedConfiguration)
+    val localizedContext = remember(context, localizedConfiguration, language) {
+        if (language == null) context else LocalizedContext(context, localizedConfiguration)
     }
 
     CompositionLocalProvider(
