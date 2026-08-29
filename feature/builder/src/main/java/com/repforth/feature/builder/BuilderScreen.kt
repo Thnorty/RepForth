@@ -25,6 +25,11 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -355,9 +360,17 @@ private fun ExerciseCard(
 /**
  * A whole number, typed.
  *
- * Empty is treated as zero and clamped by the ViewModel rather than rejected
- * mid-edit: deleting the last digit to type a new one is the normal way to
- * change a number, and a field that refuses to be empty cannot be retyped.
+ * Holds its own [TextFieldValue] rather than rendering the model's number
+ * directly. Passing a `String` down looks simpler and is wrong: clearing a field
+ * containing "2" produces text that does not parse, the change is dropped, the
+ * model still says 2, and the field is recomposed back to "2" — with the cursor
+ * reset to the front. Typing "1" then gives "12". Owning the text means the
+ * field can be empty for as long as it takes to retype it, and the cursor stays
+ * where the user put it.
+ *
+ * The model is still the authority: when it changes underneath — a clamp, or a
+ * plan being loaded — the text is resynchronised, but only when it actually
+ * disagrees, so an in-progress edit is never yanked out from under the caret.
  */
 @Composable
 private fun NumberField(
@@ -366,10 +379,21 @@ private fun NumberField(
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var text by remember { mutableStateOf(TextFieldValue(value.toString())) }
+
+    LaunchedEffect(value) {
+        if (text.text.toIntOrNull() != value) {
+            text = TextFieldValue(value.toString(), TextRange(value.toString().length))
+        }
+    }
+
     OutlinedTextField(
-        value = value.toString(),
-        onValueChange = { text ->
-            text.filter(Char::isDigit).take(MAX_DIGITS).toIntOrNull()?.let(onValueChange)
+        value = text,
+        onValueChange = { typed ->
+            val digits = typed.text.filter(Char::isDigit).take(MAX_DIGITS)
+            text = typed.copy(text = digits)
+            // An empty field is a state to pass through, not a value to store.
+            digits.toIntOrNull()?.let(onValueChange)
         },
         label = { Text(label) },
         singleLine = true,
@@ -378,6 +402,7 @@ private fun NumberField(
     )
 }
 
+/** The same ownership rule as [NumberField]; blank clears the weight. */
 @Composable
 private fun DecimalField(
     value: Double?,
@@ -385,10 +410,19 @@ private fun DecimalField(
     onValueChange: (Double?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var text by remember { mutableStateOf(TextFieldValue(value.asText())) }
+
+    LaunchedEffect(value) {
+        if (text.text.toDoubleOrNull() != value) {
+            text = TextFieldValue(value.asText(), TextRange(value.asText().length))
+        }
+    }
+
     OutlinedTextField(
-        value = value?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "",
-        onValueChange = { text ->
-            val cleaned = text.filter { it.isDigit() || it == '.' }.take(MAX_DIGITS)
+        value = text,
+        onValueChange = { typed ->
+            val cleaned = typed.text.filter { it.isDigit() || it == '.' }.take(MAX_DIGITS)
+            text = typed.copy(text = cleaned)
             onValueChange(if (cleaned.isBlank()) null else cleaned.toDoubleOrNull())
         },
         label = { Text(label) },
@@ -396,6 +430,13 @@ private fun DecimalField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = modifier,
     )
+}
+
+/** Whole kilograms lose the ".0"; nobody writes their bench as 60.0. */
+private fun Double?.asText(): String = when {
+    this == null -> ""
+    this % 1.0 == 0.0 -> toInt().toString()
+    else -> toString()
 }
 
 private const val MAX_DIGITS = 6

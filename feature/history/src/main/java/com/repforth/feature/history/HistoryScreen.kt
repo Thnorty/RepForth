@@ -178,10 +178,9 @@ private fun WorkoutRow(workout: WorkoutSummary) {
         ) {
             Text(text = formatDate(workout.startedAt), style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = stringResource(
-                    R.string.progress_session_volume,
-                    formatVolume(workout.volumeKg),
-                ),
+                // formatVolume already carries the unit; wrapping it in another
+                // "%1$s kg" produced "0 kg kg".
+                text = formatVolume(workout.volumeKg),
                 style = MaterialTheme.typography.bodyLarge,
             )
         }

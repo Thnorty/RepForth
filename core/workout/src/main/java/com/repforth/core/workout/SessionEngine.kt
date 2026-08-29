@@ -26,7 +26,14 @@ class SessionEngine(private val time: TimeSource) {
             phase = SessionPhase.PREPARING,
             exercises = template.exercises.map { planned ->
                 SessionExercise(
-                    id = planned.id,
+                    // Scoped to the session, not the plan. These become primary
+                    // keys in `session_exercise`, and the plan's own row ids are
+                    // the same every time it is run — so two sessions from one
+                    // plan collided, and the second overwrote the first's
+                    // exercises and every set attached to them. Derived rather
+                    // than random so the engine stays pure and a restart of the
+                    // same session id rebuilds the same rows.
+                    id = "$sessionId:${planned.id}",
                     exerciseId = planned.exerciseId,
                     position = planned.position,
                     target = planned.target,

@@ -387,11 +387,17 @@ private fun SessionControls(
                     Text(stringResource(R.string.session_next_exercise))
                 }
             }
-            TextButton(
-                onClick = onAbandon,
-                modifier = Modifier.weight(1f).heightIn(min = Target.min),
-            ) {
-                Text(stringResource(R.string.session_abandon))
+            // Not offered once every set is done. §10 allows abandoning from
+            // COMPLETING, but the only thing left to do there is finish, and a
+            // second way out beside it just asks the user to decide between two
+            // words for the same moment.
+            if (!state.isCompleting) {
+                TextButton(
+                    onClick = onAbandon,
+                    modifier = Modifier.weight(1f).heightIn(min = Target.min),
+                ) {
+                    Text(stringResource(R.string.session_abandon))
+                }
             }
         }
     }

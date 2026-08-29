@@ -56,7 +56,7 @@ data class DraftExercise(
         const val DEFAULT_SETS = 3
         const val DEFAULT_REPS = 10
         const val DEFAULT_DURATION_SECONDS = 30
-        const val DEFAULT_REST_SECONDS = 90
+        const val DEFAULT_REST_SECONDS = 30
     }
 }
 

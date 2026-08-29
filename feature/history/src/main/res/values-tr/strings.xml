@@ -18,5 +18,4 @@
     <string name="progress_sets_with_skipped">%1$d set · %2$d atlandı</string>
     <string name="progress_duration">%1$d dk</string>
     <string name="progress_abandoned">Erken bitirildi</string>
-    <string name="progress_session_volume">%1$s kg</string>
 </resources>

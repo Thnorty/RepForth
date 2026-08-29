@@ -62,6 +62,43 @@ class SessionEngineTest {
 
     // ── The happy path, arrow by arrow ───────────────────────────────────────
 
+    /**
+     * Two sessions from one plan must not share row identities.
+     *
+     * Found on a device: running the same plan twice made the first workout
+     * report zero sets. `session_exercise.id` is a primary key, and these ids
+     * were the template's row ids — so the second run's write replaced the
+     * first run's rows and moved them to the new session, taking their sets
+     * with them. A history that quietly empties itself is the worst kind of
+     * bug this app can have.
+     */
+    @Test
+    fun `two sessions from the same plan do not share exercise ids`() {
+        val template = template()
+
+        val first = engine.start("session-1", template)
+        val second = engine.start("session-2", template)
+
+        val firstIds = first.exercises.map { it.id }
+        val secondIds = second.exercises.map { it.id }
+
+        assertEquals(
+            "Ids must be unique per session, or one session overwrites the other",
+            emptyList<String>(),
+            firstIds.intersect(secondIds.toSet()).toList(),
+        )
+    }
+
+    @Test
+    fun `exercise ids are stable for a given session`() {
+        val template = template()
+
+        val once = engine.start("session-1", template).exercises.map { it.id }
+        val twice = engine.start("session-1", template).exercises.map { it.id }
+
+        assertEquals("Restarting the same session id must be reproducible", once, twice)
+    }
+
     @Test
     fun `a new session starts in preparing`() {
         val session = engine.start("s1", template())

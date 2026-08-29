@@ -18,5 +18,4 @@
     <string name="progress_sets_with_skipped">%1$d sets · %2$d skipped</string>
     <string name="progress_duration">%1$d min</string>
     <string name="progress_abandoned">Ended early</string>
-    <string name="progress_session_volume">%1$s kg</string>
 </resources>

@@ -233,6 +233,26 @@ class SessionViewModelTest {
         assertTrue(state.finished)
     }
 
+    /**
+     * The screen stops offering it, but the engine must still accept it: a
+     * command can arrive from the watch, and §10 makes abandon reachable from
+     * every non-terminal state.
+     */
+    @Test
+    fun `abandoning is still possible from completing, even though the screen hides it`() =
+        runTest(dispatcher) {
+            viewModel.start(SHORT_TEMPLATE_ID)
+            testScheduler.advanceUntilIdle()
+            viewModel.onCompleteSet(null, null, null)
+            testScheduler.advanceUntilIdle()
+            assertEquals(SessionPhase.COMPLETING, state.phase)
+
+            viewModel.onAbandon()
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(SessionPhase.ABANDONED, state.phase)
+        }
+
     @Test
     fun `abandoning keeps the sets already performed`() = runTest(dispatcher) {
         viewModel.start(TEMPLATE_ID)
