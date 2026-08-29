@@ -9,6 +9,8 @@ import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.toggleRegion
+import com.repforth.core.model.toggleSynonyms
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -86,7 +88,9 @@ class ExercisesViewModel @Inject constructor(
      * selecting one and leaving the other behind would produce a filter that is
      * half-applied and a chip row showing both words for the same thing.
      */
-    fun onMuscleToggled(muscle: Muscle) = toggle(synonymGroup(muscle))
+    fun onMuscleToggled(muscle: Muscle) {
+        filter.value = filter.value.copy(muscles = filter.value.muscles.toggleSynonyms(muscle))
+    }
 
     /**
      * Selecting a region is one action, not one action per muscle in it.
@@ -95,18 +99,11 @@ class ExercisesViewModel @Inject constructor(
      * some of its muscles were already chosen, which reads on the map as a
      * region that will not turn off.
      */
-    fun onRegionToggled(region: BodyRegion) =
-        toggle(region.muscles.flatMapTo(mutableSetOf(), ::synonymGroup))
-
-    private fun synonymGroup(muscle: Muscle): Set<Muscle> =
-        Muscle.entries.filterTo(mutableSetOf()) { it.canonical == muscle.canonical }
-
-    private fun toggle(group: Set<Muscle>) {
-        val current = filter.value.muscles
-        filter.value = filter.value.copy(
-            muscles = if (current.containsAll(group)) current - group else current + group,
-        )
+    fun onRegionToggled(region: BodyRegion) {
+        filter.value = filter.value.copy(muscles = filter.value.muscles.toggleRegion(region))
     }
+
+
 
     fun onClearFilters() {
         filter.value = CatalogFilter()

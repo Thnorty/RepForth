@@ -8,6 +8,10 @@ import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.allMuscles
+import com.repforth.core.model.synonyms
+import com.repforth.core.model.toggleRegion
+import com.repforth.core.model.toggleSynonyms
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 import com.repforth.core.userdata.ProfileRepository
@@ -120,19 +124,23 @@ class OnboardingViewModel @Inject constructor(
      * and the rules engine would honour half of it.
      */
     fun onPreferredMuscleToggled(muscle: Muscle) = update {
-        copy(preferredMuscles = preferredMuscles.toggleGroup(muscle))
+        copy(
+            preferredMuscles = preferredMuscles.toggleSynonyms(muscle),
+            avoidedMuscles = avoidedMuscles - muscle.synonyms,
+        )
     }
 
     /**
-     * A muscle cannot be both preferred and avoided, so choosing one side
-     * removes it from the other. The alternative is a profile that asks the
-     * rules engine to both favour and forbid the same thing.
+     * A muscle cannot be both preferred and avoided, so choosing either side
+     * removes it from the other. Both directions, which is the whole point: it
+     * was one-way, and answering Avoid then walking Back to Focus produced
+     * exactly the profile this exists to prevent — one that asks the rules
+     * engine to favour and forbid the same muscle.
      */
     fun onAvoidedMuscleToggled(muscle: Muscle) = update {
-        val group = synonymGroup(muscle)
         copy(
-            avoidedMuscles = avoidedMuscles.toggleGroup(muscle),
-            preferredMuscles = preferredMuscles - group,
+            avoidedMuscles = avoidedMuscles.toggleSynonyms(muscle),
+            preferredMuscles = preferredMuscles - muscle.synonyms,
         )
     }
 
@@ -144,14 +152,16 @@ class OnboardingViewModel @Inject constructor(
      * region that will not turn off.
      */
     fun onPreferredRegionToggled(region: BodyRegion) = update {
-        copy(preferredMuscles = preferredMuscles.toggleRegion(region))
+        copy(
+            preferredMuscles = preferredMuscles.toggleRegion(region),
+            avoidedMuscles = avoidedMuscles - region.allMuscles(),
+        )
     }
 
     fun onAvoidedRegionToggled(region: BodyRegion) = update {
-        val group = region.muscles.flatMapTo(mutableSetOf(), ::synonymGroup)
         copy(
             avoidedMuscles = avoidedMuscles.toggleRegion(region),
-            preferredMuscles = preferredMuscles - group,
+            preferredMuscles = preferredMuscles - region.allMuscles(),
         )
     }
 
@@ -189,7 +199,14 @@ class OnboardingViewModel @Inject constructor(
                     experience = experience,
                     trainingDaysPerWeek = state.trainingDaysPerWeek,
                     sessionLengthMs = state.sessionLengthMinutes * MS_PER_MINUTE,
-                    availableEquipment = state.equipment,
+                    // The screen says choosing nothing means body weight only,
+                    // and an empty set does not mean that — UserProfile reads it
+                    // as "not stated" and the rules engine then allows every
+                    // piece of equipment there is. Saying it explicitly is what
+                    // makes the promise on screen true.
+                    availableEquipment = state.equipment.ifEmpty {
+                        setOf(Equipment.BODY_WEIGHT)
+                    },
                     preferredMuscles = state.preferredMuscles,
                     exclusions = state.avoidedMuscles
                         .map { MovementExclusion(ExclusionKind.MUSCLE, it.slug) }
@@ -203,18 +220,8 @@ class OnboardingViewModel @Inject constructor(
         _uiState.value = _uiState.value.block()
     }
 
-    private fun synonymGroup(muscle: Muscle): Set<Muscle> =
-        Muscle.entries.filterTo(mutableSetOf()) { it.canonical == muscle.canonical }
 
-    private fun Set<Muscle>.toggleGroup(muscle: Muscle): Set<Muscle> {
-        val group = synonymGroup(muscle)
-        return if (containsAll(group)) this - group else this + group
-    }
 
-    private fun Set<Muscle>.toggleRegion(region: BodyRegion): Set<Muscle> {
-        val group = region.muscles.flatMapTo(mutableSetOf(), ::synonymGroup)
-        return if (containsAll(group)) this - group else this + group
-    }
 
     private fun <T> Set<T>.toggle(value: T): Set<T> =
         if (value in this) this - value else this + value

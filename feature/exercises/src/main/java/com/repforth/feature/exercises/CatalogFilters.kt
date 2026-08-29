@@ -148,5 +148,3 @@ private fun FacetLabel(resId: Int) {
  * A region reads as selected when any muscle in it is, so the map reflects a
  * chip tap even for a muscle the user picked by name rather than by pointing.
  */
-private fun selectedRegions(muscles: Set<Muscle>): Set<BodyRegion> =
-    muscles.mapNotNullTo(mutableSetOf()) { it.region }

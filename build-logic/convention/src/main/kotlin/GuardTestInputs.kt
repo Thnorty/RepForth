@@ -27,7 +27,14 @@ internal fun Project.configureGuardTestInputs() {
     // Whole directories cover most guards, but the manifest is a single file and
     // its parent holds the entire source tree; declaring that as an input would
     // make every test task rerun on any source edit.
-    val guardedFiles = listOf("src/main/AndroidManifest.xml")
+    val guardedFiles = listOf(
+        "src/main/AndroidManifest.xml",
+        // TermResourceParityTest reads this from core:exercise-data, across a
+        // module boundary. Relative paths out of the module are exactly as
+        // invisible to Gradle as the ones inside it, and being someone else's
+        // file makes it likelier to change without this task rerunning.
+        "../model/src/test/resources/dataset-vocabulary.json",
+    )
 
     tasks.withType<Test>().configureEach {
         guardedDirs.forEach { path ->

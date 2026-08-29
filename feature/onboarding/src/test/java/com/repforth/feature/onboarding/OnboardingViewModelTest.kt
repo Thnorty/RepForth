@@ -1,5 +1,6 @@
 package com.repforth.feature.onboarding
 
+import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Muscle
@@ -229,6 +230,75 @@ class OnboardingViewModelTest {
             "The exclusion must survive the round trip through UserProfile",
             muscle.canonical in saved.excludedMuscles.map { it.canonical },
         )
+    }
+
+    /**
+     * Found by an audit, not by the tests: the exclusion was one-way.
+     *
+     * Avoiding a muscle dropped it from preferred, but preferring one did not
+     * drop it from avoided — and the Back button makes that reachable in about
+     * four taps. The profile then asked the rules engine to favour and forbid
+     * the same muscle.
+     */
+    @Test
+    fun `preferring a muscle removes it from the avoided ones`() {
+        val muscle = Muscle.entries.first()
+
+        viewModel.onAvoidedMuscleToggled(muscle)
+        assertTrue(state.avoidedMuscles.isNotEmpty())
+
+        viewModel.onPreferredMuscleToggled(muscle)
+
+        assertTrue(
+            "Preferring must clear the avoidance, the same way avoiding clears the preference",
+            state.avoidedMuscles.isEmpty(),
+        )
+        assertTrue(state.preferredMuscles.isNotEmpty())
+    }
+
+    @Test
+    fun `the two muscle sets can never overlap, whichever order they are answered in`() {
+        val region = BodyRegion.entries.first { it.muscles.isNotEmpty() }
+
+        viewModel.onAvoidedRegionToggled(region)
+        viewModel.onPreferredRegionToggled(region)
+        assertTrue(state.preferredMuscles.intersect(state.avoidedMuscles).isEmpty())
+
+        viewModel.onAvoidedRegionToggled(region)
+        assertTrue(state.preferredMuscles.intersect(state.avoidedMuscles).isEmpty())
+    }
+
+    /**
+     * The equipment step says "choosing nothing means body weight only", and an
+     * empty set does not mean that: [UserProfile] documents empty as "unknown"
+     * and the rules engine then permits every piece of equipment there is. So
+     * the screen promised a bodyweight plan and the engine would have
+     * programmed barbells.
+     */
+    @Test
+    fun `choosing no equipment saves body weight rather than nothing`() = runTest(dispatcher) {
+        answerRequiredQuestions()
+
+        viewModel.onFinish()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            "An empty set means unrestricted to the rules engine, which is the " +
+                "opposite of what the screen promised",
+            setOf(Equipment.BODY_WEIGHT),
+            profiles.saved.single().availableEquipment,
+        )
+    }
+
+    @Test
+    fun `choosing equipment saves exactly what was chosen`() = runTest(dispatcher) {
+        answerRequiredQuestions()
+        viewModel.onEquipmentToggled(Equipment.DUMBBELL)
+
+        viewModel.onFinish()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(setOf(Equipment.DUMBBELL), profiles.saved.single().availableEquipment)
     }
 
     @Test
