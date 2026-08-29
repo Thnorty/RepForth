@@ -325,7 +325,7 @@ usable at every step, not only at the end.
 | 1.4 Rules engine | ✅ complete — 26 tests |
 | 1.5 Session engine | ✅ state machine, persistence, **and the running workout screen**. No service yet |
 | 1.6 History | ✅ statistics in `core:workout`, Progress tab in `feature:history` |
-| 1.7 Export / import / delete | ✅ `core:transfer` — format, validation, preview, both deletes. **No Settings UI** |
+| 1.7 Export / import / delete | ✅ `core:transfer`, **and the Settings screen that calls it** |
 
 **Deliberately not attempted without a device.** The engines are provable on the
 JVM; screens are not. Four things remain, and each needs hardware to be worth
@@ -338,9 +338,8 @@ trusting:
    it. Not yet seen on a device.
 3. ~~**Active workout screen**~~ — built on the tested engine. Not yet seen on
    a device.
-4. **Settings screen** — `core:transfer` has export, import and both deletes
-   with 14 tests, and nothing calls them. The screen also needs the system file
-   pickers, which is device work: a file chooser cannot be verified on the JVM.
+4. ~~**Settings screen**~~ — built. Appearance, workout behaviour, and the four
+   data actions. The file picker itself is the system's and needs a device.
 5. **Today tab** — still a placeholder. §12 wants the current or recommended
    workout and a quick start; every piece it would need now exists.
 6. **Foreground service and ongoing notification** (§10) — this is the piece

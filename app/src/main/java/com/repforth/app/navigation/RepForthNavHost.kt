@@ -14,6 +14,7 @@ import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.session.SessionRoute
+import com.repforth.feature.settings.SettingsRoute
 
 /**
  * The app's single navigation graph.
@@ -67,10 +68,7 @@ fun RepForthNavHost(
             HistoryRoute()
         }
         composable<Destination.Settings> {
-            PlaceholderScreen(
-                titleRes = R.string.settings_title,
-                bodyRes = R.string.placeholder_settings,
-            )
+            SettingsRoute()
         }
     }
 }

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ayarlar: görünüm, antrenman davranışı ve kullanıcının kendi verisi. -->
+<resources>
+    <string name="settings_appearance">Görünüm</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Sistemi izle</string>
+    <string name="settings_theme_light">Açık</string>
+    <string name="settings_theme_dark">Koyu</string>
+
+    <string name="settings_language">Dil</string>
+    <string name="settings_language_system">Sistemi izle</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_tr">Türkçe</string>
+
+    <string name="settings_units">Birimler</string>
+    <string name="settings_units_metric">Kilogram</string>
+    <string name="settings_units_imperial">Pound</string>
+
+    <string name="settings_workout">Antrenmanlar</string>
+    <string name="settings_keep_awake">Ekran açık kalsın</string>
+    <string name="settings_keep_awake_sub">Antrenman sürerken.</string>
+    <string name="settings_haptics">Titreşim</string>
+    <string name="settings_haptics_sub">Set tamamlarken ve atlarken.</string>
+    <string name="settings_reduced_motion">Hareketi azalt</string>
+    <string name="settings_reduced_motion_sub">Daha kısa ve sade animasyonlar.</string>
+
+    <string name="settings_data">Verilerin</string>
+    <string name="settings_export">Dışa aktar</string>
+    <string name="settings_export_sub">Profilin, planların ve geçmişin tek bir JSON dosyasında.</string>
+    <string name="settings_import">İçe aktar</string>
+    <string name="settings_import_sub">Bu uygulamanın dışa aktardığı bir dosyadan. Önce neyin değişeceğini görürsün.</string>
+    <string name="settings_delete_workouts">Antrenman verilerini sil</string>
+    <string name="settings_delete_workouts_sub">Profil, planlar ve geçmiş. Egzersiz kataloğu kalır.</string>
+    <string name="settings_reset">Uygulamayı sıfırla</string>
+    <string name="settings_reset_sub">Yukarıdakilerin hepsi ve ayarların.</string>
+
+    <string name="settings_export_name">repforth-yedek.json</string>
+    <string name="settings_exported">Dışa aktarıldı.</string>
+    <string name="settings_export_failed">Dosya yazılamadı.</string>
+
+    <string name="settings_import_title">Bu dosya içe aktarılsın mı?</string>
+    <string name="settings_import_profile">Profilinin yerine geçer</string>
+    <string name="settings_import_profile_new">Bir profil ekler</string>
+    <string name="settings_import_new_plans">%1$d yeni plan</string>
+    <string name="settings_import_replaced_plans">%1$d plan değiştirilecek</string>
+    <string name="settings_import_sessions">%1$d antrenman</string>
+    <string name="settings_import_nothing">Bu dosyanın içinde bir şey yok.</string>
+    <string name="settings_import_confirm">İçe aktar</string>
+    <string name="settings_imported">İçe aktarıldı.</string>
+
+    <string name="settings_import_unreadable">Bu dosya okunamadı.</string>
+    <string name="settings_import_wrong_format">Bu bir RepForth yedeği değil.</string>
+    <string name="settings_import_too_new">Bu dosya RepForth\'un daha yeni bir sürümünden.</string>
+    <string name="settings_import_invalid">Bu bir RepForth yedeği ama içinde geçersiz bir şey var.</string>
+
+    <string name="settings_delete_title">Antrenman verileri silinsin mi?</string>
+    <string name="settings_delete_body">Profilin, planların ve geçmişin gider. Egzersiz kataloğu ve ayarların kalır. Bu geri alınamaz.</string>
+    <string name="settings_delete_confirm">Sil</string>
+    <string name="settings_deleted">Antrenman verileri silindi.</string>
+
+    <string name="settings_reset_title">Uygulama sıfırlansın mı?</string>
+    <string name="settings_reset_body">Oluşturduğun her şey ve ayarların. Uygulama yeni kurulmuş haline döner. Bu geri alınamaz.</string>
+    <string name="settings_reset_confirm">Sıfırla</string>
+    <string name="settings_reset_done">Uygulama sıfırlandı.</string>
+
+    <string name="settings_cancel">Vazgeç</string>
+    <string name="settings_export_first">Bir kopya saklamak istiyorsan önce dışa aktar.</string>
+
+    <string name="settings_privacy">Her şey bu telefonda kalır. Hesap yok, yükleme yok ve kimsenin sunucusuna yedekleme yok.</string>
+</resources>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: appearance, workout behaviour, and the user's own data. -->
+<resources>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">Follow system</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_language_tr">Türkçe</string>
+
+    <string name="settings_units">Units</string>
+    <string name="settings_units_metric">Kilograms</string>
+    <string name="settings_units_imperial">Pounds</string>
+
+    <string name="settings_workout">Workouts</string>
+    <string name="settings_keep_awake">Keep the screen on</string>
+    <string name="settings_keep_awake_sub">While a workout is running.</string>
+    <string name="settings_haptics">Vibration</string>
+    <string name="settings_haptics_sub">On completing and skipping a set.</string>
+    <string name="settings_reduced_motion">Reduce motion</string>
+    <string name="settings_reduced_motion_sub">Shorter, plainer animations.</string>
+
+    <string name="settings_data">Your data</string>
+    <string name="settings_export">Export</string>
+    <string name="settings_export_sub">Your profile, plans and history, as one JSON file.</string>
+    <string name="settings_import">Import</string>
+    <string name="settings_import_sub">From a file this app exported. You will see what changes first.</string>
+    <string name="settings_delete_workouts">Delete workout data</string>
+    <string name="settings_delete_workouts_sub">Profile, plans and history. The exercise catalog stays.</string>
+    <string name="settings_reset">Reset the app</string>
+    <string name="settings_reset_sub">Everything above, and your settings.</string>
+
+    <string name="settings_export_name">repforth-export.json</string>
+    <string name="settings_exported">Exported.</string>
+    <string name="settings_export_failed">Could not write that file.</string>
+
+    <string name="settings_import_title">Import this file?</string>
+    <string name="settings_import_profile">Replaces your profile</string>
+    <string name="settings_import_profile_new">Adds a profile</string>
+    <string name="settings_import_new_plans">%1$d new plans</string>
+    <string name="settings_import_replaced_plans">%1$d plans replaced</string>
+    <string name="settings_import_sessions">%1$d workouts</string>
+    <string name="settings_import_nothing">This file has nothing in it.</string>
+    <string name="settings_import_confirm">Import</string>
+    <string name="settings_imported">Imported.</string>
+
+    <string name="settings_import_unreadable">That file could not be read.</string>
+    <string name="settings_import_wrong_format">That is not a RepForth export.</string>
+    <string name="settings_import_too_new">That file is from a newer version of RepForth.</string>
+    <string name="settings_import_invalid">That file is a RepForth export, but something in it is not valid.</string>
+
+    <string name="settings_delete_title">Delete workout data?</string>
+    <string name="settings_delete_body">Your profile, plans and history go. The exercise catalog and your settings stay. This cannot be undone.</string>
+    <string name="settings_delete_confirm">Delete</string>
+    <string name="settings_deleted">Workout data deleted.</string>
+
+    <string name="settings_reset_title">Reset the app?</string>
+    <string name="settings_reset_body">Everything you have made, and your settings. The app returns to a fresh install. This cannot be undone.</string>
+    <string name="settings_reset_confirm">Reset</string>
+    <string name="settings_reset_done">The app has been reset.</string>
+
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_export_first">Export first if you want to keep a copy.</string>
+
+    <string name="settings_privacy">Everything stays on this phone. No account, no upload, and no backup to anyone\'s servers.</string>
+</resources>

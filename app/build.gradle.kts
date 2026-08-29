@@ -37,6 +37,7 @@ dependencies {
     implementation(project(":feature:history"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:session"))
+    implementation(project(":feature:settings"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
