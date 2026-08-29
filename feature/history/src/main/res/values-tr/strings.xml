@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- İlerleme sekmesi: geçmiş, seri, hacim ve son aktivite. -->
+<resources>
+    <string name="progress_empty">Henüz antrenman yok.</string>
+    <string name="progress_empty_action">Birini tamamla, burada görünsün.</string>
+
+    <string name="progress_workouts">Antrenman</string>
+    <string name="progress_streak">Haftalık seri</string>
+    <string name="progress_volume">Hacim</string>
+    <string name="progress_this_week">Bu hafta</string>
+    <string name="progress_volume_kg">%1$s kg</string>
+    <string name="progress_volume_tonnes">%1$s t</string>
+
+    <string name="progress_history">Geçmiş</string>
+    <string name="progress_most_performed">En çok yapılanlar</string>
+
+    <string name="progress_sets">%1$d set</string>
+    <string name="progress_sets_with_skipped">%1$d set · %2$d atlandı</string>
+    <string name="progress_duration">%1$d dk</string>
+    <string name="progress_abandoned">Erken bitirildi</string>
+    <string name="progress_session_volume">%1$s kg</string>
+</resources>

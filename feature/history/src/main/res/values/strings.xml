@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Progress tab: history, streaks, volume and recent activity. -->
+<resources>
+    <string name="progress_empty">No workouts yet.</string>
+    <string name="progress_empty_action">Finish one and it will show up here.</string>
+
+    <string name="progress_workouts">Workouts</string>
+    <string name="progress_streak">Week streak</string>
+    <string name="progress_volume">Volume</string>
+    <string name="progress_this_week">This week</string>
+    <string name="progress_volume_kg">%1$s kg</string>
+    <string name="progress_volume_tonnes">%1$s t</string>
+
+    <string name="progress_history">History</string>
+    <string name="progress_most_performed">Most performed</string>
+
+    <string name="progress_sets">%1$d sets</string>
+    <string name="progress_sets_with_skipped">%1$d sets · %2$d skipped</string>
+    <string name="progress_duration">%1$d min</string>
+    <string name="progress_abandoned">Ended early</string>
+    <string name="progress_session_volume">%1$s kg</string>
+</resources>

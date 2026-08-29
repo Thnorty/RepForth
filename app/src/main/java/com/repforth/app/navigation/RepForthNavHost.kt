@@ -12,6 +12,7 @@ import androidx.navigation.toRoute
 import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
+import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.session.SessionRoute
 
 /**
@@ -63,7 +64,7 @@ fun RepForthNavHost(
             ExercisesRoute()
         }
         composable<Destination.Progress> {
-            PlaceholderScreen(titleRes = R.string.progress, bodyRes = R.string.placeholder_progress)
+            HistoryRoute()
         }
         composable<Destination.Settings> {
             PlaceholderScreen(

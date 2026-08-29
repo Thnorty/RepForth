@@ -60,6 +60,5 @@
 
     <string name="placeholder_today">Your next workout and a quick start will live here.</string>
     <string name="placeholder_exercises">Search, filters and muscle browsing across the catalog.</string>
-    <string name="placeholder_progress">History, streaks, volume and recent muscle activity.</string>
     <string name="placeholder_settings">Theme, language, units and the AI provider you supply.</string>
 </resources>

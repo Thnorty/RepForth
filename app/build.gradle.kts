@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":core:user-data"))
     implementation(project(":feature:builder"))
     implementation(project(":feature:exercises"))
+    implementation(project(":feature:history"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:session"))
 

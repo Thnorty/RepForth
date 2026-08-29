@@ -59,6 +59,5 @@
 
     <string name="placeholder_today">Sıradaki antrenmanın ve hızlı başlangıç burada olacak.</string>
     <string name="placeholder_exercises">Katalog genelinde arama, filtreler ve kas grubuna göre gezinme.</string>
-    <string name="placeholder_progress">Geçmiş, seriler, hacim ve son çalışılan kaslar.</string>
     <string name="placeholder_settings">Tema, dil, birimler ve kendi sağladığın yapay zeka sağlayıcısı.</string>
 </resources>
