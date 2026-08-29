@@ -14,4 +14,6 @@ dependencies {
     implementation(project(":core:database"))
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(project(":core:testing"))
 }

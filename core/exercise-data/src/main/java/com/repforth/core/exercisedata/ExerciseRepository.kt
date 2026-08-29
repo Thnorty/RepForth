@@ -23,4 +23,15 @@ interface ExerciseRepository {
 
     /** Everything about one exercise, both languages included. */
     suspend fun find(id: ExerciseId): Exercise?
+
+    /**
+     * Names and facets for a known set of ids, keyed by id.
+     *
+     * A plan stores exercise ids and nothing else, so anything that renders one
+     * has to resolve names. Returning a map rather than a list keeps the
+     * plan's own order the only order in play, and lets a caller notice an id
+     * the catalog no longer has — which a dataset update can produce, and which
+     * a list would silently shorten.
+     */
+    suspend fun summaries(ids: Collection<ExerciseId>): Map<ExerciseId, ExerciseSummary>
 }

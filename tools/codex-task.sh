@@ -77,7 +77,11 @@ STARTED=$(date +%s)
 # when it is attached and appends it to the prompt, so an inherited pipe that
 # never closes hangs the run forever. Found by watching one sit for five
 # minutes printing "Reading additional input from stdin...".
-timeout "$TIMEOUT" codex "${ARGS[@]}" -- "$1" > "$LOG" 2>&1 < /dev/null
+# -k is not belt and braces on Windows. A run that hung waiting on the model
+# ignored plain SIGTERM and sat for 34 minutes on a 20 minute timeout, burning
+# five seconds of CPU and producing nothing; without the follow-up KILL the
+# timeout is advisory.
+timeout -k 30s "$TIMEOUT" codex "${ARGS[@]}" -- "$1" > "$LOG" 2>&1 < /dev/null
 RC=$?
 ELAPSED=$(( $(date +%s) - STARTED ))
 

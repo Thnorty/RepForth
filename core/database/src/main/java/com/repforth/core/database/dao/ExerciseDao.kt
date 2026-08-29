@@ -101,4 +101,23 @@ interface ExerciseDao {
         muscles: List<String>,
         ignoreMuscles: Boolean,
     ): Flow<List<ExerciseSummaryRow>>
+
+    /**
+     * Summaries for a known set of ids, for showing a plan by name.
+     *
+     * A plan stores exercise ids and nothing else - no user table has a foreign
+     * key into the catalog - so every screen that renders one has to resolve
+     * names. The alternative is [findById] per row, which loads both languages
+     * and every instruction step in order to print one line.
+     *
+     * Deliberately unordered: a plan carries its own order, and returning these
+     * in catalog order would invite a caller to rely on the wrong one.
+     */
+    @Query(
+        """
+        SELECT e.id, e.name, e.body_part, e.target, e.equipment FROM exercise e
+        WHERE e.id IN (:ids)
+        """
+    )
+    suspend fun summariesFor(ids: List<String>): List<ExerciseSummaryRow>
 }

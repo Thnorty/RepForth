@@ -40,6 +40,25 @@ internal class RoomExerciseRepository @Inject constructor(
 
     override suspend fun find(id: ExerciseId): Exercise? =
         dao.findById(id.value)?.toDomain()
+
+    override suspend fun summaries(
+        ids: Collection<ExerciseId>,
+    ): Map<ExerciseId, ExerciseSummary> {
+        // SQLite caps the variables in one statement, and a plan is small, but
+        // an import could hand this a long list. Chunking keeps the contract the
+        // same for any size rather than failing at a threshold nobody tested.
+        if (ids.isEmpty()) return emptyMap()
+        return ids.map { it.value }
+            .distinct()
+            .chunked(SQLITE_VARIABLE_LIMIT)
+            .flatMap { chunk -> dao.summariesFor(chunk) }
+            .associate { row -> ExerciseId(row.id) to row.toSummary() }
+    }
+
+    private companion object {
+        /** SQLite's default parameter ceiling is 999; this stays well clear. */
+        const val SQLITE_VARIABLE_LIMIT = 500
+    }
 }
 
 /**
