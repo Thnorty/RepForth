@@ -29,6 +29,7 @@ import com.repforth.core.userdata.TemplateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -225,11 +226,23 @@ class BuilderViewModel @Inject constructor(
 
     fun onPickerClose() = update { copy(picking = false) }
 
+    private var generationJob: Job? = null
+
     fun onCoachOpen() = update {
         copy(coaching = true, coachFailure = null, coachNotice = null)
     }
 
-    fun onCoachClose() = update { copy(coaching = false) }
+    fun onCoachClose() {
+        generationJob?.cancel()
+        generationJob = null
+        update { copy(coaching = false, coachFailure = null, generating = false) }
+    }
+
+    fun onCancelGenerate() {
+        generationJob?.cancel()
+        generationJob = null
+        update { copy(generating = false) }
+    }
 
     /**
      * Toggling one muscle toggles its synonyms with it.
@@ -262,8 +275,10 @@ class BuilderViewModel @Inject constructor(
      */
     fun onGenerate(defaultName: String, locale: Language) {
         if (_uiState.value.generating) return
-        viewModelScope.launch {
+        generationJob?.cancel()
+        generationJob = viewModelScope.launch {
             update { copy(generating = true, coachFailure = null, coachNotice = null) }
+
             val profile = profiles.getProfile()
             if (profile == null) {
                 update { copy(generating = false, coachFailure = CoachFailure.NO_PROFILE) }

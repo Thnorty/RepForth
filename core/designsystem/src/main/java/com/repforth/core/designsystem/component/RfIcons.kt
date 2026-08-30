@@ -76,6 +76,10 @@ object RfIcons {
     val Search: Painter
         @Composable get() = painterResource(R.drawable.rf_sym_search)
 
+    /** Generates a draft from the user's profile and current Coach choices. */
+    val Generate: Painter
+        @Composable get() = painterResource(R.drawable.rf_sym_auto_awesome)
+
     val Filters: Painter
         @Composable get() = painterResource(R.drawable.rf_sym_tune)
 

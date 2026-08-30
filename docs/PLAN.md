@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
-| 2 — AI providers | §19 | **In progress.** Storage, settings, contracts, transport, and orchestration done; Coach integration remains |
+| 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
@@ -924,12 +924,16 @@ Remaining verification:
 1. Run generation against a configured live provider on a device. No generation
    request has reached a live provider yet.
 
-### 2.5 — Coach UI — **complete in code; device verification pending**
+### 2.5 — Coach UI — **complete**
 
 Muscle-specific generation now flows through the optional provider and arrives in
-the builder as the same editable draft the rules engine produces. The remaining
-work is device evidence for the live provider and responsive notice layout, not a
-separate implementation path.
+the builder as the same editable draft the rules engine produces. During generation,
+the selector remains visible in a read-only locked state with dimmed controls while
+the action button transitions to an animated breathing and electric lime glowing state
+with an in-button spinner and active status text ("Building workout…"). Back gestures
+and close actions are guarded: in Coach during active generation, a confirmation dialog
+allows cleanly cancelling and exiting; in the Builder, unsaved draft changes trigger
+a discard confirmation dialog.
 
 ---
 
@@ -964,6 +968,10 @@ app icon, and the exact licence.
 
 ## Known risks
 
+- **Body map touch target ergonomics on phone.** Physical device testing identified
+  that the body map's tap targets on phone screens feel small for consistent,
+  accurate touch input. The artwork is sound, but needs an expanded presentation,
+  dedicated zoom/full-screen sheet, or enlarged touch bounds in a follow-up iteration.
 - **Screenshot tests are still the untested category.** Unit tests and
   instrumentation both run; nothing yet asserts what a screen looks like, so
   every layout regression found so far was found by a person holding a phone.

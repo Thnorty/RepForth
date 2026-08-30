@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
@@ -36,6 +37,7 @@ fun BodyMap(
     selected: Set<BodyRegion>,
     onRegionClick: (BodyRegion) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     silhouetteColor: Color = RepForthTheme.colors.track,
     regionColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     selectedColor: Color = MaterialTheme.colorScheme.primary,
@@ -52,12 +54,19 @@ fun BodyMap(
     Canvas(
         modifier = modifier
             .aspectRatio(BodyMapViewport.WIDTH / BodyMapViewport.HEIGHT)
-            .pointerInput(view, regions) {
-                detectTapGestures { tap ->
-                    val scale = size.width / BodyMapViewport.WIDTH
-                    hitTest(regions, Offset(tap.x / scale, tap.y / scale))?.let(onRegionClick)
-                }
-            },
+            .alpha(if (enabled) 1f else 0.65f)
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(view, regions) {
+                        detectTapGestures { tap ->
+                            val scale = size.width / BodyMapViewport.WIDTH
+                            hitTest(regions, Offset(tap.x / scale, tap.y / scale))?.let(onRegionClick)
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            ),
     ) {
         val matrix = Matrix().apply {
             val scale = size.width / BodyMapViewport.WIDTH

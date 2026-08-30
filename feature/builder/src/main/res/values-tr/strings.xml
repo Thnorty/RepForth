@@ -46,6 +46,15 @@
     <string name="coach_close">Kapat</string>
     <string name="coach_any">İstediğin kasları seç ya da vücut haritasına hiç dokunma; Koç, açılıştaki hedefini, ekipmanını ve antrenman süreni kullansın.</string>
     <string name="coach_generate">Oluştur</string>
+    <string name="coach_generating_action">Antrenman hazırlanıyor…</string>
+    <string name="coach_cancel_dialog_title">Antrenman oluşturma iptal edilsin mi?</string>
+    <string name="coach_cancel_dialog_body">Koç şu anda antrenman planını hazırlıyor. İptal etmek istiyor musun?</string>
+    <string name="coach_cancel_dialog_confirm">Oluşturmayı iptal et</string>
+    <string name="coach_cancel_dialog_dismiss">Beklemeye devam et</string>
+    <string name="builder_discard_dialog_title">Antrenmandan çıkılsın mı?</string>
+    <string name="builder_discard_dialog_body">Kaydedilmemiş değişikliklerin var. Şimdi çıkarsan bu antrenman kaydedilmeyecek.</string>
+    <string name="builder_discard_dialog_confirm">Vazgeç</string>
+    <string name="builder_discard_dialog_dismiss">Düzenlemeye devam et</string>
     <string name="coach_default_name">Koç planı</string>
     <string name="coach_failed_no_profile">Önce açılış sorularını tamamla — Koç senin hedefine, ekipmanına ve antrenman süresine göre kuruyor.</string>
     <string name="coach_failed_equipment">Katalogda sahip olduğun ekipmanla yapılabilecek bir şey yok. Ayarlar\'dan ekipman ekle ya da başka kaslar seç.</string>

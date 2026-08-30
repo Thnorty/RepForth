@@ -1,9 +1,9 @@
 package com.repforth.feature.builder
 
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -24,32 +26,34 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.ai.AiFallbackReason
 import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
+import com.repforth.core.designsystem.theme.Space
+import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.designsystem.theme.formatWeight
 import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.designsystem.theme.toKilograms
-import com.repforth.core.designsystem.theme.Layout
-import com.repforth.core.designsystem.theme.Space
-import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.Language
 
@@ -65,6 +69,7 @@ fun BuilderRoute(
     onSaved: () -> Unit,
     modifier: Modifier = Modifier,
     planId: String? = null,
+    onExit: () -> Unit = onSaved,
     viewModel: BuilderViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -72,11 +77,24 @@ fun BuilderRoute(
     val language = Language.fromTag(LocalConfiguration.current.locales[0].language)
         ?: Language.ENGLISH
 
+    var confirmingDiscard by rememberSaveable { mutableStateOf(false) }
+
     LaunchedEffect(planId) {
         if (planId != null) viewModel.load(planId)
     }
     LaunchedEffect(state.saved) {
         if (state.saved) onSaved()
+    }
+
+    val isDirty = state.exercises.isNotEmpty() || state.name.isNotBlank()
+    if (!state.picking && !state.coaching) {
+        BackHandler(enabled = !confirmingDiscard) {
+            if (isDirty) {
+                confirmingDiscard = true
+            } else {
+                onExit()
+            }
+        }
     }
 
     when {
@@ -91,6 +109,7 @@ fun BuilderRoute(
             onMuscleToggled = viewModel::onCoachMuscleToggled,
             onRegionToggled = viewModel::onCoachRegionToggled,
             onGenerate = { name -> viewModel.onGenerate(name, language) },
+            onCancelGenerate = viewModel::onCancelGenerate,
             onClose = viewModel::onCoachClose,
             modifier = modifier,
         )
@@ -111,6 +130,27 @@ fun BuilderRoute(
             onTimedChange = viewModel::onTimedChange,
             onSave = viewModel::onSave,
             modifier = modifier,
+        )
+    }
+
+    if (confirmingDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmingDiscard = false },
+            title = { Text(stringResource(R.string.builder_discard_dialog_title)) },
+            text = { Text(stringResource(R.string.builder_discard_dialog_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingDiscard = false
+                    onExit()
+                }) {
+                    Text(stringResource(R.string.builder_discard_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingDiscard = false }) {
+                    Text(stringResource(R.string.builder_discard_dialog_dismiss))
+                }
+            },
         )
     }
 }

@@ -33,6 +33,8 @@ import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 
+import androidx.activity.compose.BackHandler
+
 /**
  * Choosing an exercise to add to a plan.
  *
@@ -48,6 +50,8 @@ internal fun ExercisePicker(
     modifier: Modifier = Modifier,
     viewModel: PickerViewModel = hiltViewModel(),
 ) {
+    BackHandler(enabled = true, onBack = onClose)
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {

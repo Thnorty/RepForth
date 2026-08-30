@@ -46,6 +46,15 @@
     <string name="coach_close">Close</string>
     <string name="coach_any">Pick the muscles you want, or leave the body map alone and Coach uses your goal, equipment and session length from onboarding.</string>
     <string name="coach_generate">Build it</string>
+    <string name="coach_generating_action">Building workout…</string>
+    <string name="coach_cancel_dialog_title">Cancel workout generation?</string>
+    <string name="coach_cancel_dialog_body">Coach is currently preparing your workout plan. Do you want to cancel?</string>
+    <string name="coach_cancel_dialog_confirm">Cancel generation</string>
+    <string name="coach_cancel_dialog_dismiss">Keep waiting</string>
+    <string name="builder_discard_dialog_title">Discard workout?</string>
+    <string name="builder_discard_dialog_body">You have unsaved changes. If you leave now, this workout will not be saved.</string>
+    <string name="builder_discard_dialog_confirm">Discard</string>
+    <string name="builder_discard_dialog_dismiss">Keep editing</string>
     <string name="coach_default_name">Coach plan</string>
     <string name="coach_failed_no_profile">Finish onboarding first — Coach builds from your goal, equipment and session length.</string>
     <string name="coach_failed_equipment">Nothing in the catalog uses the equipment you have. Add some in Settings, or pick different muscles.</string>

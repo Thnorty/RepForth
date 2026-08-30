@@ -16,6 +16,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -54,16 +55,22 @@ fun MuscleSelector(
     onRegionToggled: (BodyRegion) -> Unit,
     labelOf: @Composable (Muscle) -> String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (enabled) 1f else 0.45f),
+        ) {
             BodyView.entries.forEachIndexed { index, candidate ->
                 SegmentedButton(
                     selected = view == candidate,
                     onClick = { onViewChange(candidate) },
+                    enabled = enabled,
                     shape = SegmentedButtonDefaults.itemShape(index, BodyView.entries.size),
                 ) {
                     Text(
@@ -93,6 +100,7 @@ fun MuscleSelector(
             view = view,
             selected = selected.mapNotNullTo(mutableSetOf()) { it.region },
             onRegionClick = onRegionToggled,
+            enabled = enabled,
             modifier = Modifier
                 .height(Layout.bodyMapHeight)
                 // One description for the whole map. Announcing each path would
@@ -117,6 +125,7 @@ fun MuscleSelector(
                     InputChip(
                         selected = true,
                         onClick = { onMuscleToggled(muscle) },
+                        enabled = enabled,
                         label = { Text(label) },
                         trailingIcon = {
                             Icon(
@@ -138,6 +147,7 @@ fun MuscleSelector(
                 FilterChip(
                     selected = false,
                     onClick = { onMuscleToggled(muscle) },
+                    enabled = enabled,
                     label = { Text(labelOf(muscle)) },
                 )
             }
