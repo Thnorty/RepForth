@@ -34,6 +34,22 @@ sealed interface AiWorkoutGenerationOutcome {
 }
 
 /**
+ * The generation boundary consumed by UI features.
+ *
+ * Depending on the interface keeps Coach tests independent of encrypted
+ * settings and HTTP adapters while the production binding still has exactly
+ * one implementation.
+ */
+interface AiWorkoutGenerationService {
+    suspend fun generate(
+        request: GenerationRequest,
+        locale: Language,
+        candidates: List<ExerciseCandidate>,
+        planName: String,
+    ): AiWorkoutGenerationOutcome
+}
+
+/**
  * The Phase 2.4 pipeline from local constraints to one trusted result (§8).
  *
  * Provider configuration is resolved for this call and never retained. The
@@ -46,11 +62,11 @@ sealed interface AiWorkoutGenerationOutcome {
 class AiWorkoutGenerator @Inject constructor(
     private val repository: ProviderRepository,
     private val providers: Map<ProviderId, @JvmSuppressWildcards AiProvider>,
-) {
+) : AiWorkoutGenerationService {
     private val rules = RulesEngine()
     private val validator = AiWorkoutValidator(rules)
 
-    suspend fun generate(
+    override suspend fun generate(
         request: GenerationRequest,
         locale: Language,
         candidates: List<ExerciseCandidate>,

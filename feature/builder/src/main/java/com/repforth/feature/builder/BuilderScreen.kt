@@ -33,12 +33,15 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.ai.AiFallbackReason
+import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.formatWeight
@@ -48,6 +51,7 @@ import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.model.ExerciseId
+import com.repforth.core.model.Language
 
 /**
  * The manual workout builder (§3, §12).
@@ -64,6 +68,9 @@ fun BuilderRoute(
     viewModel: BuilderViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val defaultCoachName = stringResource(R.string.coach_default_name)
+    val language = Language.fromTag(LocalConfiguration.current.locales[0].language)
+        ?: Language.ENGLISH
 
     LaunchedEffect(planId) {
         if (planId != null) viewModel.load(planId)
@@ -83,7 +90,7 @@ fun BuilderRoute(
             state = state,
             onMuscleToggled = viewModel::onCoachMuscleToggled,
             onRegionToggled = viewModel::onCoachRegionToggled,
-            onGenerate = viewModel::onGenerate,
+            onGenerate = { name -> viewModel.onGenerate(name, language) },
             onClose = viewModel::onCoachClose,
             modifier = modifier,
         )
@@ -93,6 +100,7 @@ fun BuilderRoute(
             onNameChange = viewModel::onNameChange,
             onAddExercise = viewModel::onPickerOpen,
             onCoach = viewModel::onCoachOpen,
+            onRetryCoach = { viewModel.onGenerate(defaultCoachName, language) },
             onRemove = viewModel::onRemove,
             onMove = viewModel::onMove,
             onSetsChange = viewModel::onSetsChange,
@@ -114,6 +122,7 @@ internal fun BuilderScreen(
     onNameChange: (String) -> Unit,
     onAddExercise: () -> Unit,
     onCoach: () -> Unit,
+    onRetryCoach: () -> Unit,
     onRemove: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
     onSetsChange: (Int, Int) -> Unit,
@@ -143,6 +152,12 @@ internal fun BuilderScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+
+            state.coachNotice?.let { notice ->
+                item(key = "coach_notice") {
+                    CoachNoticeCard(notice = notice, onRetry = onRetryCoach)
+                }
             }
 
             if (state.exercises.isEmpty()) {
@@ -205,6 +220,56 @@ internal fun BuilderScreen(
         BuilderFooter(state = state, onSave = onSave)
     }
 }
+
+@Composable
+private fun CoachNoticeCard(
+    notice: CoachNotice,
+    onRetry: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(Space.s4),
+            verticalArrangement = Arrangement.spacedBy(Space.s2),
+        ) {
+            Text(
+                text = when (notice) {
+                    is CoachNotice.Provider -> stringResource(
+                        R.string.coach_provider_rationale,
+                        notice.rationale,
+                    )
+                    is CoachNotice.Fallback -> stringResource(notice.messageRes)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (notice is CoachNotice.Fallback && notice.canRetry) {
+                OutlinedButton(
+                    onClick = onRetry,
+                    modifier = Modifier.heightIn(min = Target.min),
+                ) {
+                    Text(stringResource(R.string.coach_retry))
+                }
+            }
+        }
+    }
+}
+
+private val CoachNotice.Fallback.messageRes: Int
+    get() = when (reason) {
+        AiFallbackReason.NO_PROVIDER_CONFIGURATION -> R.string.coach_local_no_configuration
+        AiFallbackReason.NO_PROVIDER_ADAPTER -> R.string.coach_local_no_adapter
+        AiFallbackReason.INVALID_RESPONSE -> R.string.coach_local_invalid_response
+        AiFallbackReason.NO_ELIGIBLE_CANDIDATES -> R.string.coach_local_no_candidates
+        AiFallbackReason.PROVIDER_FAILURE -> when (providerFailure) {
+            ProviderFailure.AUTHENTICATION -> R.string.coach_local_authentication
+            ProviderFailure.MODEL_NOT_FOUND -> R.string.coach_local_model_not_found
+            ProviderFailure.QUOTA -> R.string.coach_local_quota
+            ProviderFailure.NETWORK -> R.string.coach_local_network
+            ProviderFailure.FORMAT -> R.string.coach_local_invalid_response
+            ProviderFailure.ENDPOINT_REFUSED -> R.string.coach_local_endpoint
+            ProviderFailure.SERVER -> R.string.coach_local_server
+            null -> R.string.coach_local_provider_failure
+        }
+    }
 
 /**
  * The estimate and the way out, pinned below the list.

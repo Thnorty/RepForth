@@ -117,7 +117,7 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-391 unit tests across 50 classes, plus fourteen instrumentation tests
+393 unit tests across 50 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
@@ -842,7 +842,7 @@ manifest is safe because the app narrows it — that check is gone — so it cla
 something smaller and true: one module reaches the network, through one file.
 That is a scope control rather than a cleartext control, and the file says so.
 
-### 2.4 — The generation pipeline — **in progress**
+### 2.4 — The generation pipeline — **complete in code; live verification pending**
 
 The first boundary is built: versioned, serializable workout request and response
 contracts; a compact request mapper that sends constraints and candidate metadata
@@ -889,7 +889,7 @@ Eleven further unit tests cover all five fallback reasons, every provider failur
 category, stable local filtering, first-attempt success, both repair paths, typed
 feedback transport and deterministic fallback. The malformed-output retry test
 was watched failing after the retry condition was deliberately changed, then the
-condition was restored. The full placeholder assembly, 391-test suite and lint
+condition was restored. The full placeholder assembly, 393-test suite and lint
 all pass after restoration.
 
 **The response contract now uses one exact repetition target.** Version 1 copied
@@ -898,15 +898,38 @@ saved-plan model both hold one number. Collapsing `8–12` into a midpoint would
 discard provider output invisibly, so the specification was corrected and schema
 version 2 requires the provider to choose the editable target itself.
 
-Still to build:
+The builder now consumes the orchestration boundary rather than calling
+`RulesEngine` directly. It passes the active app language, maps a validated
+provider response into the same editable draft cards as a manual or rules plan,
+and preserves the exact repetition or duration target without another clamp or
+conversion. Saving retains `AI` or `RULES` as the plan's origin; the provider's
+localized rationale is shown above the cards.
 
-1. Builder integration and the user-facing retry/fallback notice. No generation
+Every deterministic fallback is visible in English and Turkish. Missing
+configuration explains that the plan was built locally; authentication, model,
+quota, network, endpoint, server and invalid-response failures each name the
+actionable category. Provider failures and a still-invalid repaired response
+offer a direct retry while retaining the selected muscles. The UI depends on a
+small generation interface, so these paths are tested without HTTP or encrypted
+storage.
+
+Two builder tests cover exact repetition and duration projection, locale,
+rationale, source persistence, actionable network fallback and retry-state
+preservation. The exact-target test was watched failing after the projection was
+deliberately changed from `12` to `13`, then restored. Placeholder assembly, all
+393 unit tests and lint pass after restoration.
+
+Remaining verification:
+
+1. Run generation against a configured live provider on a device. No generation
    request has reached a live provider yet.
 
-### 2.5 — Coach UI
+### 2.5 — Coach UI — **complete in code; device verification pending**
 
-Muscle-specific generation through a provider, arriving in the builder as the
-same editable draft the rules engine already produces.
+Muscle-specific generation now flows through the optional provider and arrives in
+the builder as the same editable draft the rules engine produces. The remaining
+work is device evidence for the live provider and responsive notice layout, not a
+separate implementation path.
 
 ---
 

@@ -93,6 +93,7 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
 ): String = """
     Arrange a workout from the typed request below.
     Use only exercise IDs in candidate_exercises and obey every constraint.
+    Choose one exact integer in repetitions for each repetition-based exercise; never return a range.
     Return only JSON matching the supplied schema.
     Write rationale in the request locale: $locale.
     ${retryFeedback?.toPromptLine().orEmpty()}

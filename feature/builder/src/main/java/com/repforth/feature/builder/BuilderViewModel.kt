@@ -2,11 +2,17 @@ package com.repforth.feature.builder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.ai.AiFallbackReason
+import com.repforth.core.ai.AiWorkoutGenerationOutcome
+import com.repforth.core.ai.AiWorkoutGenerationService
+import com.repforth.core.ai.AiWorkoutResponse
+import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.common.time.TimeSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.Language
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
@@ -18,7 +24,6 @@ import com.repforth.core.model.BodyRegion
 import com.repforth.core.rules.GenerationRequest
 import com.repforth.core.rules.Rejection
 import com.repforth.core.rules.RejectionReason
-import com.repforth.core.rules.RulesEngine
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -90,6 +95,22 @@ enum class CoachFailure {
     NOTHING,
 }
 
+/** What happened when Coach successfully filled the editable builder. */
+sealed interface CoachNotice {
+    /** A locally validated provider answer, including its user-facing reason. */
+    data class Provider(val rationale: String) : CoachNotice
+
+    /** The deterministic plan used when the optional provider path was unavailable. */
+    data class Fallback(
+        val reason: AiFallbackReason,
+        val providerFailure: ProviderFailure? = null,
+    ) : CoachNotice {
+        val canRetry: Boolean
+            get() = reason == AiFallbackReason.PROVIDER_FAILURE ||
+                reason == AiFallbackReason.INVALID_RESPONSE
+    }
+}
+
 data class BuilderUiState(
     /** Null while building a new plan; set when editing a saved one. */
     val planId: String? = null,
@@ -98,6 +119,8 @@ data class BuilderUiState(
     val picking: Boolean = false,
     val saving: Boolean = false,
     val saved: Boolean = false,
+    /** How this plan first entered the builder; retained if the user edits it. */
+    val source: PlanSource = PlanSource.MANUAL,
     /** The user's session ceiling in minutes, or null before onboarding. */
     val sessionCeilingMinutes: Int? = null,
     /** Coach's sheet is open. */
@@ -107,6 +130,8 @@ data class BuilderUiState(
     val generating: Boolean = false,
     /** Why the last generation produced nothing, or null. */
     val coachFailure: CoachFailure? = null,
+    /** Provider rationale or an honest explanation of deterministic fallback. */
+    val coachNotice: CoachNotice? = null,
 ) {
     val isEditing: Boolean get() = planId != null
 
@@ -159,6 +184,7 @@ class BuilderViewModel @Inject constructor(
     private val exercises: ExerciseRepository,
     private val profiles: ProfileRepository,
     private val time: TimeSource,
+    private val generator: AiWorkoutGenerationService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuilderUiState())
@@ -187,6 +213,7 @@ class BuilderViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 planId = template.id,
                 name = template.name,
+                source = template.source,
                 exercises = template.exercises.toDrafts(names),
             )
         }
@@ -198,7 +225,9 @@ class BuilderViewModel @Inject constructor(
 
     fun onPickerClose() = update { copy(picking = false) }
 
-    fun onCoachOpen() = update { copy(coaching = true, coachFailure = null) }
+    fun onCoachOpen() = update {
+        copy(coaching = true, coachFailure = null, coachNotice = null)
+    }
 
     fun onCoachClose() = update { copy(coaching = false) }
 
@@ -219,7 +248,7 @@ class BuilderViewModel @Inject constructor(
     }
 
     /**
-     * Builds a plan from the profile and the rules engine (§3, §8).
+     * Builds a plan through the validated provider-or-rules pipeline (§3, §8).
      *
      * The result lands as the same draft list the manual path produces, so it
      * is editable before it is saved and nothing is written until the user says
@@ -231,10 +260,10 @@ class BuilderViewModel @Inject constructor(
      * overwriting a name someone typed would be the generator taking a decision
      * that was not its to take.
      */
-    fun onGenerate(defaultName: String) {
+    fun onGenerate(defaultName: String, locale: Language) {
         if (_uiState.value.generating) return
         viewModelScope.launch {
-            update { copy(generating = true, coachFailure = null) }
+            update { copy(generating = true, coachFailure = null, coachNotice = null) }
             val profile = profiles.getProfile()
             if (profile == null) {
                 update { copy(generating = false, coachFailure = CoachFailure.NO_PROFILE) }
@@ -249,32 +278,58 @@ class BuilderViewModel @Inject constructor(
                 // answer rather than the same plan again.
                 seed = time.now(),
             )
-            val outcome = RulesEngine().generate(
+            val candidates = exercises.candidates()
+            val planName = _uiState.value.name.ifBlank { defaultName }
+            when (val outcome = generator.generate(
                 request = request,
-                candidates = exercises.candidates(),
-                planName = _uiState.value.name.ifBlank { defaultName },
-            )
-
-            val plan = outcome.plan
-            if (plan == null) {
-                update {
-                    copy(generating = false, coachFailure = outcome.rejections.dominantFailure())
+                locale = locale,
+                candidates = candidates,
+                planName = planName,
+            )) {
+                is AiWorkoutGenerationOutcome.Provider -> {
+                    val ids = outcome.response.exercises.map { ExerciseId(it.exerciseId) }
+                    val names = exercises.summaries(ids)
+                    update {
+                        copy(
+                            name = planName,
+                            source = PlanSource.AI,
+                            exercises = outcome.response.toDrafts(names),
+                            generating = false,
+                            coaching = false,
+                            coachFailure = null,
+                            coachNotice = CoachNotice.Provider(outcome.response.rationale),
+                        )
+                    }
                 }
-                return@launch
-            }
 
-            val names = exercises.summaries(plan.exercises.map { it.exerciseId })
-            update {
-                copy(
-                    // Already resolved: planName above is the typed name when
-                    // there is one and the default when there is not, so
-                    // re-deciding it here would be the same rule written twice.
-                    name = plan.name,
-                    exercises = plan.exercises.toDrafts(names),
-                    generating = false,
-                    coaching = false,
-                    coachFailure = null,
-                )
+                is AiWorkoutGenerationOutcome.Rules -> {
+                    val plan = outcome.generation.plan
+                    if (plan == null) {
+                        update {
+                            copy(
+                                generating = false,
+                                coachFailure = outcome.generation.rejections.dominantFailure(),
+                            )
+                        }
+                        return@launch
+                    }
+
+                    val names = exercises.summaries(plan.exercises.map { it.exerciseId })
+                    update {
+                        copy(
+                            name = plan.name,
+                            source = PlanSource.RULES,
+                            exercises = plan.exercises.toDrafts(names),
+                            generating = false,
+                            coaching = false,
+                            coachFailure = null,
+                            coachNotice = CoachNotice.Fallback(
+                                reason = outcome.reason,
+                                providerFailure = outcome.providerFailure,
+                            ),
+                        )
+                    }
+                }
             }
         }
     }
@@ -351,7 +406,7 @@ class BuilderViewModel @Inject constructor(
                 WorkoutTemplate(
                     id = state.planId ?: UUID.randomUUID().toString(),
                     name = state.name.trim(),
-                    source = PlanSource.MANUAL,
+                    source = state.source,
                     exercises = state.exercises.mapIndexed { index, draft ->
                         PlannedExercise(
                             id = draft.id,
@@ -416,10 +471,29 @@ private fun List<PlannedExercise>.toDrafts(
         name = names[planned.exerciseId]?.name ?: planned.exerciseId.value,
         sets = planned.target.sets,
         reps = reps?.reps ?: DEFAULT_DRAFT_REPS,
-        durationSeconds = ((duration?.durationMs ?: DEFAULT_DRAFT_DURATION_MS) / 1000L).toInt(),
+        durationSeconds = (
+            (duration?.durationMs ?: DEFAULT_DRAFT_DURATION_SECONDS * 1000L) / 1000L
+        ).toInt(),
         weightKg = planned.target.weightKg,
         restSeconds = (planned.restMs / 1000L).toInt(),
         timed = duration != null,
+    )
+}
+
+/** A validated provider answer, projected without changing any target value. */
+private fun AiWorkoutResponse.toDrafts(
+    names: Map<ExerciseId, ExerciseSummary>,
+): List<DraftExercise> = exercises.map { planned ->
+    val exerciseId = ExerciseId(planned.exerciseId)
+    DraftExercise(
+        id = UUID.randomUUID().toString(),
+        exerciseId = exerciseId,
+        name = names[exerciseId]?.name ?: exerciseId.value,
+        sets = planned.sets,
+        reps = planned.repetitions ?: DEFAULT_DRAFT_REPS,
+        durationSeconds = planned.durationSeconds ?: DEFAULT_DRAFT_DURATION_SECONDS,
+        restSeconds = planned.restSeconds,
+        timed = planned.durationSeconds != null,
     )
 }
 
@@ -441,4 +515,4 @@ private fun List<Rejection>.dominantFailure(): CoachFailure {
 }
 
 private const val DEFAULT_DRAFT_REPS = 10
-private const val DEFAULT_DRAFT_DURATION_MS = 30_000L
+private const val DEFAULT_DRAFT_DURATION_SECONDS = 30

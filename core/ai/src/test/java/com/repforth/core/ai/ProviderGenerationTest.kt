@@ -200,6 +200,7 @@ class ProviderGenerationTest {
         )
 
         assertTrue(prompt.contains("The previous answer failed validation"))
+        assertTrue(prompt.contains("one exact integer in repetitions"))
         assertTrue(prompt.contains("\"kind\":\"contract\""))
         assertTrue(prompt.contains("id-with-\\\"quote"))
     }

@@ -52,4 +52,17 @@
     <string name="coach_failed_exclusions">Everything that fits is on your avoid list. Loosen it in Settings and try again.</string>
     <string name="coach_failed_muscles">Nothing matched those muscles with your equipment. Try picking more of the body map.</string>
     <string name="coach_failed_nothing">Coach could not build a workout from these constraints.</string>
+    <string name="coach_provider_rationale">Coach: %1$s</string>
+    <string name="coach_retry">Try AI again</string>
+    <string name="coach_local_no_configuration">Built locally. Set up an AI provider in Settings to use AI arrangement.</string>
+    <string name="coach_local_no_adapter">Built locally because this provider is not available in this build.</string>
+    <string name="coach_local_no_candidates">Built locally because no exercise could be sent to the provider.</string>
+    <string name="coach_local_authentication">The provider rejected the key, so Coach built this locally. Check the provider settings.</string>
+    <string name="coach_local_model_not_found">The configured model was not found, so Coach built this locally. Check the model in Settings.</string>
+    <string name="coach_local_quota">The provider is rate-limited or out of credit, so Coach built this locally.</string>
+    <string name="coach_local_network">The provider could not be reached, so Coach built this locally.</string>
+    <string name="coach_local_invalid_response">The provider response was still invalid after one repair attempt, so Coach built this locally.</string>
+    <string name="coach_local_endpoint">The provider endpoint could not be used, so Coach built this locally. Check its address in Settings.</string>
+    <string name="coach_local_server">The provider reported a server error, so Coach built this locally.</string>
+    <string name="coach_local_provider_failure">The provider was unavailable, so Coach built this locally.</string>
 </resources>

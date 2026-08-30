@@ -1,5 +1,12 @@
 package com.repforth.feature.builder
 
+import com.repforth.core.ai.AI_WORKOUT_SCHEMA_VERSION
+import com.repforth.core.ai.AiFallbackReason
+import com.repforth.core.ai.AiPlannedExercise
+import com.repforth.core.ai.AiWorkoutGenerationOutcome
+import com.repforth.core.ai.AiWorkoutGenerationService
+import com.repforth.core.ai.AiWorkoutResponse
+import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.exercisedata.CatalogFilter
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.BodyPart
@@ -13,11 +20,15 @@ import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.Language
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.PlanSource
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.rules.GenerationRequest
+import com.repforth.core.rules.RulesEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -51,6 +62,7 @@ class BuilderViewModelTest {
     private lateinit var templates: RecordingTemplateRepository
     private lateinit var catalog: FakeExercises
     private lateinit var profiles: FakeProfiles
+    private lateinit var generator: FakeWorkoutGenerator
     private lateinit var viewModel: BuilderViewModel
 
     @Before
@@ -59,7 +71,8 @@ class BuilderViewModelTest {
         templates = RecordingTemplateRepository()
         catalog = FakeExercises()
         profiles = FakeProfiles()
-        viewModel = BuilderViewModel(templates, catalog, profiles, FakeTimeSource())
+        generator = FakeWorkoutGenerator()
+        viewModel = BuilderViewModel(templates, catalog, profiles, FakeTimeSource(), generator)
     }
 
     @After
@@ -71,11 +84,16 @@ class BuilderViewModelTest {
 
     // ---- Coach (§3, §8): the rules engine reaching the builder ----
 
-    private fun candidate(id: String, muscle: Muscle, equipment: Equipment = Equipment.BODY_WEIGHT) =
+    private fun candidate(
+        id: String,
+        muscle: Muscle,
+        equipment: Equipment = Equipment.BODY_WEIGHT,
+        timed: Boolean = false,
+    ) =
         ExerciseCandidate(
             id = ExerciseId(id),
             name = "Exercise $id",
-            bodyPart = BodyPart.entries.first(),
+            bodyPart = if (timed) BodyPart.CARDIO else BodyPart.CHEST,
             target = muscle,
             muscleGroup = muscle,
             secondaryMuscles = emptySet(),
@@ -86,14 +104,88 @@ class BuilderViewModelTest {
     fun `a generated plan arrives as editable drafts`() = runTest(dispatcher) {
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS), candidate("b", Muscle.LATS))
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertTrue("Coach produced rows", state.exercises.isNotEmpty())
         assertNull(state.coachFailure)
         assertFalse("The sheet closes on success", state.coaching)
         assertFalse(state.generating)
+        assertEquals(PlanSource.RULES, state.source)
+        assertEquals(
+            AiFallbackReason.NO_PROVIDER_CONFIGURATION,
+            (state.coachNotice as CoachNotice.Fallback).reason,
+        )
     }
+
+    @Test
+    fun `a provider answer keeps its exact targets rationale locale and source`() =
+        runTest(dispatcher) {
+            catalog.catalog = listOf(
+                candidate("a", Muscle.PECTORALS),
+                candidate("b", Muscle.LATS, timed = true),
+            )
+            generator.response = AiWorkoutResponse(
+                schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+                exercises = listOf(
+                    AiPlannedExercise(
+                        exerciseId = "a",
+                        order = 0,
+                        sets = 4,
+                        repetitions = 12,
+                        restSeconds = 75,
+                    ),
+                    AiPlannedExercise(
+                        exerciseId = "b",
+                        order = 1,
+                        sets = 3,
+                        durationSeconds = 45,
+                        restSeconds = 30,
+                    ),
+                ),
+                rationale = "Dengeli hacim",
+            )
+
+            viewModel.onGenerate("Koç planı", Language.TURKISH)
+            advanceUntilIdle()
+
+            assertEquals(Language.TURKISH, generator.locales.single())
+            assertEquals(PlanSource.AI, state.source)
+            assertEquals(12, state.exercises[0].reps)
+            assertFalse(state.exercises[0].timed)
+            assertEquals(45, state.exercises[1].durationSeconds)
+            assertTrue(state.exercises[1].timed)
+            assertEquals("Dengeli hacim", (state.coachNotice as CoachNotice.Provider).rationale)
+
+            viewModel.onSave()
+            advanceUntilIdle()
+
+            assertEquals(PlanSource.AI, templates.saved.single().source)
+            assertEquals(12, (templates.saved.single().exercises[0].target as ExerciseTarget.Reps).reps)
+        }
+
+    @Test
+    fun `provider failure builds locally and leaves the request ready to retry`() =
+        runTest(dispatcher) {
+            catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+            generator.failure = ProviderFailure.NETWORK
+            viewModel.onCoachMuscleToggled(Muscle.PECTORALS)
+
+            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            advanceUntilIdle()
+
+            val notice = state.coachNotice as CoachNotice.Fallback
+            assertEquals(AiFallbackReason.PROVIDER_FAILURE, notice.reason)
+            assertEquals(ProviderFailure.NETWORK, notice.providerFailure)
+            assertTrue(notice.canRetry)
+            assertEquals(Muscle.PECTORALS.synonyms, state.coachMuscles)
+
+            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            advanceUntilIdle()
+
+            assertEquals(2, generator.locales.size)
+            assertEquals(Muscle.PECTORALS.synonyms, state.coachMuscles)
+        }
 
     /**
      * The whole reason Coach lives inside the builder: nothing is written until
@@ -103,7 +195,7 @@ class BuilderViewModelTest {
     fun `generating saves nothing on its own`() = runTest(dispatcher) {
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertTrue("Nothing was persisted", templates.saved.isEmpty())
@@ -114,7 +206,7 @@ class BuilderViewModelTest {
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
         viewModel.onNameChange("Leg day")
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals("Leg day", state.name)
@@ -124,7 +216,7 @@ class BuilderViewModelTest {
     fun `an empty name takes the default`() = runTest(dispatcher) {
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals("Coach plan", state.name)
@@ -135,7 +227,7 @@ class BuilderViewModelTest {
         profiles.profile = null
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals(CoachFailure.NO_PROFILE, state.coachFailure)
@@ -154,7 +246,7 @@ class BuilderViewModelTest {
             candidate("b", Muscle.LATS, Equipment.BARBELL),
         )
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals(CoachFailure.EQUIPMENT, state.coachFailure)
@@ -165,7 +257,7 @@ class BuilderViewModelTest {
     fun `an empty catalog does not crash`() = runTest(dispatcher) {
         catalog.catalog = emptyList()
 
-        viewModel.onGenerate("Coach plan")
+        viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals(CoachFailure.NOTHING, state.coachFailure)
@@ -445,6 +537,32 @@ private class FakeExercises : ExerciseRepository {
                 equipment = Equipment.BODY_WEIGHT,
             )
         }
+}
+
+private class FakeWorkoutGenerator : AiWorkoutGenerationService {
+    var response: AiWorkoutResponse? = null
+    var failure: ProviderFailure? = null
+    val locales = mutableListOf<Language>()
+
+    override suspend fun generate(
+        request: GenerationRequest,
+        locale: Language,
+        candidates: List<ExerciseCandidate>,
+        planName: String,
+    ): AiWorkoutGenerationOutcome {
+        locales += locale
+        response?.let { return AiWorkoutGenerationOutcome.Provider(it, attempts = 1) }
+        return AiWorkoutGenerationOutcome.Rules(
+            generation = RulesEngine().generate(request, candidates, planName),
+            reason = if (failure == null) {
+                AiFallbackReason.NO_PROVIDER_CONFIGURATION
+            } else {
+                AiFallbackReason.PROVIDER_FAILURE
+            },
+            attempts = if (failure == null) 0 else 1,
+            providerFailure = failure,
+        )
+    }
 }
 
 private class FakeProfiles : ProfileRepository {

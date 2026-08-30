@@ -52,4 +52,17 @@
     <string name="coach_failed_exclusions">Uyan her şey kaçındığın listesinde. Ayarlar\'dan listeyi gevşetip tekrar dene.</string>
     <string name="coach_failed_muscles">Bu kaslar için ekipmanına uyan bir şey bulunamadı. Vücut haritasından daha fazla yer seçmeyi dene.</string>
     <string name="coach_failed_nothing">Koç bu kısıtlarla bir antrenman kuramadı.</string>
+    <string name="coach_provider_rationale">Koç: %1$s</string>
+    <string name="coach_retry">Yapay zekâyı tekrar dene</string>
+    <string name="coach_local_no_configuration">Plan yerel olarak oluşturuldu. Yapay zekâ düzenlemesini kullanmak için Ayarlar bölümünden bir sağlayıcı yapılandır.</string>
+    <string name="coach_local_no_adapter">Bu sağlayıcı bu sürümde kullanılamadığı için plan yerel olarak oluşturuldu.</string>
+    <string name="coach_local_no_candidates">Sağlayıcıya gönderilebilecek egzersiz olmadığı için plan yerel olarak oluşturuldu.</string>
+    <string name="coach_local_authentication">Sağlayıcı anahtarı reddetti; Koç bu planı yerel olarak oluşturdu. Sağlayıcı ayarlarını kontrol et.</string>
+    <string name="coach_local_model_not_found">Yapılandırılan model bulunamadı; Koç bu planı yerel olarak oluşturdu. Ayarlar bölümündeki modeli kontrol et.</string>
+    <string name="coach_local_quota">Sağlayıcının hız sınırı veya kredisi nedeniyle Koç bu planı yerel olarak oluşturdu.</string>
+    <string name="coach_local_network">Sağlayıcıya ulaşılamadığı için Koç bu planı yerel olarak oluşturdu.</string>
+    <string name="coach_local_invalid_response">Sağlayıcının yanıtı bir düzeltme denemesinden sonra da geçersizdi; Koç bu planı yerel olarak oluşturdu.</string>
+    <string name="coach_local_endpoint">Sağlayıcı uç noktası kullanılamadığı için Koç bu planı yerel olarak oluşturdu. Ayarlar bölümündeki adresi kontrol et.</string>
+    <string name="coach_local_server">Sağlayıcı sunucu hatası bildirdiği için Koç bu planı yerel olarak oluşturdu.</string>
+    <string name="coach_local_provider_failure">Sağlayıcı kullanılamadığı için Koç bu planı yerel olarak oluşturdu.</string>
 </resources>
