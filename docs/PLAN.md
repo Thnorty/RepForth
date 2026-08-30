@@ -97,7 +97,7 @@ padding removed. Screenshot tests still do not exist.
 | Instrumentation tests that interact, and a FAB nobody could name | `2d0ba1c` |
 | **Phase 2** — secret storage, and a CI scan for key-shaped content | `2eb17e0` |
 | **Phase 2** — provider settings, and the endpoint rule that guards them | `1113597` |
-| **Phase 2** — the two provider adapters, and a connection test that explains itself | pending |
+| **Phase 2** — the two provider adapters, and a connection test that explains itself | `2eb5796` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
