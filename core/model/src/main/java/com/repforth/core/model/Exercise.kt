@@ -18,6 +18,7 @@ data class Exercise(
     val instructions: LocalizedInstructions,
     val thumbnail: MediaRef,
     val animation: MediaRef,
+    val attribution: String = "© Gym visual — https://gymvisual.com/",
 )
 
 /**
@@ -49,4 +50,5 @@ data class ExerciseSummary(
     val bodyPart: BodyPart,
     val target: Muscle,
     val equipment: Equipment,
+    val thumbnail: MediaRef = MediaRef.Unavailable,
 )

@@ -17,6 +17,7 @@ dependencies {
 
     // The catalog, for picking exercises and resolving a plan's names.
     implementation(project(":core:exercise-data"))
+    implementation(project(":core:media"))
 
     // The one door to plans and the profile.
     implementation(project(":core:user-data"))

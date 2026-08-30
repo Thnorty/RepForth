@@ -34,9 +34,12 @@ import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 
 import androidx.activity.compose.BackHandler
+import com.repforth.core.media.ui.ExerciseMedia
+import com.repforth.core.media.ui.ExerciseMediaSize
+import com.repforth.core.model.MediaRef
 
 /**
- * Choosing an exercise to add to a plan.
+ * The exercise search dialog for adding a movement to the plan.
  *
  * Deliberately thinner than the catalog tab: search and a list, with no body map
  * and no facet rows. Someone here has already decided what they are looking for
@@ -45,7 +48,7 @@ import androidx.activity.compose.BackHandler
  */
 @Composable
 internal fun ExercisePicker(
-    onPicked: (ExerciseId, String) -> Unit,
+    onPicked: (ExerciseId, String, MediaRef) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PickerViewModel = hiltViewModel(),
@@ -98,7 +101,7 @@ internal fun ExercisePicker(
             ),
         ) {
             items(state.results, key = { it.id.value }) { exercise ->
-                PickerRow(exercise = exercise, onClick = { onPicked(exercise.id, exercise.name) })
+                PickerRow(exercise = exercise, onClick = { onPicked(exercise.id, exercise.name, exercise.thumbnail) })
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
@@ -107,22 +110,33 @@ internal fun ExercisePicker(
 
 @Composable
 private fun PickerRow(exercise: ExerciseSummary, onClick: () -> Unit) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Target.min)
             .clickable(onClick = onClick)
             .padding(vertical = Space.s3),
-        verticalArrangement = Arrangement.spacedBy(Space.s1),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.s3),
     ) {
-        Text(text = exercise.name, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            // Two facts, the same pair the catalog row shows, so an exercise
-            // looks the same wherever it is listed.
-            text = stringResource(exercise.target.labelRes) + " · " +
-                stringResource(exercise.equipment.labelRes),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        ExerciseMedia(
+            mediaRef = exercise.thumbnail,
+            contentDescription = exercise.name,
+            size = ExerciseMediaSize.SMALL,
         )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Space.s1),
+        ) {
+            Text(text = exercise.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                // Two facts, the same pair the catalog row shows, so an exercise
+                // looks the same wherever it is listed.
+                text = stringResource(exercise.target.labelRes) + " · " +
+                    stringResource(exercise.equipment.labelRes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

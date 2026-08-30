@@ -40,7 +40,12 @@ internal class RoomExerciseRepository @Inject constructor(
             // SQL has no empty `IN`, so an unset muscle filter is a flag rather
             // than an empty list. See ExerciseDao.observeCatalog.
             ignoreMuscles = muscles.isEmpty(),
-        ).map { rows -> rows.map(ExerciseSummaryRow::toSummary) }
+        ).map { rows ->
+            rows.map { row ->
+                val id = ExerciseId(row.id)
+                row.toSummary().copy(thumbnail = mediaResolver.resolveThumbnail(id))
+            }
+        }
     }
 
     override suspend fun find(id: ExerciseId): Exercise? {
@@ -61,7 +66,10 @@ internal class RoomExerciseRepository @Inject constructor(
             .distinct()
             .chunked(SQLITE_VARIABLE_LIMIT)
             .flatMap { chunk -> dao.summariesFor(chunk) }
-            .associate { row -> ExerciseId(row.id) to row.toSummary() }
+            .associate { row ->
+                val id = ExerciseId(row.id)
+                id to row.toSummary().copy(thumbnail = mediaResolver.resolveThumbnail(id))
+            }
     }
 
     /**

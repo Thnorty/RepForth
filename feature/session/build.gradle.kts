@@ -13,6 +13,8 @@ dependencies {
 
     // Exercise names for the running workout; a session stores ids only.
     implementation(project(":core:exercise-data"))
+    implementation(project(":core:media"))
+    implementation(project(":core:datastore"))
 
     // Sessions, plans, and the TimeSource the engine runs on. core:user-data
     // exposes core:workout with `api`, so the engine arrives with it.

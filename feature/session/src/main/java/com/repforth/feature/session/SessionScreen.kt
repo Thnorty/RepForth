@@ -7,12 +7,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +40,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.LocalUnitSystem
@@ -48,6 +51,8 @@ import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.media.ui.ExerciseMedia
+import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.ExerciseTarget
 
 /**
@@ -267,55 +272,104 @@ private fun RestPanel(state: SessionUiState) {
     val seconds = ((state.restRemainingMs ?: 0L) / 1000L).toInt()
     val label = stringResource(R.string.session_resting)
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = seconds.toString(),
-            style = RepForthNumeric.xl,
-            // Announced as it changes, but not every second: §12 forbids
-            // narrating each tick. Polite means the reader finishes what it is
-            // saying first, which in practice collapses a run of ticks into one.
-            modifier = Modifier.semantics {
-                liveRegion = LiveRegionMode.Polite
-                contentDescription = "$label $seconds"
-            },
-        )
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Space.s4),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = seconds.toString(),
+                style = RepForthNumeric.xl,
+                // Announced as it changes, but not every second: §12 forbids
+                // narrating each tick. Polite means the reader finishes what it is
+                // saying first, which in practice collapses a run of ticks into one.
+                modifier = Modifier.semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    contentDescription = "$label $seconds"
+                },
+            )
+        }
+
+        state.nextExerciseSummary?.let { next ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Space.s4),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.s3),
+            ) {
+                ExerciseMedia(
+                    mediaRef = next.thumbnail,
+                    contentDescription = next.name,
+                    size = ExerciseMediaSize.SMALL,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.session_next_up, next.name),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun TargetPanel(state: SessionUiState) {
     val target = state.target ?: return
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = when (target) {
-                is ExerciseTarget.Reps -> target.reps.toString()
-                is ExerciseTarget.Duration -> (target.durationMs / 1000L).toString()
-            },
-            style = RepForthNumeric.xl,
-        )
-        Text(
-            text = when (target) {
-                is ExerciseTarget.Reps -> stringResource(R.string.session_reps)
-                is ExerciseTarget.Duration -> stringResource(R.string.session_seconds)
-            },
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        target.weightKg?.let { weight ->
-            val units = LocalUnitSystem.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Space.s3),
+    ) {
+        val mediaRef = state.currentExercise?.let {
+            if (state.reducedMotion) it.thumbnail else it.animation
+        }
+        if (mediaRef != null) {
+            Box(
+                modifier = Modifier.size(140.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                ExerciseMedia(
+                    mediaRef = mediaRef,
+                    contentDescription = state.currentName,
+                    size = ExerciseMediaSize.MEDIUM,
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(
-                    R.string.session_target_weight,
-                    units.formatWeight(weight),
-                    units.symbol,
-                ),
-                style = MaterialTheme.typography.titleMedium,
+                text = when (target) {
+                    is ExerciseTarget.Reps -> target.reps.toString()
+                    is ExerciseTarget.Duration -> (target.durationMs / 1000L).toString()
+                },
+                style = RepForthNumeric.xl,
             )
+            Text(
+                text = when (target) {
+                    is ExerciseTarget.Reps -> stringResource(R.string.session_reps)
+                    is ExerciseTarget.Duration -> stringResource(R.string.session_seconds)
+                },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            target.weightKg?.let { weight ->
+                val units = LocalUnitSystem.current
+                Text(
+                    text = stringResource(
+                        R.string.session_target_weight,
+                        units.formatWeight(weight),
+                        units.symbol,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
         }
     }
 }

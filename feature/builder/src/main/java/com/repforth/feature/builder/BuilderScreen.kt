@@ -49,11 +49,15 @@ import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
+import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.designsystem.theme.formatWeight
 import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.designsystem.theme.toKilograms
+import com.repforth.core.media.ui.ExerciseMedia
+import com.repforth.core.media.ui.ExerciseMediaSize
+import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.Language
 
@@ -99,7 +103,7 @@ fun BuilderRoute(
 
     when {
         state.picking -> ExercisePicker(
-            onPicked = { id, name -> viewModel.onExerciseAdded(id, name) },
+            onPicked = { id, name, thumb -> viewModel.onExerciseAdded(id, name, thumb) },
             onClose = viewModel::onPickerClose,
             modifier = modifier,
         )
@@ -386,7 +390,15 @@ private fun ExerciseCard(
             modifier = Modifier.padding(Space.s4),
             verticalArrangement = Arrangement.spacedBy(Space.s3),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.s3),
+            ) {
+                ExerciseMedia(
+                    mediaRef = draft.thumbnail,
+                    contentDescription = draft.name,
+                    size = ExerciseMediaSize.SMALL,
+                )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = draft.name,

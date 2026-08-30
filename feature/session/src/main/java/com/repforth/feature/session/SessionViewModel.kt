@@ -2,7 +2,12 @@ package com.repforth.feature.session
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.media.download.MediaDownloader
+import com.repforth.core.media.download.MediaPrefetchRequest
+import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionPhase
@@ -17,8 +22,10 @@ import kotlinx.coroutines.launch
 /** What the running workout screen draws. */
 data class SessionUiState(
     val snapshot: SessionSnapshot? = null,
-    /** Exercise names, resolved once per session rather than per frame. */
-    val names: Map<String, String> = emptyMap(),
+    /** Exercise summaries, resolved once per session rather than per frame. */
+    val summaries: Map<String, ExerciseSummary> = emptyMap(),
+    val currentExercise: Exercise? = null,
+    val reducedMotion: Boolean = false,
     /** Rest left, recomputed on a tick rather than counted down. */
     val restRemainingMs: Long? = null,
     val loading: Boolean = true,
@@ -26,7 +33,14 @@ data class SessionUiState(
 ) {
     val phase: SessionPhase? get() = snapshot?.phase
     val currentName: String?
-        get() = snapshot?.currentExercise?.let { names[it.exerciseId.value] ?: it.exerciseId.value }
+        get() = currentExercise?.name ?: snapshot?.currentExercise?.let { summaries[it.exerciseId.value]?.name ?: it.exerciseId.value }
+
+    val nextExerciseSummary: ExerciseSummary?
+        get() {
+            val currIdx = snapshot?.currentExerciseIndex ?: return null
+            val nextPlanned = snapshot.exercises.getOrNull(currIdx + 1) ?: return null
+            return summaries[nextPlanned.exerciseId.value]
+        }
 
     val setNumber: Int get() = (snapshot?.currentSetIndex ?: 0) + 1
     val setTotal: Int get() = snapshot?.currentExercise?.target?.sets ?: 0
@@ -52,6 +66,8 @@ data class SessionUiState(
 class SessionViewModel @Inject constructor(
     private val controller: SessionController,
     private val exercises: ExerciseRepository,
+    private val preferences: UserPreferencesDataSource,
+    private val mediaDownloader: MediaDownloader,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SessionUiState())
@@ -59,11 +75,16 @@ class SessionViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            preferences.preferences.collect { prefs ->
+                _uiState.value = _uiState.value.copy(reducedMotion = prefs.reducedMotion)
+            }
+        }
+        viewModelScope.launch {
             val restored = controller.restore()
             if (restored != null) {
                 adopt(restored)
             } else {
-                _uiState.value = SessionUiState(loading = false)
+                _uiState.value = _uiState.value.copy(loading = false)
             }
 
             // Whatever the service does arrives here, so a rest that ended while
@@ -108,15 +129,14 @@ class SessionViewModel @Inject constructor(
 
     /**
      * Refreshes the rest remainder, and lets the controller end the rest.
-     *
-     * Called by the screen on a timer rather than looped here. An unbounded loop
-     * in a ViewModel never lets a test's virtual clock go idle, and the first
-     * test written against one hung rather than failing.
      */
     fun onTick() {
         viewModelScope.launch {
             controller.onRestTick()
-            _uiState.value = _uiState.value.copy(restRemainingMs = controller.restRemaining())
+            val remaining = controller.restRemaining()
+            if (remaining != _uiState.value.restRemainingMs) {
+                _uiState.value = _uiState.value.copy(restRemainingMs = remaining)
+            }
         }
     }
 
@@ -132,13 +152,33 @@ class SessionViewModel @Inject constructor(
     }
 
     private suspend fun adopt(snapshot: SessionSnapshot) {
-        val names = _uiState.value.names.ifEmpty {
+        val summaries = _uiState.value.summaries.ifEmpty {
             exercises.summaries(snapshot.exercises.map { it.exerciseId })
-                .entries.associate { (id, summary) -> id.value to summary.name }
+                .entries.associate { (id, summary) -> id.value to summary }
         }
+        val current = snapshot.currentExercise?.let { exercises.find(it.exerciseId) }
+
+        // Prefetch current and upcoming 2 exercises
+        val currentIndex = snapshot.currentExerciseIndex ?: 0
+        val upcoming = snapshot.exercises.drop(currentIndex).take(3)
+        val prefetchRequests = upcoming.flatMap { planned ->
+            val summary = summaries[planned.exerciseId.value]
+            listOfNotNull(
+                summary?.thumbnail?.takeIf { it.isAvailable }?.let {
+                    MediaPrefetchRequest(exerciseId = planned.exerciseId.value, mediaType = "thumbnail", mediaRef = it)
+                },
+            )
+        }
+        if (prefetchRequests.isNotEmpty()) {
+            viewModelScope.launch {
+                mediaDownloader.prefetch(prefetchRequests)
+            }
+        }
+
         _uiState.value = _uiState.value.copy(
             snapshot = snapshot,
-            names = names,
+            summaries = summaries,
+            currentExercise = current,
             restRemainingMs = controller.restRemaining(),
             loading = false,
             finished = snapshot.phase.isTerminal,
@@ -146,12 +186,6 @@ class SessionViewModel @Inject constructor(
     }
 
     internal companion object {
-        /**
-         * Coarse on purpose: a countdown is read, not measured, and waking four
-         * times a second to redraw a number that changes once a second is a
-         * battery cost during the one activity where the screen stays on
-         * longest.
-         */
         const val TICK_MS = 500L
     }
 }

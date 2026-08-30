@@ -111,13 +111,15 @@ exist, and remain the only untested category.
 | **§8 amended** — the address rule removed entirely | `7ce01b1` |
 | **Phase 2** — validated AI workout contract and corrected CI trigger | `5bb27bc` |
 | **Phase 2** — structured provider generation over one shared schema | `ee9d19e` |
+| **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
+| **Phase 3** — image display and GIF playback in catalog, builder and session | pending |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
-`core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
+`core:designsystem`, `core:exercise-data`, `core:media`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-393 unit tests across 50 classes, plus fourteen instrumentation tests
+406 unit tests across 52 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
@@ -963,6 +965,22 @@ In `feature:settings`, a **Media** section exposes the Wi-Fi only toggle switch 
 clear cache action row with live size formatted in MB and a confirmation dialog.
 `NetworkBoundaryTest` was updated and asserts that network clients are bounded strictly
 to `core:ai` and `core:media`.
+
+### 3.2 — Exercise Media Display & Session Integration — **done**
+
+Exercise media rendering and background prefetching are integrated across all exercise and workout workflows:
+- **Exercise Catalog & Detail Sheet (`feature:exercises`)**:
+  - `ExerciseRow` displays 1:1 `SMALL` (48dp) exercise thumbnail alongside exercise title and target muscle / equipment chips.
+  - Tapping an exercise opens `ExerciseDetailSheet` (ModalBottomSheet) with a `FLUSH` aspect-ratio-locked `ExerciseMedia` hero, legal attribution text (`© Gym visual — https://gymvisual.com/`), primary and secondary muscle chips, equipment chips, and localized step-by-step instructions in the user's selected language.
+  - Obeys `reducedMotion` preference (disables animated GIF autoplay and displays static thumbnail instead).
+- **Running Session Screen (`feature:session`)**:
+  - `TargetPanel` renders `ExerciseMedia` for active exercise (`ExerciseMediaSize.MEDIUM`) with numeric hero.
+  - `RestPanel` displays a "Next up" preview card with thumbnail (`ExerciseMediaSize.SMALL`) and name for the next exercise.
+  - `SessionViewModel` prefetches media on a background IO coroutine for the current and next 2 upcoming exercises via `MediaDownloader.prefetch()`.
+- **Workout Builder & Picker (`feature:builder`)**:
+  - `ExercisePicker` lists exercises with `SMALL` thumbnails.
+  - Builder cards (`ExerciseCard`) display the selected exercise thumbnail beside the exercise name and set configuration.
+- Verified with unit tests (`ExercisesViewModelTest`, `SessionViewModelTest`), `./gradlew test`, `./gradlew assemblePlaceholderDebug`, and `./gradlew lint`.
 
 ---
 

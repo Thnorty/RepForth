@@ -13,6 +13,8 @@ dependencies {
     // catalog through core:exercise-data's. Neither is re-declared here.
     implementation(project(":core:designsystem"))
     implementation(project(":core:exercise-data"))
+    implementation(project(":core:media"))
+    implementation(project(":core:datastore"))
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

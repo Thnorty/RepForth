@@ -31,28 +31,65 @@ class MediaIntegrityException(message: String) : IOException(message)
 class MediaNetworkPolicyException(message: String) : IOException(message)
 
 /**
+ * Describes a piece of exercise media to prefetch in the background (§9).
+ */
+data class MediaPrefetchRequest(
+    val mediaVersion: Int = 1,
+    val exerciseId: String,
+    val mediaType: String,
+    val mediaRef: MediaRef,
+)
+
+/**
  * Downloads media on demand and validates its SHA-256 hash before promoting to the durable cache.
  */
-@Singleton
-class MediaDownloader @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val okHttpClient: OkHttpClient,
-    private val cacheManager: MediaCacheManager,
-    private val preferencesDataSource: UserPreferencesDataSource,
-) {
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-
-    /**
-     * Downloads and validates media for an exercise asset.
-     *
-     * Returns the cached [File] on success.
-     */
+interface MediaDownloader {
+    suspend fun prefetch(items: List<MediaPrefetchRequest>)
     suspend fun download(
         mediaVersion: Int,
         exerciseId: String,
         mediaType: String,
         mediaRef: MediaRef,
         forceAllowCellular: Boolean = false,
+    ): Result<File>
+}
+
+@Singleton
+class RealMediaDownloader @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val okHttpClient: OkHttpClient,
+    private val cacheManager: MediaCacheManager,
+    private val preferencesDataSource: UserPreferencesDataSource,
+) : MediaDownloader {
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+    /**
+     * Prefetches a list of media assets in the background, ignoring individual failures.
+     */
+    override suspend fun prefetch(items: List<MediaPrefetchRequest>) = withContext(ioDispatcher) {
+        for (item in items) {
+            if (item.mediaRef.isAvailable) {
+                download(
+                    mediaVersion = item.mediaVersion,
+                    exerciseId = item.exerciseId,
+                    mediaType = item.mediaType,
+                    mediaRef = item.mediaRef,
+                )
+            }
+        }
+    }
+
+    /**
+     * Downloads and validates media for an exercise asset.
+     *
+     * Returns the cached [File] on success.
+     */
+    override suspend fun download(
+        mediaVersion: Int,
+        exerciseId: String,
+        mediaType: String,
+        mediaRef: MediaRef,
+        forceAllowCellular: Boolean,
     ): Result<File> = withContext(ioDispatcher) {
         val url = mediaRef.url ?: return@withContext Result.failure(
             IllegalArgumentException("MediaRef url is null for $exerciseId")

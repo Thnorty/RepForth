@@ -43,4 +43,5 @@
     <string name="session_paused_rest">Paused · %1$s left</string>
     <string name="session_channel_name">Active workout</string>
     <string name="session_channel_description">Shows the current set and rest timer while a workout is running.</string>
+    <string name="session_next_up">Next: %1$s</string>
 </resources>

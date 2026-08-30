@@ -42,7 +42,7 @@ class MediaDownloaderTest {
         cacheManager = MediaCacheManager(tempDir, dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
         // Construct downloader with disabled Wi-Fi requirement for unit tests
-        downloader = MediaDownloader(
+        downloader = com.repforth.core.media.download.RealMediaDownloader(
             context = TestDummyContext(),
             okHttpClient = okHttpClient,
             cacheManager = cacheManager,

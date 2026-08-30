@@ -13,6 +13,7 @@ import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.Language
+import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
@@ -47,6 +48,7 @@ data class DraftExercise(
     val id: String,
     val exerciseId: ExerciseId,
     val name: String,
+    val thumbnail: MediaRef = MediaRef.Unavailable,
     val sets: Int = DEFAULT_SETS,
     val reps: Int = DEFAULT_REPS,
     val durationSeconds: Int = DEFAULT_DURATION_SECONDS,
@@ -349,12 +351,17 @@ class BuilderViewModel @Inject constructor(
         }
     }
 
-    fun onExerciseAdded(id: ExerciseId, name: String) = update {
+    fun onExerciseAdded(
+        id: ExerciseId,
+        name: String,
+        thumbnail: MediaRef = MediaRef.Unavailable,
+    ) = update {
         copy(
             exercises = exercises + DraftExercise(
                 id = UUID.randomUUID().toString(),
                 exerciseId = id,
                 name = name,
+                thumbnail = thumbnail,
             ),
             picking = false,
         )
@@ -484,6 +491,7 @@ private fun List<PlannedExercise>.toDrafts(
         id = planned.id,
         exerciseId = planned.exerciseId,
         name = names[planned.exerciseId]?.name ?: planned.exerciseId.value,
+        thumbnail = names[planned.exerciseId]?.thumbnail ?: MediaRef.Unavailable,
         sets = planned.target.sets,
         reps = reps?.reps ?: DEFAULT_DRAFT_REPS,
         durationSeconds = (
@@ -504,6 +512,7 @@ private fun AiWorkoutResponse.toDrafts(
         id = UUID.randomUUID().toString(),
         exerciseId = exerciseId,
         name = names[exerciseId]?.name ?: exerciseId.value,
+        thumbnail = names[exerciseId]?.thumbnail ?: MediaRef.Unavailable,
         sets = planned.sets,
         reps = planned.repetitions ?: DEFAULT_DRAFT_REPS,
         durationSeconds = planned.durationSeconds ?: DEFAULT_DRAFT_DURATION_SECONDS,

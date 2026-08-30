@@ -43,4 +43,5 @@
     <string name="session_paused_rest">Duraklatıldı · %1$s kaldı</string>
     <string name="session_channel_name">Devam eden antrenman</string>
     <string name="session_channel_description">Antrenman sürerken mevcut seti ve dinlenme sayacını gösterir.</string>
+    <string name="session_next_up">Sırada: %1$s</string>
 </resources>

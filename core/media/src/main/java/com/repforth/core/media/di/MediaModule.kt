@@ -32,6 +32,12 @@ abstract class MediaModule {
         impl: ManifestMediaResolver,
     ): MediaResolver
 
+    @Binds
+    @Singleton
+    abstract fun bindMediaDownloader(
+        impl: com.repforth.core.media.download.RealMediaDownloader,
+    ): com.repforth.core.media.download.MediaDownloader
+
     companion object {
         @Provides
         @Singleton

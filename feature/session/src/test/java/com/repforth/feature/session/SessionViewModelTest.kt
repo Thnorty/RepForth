@@ -42,6 +42,13 @@ import org.junit.Test
  * anything acts on it (§10), that a rejected command writes nothing, and that
  * the rest countdown is recomputed from a deadline rather than decremented.
  */
+import com.repforth.core.datastore.UserPreferencesDataSource
+import com.repforth.core.media.download.MediaDownloader
+import com.repforth.core.media.download.MediaPrefetchRequest
+import com.repforth.core.model.MediaRef
+import com.repforth.core.testing.FakePreferencesStore
+import java.io.File
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionViewModelTest {
 
@@ -50,13 +57,17 @@ class SessionViewModelTest {
     private lateinit var sessions: RecordingSessionRepository
     private lateinit var controller: SessionController
     private lateinit var viewModel: SessionViewModel
+    private lateinit var preferences: UserPreferencesDataSource
+    private lateinit var downloader: FakeMediaDownloader
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         sessions = RecordingSessionRepository()
         controller = SessionController(sessions, FakeTemplates(), time)
-        viewModel = SessionViewModel(controller, FakeExercises())
+        preferences = UserPreferencesDataSource(FakePreferencesStore())
+        downloader = FakeMediaDownloader()
+        viewModel = SessionViewModel(controller, FakeExercises(), preferences, downloader)
     }
 
     @After
@@ -215,6 +226,8 @@ class SessionViewModelTest {
         val revived = SessionViewModel(
             SessionController(sessions, FakeTemplates(), time),
             FakeExercises(),
+            preferences,
+            downloader,
         )
         testScheduler.advanceUntilIdle()
 
@@ -277,7 +290,7 @@ class SessionViewModelTest {
         assertEquals(SessionPhase.ABANDONED, state.phase)
 
         // The screen is gone and comes back, as navigation would rebuild it.
-        val next = SessionViewModel(controller, FakeExercises())
+        val next = SessionViewModel(controller, FakeExercises(), preferences, downloader)
         testScheduler.advanceUntilIdle()
         assertEquals(
             "A finished session must not be restored as the running one",
@@ -301,7 +314,7 @@ class SessionViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(SessionPhase.COMPLETED, state.phase)
 
-        val next = SessionViewModel(controller, FakeExercises())
+        val next = SessionViewModel(controller, FakeExercises(), preferences, downloader)
         testScheduler.advanceUntilIdle()
         next.start(TEMPLATE_ID)
         testScheduler.advanceUntilIdle()
@@ -402,4 +415,20 @@ private class FakeExercises : ExerciseRepository {
             equipment = Equipment.BARBELL,
         )
     }
+}
+
+private class FakeMediaDownloader : MediaDownloader {
+    val prefetched = mutableListOf<MediaPrefetchRequest>()
+
+    override suspend fun prefetch(items: List<MediaPrefetchRequest>) {
+        prefetched += items
+    }
+
+    override suspend fun download(
+        mediaVersion: Int,
+        exerciseId: String,
+        mediaType: String,
+        mediaRef: MediaRef,
+        forceAllowCellular: Boolean,
+    ): Result<File> = Result.failure(UnsupportedOperationException())
 }

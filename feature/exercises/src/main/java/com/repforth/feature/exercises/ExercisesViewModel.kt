@@ -22,13 +22,20 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import com.repforth.core.datastore.UserPreferencesDataSource
+import com.repforth.core.model.Exercise
+import com.repforth.core.model.Language
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** What the catalog screen renders. */
 data class ExercisesUiState(
     val filter: CatalogFilter = CatalogFilter(),
     val results: List<ExerciseSummary> = emptyList(),
+    val selectedExercise: Exercise? = null,
+    val reducedMotion: Boolean = false,
+    val language: Language? = null,
     val loading: Boolean = true,
 ) {
     /** Distinguishes "still loading" from "nothing matches", which look alike. */
@@ -38,9 +45,11 @@ data class ExercisesUiState(
 @HiltViewModel
 class ExercisesViewModel @Inject constructor(
     private val repository: ExerciseRepository,
+    private val preferences: UserPreferencesDataSource,
 ) : ViewModel() {
 
     private val filter = MutableStateFlow(CatalogFilter())
+    private val selectedExercise = MutableStateFlow<Exercise?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private val results = filter
@@ -54,8 +63,15 @@ class ExercisesViewModel @Inject constructor(
         .flatMapLatest(repository::observeCatalog)
 
     val uiState: StateFlow<ExercisesUiState> =
-        combine(filter, results) { current, matches ->
-            ExercisesUiState(filter = current, results = matches, loading = false)
+        combine(filter, results, selectedExercise, preferences.preferences) { currentFilter, matches, selected, userPrefs ->
+            ExercisesUiState(
+                filter = currentFilter,
+                results = matches,
+                selectedExercise = selected,
+                reducedMotion = userPrefs.reducedMotion,
+                language = userPrefs.language,
+                loading = false,
+            )
         }.stateIn(
             scope = viewModelScope,
             // Keeps the query alive briefly across a rotation, so turning the
@@ -63,6 +79,16 @@ class ExercisesViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = ExercisesUiState(),
         )
+
+    fun onSelectExercise(summary: ExerciseSummary) {
+        viewModelScope.launch {
+            selectedExercise.value = repository.find(summary.id)
+        }
+    }
+
+    fun onDismissDetail() {
+        selectedExercise.value = null
+    }
 
     fun onQueryChange(query: String) {
         filter.value = filter.value.copy(query = query)

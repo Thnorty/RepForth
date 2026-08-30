@@ -21,4 +21,7 @@
     -->
     <string name="exercises_names_english">Exercise names come from the dataset and are in English.</string>
     <string name="exercises_row_detail">%1$s · %2$s</string>
+    <string name="exercises_instructions">Instructions</string>
+    <string name="exercises_secondary_muscles">Secondary: %1$s</string>
+    <string name="exercises_close_detail">Close</string>
 </resources>
