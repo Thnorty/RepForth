@@ -97,13 +97,14 @@ padding removed. Screenshot tests still do not exist.
 | Instrumentation tests that interact, and a FAB nobody could name | `2d0ba1c` |
 | **Phase 2** — secret storage, and a CI scan for key-shaped content | `2eb17e0` |
 | **Phase 2** — provider settings, and the endpoint rule that guards them | `1113597` |
+| **Phase 2** — the two provider adapters, and a connection test that explains itself | pending |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-347 unit tests across 44 classes, plus six instrumentation tests on a Galaxy
+368 unit tests across 46 classes, plus six instrumentation tests on a Galaxy
 S23 and eight in `core:secrets`, all passing. Room schema v1 exported and
 committed.
 
@@ -592,14 +593,65 @@ the fallback. So was the new screen. Both are named now.
 needs a real HTTP call to mean anything, and a button that reports success
 against a fake would be worse than no button. It lands with 2.3.
 
-### 2.3 — Provider adapters — next
+### 2.3 — Provider adapters — **done**
 
-`AiProvider`, a direct HTTP client rather than a vendor SDK, `GeminiProvider`,
-`OpenAiCompatibleProvider`, and `FakeAiProvider` for tests. HTTPS only, enforced
-through `EndpointPolicy` rather than a second copy of the rule. Brings "Test
-connection" with it, with the actionable errors §8 asks for.
+`AiProvider`, `GeminiProvider`, `OpenAiCompatibleProvider`, `FakeAiProvider`,
+and one OkHttp client behind `ProviderHttp`. The app now has an `INTERNET`
+permission, declared in the app manifest rather than in `core:ai` so that "does
+this thing talk to the internet, and why" is answerable from the one file an
+auditor opens.
 
-### 2.4 — The generation pipeline
+**"Test connection" lists models rather than generating anything.** It costs no
+tokens, so the button cannot spend the user's money, and it tells the three
+possible problems apart — unreachable, key rejected, model not offered — where a
+failed generation would only say that something went wrong. A server with no
+model list is reported as "connected, could not confirm the model", because
+several OpenAI-compatible servers do not implement the endpoint and calling that
+a failure sends the user to fix a working setup.
+
+**Only `testConnection` is on the interface.** §8's version also has
+`generateWorkout` and `coach`; their contracts are 2.4's subject, and writing
+them now would mean guessing a shape that slice derives properly and then having
+two of them.
+
+Twenty-three new tests. The adapters run against a local `MockWebServer`, so the
+whole networking layer is verifiable on the JVM — it would otherwise have been
+the second thing here that needs a phone in hand.
+
+#### Three things this slice got wrong first
+
+- **The adapter tests were talking to Google.** `GeminiProvider` took its URL
+  from `ProviderConfig`, which for Gemini resolves to the fixed endpoint — so
+  every run sent a fake key to `generativelanguage.googleapis.com` and asserted
+  against its 400. It looked like a MockWebServer bug for a while. The endpoint
+  is now a constructor parameter defaulting to the constant, and a test asserts
+  Gemini ignores any stored address, which is a safety property: if it honoured
+  one, anything that could write that preference could redirect the key.
+- **A key typed straight after switching provider went to the old provider.**
+  `onSaveKey` read the provider from `uiState`, which lags the write by an
+  emission. It now reads the stored value inside the coroutine. A fast tap does
+  exactly this, and the key would have been invisible in the UI and undeletable
+  except by delete-everything.
+- **`EndpointPolicy` allowed LAN addresses the platform refuses.** A
+  network-security configuration names hosts, not ranges, so "any 192.168.x.x"
+  cannot be permitted — the policy is now loopback-only (plus `10.0.2.2` for the
+  emulator), and `NetworkSecurityConfigTest` holds the XML and the Kotlin to the
+  same list. That is the project's third forced duplicate, and it is documented
+  as one.
+
+#### Deliberately not done
+
+- **Custom request headers.** §8 puts them "behind an advanced section" as
+  optional. Nothing needs them yet, and an allowlist with no caller is an
+  allowlist nobody has tested.
+- **LAN model servers.** See above; loopback works, a server on another machine
+  needs https.
+- **A real provider has never answered.** Every test here is against a local
+  server. Whether Gemini's live response shape matches what `GeminiProvider`
+  parses is unverified, and stays unverified until someone puts a real key in
+  the app — which is a thing only the maintainer can do.
+
+### 2.4 — The generation pipeline — next
 
 Typed intent, local candidate filter, hard rules before the model, structured
 output against a versioned schema, local validation, one retry, and the

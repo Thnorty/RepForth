@@ -106,7 +106,7 @@
     <string name="ai_url_malformed">That is not a web address.</string>
     <string name="ai_url_scheme">Only https:// addresses are allowed.</string>
     <string name="ai_url_cleartext">Plain http:// is off. Turn on local model servers below to use one.</string>
-    <string name="ai_url_not_local">Plain http:// works only for a server on this device or your own network.</string>
+    <string name="ai_url_not_local">Plain http:// works only for a server running on this device. A server elsewhere on your network needs https://.</string>
     <string name="ai_url_credentials">Do not put a username or password in the address.</string>
 
     <string name="ai_advanced">Advanced</string>
@@ -116,7 +116,7 @@
         <item quantity="other">%1$d seconds</item>
     </plurals>
     <string name="ai_cleartext">Allow a local model server</string>
-    <string name="ai_cleartext_sub">Lets plain http:// reach a server on this device or your own network, for tools like Ollama. Addresses on the internet stay https:// only, whatever this is set to.</string>
+    <string name="ai_cleartext_sub">Lets plain http:// reach a model server running on this device, for tools like Ollama. Every other address stays https:// only, whatever this is set to.</string>
 
     <string name="ai_delete_all">Delete all provider settings</string>
     <string name="ai_delete_all_sub">Forgets the provider, the model, the address, and every saved key.</string>
@@ -124,4 +124,17 @@
     <string name="ai_delete_all_body">Every saved API key goes, along with the provider settings. Your workouts and history stay. This cannot be undone.</string>
     <string name="ai_delete_all_confirm">Delete</string>
     <string name="ai_deleted_all">Provider settings deleted.</string>
+
+    <!-- "Test connection" (§8): actionable, so each one says what to do. -->
+    <string name="ai_test">Test connection</string>
+    <string name="ai_test_running">Testing…</string>
+    <string name="ai_test_ok">Connected, and the model is available.</string>
+    <string name="ai_test_ok_unconfirmed">Connected. This server does not list its models, so the model name could not be checked.</string>
+    <string name="ai_test_auth">The provider rejected the key. Check that you pasted all of it and that it is still active.</string>
+    <string name="ai_test_model">Connected, but this model is not offered on your account. Check the model name.</string>
+    <string name="ai_test_quota">Your provider account is rate limited or out of credit. Nothing to change here — that is between you and them.</string>
+    <string name="ai_test_network">Could not reach the provider. Check your connection, and the address if you typed one.</string>
+    <string name="ai_test_format">The provider answered with something this app could not read.</string>
+    <string name="ai_test_endpoint">This app will not send to that address. Check the address above.</string>
+    <string name="ai_test_server">The provider is having trouble right now. Try again shortly.</string>
 </resources>

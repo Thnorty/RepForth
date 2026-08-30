@@ -17,8 +17,8 @@ enum class EndpointRefusal {
     /** `http://`, with the developer setting off. */
     CLEARTEXT_NOT_ALLOWED,
 
-    /** `http://` to somewhere that is not a local address, which stays refused. */
-    CLEARTEXT_NOT_LOCAL,
+    /** `http://` to somewhere that is not this device, which stays refused. */
+    CLEARTEXT_NOT_LOOPBACK,
 
     /** Credentials in the URL, which would be stored in plain text. */
     EMBEDDED_CREDENTIALS,
@@ -76,7 +76,7 @@ object EndpointPolicy {
             "https" -> EndpointVerdict.Allowed(trimmed.withTrailingSlash())
             "http" -> when {
                 !allowCleartext -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_ALLOWED)
-                !isLocal(host) -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_LOCAL)
+                !isLoopback(host) -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_LOOPBACK)
                 else -> EndpointVerdict.Allowed(trimmed.withTrailingSlash())
             }
 
@@ -85,31 +85,45 @@ object EndpointPolicy {
     }
 
     /**
-     * Loopback and the three private IPv4 ranges, plus IPv6 loopback.
+     * This device, and the emulator's alias for the machine hosting it.
      *
      * Hostnames are deliberately not resolved. A DNS lookup here would be a
      * network call inside a validation function, and one that an attacker
      * controlling the name could answer differently the second time — the
-     * classic rebinding shape. A literal address or `localhost` is checkable
-     * without asking anyone, so those are the only things allowed.
+     * classic rebinding shape. `localhost` and a literal loopback address are
+     * checkable without asking anyone, so those are the only things allowed.
+     *
+     * `10.0.2.2` is the Android emulator's route to its host's loopback. It is
+     * not loopback from the device's point of view, and it is in a private
+     * range this policy otherwise refuses — it is here so that a model server
+     * running on the development machine is reachable from an emulator, which
+     * is the only way this path can be exercised without hardware.
      */
-    private fun isLocal(host: String): Boolean {
+    private fun isLoopback(host: String): Boolean {
         val bare = host.trim('[', ']').lowercase()
-        if (bare == "localhost" || bare == "::1") return true
+        // No IPv6 literal. A network-security configuration names hosts, and
+        // `[::1]` is not one it accepts — permitting it here would be a policy
+        // the platform then refuses. `localhost` is the spelling that works.
+        if (bare == "localhost" || bare == EMULATOR_HOST) return true
 
         val octets = bare.split('.')
         if (octets.size != 4) return false
         val numbers = octets.map { it.toIntOrNull() ?: return false }
         if (numbers.any { it !in 0..255 }) return false
 
-        return when {
-            numbers[0] == 127 -> true
-            numbers[0] == 10 -> true
-            numbers[0] == 192 && numbers[1] == 168 -> true
-            numbers[0] == 172 && numbers[1] in 16..31 -> true
-            else -> false
-        }
+        return numbers[0] == 127
     }
+
+    /**
+     * The hosts cleartext may reach, which `res/xml/network_security_config.xml`
+     * has to repeat because the platform can only read it from XML.
+     *
+     * Exposed so the guard test can compare the two rather than trusting that
+     * whoever edits one remembers the other.
+     */
+    val CLEARTEXT_HOSTS = listOf("localhost", "127.0.0.1", EMULATOR_HOST)
+
+    private const val EMULATOR_HOST = "10.0.2.2"
 
     private fun String.withTrailingSlash() = if (endsWith("/")) this else "$this/"
 }

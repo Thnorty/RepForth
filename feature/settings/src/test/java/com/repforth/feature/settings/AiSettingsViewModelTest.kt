@@ -1,6 +1,10 @@
 package com.repforth.feature.settings
 
+import com.repforth.core.ai.FakeAiProvider
+import com.repforth.core.ai.ProviderConnectionTester
+import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.ai.ProviderRepository
+import com.repforth.core.ai.ProviderTestResult
 import com.repforth.core.datastore.ProviderSettingsDataSource
 import com.repforth.core.model.EndpointRefusal
 import com.repforth.core.model.ProviderId
@@ -36,6 +40,8 @@ class AiSettingsViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private val secrets = InMemorySecretStore()
+    private val gemini = FakeAiProvider(ProviderId.GEMINI)
+    private val openAi = FakeAiProvider(ProviderId.OPENAI_COMPATIBLE)
     private lateinit var repository: ProviderRepository
     private lateinit var viewModel: AiSettingsViewModel
 
@@ -46,7 +52,13 @@ class AiSettingsViewModelTest {
             ProviderSettingsDataSource(FakePreferencesStore()),
             secrets,
         )
-        viewModel = AiSettingsViewModel(repository)
+        viewModel = AiSettingsViewModel(
+            repository,
+            ProviderConnectionTester(
+                repository,
+                mapOf(ProviderId.GEMINI to gemini, ProviderId.OPENAI_COMPATIBLE to openAi),
+            ),
+        )
     }
 
     @After
@@ -227,10 +239,120 @@ class AiSettingsViewModelTest {
             testScheduler.advanceUntilIdle()
 
             assertEquals(
-                EndpointRefusal.CLEARTEXT_NOT_LOCAL,
+                EndpointRefusal.CLEARTEXT_NOT_LOOPBACK,
                 viewModel.uiState.value.baseUrlRefusal,
             )
         }
+
+    /**
+     * Testing with no key would report an authentication failure, which is true
+     * and useless — the user has not finished setting up, and the button should
+     * say so by being off rather than by failing.
+     */
+    /**
+     * Switching provider and saving a key without waiting in between.
+     *
+     * This found a real bug. `onSaveKey` read the provider from `uiState`,
+     * which lags the write by an emission, so the key went to the provider the
+     * user had just moved *away* from — where they would never see it, where
+     * the new provider would keep reporting "no key", and where it would sit
+     * until a delete-everything. A fast tap does exactly this.
+     *
+     * Watched failing against the previous version: the key landed under
+     * `provider.gemini.key`.
+     */
+    @Test
+    fun `a key saved straight after switching provider goes to the new one`() =
+        runTest(dispatcher) {
+            activate()
+            viewModel.onProviderChange(ProviderId.OPENAI_COMPATIBLE)
+            viewModel.onKeyChange("test-not-a-real-key")
+            viewModel.onSaveKey()
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(
+                "The key belongs to the provider that is now selected",
+                setOf("provider.openai_compatible.key"),
+                secrets.storedIds,
+            )
+        }
+
+    @Test
+    fun `the test button is off until a key is stored`() = runTest(dispatcher) {
+        activate()
+        assertFalse(viewModel.uiState.value.canTest)
+
+        viewModel.onKeyChange("test-not-a-real-key")
+        viewModel.onSaveKey()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.canTest)
+    }
+
+    @Test
+    fun `a connection test reaches the adapter for the selected provider`() =
+        runTest(dispatcher) {
+            activate()
+            viewModel.onProviderChange(ProviderId.OPENAI_COMPATIBLE)
+            viewModel.onKeyChange("test-not-a-real-key")
+            viewModel.onSaveKey()
+            testScheduler.advanceUntilIdle()
+
+            viewModel.onTestConnection()
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(
+                "The Gemini adapter must not be asked about an OpenAI configuration",
+                0,
+                gemini.calls.size,
+            )
+            assertEquals(1, openAi.calls.size)
+            assertEquals("test-not-a-real-key", openAi.calls.single().apiKey)
+        }
+
+    @Test
+    fun `a failure is reported rather than thrown`() = runTest(dispatcher) {
+        activate()
+        gemini.next = ProviderTestResult.Failed(ProviderFailure.AUTHENTICATION)
+        viewModel.onKeyChange("test-not-a-real-key")
+        viewModel.onSaveKey()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onTestConnection()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            ProviderTestResult.Failed(ProviderFailure.AUTHENTICATION),
+            viewModel.uiState.value.testResult,
+        )
+        assertFalse(viewModel.uiState.value.testing)
+    }
+
+    /**
+     * A green "connected" left standing next to a key that has since been
+     * replaced is worse than no answer: it reports a configuration that was
+     * never tested.
+     *
+     * Watched failing with the `testResult = null` removed from `onSaveKey`.
+     */
+    @Test
+    fun `an edit clears the previous result`() = runTest(dispatcher) {
+        activate()
+        viewModel.onKeyChange("test-not-a-real-key")
+        viewModel.onSaveKey()
+        testScheduler.advanceUntilIdle()
+        viewModel.onTestConnection()
+        testScheduler.advanceUntilIdle()
+        assertEquals(ProviderTestResult.Ok(modelConfirmed = true), viewModel.uiState.value.testResult)
+
+        viewModel.onModelChange("a-different-model")
+        testScheduler.advanceUntilIdle()
+
+        assertNull(
+            "The result described the old model, not this one",
+            viewModel.uiState.value.testResult,
+        )
+    }
 
     @Test
     fun `deleting everything clears both the settings and the keys`() = runTest(dispatcher) {

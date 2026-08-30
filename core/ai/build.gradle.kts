@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.repforth.android.library)
     alias(libs.plugins.repforth.android.hilt)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -17,7 +18,15 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:secrets"))
 
+    // §8: a direct HTTP client, not a vendor SDK. One client, two adapters.
+    implementation(libs.okhttp)
+    implementation(libs.kotlinx.serialization.json)
+
     testImplementation(libs.junit)
+    // The adapters are tested against a real local server rather than a mocked
+    // OkHttp: what is worth asserting is the bytes on the wire and what a real
+    // 401 does, and a mock asserts neither.
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
     // FakePreferencesStore and InMemorySecretStore. The real secret store needs
     // a device, so everything above it is tested against the in-memory one.

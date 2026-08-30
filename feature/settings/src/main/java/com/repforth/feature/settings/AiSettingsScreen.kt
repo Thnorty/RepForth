@@ -37,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.ai.ProviderFailure
+import com.repforth.core.ai.ProviderTestResult
 import com.repforth.core.model.EndpointRefusal
 import com.repforth.core.model.ProviderId
 import com.repforth.core.model.ProviderSettings
@@ -59,6 +61,7 @@ fun AiSettingsRoute(
         onTimeoutChange = viewModel::onTimeoutChange,
         onAllowCleartextChange = viewModel::onAllowCleartextChange,
         onAdvancedToggled = viewModel::onAdvancedToggled,
+        onTestConnection = viewModel::onTestConnection,
         onDeleteEverything = viewModel::onDeleteEverything,
         onMessageShown = viewModel::onMessageShown,
         modifier = modifier,
@@ -89,6 +92,7 @@ internal fun AiSettingsScreen(
     onTimeoutChange: (Int) -> Unit,
     onAllowCleartextChange: (Boolean) -> Unit,
     onAdvancedToggled: () -> Unit,
+    onTestConnection: () -> Unit,
     onDeleteEverything: () -> Unit,
     onMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -180,6 +184,15 @@ internal fun AiSettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+
+        item(key = "test") {
+            TestConnection(
+                enabled = state.canTest,
+                testing = state.testing,
+                result = state.testResult,
+                onTest = onTestConnection,
+            )
         }
 
         item(key = "advanced") {
@@ -316,6 +329,43 @@ private fun KeyField(
     }
 }
 
+/**
+ * §8's "Test connection", and what it found.
+ *
+ * The answer is a sentence, not a tick. Every failure this can report has a
+ * different thing for the user to do about it — replace the key, fix the model
+ * name, wait, check the address, or nothing at all because the problem is
+ * their provider account — and a coloured icon says none of that.
+ */
+@Composable
+private fun TestConnection(
+    enabled: Boolean,
+    testing: Boolean,
+    result: ProviderTestResult?,
+    onTest: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+        Button(onClick = onTest, enabled = enabled) {
+            Text(
+                stringResource(if (testing) R.string.ai_test_running else R.string.ai_test),
+            )
+        }
+
+        result?.let {
+            val failed = it is ProviderTestResult.Failed
+            Text(
+                text = stringResource(it.messageRes()),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (failed) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+        }
+    }
+}
+
 @Composable
 private fun TimeoutSlider(seconds: Int, onChange: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
@@ -335,6 +385,22 @@ private fun TimeoutSlider(seconds: Int, onChange: (Int) -> Unit) {
     }
 }
 
+/** What the connection test found, in a sentence that says what to do next. */
+private fun ProviderTestResult.messageRes(): Int = when (this) {
+    is ProviderTestResult.Ok ->
+        if (modelConfirmed) R.string.ai_test_ok else R.string.ai_test_ok_unconfirmed
+
+    is ProviderTestResult.Failed -> when (failure) {
+        ProviderFailure.AUTHENTICATION -> R.string.ai_test_auth
+        ProviderFailure.MODEL_NOT_FOUND -> R.string.ai_test_model
+        ProviderFailure.QUOTA -> R.string.ai_test_quota
+        ProviderFailure.NETWORK -> R.string.ai_test_network
+        ProviderFailure.FORMAT -> R.string.ai_test_format
+        ProviderFailure.ENDPOINT_REFUSED -> R.string.ai_test_endpoint
+        ProviderFailure.SERVER -> R.string.ai_test_server
+    }
+}
+
 /**
  * Why an address was refused, in words that say what to do about it.
  *
@@ -346,6 +412,6 @@ private fun EndpointRefusal.messageRes(): Int = when (this) {
     EndpointRefusal.BLANK, EndpointRefusal.MALFORMED -> R.string.ai_url_malformed
     EndpointRefusal.UNSUPPORTED_SCHEME -> R.string.ai_url_scheme
     EndpointRefusal.CLEARTEXT_NOT_ALLOWED -> R.string.ai_url_cleartext
-    EndpointRefusal.CLEARTEXT_NOT_LOCAL -> R.string.ai_url_not_local
+    EndpointRefusal.CLEARTEXT_NOT_LOOPBACK -> R.string.ai_url_not_local
     EndpointRefusal.EMBEDDED_CREDENTIALS -> R.string.ai_url_credentials
 }

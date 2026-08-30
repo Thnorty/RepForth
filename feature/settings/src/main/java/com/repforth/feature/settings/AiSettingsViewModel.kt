@@ -2,7 +2,9 @@ package com.repforth.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.ai.ProviderConnectionTester
 import com.repforth.core.ai.ProviderRepository
+import com.repforth.core.ai.ProviderTestResult
 import com.repforth.core.model.EndpointPolicy
 import com.repforth.core.model.EndpointRefusal
 import com.repforth.core.model.EndpointVerdict
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -39,12 +42,22 @@ data class AiSettingsUiState(
     /** Why the typed address would be refused, or null while it is fine. */
     val baseUrlRefusal: EndpointRefusal? = null,
     val advancedShown: Boolean = false,
+    /** True while a connection test is in flight. */
+    val testing: Boolean = false,
+    /** The last test's outcome, or null if none has been run since a change. */
+    val testResult: ProviderTestResult? = null,
     val message: AiSettingsMessage? = null,
 ) {
     /** The address field is for the generic provider only (§8). */
     val showsBaseUrl: Boolean get() = settings.provider == ProviderId.OPENAI_COMPATIBLE
 
     val canSaveKey: Boolean get() = keyDraft.isNotBlank()
+
+    /**
+     * Testing without a key would report an authentication failure, which is
+     * true and useless. The button stays off until there is something to test.
+     */
+    val canTest: Boolean get() = hasKey && !testing
 }
 
 /**
@@ -64,6 +77,7 @@ data class AiSettingsUiState(
 @HiltViewModel
 class AiSettingsViewModel @Inject constructor(
     private val providers: ProviderRepository,
+    private val tester: ProviderConnectionTester,
 ) : ViewModel() {
 
     /**
@@ -78,6 +92,8 @@ class AiSettingsViewModel @Inject constructor(
         val model: String? = null,
         val baseUrl: String? = null,
         val advancedShown: Boolean = false,
+        val testing: Boolean = false,
+        val testResult: ProviderTestResult? = null,
         val message: AiSettingsMessage? = null,
     )
 
@@ -99,6 +115,8 @@ class AiSettingsViewModel @Inject constructor(
             baseUrl = baseUrl,
             baseUrlRefusal = refusalFor(baseUrl, settings.allowCleartext),
             advancedShown = draft.advancedShown,
+            testing = draft.testing,
+            testResult = draft.testResult,
             message = draft.message,
         )
     }.stateIn(
@@ -115,7 +133,15 @@ class AiSettingsViewModel @Inject constructor(
      * then save it there on the next keystroke.
      */
     fun onProviderChange(provider: ProviderId) {
-        drafts.value = drafts.value.copy(model = null, baseUrl = null, key = "")
+        drafts.value = drafts.value.copy(
+            model = null,
+            baseUrl = null,
+            key = "",
+            // A result from the previous provider says nothing about this one,
+            // and leaving it on screen is how a green tick ends up next to a
+            // configuration that has never been tested.
+            testResult = null,
+        )
         viewModelScope.launch { providers.setProvider(provider) }
     }
 
@@ -133,31 +159,40 @@ class AiSettingsViewModel @Inject constructor(
     fun onSaveKey() {
         val key = drafts.value.key
         if (key.isBlank()) return
-        val provider = uiState.value.settings.provider
-        drafts.value = drafts.value.copy(key = "")
+        drafts.value = drafts.value.copy(key = "", testResult = null)
         viewModelScope.launch {
-            providers.setKey(provider, key)
+            providers.setKey(currentProvider(), key)
             drafts.value = drafts.value.copy(message = AiSettingsMessage.KeySaved)
         }
     }
 
     fun onDeleteKey() {
-        val provider = uiState.value.settings.provider
-        drafts.value = drafts.value.copy(key = "")
+        drafts.value = drafts.value.copy(key = "", testResult = null)
         viewModelScope.launch {
-            providers.deleteKey(provider)
+            providers.deleteKey(currentProvider())
             drafts.value = drafts.value.copy(message = AiSettingsMessage.KeyDeleted)
         }
     }
 
+    /**
+     * The stored provider, read at the moment it is needed.
+     *
+     * Not `uiState.value.settings.provider`. Switching provider is a write and
+     * a flow emission, so the UI state lags it by a frame — and a key typed
+     * immediately after the switch would have been written to the provider the
+     * user had just moved away from, where they would never find it and where
+     * it would sit until a delete-everything. Found by a test that switched and
+     * saved in the same breath, which is also what a fast tap does.
+     */
+    private suspend fun currentProvider(): ProviderId = providers.settings.first().provider
+
     fun onModelChange(model: String) {
-        drafts.value = drafts.value.copy(model = model)
-        val provider = uiState.value.settings.provider
-        viewModelScope.launch { providers.setModel(provider, model) }
+        drafts.value = drafts.value.copy(model = model, testResult = null)
+        viewModelScope.launch { providers.setModel(currentProvider(), model) }
     }
 
     fun onBaseUrlChange(baseUrl: String) {
-        drafts.value = drafts.value.copy(baseUrl = baseUrl)
+        drafts.value = drafts.value.copy(baseUrl = baseUrl, testResult = null)
         viewModelScope.launch { providers.setBaseUrl(baseUrl) }
     }
 
@@ -167,6 +202,23 @@ class AiSettingsViewModel @Inject constructor(
 
     fun onAllowCleartextChange(allowed: Boolean) {
         viewModelScope.launch { providers.setAllowCleartext(allowed) }
+    }
+
+    /**
+     * §8's "Test connection".
+     *
+     * The result is cleared by any edit that could change it, so what is on
+     * screen always describes the configuration currently on screen — a stale
+     * "connected" next to a key that has since been replaced is worse than no
+     * answer at all.
+     */
+    fun onTestConnection() {
+        if (drafts.value.testing) return
+        drafts.value = drafts.value.copy(testing = true, testResult = null)
+        viewModelScope.launch {
+            val result = tester.test()
+            drafts.value = drafts.value.copy(testing = false, testResult = result)
+        }
     }
 
     fun onAdvancedToggled() {

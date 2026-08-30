@@ -57,17 +57,17 @@ class EndpointPolicyTest {
 
     /**
      * The developer setting exists for Ollama and LM Studio, which is what §8
-     * names. Local, and nothing else.
+     * names. This device, and nothing else.
      */
     @Test
-    fun `cleartext to a local address is allowed once the setting is on`() {
+    fun `cleartext to loopback is allowed once the setting is on`() {
         listOf(
             "http://localhost:11434",
             "http://127.0.0.1:1234",
-            "http://10.0.0.5:8080",
-            "http://192.168.1.42:11434",
-            "http://172.16.4.1:8000",
-            "http://[::1]:11434",
+            "http://127.0.0.53:8080",
+            // The emulator's route to its host, which is the only way this path
+            // can be exercised without a phone.
+            "http://10.0.2.2:11434",
         ).forEach { url ->
             assertTrue(
                 "$url should be reachable with the developer setting on",
@@ -77,9 +77,32 @@ class EndpointPolicyTest {
     }
 
     /**
+     * §8 mentions LAN as well as loopback, and this app deliberately does not
+     * do LAN. A network-security configuration names hosts, not ranges, so
+     * "any 192.168.x.x" cannot be permitted at the platform level — and a policy
+     * that allowed what the platform refuses would fail at the socket with an
+     * error nobody could explain.
+     */
+    @Test
+    fun `a private network address is not treated as loopback`() {
+        listOf(
+            "http://192.168.1.42:11434",
+            "http://10.0.0.5:8080",
+            "http://172.16.4.1:8000",
+        ).forEach { url ->
+            val verdict = EndpointPolicy.check(url, allowCleartext = true)
+            assertTrue(
+                "$url is on the network, not on this device. The platform will " +
+                    "refuse it, so this policy has to as well: $verdict",
+                verdict is EndpointVerdict.Refused,
+            )
+        }
+    }
+
+    /**
      * The test this file exists for.
      *
-     * Watched failing with the `isLocal` check removed from the `http` branch:
+     * Watched failing with the `isLoopback` check removed from the `http` branch:
      * every one of these was allowed, which is a key sent in clear text over
      * the internet on the strength of a checkbox labelled "for local models".
      */
@@ -91,6 +114,7 @@ class EndpointPolicyTest {
             "http://172.32.0.1/v1",
             "http://11.0.0.1/v1",
             "http://192.169.1.1/v1",
+            "http://126.255.255.255/v1",
         ).forEach { url ->
             val verdict = EndpointPolicy.check(url, allowCleartext = true)
             // Asserted as a type before it is cast, so removing the locality
@@ -102,7 +126,7 @@ class EndpointPolicyTest {
                 verdict is EndpointVerdict.Refused,
             )
             assertEquals(
-                EndpointRefusal.CLEARTEXT_NOT_LOCAL,
+                EndpointRefusal.CLEARTEXT_NOT_LOOPBACK,
                 (verdict as EndpointVerdict.Refused).reason,
             )
         }
@@ -162,15 +186,15 @@ class EndpointPolicyTest {
      * `localhost` are simply not local.
      */
     @Test
-    fun `a hostname that is not localhost is not treated as local`() {
+    fun `a hostname that is not localhost is not treated as loopback`() {
         val verdict = EndpointPolicy.check("http://my-nas.lan:11434", allowCleartext = true)
 
         assertTrue(
-            "A name this app cannot check without asking DNS is not local: $verdict",
+            "A name this app cannot check without asking DNS is not loopback: $verdict",
             verdict is EndpointVerdict.Refused,
         )
         assertEquals(
-            EndpointRefusal.CLEARTEXT_NOT_LOCAL,
+            EndpointRefusal.CLEARTEXT_NOT_LOOPBACK,
             (verdict as EndpointVerdict.Refused).reason,
         )
     }

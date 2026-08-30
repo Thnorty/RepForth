@@ -2,6 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
+        The app's only network permission, and the only reason it has one.
+
+        RepForth works entirely offline: the catalog is packaged, plans and
+        history are local, and nothing is uploaded (§4). This exists solely so
+        that a user who has configured their own AI provider can reach it (§8),
+        which is a feature they switch on by pasting a key and which the app
+        works completely without.
+
+        Declared here rather than in core:ai so that "does this app talk to the
+        internet, and why" is answerable from the one file an auditor opens.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
         Cloud backup is an explicit MVP non-goal (guideline §4), and §7 requires
         deciding whether history participates rather than letting the default
         decide. It is off.
@@ -22,7 +36,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RepForth">
+        android:theme="@style/Theme.RepForth"
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".MainActivity"

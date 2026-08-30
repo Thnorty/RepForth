@@ -106,7 +106,7 @@
     <string name="ai_url_malformed">Bu bir web adresi değil.</string>
     <string name="ai_url_scheme">Yalnızca https:// adreslerine izin verilir.</string>
     <string name="ai_url_cleartext">Düz http:// kapalı. Kullanmak için aşağıdan yerel model sunucularını aç.</string>
-    <string name="ai_url_not_local">Düz http:// yalnızca bu cihazdaki ya da kendi ağındaki bir sunucu için çalışır.</string>
+    <string name="ai_url_not_local">Düz http:// yalnızca bu cihazda çalışan bir sunucu için geçerli. Ağındaki başka bir sunucu için https:// gerekir.</string>
     <string name="ai_url_credentials">Adrese kullanıcı adı ya da parola koyma.</string>
 
     <string name="ai_advanced">Gelişmiş</string>
@@ -116,7 +116,7 @@
         <item quantity="other">%1$d saniye</item>
     </plurals>
     <string name="ai_cleartext">Yerel model sunucusuna izin ver</string>
-    <string name="ai_cleartext_sub">Ollama gibi araçlar için düz http:// adresinin bu cihazdaki ya da kendi ağındaki bir sunucuya ulaşmasını sağlar. İnternetteki adresler bu ayar ne olursa olsun yalnızca https:// kalır.</string>
+    <string name="ai_cleartext_sub">Ollama gibi araçlar için düz http:// adresinin bu cihazda çalışan bir model sunucusuna ulaşmasını sağlar. Diğer tüm adresler bu ayar ne olursa olsun yalnızca https:// kalır.</string>
 
     <string name="ai_delete_all">Tüm sağlayıcı ayarlarını sil</string>
     <string name="ai_delete_all_sub">Sağlayıcıyı, modeli, adresi ve kayıtlı her anahtarı unutur.</string>
@@ -124,4 +124,17 @@
     <string name="ai_delete_all_body">Kayıtlı her API anahtarı, sağlayıcı ayarlarıyla birlikte gider. Antrenmanların ve geçmişin kalır. Bu geri alınamaz.</string>
     <string name="ai_delete_all_confirm">Sil</string>
     <string name="ai_deleted_all">Sağlayıcı ayarları silindi.</string>
+
+    <!-- "Bağlantıyı sına" (§8): her biri ne yapılacağını söyler. -->
+    <string name="ai_test">Bağlantıyı sına</string>
+    <string name="ai_test_running">Deneniyor…</string>
+    <string name="ai_test_ok">Bağlandı ve model kullanılabilir.</string>
+    <string name="ai_test_ok_unconfirmed">Bağlandı. Bu sunucu modellerini listelemiyor, bu yüzden model adı doğrulanamadı.</string>
+    <string name="ai_test_auth">Sağlayıcı anahtarı kabul etmedi. Tamamını yapıştırdığından ve anahtarın hâlâ geçerli olduğundan emin ol.</string>
+    <string name="ai_test_model">Bağlandı ama bu model hesabında sunulmuyor. Model adını kontrol et.</string>
+    <string name="ai_test_quota">Sağlayıcı hesabın hız sınırına takıldı ya da kredisi bitti. Burada değiştirecek bir şey yok — bu seninle onların arasında.</string>
+    <string name="ai_test_network">Sağlayıcıya ulaşılamadı. Bağlantını, adres yazdıysan adresi de kontrol et.</string>
+    <string name="ai_test_format">Sağlayıcı bu uygulamanın okuyamadığı bir yanıt verdi.</string>
+    <string name="ai_test_endpoint">Bu uygulama o adrese gönderim yapmaz. Yukarıdaki adresi kontrol et.</string>
+    <string name="ai_test_server">Sağlayıcıda şu anda bir sorun var. Birazdan yeniden dene.</string>
 </resources>

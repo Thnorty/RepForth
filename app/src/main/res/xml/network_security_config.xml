@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext, narrowly (§8).
+
+  §8 allows plain http only for a local model server such as Ollama or LM
+  Studio, "with a prominent warning and narrowly scoped Android
+  network-security configuration". This is that scope: three hosts, all of them
+  this device or the machine an emulator is running on.
+
+  It cannot be wider without becoming meaningless. The file names hosts, not
+  ranges, so "any address on the user's network" is not expressible — which is
+  why EndpointPolicy refuses those too rather than permitting something the
+  platform will then block.
+
+  NetworkSecurityConfigTest asserts this list equals EndpointPolicy.CLEARTEXT_HOSTS.
+  The duplication is forced: the platform reads its answer from XML before any
+  Kotlin runs, so there is no way to have one copy.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
