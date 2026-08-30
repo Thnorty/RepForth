@@ -14,4 +14,11 @@ dependencies {
 
     // FakePreferencesStore implements DataStore, so consumers see those types.
     api(libs.androidx.datastore.preferences)
+
+    // InMemorySecretStore implements SecretStore, for the same reason.
+    //
+    // This module must never reach androidTest: it exposes JUnit with `api`,
+    // and pulling that into an APK fails dexing. The instrumentation tests keep
+    // their own fixtures for exactly this reason.
+    api(project(":core:secrets"))
 }

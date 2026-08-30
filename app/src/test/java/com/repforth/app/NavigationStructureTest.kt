@@ -2,8 +2,10 @@ package com.repforth.app
 
 import com.repforth.app.navigation.Destination
 import com.repforth.app.navigation.TopLevelDestination
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -53,6 +55,43 @@ class NavigationStructureTest {
             "The builder opens from Plans and Today (§12), not the bottom bar.",
             TopLevelDestination.entries.any { it.route is Destination.Builder },
         )
+    }
+
+    /**
+     * Every non-tab destination has to name its own app-bar title.
+     *
+     * `titleRes` ends in `else -> settings_title`, which is right for exactly
+     * one destination and silently wrong for every one added afterwards. It has
+     * already happened once: the builder shipped titled "Settings" because the
+     * fallback happened to be correct when it was written.
+     *
+     * Read from source rather than called, because the function is private to
+     * the shell and takes a `NavDestination` that only exists at runtime.
+     *
+     * Watched failing by removing the AiSettings branch.
+     */
+    @Test
+    fun `every non-tab destination names its own app bar title`() {
+        val destinations = File("src/main/java/com/repforth/app/navigation/Destination.kt")
+            .readText()
+        val shell = File("src/main/java/com/repforth/app/ui/RepForthApp.kt").readText()
+
+        val declared = Regex("""@Serializable data (?:object|class) (\w+)""")
+            .findAll(destinations)
+            .map { it.groupValues[1] }
+            .toList()
+
+        assertTrue("No destinations found; has Destination.kt moved?", declared.isNotEmpty())
+
+        val tabs = TopLevelDestination.entries.map { it.route::class.simpleName }.toSet()
+
+        declared.filterNot { it in tabs }.forEach { name ->
+            assertTrue(
+                "Destination.$name has no branch in RepForthApp's titleRes, so " +
+                    "the app bar will title it \"Settings\". Add one.",
+                "Destination.$name::class" in shell,
+            )
+        }
     }
 
     @Test

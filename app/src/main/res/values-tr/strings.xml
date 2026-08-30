@@ -54,6 +54,7 @@
 
     <string name="nav_builder">Antrenman</string>
     <string name="nav_session">Antrenman</string>
+    <string name="nav_ai_settings">Yapay zekâ sağlayıcısı</string>
     <string name="nav_settings">Ayarlar</string>
     <string name="nav_back">Geri</string>
 

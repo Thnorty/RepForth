@@ -1,5 +1,6 @@
 package com.repforth.core.transfer
 
+import com.repforth.core.ai.ProviderRepository
 import com.repforth.core.common.time.TimeSource
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.userdata.ProfileRepository
@@ -56,10 +57,14 @@ interface DataTransfer {
     /**
      * "Reset app" (§7).
      *
-     * Everything [deleteWorkoutData] removes, plus preferences. AI settings,
-     * encrypted keys and cached media are named by §7 and do not exist yet;
-     * when they do they belong here, and `ResetCoverageTest` is what will say
-     * so.
+     * Everything [deleteWorkoutData] removes, plus preferences, the AI
+     * provider settings, and every stored provider key. Cached media is named
+     * by §7 too and does not exist yet; when it does it belongs here.
+     *
+     * `ResetCoverageTest` fails if a store is added to this class and not
+     * cleared here. That guard exists because the failure is silent: a user who
+     * resets the app and hands the phone on has no way to discover that their
+     * API key is still in it.
      */
     suspend fun resetApp()
 }
@@ -69,6 +74,7 @@ internal class DefaultDataTransfer @Inject constructor(
     private val templates: TemplateRepository,
     private val sessions: SessionRepository,
     private val preferences: UserPreferencesDataSource,
+    private val providers: ProviderRepository,
     private val time: TimeSource,
 ) : DataTransfer {
 
@@ -153,5 +159,6 @@ internal class DefaultDataTransfer @Inject constructor(
     override suspend fun resetApp() {
         deleteWorkoutData()
         preferences.clear()
+        providers.deleteAll()
     }
 }

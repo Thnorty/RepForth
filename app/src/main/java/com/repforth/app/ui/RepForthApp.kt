@@ -163,5 +163,10 @@ private fun NavDestination?.titleRes(topLevel: TopLevelDestination?): Int = when
     topLevel != null -> topLevel.labelRes
     this?.hasRoute(Destination.Builder::class) == true -> R.string.nav_builder
     this?.hasRoute(Destination.Session::class) == true -> R.string.nav_session
+    this?.hasRoute(Destination.AiSettings::class) == true -> R.string.nav_ai_settings
+    this?.hasRoute(Destination.Settings::class) == true -> R.string.settings_title
+    // Unreachable while every destination above is named, which
+    // NavigationStructureTest is what keeps true. Settings rather than a blank
+    // bar, because a screen with no title looks broken and this one cannot.
     else -> R.string.settings_title
 }

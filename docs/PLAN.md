@@ -96,14 +96,22 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 1** — Coach: the rules engine reaches the catalog | `9a4b829` |
 | Instrumentation tests that interact, and a FAB nobody could name | `2d0ba1c` |
 | **Phase 2** — secret storage, and a CI scan for key-shaped content | `2eb17e0` |
+| **Phase 2** — provider settings, and the endpoint rule that guards them | pending |
 
-Modules today: `app`, `core:common`, `core:database`, `core:datastore`,
+Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-313 unit tests across 42 classes, plus six instrumentation tests on a Galaxy
-S23, all passing. Room schema v1 exported and committed.
+347 unit tests across 44 classes, plus six instrumentation tests on a Galaxy
+S23 and eight in `core:secrets`, all passing. Room schema v1 exported and
+committed.
+
+**The previous figure in this file — "313 across 42" — was wrong**, and by more
+than this phase added: there are 44 test source files under `src/test`, and
+there were 38 before this session. Counted from the JUnit XML and cross-checked
+against the files, because a number nobody can reproduce is worse than no
+number.
 
 ---
 
@@ -530,18 +538,66 @@ shape the rules engine was in for a whole phase — finished, tested, unreachabl
 2.2 is what makes it reachable, and it should follow immediately rather than
 after anything else.
 
-### 2.2 — Provider settings — next
+### 2.2 — Provider settings — **done**
 
-The `ProviderConfig` model, and the Settings UI §8 describes: provider choice,
-masked key, model id, base URL for the generic provider only, test connection
-with actionable errors, delete key, delete all provider settings, and the
-disclosure that prompts go to a third party.
+`core:secrets` is reachable. A new `core:ai` module holds `ProviderRepository`,
+the one place a provider's settings and its key are brought together; nothing
+else in the app touches `SecretStore`.
 
-### 2.3 — Provider adapters
+**The persisted type and the in-flight type are separate, and that is the whole
+design.** `ProviderSettings` — provider, model, address, timeout, cleartext flag
+— goes into plain-text DataStore. `ProviderConfig` is settings plus key, built
+per call and written nowhere. Two guards hold the line: one fails if a field
+whose name reads like a credential appears on the persisted type, the other
+fails if `ProviderConfig` ever prints its key, which a `data class` would do by
+default and which would put the key in every log line that touched it.
+
+**`EndpointPolicy` lives in `core:model`, not in the settings screen.** §8 allows
+a developer setting for cleartext to a local model server; the trap is reading
+that as "cleartext is allowed now". It is not — `http://` to a public host stays
+refused whether the switch is on or off, and hostnames are never resolved to
+decide what is local, because a name an attacker controls can answer differently
+the second time. A check that lived only in the text field would be bypassed by
+the next caller.
+
+**Reset now deletes provider keys, and `ResetCoverageTest` keeps it that way.**
+The comment promising that test had been in `DataTransfer.kt` for a phase; the
+test did not exist. It reads the constructor, so a store added later fails by
+existing rather than by being remembered. The failure it prevents is silent and
+has a consequence off the phone: a device that is reset and handed on would
+otherwise still hold the previous owner's API key, billable to their account.
+
+The Settings screen gained an AI section leading to a screen of its own, with
+the §8 disclosure first rather than in small print — this is the one place in the
+app where something the user typed leaves the device, and the rest of RepForth
+promises loudly that nothing does. The key field is write-only: the UI state has
+no field for a stored key, so "never shown again in full" is a property of the
+type rather than a rule the screen has to remember. It is cleared the moment it
+is saved.
+
+Six new test classes, 43 tests. Watched failing: the persisted-type guard (with
+an `apiKey` field added), the redaction guard (with `ProviderConfig` made a data
+class), the locality check (with cleartext then allowed to five public hosts),
+the clear-scope test (with `clear()` wiping the shared preferences file), the
+reset guard and the reset behaviour test (both, with `providers.deleteAll()`
+removed), the field-clearing test (with the clear removed from `onSaveKey`), and
+the new title guard.
+
+**That title guard caught something on its first run.** `titleRes` in the app
+shell ends in `else -> settings_title`, and its own comment says every
+destination is named explicitly — `Destination.Settings` was not, it was riding
+the fallback. So was the new screen. Both are named now.
+
+**Not in this slice: "Test connection".** §8 lists it under settings, but it
+needs a real HTTP call to mean anything, and a button that reports success
+against a fake would be worse than no button. It lands with 2.3.
+
+### 2.3 — Provider adapters — next
 
 `AiProvider`, a direct HTTP client rather than a vendor SDK, `GeminiProvider`,
-`OpenAiCompatibleProvider`, and `FakeAiProvider` for tests. HTTPS only, with
-cleartext confined to a developer setting for a loopback model server.
+`OpenAiCompatibleProvider`, and `FakeAiProvider` for tests. HTTPS only, enforced
+through `EndpointPolicy` rather than a second copy of the rule. Brings "Test
+connection" with it, with the actionable errors §8 asks for.
 
 ### 2.4 — The generation pipeline
 

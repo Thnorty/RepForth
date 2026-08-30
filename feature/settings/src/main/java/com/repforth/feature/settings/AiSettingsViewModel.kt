@@ -1,0 +1,201 @@
+package com.repforth.feature.settings
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.repforth.core.ai.ProviderRepository
+import com.repforth.core.model.EndpointPolicy
+import com.repforth.core.model.EndpointRefusal
+import com.repforth.core.model.EndpointVerdict
+import com.repforth.core.model.ProviderId
+import com.repforth.core.model.ProviderSettings
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+/** Something to tell the user once, after an action they took. */
+sealed interface AiSettingsMessage {
+    data object KeySaved : AiSettingsMessage
+
+    data object KeyDeleted : AiSettingsMessage
+
+    data object EverythingDeleted : AiSettingsMessage
+}
+
+data class AiSettingsUiState(
+    val settings: ProviderSettings = ProviderSettings.Default,
+    /** Whether a key is stored for the *selected* provider. */
+    val hasKey: Boolean = false,
+    /** Which providers have a key, so switching can say what is still missing. */
+    val providersWithKeys: Set<ProviderId> = emptySet(),
+    /** What is currently typed in the key field. Never read from storage. */
+    val keyDraft: String = "",
+    val model: String = ProviderSettings.Default.model,
+    val baseUrl: String = "",
+    /** Why the typed address would be refused, or null while it is fine. */
+    val baseUrlRefusal: EndpointRefusal? = null,
+    val advancedShown: Boolean = false,
+    val message: AiSettingsMessage? = null,
+) {
+    /** The address field is for the generic provider only (§8). */
+    val showsBaseUrl: Boolean get() = settings.provider == ProviderId.OPENAI_COMPATIBLE
+
+    val canSaveKey: Boolean get() = keyDraft.isNotBlank()
+}
+
+/**
+ * The AI provider settings screen (§8).
+ *
+ * **The key goes one way.** It is typed into [keyDraft], written to the
+ * encrypted store, and the draft is cleared — §8's "clear sensitive text-field
+ * state after saving". Nothing here ever reads a key back: [AiSettingsUiState]
+ * has no field for a stored key, so "never shown again in full" is a property of
+ * the type rather than a rule the screen has to remember.
+ *
+ * The address is validated for display but stored as typed. Refusing to store a
+ * half-typed URL would fight the user mid-keystroke; what matters is that
+ * [EndpointPolicy] is also consulted before a request is sent, which is the
+ * check that actually protects anything.
+ */
+@HiltViewModel
+class AiSettingsViewModel @Inject constructor(
+    private val providers: ProviderRepository,
+) : ViewModel() {
+
+    /**
+     * The text fields, while they differ from what is stored.
+     *
+     * Null means "show what storage says". Without that distinction the stored
+     * flow re-emits on every keystroke and puts the cursor back where the saved
+     * value ends, which is the classic Compose text-field fight.
+     */
+    private data class Drafts(
+        val key: String = "",
+        val model: String? = null,
+        val baseUrl: String? = null,
+        val advancedShown: Boolean = false,
+        val message: AiSettingsMessage? = null,
+    )
+
+    private val drafts = MutableStateFlow(Drafts())
+
+    val uiState: StateFlow<AiSettingsUiState> = combine(
+        providers.settings,
+        providers.hasKey,
+        providers.providersWithKeys,
+        drafts,
+    ) { settings, hasKey, withKeys, draft ->
+        val baseUrl = draft.baseUrl ?: settings.baseUrl
+        AiSettingsUiState(
+            settings = settings,
+            hasKey = hasKey,
+            providersWithKeys = withKeys,
+            keyDraft = draft.key,
+            model = draft.model ?: settings.model,
+            baseUrl = baseUrl,
+            baseUrlRefusal = refusalFor(baseUrl, settings.allowCleartext),
+            advancedShown = draft.advancedShown,
+            message = draft.message,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+        initialValue = AiSettingsUiState(),
+    )
+
+    /**
+     * Switching provider drops the model and address drafts.
+     *
+     * Each provider has its own stored model id, so keeping a draft across the
+     * switch would show one provider's field contents over the other's — and
+     * then save it there on the next keystroke.
+     */
+    fun onProviderChange(provider: ProviderId) {
+        drafts.value = drafts.value.copy(model = null, baseUrl = null, key = "")
+        viewModelScope.launch { providers.setProvider(provider) }
+    }
+
+    fun onKeyChange(key: String) {
+        drafts.value = drafts.value.copy(key = key)
+    }
+
+    /**
+     * Writes the key and forgets what was typed (§8, point 6).
+     *
+     * Clearing the draft is not cosmetic: it is the difference between a key
+     * living in ViewModel state for the rest of the process and living only in
+     * the encrypted store.
+     */
+    fun onSaveKey() {
+        val key = drafts.value.key
+        if (key.isBlank()) return
+        val provider = uiState.value.settings.provider
+        drafts.value = drafts.value.copy(key = "")
+        viewModelScope.launch {
+            providers.setKey(provider, key)
+            drafts.value = drafts.value.copy(message = AiSettingsMessage.KeySaved)
+        }
+    }
+
+    fun onDeleteKey() {
+        val provider = uiState.value.settings.provider
+        drafts.value = drafts.value.copy(key = "")
+        viewModelScope.launch {
+            providers.deleteKey(provider)
+            drafts.value = drafts.value.copy(message = AiSettingsMessage.KeyDeleted)
+        }
+    }
+
+    fun onModelChange(model: String) {
+        drafts.value = drafts.value.copy(model = model)
+        val provider = uiState.value.settings.provider
+        viewModelScope.launch { providers.setModel(provider, model) }
+    }
+
+    fun onBaseUrlChange(baseUrl: String) {
+        drafts.value = drafts.value.copy(baseUrl = baseUrl)
+        viewModelScope.launch { providers.setBaseUrl(baseUrl) }
+    }
+
+    fun onTimeoutChange(seconds: Int) {
+        viewModelScope.launch { providers.setRequestTimeoutSeconds(seconds) }
+    }
+
+    fun onAllowCleartextChange(allowed: Boolean) {
+        viewModelScope.launch { providers.setAllowCleartext(allowed) }
+    }
+
+    fun onAdvancedToggled() {
+        drafts.value = drafts.value.copy(advancedShown = !drafts.value.advancedShown)
+    }
+
+    /** §8's "delete all provider settings", confirmed by the screen first. */
+    fun onDeleteEverything() {
+        drafts.value = Drafts(message = AiSettingsMessage.EverythingDeleted)
+        viewModelScope.launch { providers.deleteAll() }
+    }
+
+    fun onMessageShown() {
+        drafts.value = drafts.value.copy(message = null)
+    }
+
+    private companion object {
+        const val STOP_TIMEOUT_MS = 5_000L
+
+        /**
+         * An empty field is not an error, it is a field nobody has filled in
+         * yet — so BLANK never becomes a red message under the cursor.
+         */
+        fun refusalFor(baseUrl: String, allowCleartext: Boolean): EndpointRefusal? {
+            if (baseUrl.isBlank()) return null
+            return when (val verdict = EndpointPolicy.check(baseUrl, allowCleartext)) {
+                is EndpointVerdict.Allowed -> null
+                is EndpointVerdict.Refused -> verdict.reason
+            }
+        }
+    }
+}

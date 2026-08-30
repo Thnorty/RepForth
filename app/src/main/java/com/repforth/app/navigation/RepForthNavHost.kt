@@ -14,6 +14,7 @@ import com.repforth.feature.exercises.ExercisesRoute
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
 import com.repforth.feature.session.SessionRoute
+import com.repforth.feature.settings.AiSettingsRoute
 import com.repforth.feature.settings.SettingsRoute
 
 /**
@@ -74,7 +75,12 @@ fun RepForthNavHost(
             HistoryRoute()
         }
         composable<Destination.Settings> {
-            SettingsRoute()
+            SettingsRoute(
+                onOpenAiSettings = { navController.navigate(Destination.AiSettings) },
+            )
+        }
+        composable<Destination.AiSettings> {
+            AiSettingsRoute()
         }
     }
 }

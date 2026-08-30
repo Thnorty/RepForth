@@ -32,6 +32,17 @@ sealed interface Destination {
     @Serializable data object Settings : Destination
 
     /**
+     * The AI provider settings (§8): opened from Settings, and a screen of its
+     * own rather than a section.
+     *
+     * Separate because it is the one place in the app where the user hands over
+     * a credential and agrees that something leaves the phone. Folding that in
+     * among the theme and the units would make it look like a preference like
+     * any other, which it is not.
+     */
+    @Serializable data object AiSettings : Destination
+
+    /**
      * The workout builder (§12): not a tab, opened from Plans and Today, and
      * from the edit action on a saved plan.
      *

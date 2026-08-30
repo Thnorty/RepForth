@@ -55,6 +55,7 @@
 
     <string name="nav_builder">Workout</string>
     <string name="nav_session">Workout</string>
+    <string name="nav_ai_settings">AI provider</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_back">Back</string>
 

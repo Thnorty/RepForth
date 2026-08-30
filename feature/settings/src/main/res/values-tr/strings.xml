@@ -76,4 +76,52 @@
     <string name="settings_export_first">Bir kopya saklamak istiyorsan önce dışa aktar.</string>
 
     <string name="settings_privacy">Her şey bu telefonda kalır. Hesap yok, yükleme yok ve kimsenin sunucusuna yedekleme yok.</string>
+
+    <!-- Yapay zekâ sağlayıcısı (§8). Ayarlardan açılır; bir sekme değil. -->
+    <string name="settings_ai">Yapay zekâ</string>
+    <string name="settings_ai_row">Yapay zekâ sağlayıcısı</string>
+    <string name="settings_ai_row_sub">Bir sağlayıcı seç ve kendi API anahtarını ekle. İsteğe bağlı — dahili planlayıcı anahtarsız da çalışır.</string>
+
+    <string name="ai_title">Yapay zekâ sağlayıcısı</string>
+    <string name="ai_disclosure">RepForth uygulamasının kendi sunucusu yok. Koç bir antrenman hazırlarken, isteğin ve kısa bir egzersiz listesi bu telefondan doğrudan seçtiğin sağlayıcıya, kendi API anahtarınla gider. Ne kadar tuttuğu ve ne kadar saklandığı seninle onların arasında.</string>
+
+    <string name="ai_provider">Sağlayıcı</string>
+    <string name="ai_provider_gemini">Gemini</string>
+    <string name="ai_provider_openai">OpenAI uyumlu</string>
+
+    <string name="ai_key">API anahtarı</string>
+    <string name="ai_key_hint">Anahtarını yapıştır</string>
+    <string name="ai_key_stored">Bu sağlayıcı için bir anahtar kayıtlı. Bu telefonda şifreli tutuluyor ve bir daha gösterilemez.</string>
+    <string name="ai_key_missing">Henüz anahtar yok. Sen bir tane ekleyene kadar Koç dahili planlayıcıyı kullanır.</string>
+    <string name="ai_key_save">Anahtarı kaydet</string>
+    <string name="ai_key_delete">Anahtarı sil</string>
+    <string name="ai_key_saved">Anahtar kaydedildi.</string>
+    <string name="ai_key_deleted">Anahtar silindi.</string>
+
+    <string name="ai_model">Model</string>
+    <string name="ai_model_hint">Varsayılan: %1$s</string>
+
+    <string name="ai_base_url">Adres</string>
+    <string name="ai_base_url_hint">https://sunucun/v1/</string>
+    <string name="ai_url_malformed">Bu bir web adresi değil.</string>
+    <string name="ai_url_scheme">Yalnızca https:// adreslerine izin verilir.</string>
+    <string name="ai_url_cleartext">Düz http:// kapalı. Kullanmak için aşağıdan yerel model sunucularını aç.</string>
+    <string name="ai_url_not_local">Düz http:// yalnızca bu cihazdaki ya da kendi ağındaki bir sunucu için çalışır.</string>
+    <string name="ai_url_credentials">Adrese kullanıcı adı ya da parola koyma.</string>
+
+    <string name="ai_advanced">Gelişmiş</string>
+    <string name="ai_timeout">İstek zaman aşımı</string>
+    <plurals name="ai_timeout_seconds">
+        <item quantity="one">%1$d saniye</item>
+        <item quantity="other">%1$d saniye</item>
+    </plurals>
+    <string name="ai_cleartext">Yerel model sunucusuna izin ver</string>
+    <string name="ai_cleartext_sub">Ollama gibi araçlar için düz http:// adresinin bu cihazdaki ya da kendi ağındaki bir sunucuya ulaşmasını sağlar. İnternetteki adresler bu ayar ne olursa olsun yalnızca https:// kalır.</string>
+
+    <string name="ai_delete_all">Tüm sağlayıcı ayarlarını sil</string>
+    <string name="ai_delete_all_sub">Sağlayıcıyı, modeli, adresi ve kayıtlı her anahtarı unutur.</string>
+    <string name="ai_delete_all_title">Sağlayıcı ayarları silinsin mi?</string>
+    <string name="ai_delete_all_body">Kayıtlı her API anahtarı, sağlayıcı ayarlarıyla birlikte gider. Antrenmanların ve geçmişin kalır. Bu geri alınamaz.</string>
+    <string name="ai_delete_all_confirm">Sil</string>
+    <string name="ai_deleted_all">Sağlayıcı ayarları silindi.</string>
 </resources>

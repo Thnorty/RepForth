@@ -1,5 +1,6 @@
 package com.repforth.core.transfer
 
+import com.repforth.core.ai.ProviderRepository
 import com.repforth.core.common.time.FakeTimeSource
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.model.Equipment
@@ -12,6 +13,7 @@ import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
+import com.repforth.core.model.ProviderId
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
@@ -19,6 +21,7 @@ import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
+import com.repforth.core.testing.InMemorySecretStore
 import com.repforth.core.workout.SetOutcome
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -43,6 +46,8 @@ class DataTransferTest {
     private lateinit var templates: FakeTemplates
     private lateinit var sessions: FakeSessions
     private lateinit var preferences: UserPreferencesDataSource
+    private lateinit var providers: ProviderRepository
+    private lateinit var secrets: InMemorySecretStore
     private lateinit var transfer: DataTransfer
 
     @Before
@@ -51,8 +56,11 @@ class DataTransferTest {
         templates = FakeTemplates()
         sessions = FakeSessions()
         preferences = fakePreferences()
+        val (repository, store) = fakeProviders()
+        providers = repository
+        secrets = store
         transfer = DefaultDataTransfer(
-            profiles, templates, sessions, preferences, FakeTimeSource(),
+            profiles, templates, sessions, preferences, providers, FakeTimeSource(),
         )
     }
 
@@ -82,7 +90,7 @@ class DataTransferTest {
         val restoredSessions = FakeSessions()
         val emptied = DefaultDataTransfer(
             restoredProfiles, restoredTemplates, restoredSessions,
-            fakePreferences(), FakeTimeSource(),
+            fakePreferences(), fakeProviders().first, FakeTimeSource(),
         )
 
         val outcome = emptied.read(exported)
@@ -193,7 +201,8 @@ class DataTransferTest {
         profiles.save(sampleProfile())
 
         val other = DefaultDataTransfer(
-            FakeProfiles(), FakeTemplates(), FakeSessions(), fakePreferences(), FakeTimeSource(),
+            FakeProfiles(), FakeTemplates(), FakeSessions(), fakePreferences(),
+            fakeProviders().first, FakeTimeSource(),
         )
         other.import(
             ExportDocument(
@@ -262,6 +271,30 @@ class DataTransferTest {
             "Reset returns preferences to their defaults",
             UserPreferences.Default.themeMode,
             preferences.preferences.first().themeMode,
+        )
+    }
+
+    /**
+     * The one in this file with a consequence outside the app.
+     *
+     * A phone that has been reset and handed on must not still hold the previous
+     * owner's API key — it is billable to their account, and nothing in the UI
+     * would ever show it again. Asserted against the secret store rather than
+     * through the repository, because "the repository reports no key" and "there
+     * is no ciphertext on disk" are different claims and only the second one
+     * matters here.
+     */
+    @Test
+    fun `resetting the app deletes the stored provider key`() = runTest {
+        providers.setKey(ProviderId.GEMINI, "test-not-a-real-key")
+        providers.setKey(ProviderId.OPENAI_COMPATIBLE, "another-test-key")
+        assertTrue("Precondition: the keys were stored", secrets.storedIds.isNotEmpty())
+
+        transfer.resetApp()
+
+        assertTrue(
+            "Reset left ciphertext behind: ${secrets.storedIds}",
+            secrets.storedIds.isEmpty(),
         )
     }
 

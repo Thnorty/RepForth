@@ -1,7 +1,10 @@
 package com.repforth.core.transfer
 
+import com.repforth.core.ai.ProviderRepository
+import com.repforth.core.datastore.ProviderSettingsDataSource
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.testing.FakePreferencesStore
+import com.repforth.core.testing.InMemorySecretStore
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.ProfileRepository
@@ -93,3 +96,18 @@ internal class FakeSessions : SessionRepository {
  * what the store actually holds afterwards.
  */
 internal fun fakePreferences() = UserPreferencesDataSource(FakePreferencesStore())
+
+/**
+ * A real [ProviderRepository] over in-memory storage, and the secret store it
+ * writes to, so a test can look at both sides of a reset.
+ *
+ * The store is returned alongside the repository because the question worth
+ * asking after `resetApp()` is not "does the repository say there is no key" —
+ * it is "is there still ciphertext". Those are different questions, and only
+ * the second one is about the user's phone.
+ */
+internal fun fakeProviders(): Pair<ProviderRepository, InMemorySecretStore> {
+    val secrets = InMemorySecretStore()
+    val settings = ProviderSettingsDataSource(FakePreferencesStore())
+    return ProviderRepository(settings, secrets) to secrets
+}

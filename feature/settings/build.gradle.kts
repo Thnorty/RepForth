@@ -12,6 +12,11 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:datastore"))
 
+    // Provider settings and the key that goes with them (§8). This module talks
+    // to core:ai, never to core:secrets directly — one reader of the key, and
+    // it is not a screen.
+    implementation(project(":core:ai"))
+
     // Export, import and the two deletes. Finished and, until this screen, with
     // nothing able to call it.
     implementation(project(":core:transfer"))

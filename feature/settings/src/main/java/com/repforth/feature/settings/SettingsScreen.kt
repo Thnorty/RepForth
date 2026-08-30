@@ -49,6 +49,7 @@ import com.repforth.core.transfer.ImportFailure
  */
 @Composable
 fun SettingsRoute(
+    onOpenAiSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -74,6 +75,7 @@ fun SettingsRoute(
         onKeepScreenOnChange = viewModel::onKeepScreenOnChange,
         onHapticsChange = viewModel::onHapticsChange,
         onReducedMotionChange = viewModel::onReducedMotionChange,
+        onOpenAiSettings = onOpenAiSettings,
         onExport = { exportTo.launch(exportName) },
         // Not filtered to JSON: a file manager that saved the export without a
         // recognised type would then be unable to offer it back, and a file
@@ -97,6 +99,7 @@ internal fun SettingsScreen(
     onKeepScreenOnChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onReducedMotionChange: (Boolean) -> Unit,
+    onOpenAiSettings: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onImportConfirmed: () -> Unit,
@@ -198,6 +201,17 @@ internal fun SettingsScreen(
                 detail = stringResource(R.string.settings_reduced_motion_sub),
                 checked = state.preferences.reducedMotion,
                 onCheckedChange = onReducedMotionChange,
+            )
+        }
+
+        item(key = "ai") { SectionLabel(stringResource(R.string.settings_ai)) }
+
+        item(key = "ai-provider") {
+            ActionRow(
+                label = stringResource(R.string.settings_ai_row),
+                detail = stringResource(R.string.settings_ai_row_sub),
+                enabled = true,
+                onClick = onOpenAiSettings,
             )
         }
 
@@ -359,36 +373,6 @@ private fun ImportDialog(pending: PendingImport, onConfirm: () -> Unit, onDismis
 }
 
 @Composable
-private fun DestructiveDialog(
-    title: String,
-    body: String,
-    confirm: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
-                Text(body)
-                // Offered at the moment it is useful rather than as a warning
-                // nobody reads: this is the last screen before the data is gone.
-                Text(
-                    text = stringResource(R.string.settings_export_first),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(confirm) } },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
-        },
-    )
-}
-
-@Composable
 private fun MessageDialog(message: SettingsMessage, onDismiss: () -> Unit) {
     val text = when (message) {
         SettingsMessage.Exported -> stringResource(R.string.settings_exported)
@@ -411,103 +395,6 @@ private fun MessageDialog(message: SettingsMessage, onDismiss: () -> Unit) {
         text = { Text(text) },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
     )
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = Space.s4, bottom = Space.s1),
-    )
-}
-
-@Composable
-private fun <T> ChoiceRow(
-    label: String,
-    options: List<T>,
-    selected: T,
-    labelOf: @Composable (T) -> String,
-    onSelected: (T) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            options.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = option == selected,
-                    onClick = { onSelected(option) },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                ) {
-                    Text(labelOf(option))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SwitchRow(
-    label: String,
-    detail: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = Target.min)
-            .padding(vertical = Space.s2),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Space.s3),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-private fun ActionRow(
-    label: String,
-    detail: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    destructive: Boolean = false,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = Target.min)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = Space.s3),
-        verticalArrangement = Arrangement.spacedBy(Space.s1),
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            // Colour is not the only signal: every destructive action here also
-            // asks a question before doing anything.
-            color = if (destructive) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            },
-        )
-        Text(
-            text = detail,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 private const val MIME_JSON = "application/json"
