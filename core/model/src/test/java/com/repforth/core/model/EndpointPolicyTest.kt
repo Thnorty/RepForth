@@ -57,16 +57,24 @@ class EndpointPolicyTest {
 
     /**
      * The developer setting exists for Ollama and LM Studio, which is what §8
-     * names. This device, and nothing else.
+     * names — and those usually run on the user's desktop, not on the phone.
+     *
+     * So the whole of the user's own network is reachable: loopback for a
+     * server on the device, the three private ranges for one on the LAN, and
+     * link-local for a phone plugged straight into a laptop with no DHCP.
      */
     @Test
-    fun `cleartext to loopback is allowed once the setting is on`() {
+    fun `cleartext to the user's own network is allowed once the setting is on`() {
         listOf(
             "http://localhost:11434",
             "http://127.0.0.1:1234",
-            "http://127.0.0.53:8080",
-            // The emulator's route to its host, which is the only way this path
-            // can be exercised without a phone.
+            // The ordinary case: Ollama on a desktop, reached over Wi-Fi.
+            "http://192.168.1.42:11434",
+            "http://10.0.0.5:8080",
+            "http://172.16.4.1:8000",
+            "http://172.31.255.254:8000",
+            "http://169.254.10.2:11434",
+            // The Android emulator's route to its host.
             "http://10.0.2.2:11434",
         ).forEach { url ->
             assertTrue(
@@ -77,24 +85,28 @@ class EndpointPolicyTest {
     }
 
     /**
-     * §8 mentions LAN as well as loopback, and this app deliberately does not
-     * do LAN. A network-security configuration names hosts, not ranges, so
-     * "any 192.168.x.x" cannot be permitted at the platform level — and a policy
-     * that allowed what the platform refuses would fail at the socket with an
-     * error nobody could explain.
+     * A name is refused with its own reason, so the message can say what to do.
+     *
+     * `http://my-desktop.local` is almost certainly on the user's network, and
+     * this app still will not send to it: checking would mean a DNS lookup
+     * inside a validation function, answerable differently the second time by
+     * whoever controls the name. Telling the user "that is not on your network"
+     * would be unhelpful and, as far as they know, false — so the refusal says
+     * "type the numeric address" instead.
      */
     @Test
-    fun `a private network address is not treated as loopback`() {
+    fun `a name is refused with advice rather than a contradiction`() {
         listOf(
-            "http://192.168.1.42:11434",
-            "http://10.0.0.5:8080",
-            "http://172.16.4.1:8000",
+            "http://my-desktop.local:11434",
+            "http://ollama:11434",
+            "http://my-nas.lan:11434",
         ).forEach { url ->
             val verdict = EndpointPolicy.check(url, allowCleartext = true)
-            assertTrue(
-                "$url is on the network, not on this device. The platform will " +
-                    "refuse it, so this policy has to as well: $verdict",
-                verdict is EndpointVerdict.Refused,
+            assertTrue("$url: $verdict", verdict is EndpointVerdict.Refused)
+            assertEquals(
+                url,
+                EndpointRefusal.CLEARTEXT_NEEDS_ADDRESS,
+                (verdict as EndpointVerdict.Refused).reason,
             )
         }
     }
@@ -102,19 +114,20 @@ class EndpointPolicyTest {
     /**
      * The test this file exists for.
      *
-     * Watched failing with the `isLoopback` check removed from the `http` branch:
+     * Watched failing with the `isPrivate` check removed from the `http` branch:
      * every one of these was allowed, which is a key sent in clear text over
      * the internet on the strength of a checkbox labelled "for local models".
      */
     @Test
     fun `cleartext to a public address stays refused with the setting on`() {
         listOf(
-            "http://api.example.com/v1",
             "http://8.8.8.8/v1",
             "http://172.32.0.1/v1",
             "http://11.0.0.1/v1",
             "http://192.169.1.1/v1",
             "http://126.255.255.255/v1",
+            "http://9.255.255.255/v1",
+            "http://172.15.0.1/v1",
         ).forEach { url ->
             val verdict = EndpointPolicy.check(url, allowCleartext = true)
             // Asserted as a type before it is cast, so removing the locality
@@ -126,7 +139,7 @@ class EndpointPolicyTest {
                 verdict is EndpointVerdict.Refused,
             )
             assertEquals(
-                EndpointRefusal.CLEARTEXT_NOT_LOOPBACK,
+                EndpointRefusal.CLEARTEXT_NOT_LOCAL,
                 (verdict as EndpointVerdict.Refused).reason,
             )
         }
@@ -177,25 +190,32 @@ class EndpointPolicyTest {
         )
     }
 
+    /** A public name over http is refused as well, by the same switch. */
+    @Test
+    fun `a public name over cleartext is refused too`() {
+        val verdict = EndpointPolicy.check("http://api.openai.com/v1/", allowCleartext = true)
+
+        assertTrue("$verdict", verdict is EndpointVerdict.Refused)
+    }
+
     /**
-     * A hostname is never resolved to decide whether it is local.
-     *
-     * Resolving would be a network call inside a validation function, and one
-     * an attacker who controls the name can answer differently the second time
-     * — DNS rebinding, with the user's API key as the prize. Names that are not
-     * `localhost` are simply not local.
+     * `localhost` is the one name accepted, because it cannot mean anything
+     * else. Every other name would need a lookup to judge.
      */
     @Test
-    fun `a hostname that is not localhost is not treated as loopback`() {
-        val verdict = EndpointPolicy.check("http://my-nas.lan:11434", allowCleartext = true)
-
+    fun `localhost is the only name that needs no lookup`() {
         assertTrue(
-            "A name this app cannot check without asking DNS is not loopback: $verdict",
-            verdict is EndpointVerdict.Refused,
+            EndpointPolicy.check("http://localhost:11434", allowCleartext = true)
+                is EndpointVerdict.Allowed,
         )
-        assertEquals(
-            EndpointRefusal.CLEARTEXT_NOT_LOOPBACK,
-            (verdict as EndpointVerdict.Refused).reason,
+    }
+
+    /** https to a name is fine — TLS is what makes the name safe to trust. */
+    @Test
+    fun `a name over https needs no such care`() {
+        assertTrue(
+            EndpointPolicy.check("https://my-desktop.local/v1/", allowCleartext = false)
+                is EndpointVerdict.Allowed,
         )
     }
 }

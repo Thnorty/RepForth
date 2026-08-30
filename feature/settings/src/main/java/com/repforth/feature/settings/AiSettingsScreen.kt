@@ -412,6 +412,7 @@ private fun EndpointRefusal.messageRes(): Int = when (this) {
     EndpointRefusal.BLANK, EndpointRefusal.MALFORMED -> R.string.ai_url_malformed
     EndpointRefusal.UNSUPPORTED_SCHEME -> R.string.ai_url_scheme
     EndpointRefusal.CLEARTEXT_NOT_ALLOWED -> R.string.ai_url_cleartext
-    EndpointRefusal.CLEARTEXT_NOT_LOOPBACK -> R.string.ai_url_not_local
+    EndpointRefusal.CLEARTEXT_NOT_LOCAL -> R.string.ai_url_not_local
+    EndpointRefusal.CLEARTEXT_NEEDS_ADDRESS -> R.string.ai_url_needs_address
     EndpointRefusal.EMBEDDED_CREDENTIALS -> R.string.ai_url_credentials
 }

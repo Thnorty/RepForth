@@ -36,6 +36,8 @@ internal fun Project.configureGuardTestInputs() {
         "../model/src/test/resources/dataset-vocabulary.json",
     )
 
+    declareRepoWideGuardInputs()
+
     tasks.withType<Test>().configureEach {
         guardedDirs.forEach { path ->
             val dir = layout.projectDirectory.dir(path)
@@ -56,5 +58,39 @@ internal fun Project.configureGuardTestInputs() {
                     .withPathSensitivity(PathSensitivity.RELATIVE)
             }
         }
+    }
+}
+
+/**
+ * The one guard that reads the whole repository rather than one file.
+ *
+ * `CleartextGuardTest` in `:app` asserts that exactly one module declares an
+ * HTTP client and exactly one file makes calls with it. That is what makes it
+ * safe for the network security config to permit cleartext at all — the real
+ * rule lives in `EndpointPolicy`, and it is only the rule if nothing can go
+ * around it.
+ *
+ * Most of what it reads already invalidates this task through the compile
+ * classpath: `:app` depends, directly or through a feature, on every module
+ * that exists today. The gap is a module `:app` does *not* depend on adding an
+ * HTTP client, which is exactly the case the guard is for and exactly the case
+ * the classpath would not notice. So the build files are declared explicitly.
+ *
+ * Scoped to `:app` because that is where the test lives; every other module
+ * would pay for an input it never reads.
+ */
+private fun Project.declareRepoWideGuardInputs() {
+    if (path != ":app") return
+
+    tasks.withType<Test>().configureEach {
+        inputs.files(
+            rootProject.layout.projectDirectory.asFileTree.matching {
+                include("**/build.gradle.kts")
+                exclude("**/build/**")
+                exclude("**/.gradle/**")
+            },
+        )
+            .withPropertyName("guardedFiles-module-build-files")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 }

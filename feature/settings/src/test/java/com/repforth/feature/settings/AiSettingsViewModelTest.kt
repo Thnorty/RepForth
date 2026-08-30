@@ -231,15 +231,15 @@ class AiSettingsViewModelTest {
             testScheduler.advanceUntilIdle()
 
             assertNull(
-                "A loopback model server is what the setting is for",
+                "A local model server is what the setting is for",
                 viewModel.uiState.value.baseUrlRefusal,
             )
 
-            viewModel.onBaseUrlChange("http://api.example.com/v1/")
+            viewModel.onBaseUrlChange("http://93.184.216.34/v1/")
             testScheduler.advanceUntilIdle()
 
             assertEquals(
-                EndpointRefusal.CLEARTEXT_NOT_LOOPBACK,
+                EndpointRefusal.CLEARTEXT_NOT_LOCAL,
                 viewModel.uiState.value.baseUrlRefusal,
             )
         }

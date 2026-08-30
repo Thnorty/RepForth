@@ -1,27 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cleartext, narrowly (§8).
+  Cleartext, and where the rule that limits it actually lives (§8).
 
-  §8 allows plain http only for a local model server such as Ollama or LM
-  Studio, "with a prominent warning and narrowly scoped Android
-  network-security configuration". This is that scope: three hosts, all of them
-  this device or the machine an emulator is running on.
+  §8 allows plain http for a local model server such as Ollama or LM Studio,
+  "with a prominent warning and narrowly scoped Android network-security
+  configuration". The warning is on the settings screen. The narrow scope is
+  NOT here, and it cannot be:
 
-  It cannot be wider without becoming meaningless. The file names hosts, not
-  ranges, so "any address on the user's network" is not expressible — which is
-  why EndpointPolicy refuses those too rather than permitting something the
-  platform will then block.
+  This file lists hosts. It has no way to express "any address on the user's own
+  network", and the user's LAN address — 192.168.1.42, or whatever their router
+  handed out — is not knowable when the app is built. An allowlist of literal
+  hosts would mean a user running Ollama on their desktop simply cannot reach
+  it, which is the case §8 names first.
 
-  NetworkSecurityConfigTest asserts this list equals EndpointPolicy.CLEARTEXT_HOSTS.
-  The duplication is forced: the platform reads its answer from XML before any
-  Kotlin runs, so there is no way to have one copy.
+  So the platform permits cleartext and EndpointPolicy decides. It refuses
+  http:// unless the user has switched it on AND the address is a numeric
+  address on a private network. A public host over http is refused whatever this
+  file says.
+
+  That moves a platform guarantee into application code, which is only safe if
+  the application code is the only door. CleartextGuardTest keeps it that way:
+  exactly one module depends on an HTTP client, exactly one file makes calls
+  with it, and that file consults EndpointPolicy before every request. If any of
+  those three stops being true, this file has quietly become the app's whole
+  cleartext policy — and it does not have one.
 -->
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false" />
-
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!--
+              System CAs only. User-installed certificates are deliberately not
+              trusted: that is the default above API 24, and restating it here
+              means a later edit to this file has to remove a line rather than
+              forget one. It also keeps a self-signed local server from being a
+              supported setup, which would be the other way people ask for LAN
+              support and a much worse one.
+            -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>

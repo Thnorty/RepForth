@@ -17,8 +17,16 @@ enum class EndpointRefusal {
     /** `http://`, with the developer setting off. */
     CLEARTEXT_NOT_ALLOWED,
 
-    /** `http://` to somewhere that is not this device, which stays refused. */
-    CLEARTEXT_NOT_LOOPBACK,
+    /** `http://` to a public address, which stays refused however the switch is set. */
+    CLEARTEXT_NOT_LOCAL,
+
+    /**
+     * `http://` to a name rather than a numeric address.
+     *
+     * Its own reason because the fix is specific and the user would otherwise
+     * be told their own network is not their own network.
+     */
+    CLEARTEXT_NEEDS_ADDRESS,
 
     /** Credentials in the URL, which would be stored in plain text. */
     EMBEDDED_CREDENTIALS,
@@ -39,17 +47,22 @@ sealed interface EndpointVerdict {
  * LM Studio, with a prominent warning and narrowly scoped Android
  * network-security configuration."
  *
- * **Narrowly scoped is enforced here, not only in the manifest.** The developer
- * setting does not mean "cleartext is fine now"; it means "cleartext to a
- * machine on this network is fine". So the switch alone is not enough —
- * `http://` to a public host is refused whether or not it is on. Getting that
- * wrong sends the user's API key across the internet unencrypted, which is the
- * one mistake in this file that cannot be taken back.
+ * **This file is the narrow scope, and it has to be, because the manifest
+ * cannot be.** A network-security configuration lists hosts; it has no way to
+ * say "any address on the user's own network", and the user's LAN address is
+ * not knowable when the app is built. So the platform config permits cleartext
+ * and this decides, per address, whether the app will actually send — which is
+ * the only place the real rule can be written.
  *
- * This lives in `core:model` rather than in the provider layer so the settings
- * screen and the HTTP client apply the same rule. A check that exists only in
- * the text field is bypassed by the next caller — an import, a deep link — and
- * the second copy is where the two drift apart.
+ * That trade moves a platform guarantee into application code, so the app has
+ * to be the only door. `CleartextGuardTest` holds that: one module depends on
+ * an HTTP client, one file makes calls with it, and that file consults this
+ * before every request.
+ *
+ * The rule itself, in one line: **cleartext only to a numeric address on a
+ * private network, and only when the user has switched it on.** A public
+ * address over `http://` puts the user's API key on the wire in the clear, and
+ * that is the mistake in this file that cannot be taken back.
  */
 object EndpointPolicy {
 
@@ -74,56 +87,65 @@ object EndpointPolicy {
 
         return when (uri.scheme?.lowercase()) {
             "https" -> EndpointVerdict.Allowed(trimmed.withTrailingSlash())
-            "http" -> when {
-                !allowCleartext -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_ALLOWED)
-                !isLoopback(host) -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_LOOPBACK)
-                else -> EndpointVerdict.Allowed(trimmed.withTrailingSlash())
-            }
-
+            "http" -> checkCleartext(host, trimmed, allowCleartext)
             else -> EndpointVerdict.Refused(EndpointRefusal.UNSUPPORTED_SCHEME)
         }
     }
 
+    private fun checkCleartext(
+        host: String,
+        url: String,
+        allowCleartext: Boolean,
+    ): EndpointVerdict = when {
+        !allowCleartext -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_ALLOWED)
+        isPrivate(host) -> EndpointVerdict.Allowed(url.withTrailingSlash())
+        // Told apart so the message can say "type the numeric address" rather
+        // than "that is not on your network", which for `http://my-pc.local`
+        // would be both unhelpful and, as far as the user knows, untrue.
+        !isNumeric(host) -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NEEDS_ADDRESS)
+        else -> EndpointVerdict.Refused(EndpointRefusal.CLEARTEXT_NOT_LOCAL)
+    }
+
     /**
-     * This device, and the emulator's alias for the machine hosting it.
+     * Loopback, the three private IPv4 ranges, and link-local.
      *
-     * Hostnames are deliberately not resolved. A DNS lookup here would be a
-     * network call inside a validation function, and one that an attacker
-     * controlling the name could answer differently the second time — the
-     * classic rebinding shape. `localhost` and a literal loopback address are
-     * checkable without asking anyone, so those are the only things allowed.
+     * These are the addresses that cannot be routed across the internet, so a
+     * request to one of them stays on the wire between the phone and something
+     * the user physically has. That is the property worth having; "192.168" is
+     * just how it is spelled.
      *
-     * `10.0.2.2` is the Android emulator's route to its host's loopback. It is
-     * not loopback from the device's point of view, and it is in a private
-     * range this policy otherwise refuses — it is here so that a model server
-     * running on the development machine is reachable from an emulator, which
-     * is the only way this path can be exercised without hardware.
+     * **Hostnames are deliberately not resolved**, and `localhost` is the only
+     * name accepted. A DNS lookup here would be a network call inside a
+     * validation function, and one an attacker who controls the name can answer
+     * differently the second time — the classic rebinding shape, with the API
+     * key as the prize. A numeric address is checkable without asking anyone.
      */
-    private fun isLoopback(host: String): Boolean {
+    private fun isPrivate(host: String): Boolean {
         val bare = host.trim('[', ']').lowercase()
-        // No IPv6 literal. A network-security configuration names hosts, and
-        // `[::1]` is not one it accepts — permitting it here would be a policy
-        // the platform then refuses. `localhost` is the spelling that works.
-        if (bare == "localhost" || bare == EMULATOR_HOST) return true
+        if (bare == "localhost") return true
 
         val octets = bare.split('.')
         if (octets.size != 4) return false
         val numbers = octets.map { it.toIntOrNull() ?: return false }
         if (numbers.any { it !in 0..255 }) return false
 
-        return numbers[0] == 127
+        return when {
+            numbers[0] == 127 -> true
+            numbers[0] == 10 -> true
+            numbers[0] == 192 && numbers[1] == 168 -> true
+            numbers[0] == 172 && numbers[1] in 16..31 -> true
+            // 169.254/16 — what a device gives itself when there is no DHCP,
+            // which is exactly the phone-to-laptop cable case.
+            numbers[0] == 169 && numbers[1] == 254 -> true
+            else -> false
+        }
     }
 
-    /**
-     * The hosts cleartext may reach, which `res/xml/network_security_config.xml`
-     * has to repeat because the platform can only read it from XML.
-     *
-     * Exposed so the guard test can compare the two rather than trusting that
-     * whoever edits one remembers the other.
-     */
-    val CLEARTEXT_HOSTS = listOf("localhost", "127.0.0.1", EMULATOR_HOST)
-
-    private const val EMULATOR_HOST = "10.0.2.2"
+    /** Four dot-separated numbers. Not necessarily a *valid* address. */
+    private fun isNumeric(host: String): Boolean {
+        val octets = host.trim('[', ']').split('.')
+        return octets.size == 4 && octets.all { it.toIntOrNull() != null }
+    }
 
     private fun String.withTrailingSlash() = if (endsWith("/")) this else "$this/"
 }

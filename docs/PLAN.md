@@ -98,13 +98,14 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 2** — secret storage, and a CI scan for key-shaped content | `2eb17e0` |
 | **Phase 2** — provider settings, and the endpoint rule that guards them | `1113597` |
 | **Phase 2** — the two provider adapters, and a connection test that explains itself | `2eb5796` |
+| **Phase 2** — cleartext to the user's own network, guarded in code | pending |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-368 unit tests across 46 classes, plus six instrumentation tests on a Galaxy
+373 unit tests across 46 classes, plus six instrumentation tests on a Galaxy
 S23 and eight in `core:secrets`, all passing. Room schema v1 exported and
 committed.
 
@@ -632,24 +633,55 @@ the second thing here that needs a phone in hand.
   emission. It now reads the stored value inside the coroutine. A fast tap does
   exactly this, and the key would have been invisible in the UI and undeletable
   except by delete-everything.
-- **`EndpointPolicy` allowed LAN addresses the platform refuses.** A
-  network-security configuration names hosts, not ranges, so "any 192.168.x.x"
-  cannot be permitted — the policy is now loopback-only (plus `10.0.2.2` for the
-  emulator), and `NetworkSecurityConfigTest` holds the XML and the Kotlin to the
-  same list. That is the project's third forced duplicate, and it is documented
-  as one.
+- **Cleartext was narrowed to loopback, which broke the main use case.** See
+  2.3a below; it was reversed the same day.
 
 #### Deliberately not done
 
 - **Custom request headers.** §8 puts them "behind an advanced section" as
   optional. Nothing needs them yet, and an allowlist with no caller is an
   allowlist nobody has tested.
-- **LAN model servers.** See above; loopback works, a server on another machine
-  needs https.
 - **A real provider has never answered.** Every test here is against a local
   server. Whether Gemini's live response shape matches what `GeminiProvider`
   parses is unverified, and stays unverified until someone puts a real key in
   the app — which is a thing only the maintainer can do.
+
+### 2.3a — Cleartext to the user's own network
+
+A correction to 2.3, and the reasoning is worth keeping because the first answer
+was wrong in a way that looked rigorous.
+
+2.3 shipped cleartext restricted to loopback, on the grounds that a
+network-security configuration lists hosts and cannot express "any
+192.168.x.x" — so permitting a LAN address in Kotlin would mean permitting
+something the platform then refuses at the socket. That reasoning about the
+platform is correct. The conclusion drawn from it was not.
+
+**The user's model server is on their desktop.** That is the case §8 names
+first, and loopback-only means it does not work — the workarounds are a USB
+`adb reverse` tunnel, or putting a real TLS certificate in front of Ollama.
+Both are fine for whoever wrote this and neither is a product.
+
+So the trade is inverted. The manifest permits cleartext, and `EndpointPolicy`
+narrows it: `http://` only when the user has switched it on, only to a numeric
+address in `127/8`, `10/8`, `172.16/12`, `192.168/16` or `169.254/16`. A name
+gets its own refusal telling the user to type the numeric address — resolving it
+would mean a DNS lookup inside a validation function, answerable differently the
+second time by whoever controls the name.
+
+**That moves a platform guarantee into application code, so the app has to be
+the only door.** `CleartextGuardTest` asserts the three things that make it one:
+exactly one module declares an HTTP client, exactly one file turns a request
+into a call, and that file consults `EndpointPolicy` first. All three watched
+failing.
+
+The fourth thing worth recording is about the build, not the code. That guard
+reads every module's build file, which Gradle cannot see — so
+`configureGuardTestInputs()` now declares them, scoped to `:app`. Verified the
+way the rule in `AGENTS.md` asks: the task reported `UP-TO-DATE`, a build file
+outside `:app`'s classpath was edited, and the task then ran and failed. Without
+that declaration the guard would have been silent on exactly the change it
+exists to catch.
 
 ### 2.4 — The generation pipeline — next
 
@@ -698,6 +730,11 @@ app icon, and the exact licence.
   an activity start from instrumentation and the permission that would allow it
   cannot be set over adb. Paired-watch tests still have no hardware at all, so
   Phase 4 remains unverifiable here.
+- **The network security config permits cleartext, and `EndpointPolicy` is the
+  only thing narrowing it.** That is deliberate and reasoned (2.3a), but it does
+  mean a second HTTP client anywhere in the app would bypass the whole rule
+  silently. `CleartextGuardTest` is what stands between that and a shipped
+  build; do not weaken it to make a dependency fit.
 - **uiautomator is not a reliable oracle near the bottom of the screen.** It
   reports the legacy application frame as the window (1080x2266 on a 1080x2400
   phone) and clips anything below it to `bounds=[0,0][0,0]`, whether or not the
