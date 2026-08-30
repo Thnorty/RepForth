@@ -18,12 +18,13 @@ import org.junit.Test
 class MediaManifestRepositoryTest {
 
     private val json = Json { ignoreUnknownKeys = true }
+    private val sampleCommit = "1111111111111111111111111111111111111111"
 
     private val sampleJson = """
         {
-          "commit": "7455efae41b330c265e7cd4b78dfa848e7ce5ebd",
+          "commit": "$sampleCommit",
           "mediaVersion": 1,
-          "baseUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/7455efae41b330c265e7cd4b78dfa848e7ce5ebd/",
+          "baseUrl": "https://raw.githubusercontent.com/example/exercises-dataset/$sampleCommit/",
           "attribution": "© Gym visual",
           "entries": [
             {
@@ -46,7 +47,7 @@ class MediaManifestRepositoryTest {
     @Test
     fun `media manifest deserializes correctly`() {
         val manifest = json.decodeFromString<MediaManifest>(sampleJson)
-        assertEquals("7455efae41b330c265e7cd4b78dfa848e7ce5ebd", manifest.commit)
+        assertEquals(sampleCommit, manifest.commit)
         assertEquals(1, manifest.mediaVersion)
         assertEquals(1, manifest.entries.size)
 
