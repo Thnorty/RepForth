@@ -54,10 +54,19 @@ data class AiSettingsUiState(
     val canSaveKey: Boolean get() = keyDraft.isNotBlank()
 
     /**
-     * Testing without a key would report an authentication failure, which is
-     * true and useless. The button stays off until there is something to test.
+     * What has to be filled in before there is anything worth testing.
+     *
+     * Gemini needs a key, and testing without one would report an
+     * authentication failure that is true and useless. The generic provider
+     * needs an address instead: a local model server ignores the key field
+     * entirely, so requiring one would mean typing a throwaway value to get
+     * past a check that protects nothing.
      */
-    val canTest: Boolean get() = hasKey && !testing
+    val canTest: Boolean
+        get() = !testing && when (settings.provider) {
+            ProviderId.GEMINI -> hasKey
+            ProviderId.OPENAI_COMPATIBLE -> baseUrl.isNotBlank() && baseUrlRefusal == null
+        }
 }
 
 /**

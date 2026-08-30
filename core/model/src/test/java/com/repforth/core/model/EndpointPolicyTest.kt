@@ -181,12 +181,58 @@ class EndpointPolicyTest {
             EndpointRefusal.BLANK,
             (EndpointPolicy.check("   ", allowCleartext = false) as EndpointVerdict.Refused).reason,
         )
+        // Has a scheme and still no host, which is the only thing left that
+        // MALFORMED means now that a bare name has its own answer.
         assertEquals(
             EndpointRefusal.MALFORMED,
+            (
+                EndpointPolicy.check("https://", allowCleartext = false)
+                    as EndpointVerdict.Refused
+                ).reason,
+        )
+        assertEquals(
+            "Something with no scheme is missing one, not nonsense",
+            EndpointRefusal.MISSING_SCHEME,
             (
                 EndpointPolicy.check("not a url", allowCleartext = false)
                     as EndpointVerdict.Refused
                 ).reason,
+        )
+    }
+
+    /**
+     * A bare machine name is refused, and told what it is missing.
+     *
+     * `laptop-tulpar` is a real thing to type — a Tailscale MagicDNS name, a
+     * LAN hostname, whatever the machine is called — and the app deliberately
+     * does not guess a scheme for it. Guessing `https` would quietly succeed
+     * where the user meant a local `http` server; guessing `http` would be
+     * worse. Which one it is, is exactly the security-relevant half of the
+     * answer, so the user supplies it.
+     */
+    @Test
+    fun `a bare host name says what it is missing`() {
+        listOf("laptop-tulpar", "laptop-tulpar:11434", "192.168.1.42:11434").forEach { url ->
+            val verdict = EndpointPolicy.check(url, allowCleartext = true)
+            assertTrue("$url: $verdict", verdict is EndpointVerdict.Refused)
+            assertEquals(
+                url,
+                EndpointRefusal.MISSING_SCHEME,
+                (verdict as EndpointVerdict.Refused).reason,
+            )
+        }
+    }
+
+    /**
+     * The same name with https in front of it is fine, with the cleartext
+     * switch off — which is how a Tailscale or reverse-proxied server is
+     * reached, and needs nothing turned on.
+     */
+    @Test
+    fun `the same name over https is allowed with nothing switched on`() {
+        assertTrue(
+            EndpointPolicy.check("https://laptop-tulpar/v1/", allowCleartext = false)
+                is EndpointVerdict.Allowed,
         )
     }
 

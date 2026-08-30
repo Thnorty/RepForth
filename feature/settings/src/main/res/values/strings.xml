@@ -93,6 +93,7 @@
     <string name="ai_key_hint">Paste your key</string>
     <string name="ai_key_stored">A key is saved for this provider. It is encrypted on this phone, and cannot be shown again.</string>
     <string name="ai_key_missing">No key yet. Coach uses the built-in planner until you add one.</string>
+    <string name="ai_key_optional">No key. Local servers like Ollama do not need one; a hosted service will ask for it.</string>
     <string name="ai_key_save">Save key</string>
     <string name="ai_key_delete">Delete key</string>
     <string name="ai_key_saved">Key saved.</string>
@@ -104,6 +105,7 @@
     <string name="ai_base_url">Address</string>
     <string name="ai_base_url_hint">https://your-server/v1/</string>
     <string name="ai_url_malformed">That is not a web address.</string>
+    <string name="ai_url_missing_scheme">Start the address with https:// — or http:// for a server on your own network.</string>
     <string name="ai_url_scheme">Only https:// addresses are allowed.</string>
     <string name="ai_url_cleartext">Plain http:// is off. Turn on local model servers under Advanced to use one.</string>
     <string name="ai_url_not_local">Plain http:// works only for an address on your own network, like 192.168.1.42. Anything on the internet needs https://.</string>

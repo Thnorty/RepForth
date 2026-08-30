@@ -34,6 +34,24 @@ class ProviderRepositoryTest {
         assertNull(repository.configFor(repository.settings.first()))
     }
 
+    /**
+     * The generic provider works without a key, because a local model server
+     * ignores it. Gemini does not.
+     */
+    @Test
+    fun `only a provider that needs a key is blocked without one`() = runTest {
+        assertNull(
+            "Gemini cannot be called without a key",
+            repository.configFor(repository.settings.first()),
+        )
+
+        repository.setProvider(ProviderId.OPENAI_COMPATIBLE)
+        val config = repository.configFor(repository.settings.first())
+
+        assertNotNull("A local model server needs no key", config)
+        assertEquals("", config!!.apiKey)
+    }
+
     @Test
     fun `a stored key makes a config available`() = runTest {
         repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")

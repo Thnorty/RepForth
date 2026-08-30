@@ -148,6 +148,36 @@ class ProviderAdapterTest {
         assertEquals("Bearer test-not-a-real-key", server.takeRequest().headers["Authorization"])
     }
 
+    /**
+     * With no key, the header is left off entirely.
+     *
+     * `Authorization: Bearer ` is a malformed credential rather than an absent
+     * one: some servers reject it outright, and none read it as "nothing
+     * offered", which is what Ollama and LM Studio expect.
+     */
+    @Test
+    fun `no key means no authorization header at all`() = runTest {
+        server.enqueue(ok("""{"data":[{"id":"llama3.1"}]}"""))
+        val keyless = ProviderConfig(
+            settings = ProviderSettings.Default.copy(
+                provider = ProviderId.OPENAI_COMPATIBLE,
+                model = "llama3.1",
+                baseUrl = server.url("/v1/").toString(),
+                allowCleartext = true,
+            ),
+            apiKey = "",
+        )
+
+        val result = openAi.testConnection(keyless)
+
+        assertEquals(
+            "An empty credential must not be sent",
+            null,
+            server.takeRequest().headers["Authorization"],
+        )
+        assertEquals(ProviderTestResult.Ok(modelConfirmed = true), result)
+    }
+
     @Test
     fun `the openai adapter confirms a model that is offered`() = runTest {
         server.enqueue(ok("""{"data":[{"id":"llama3.1"},{"id":"mistral"}]}"""))
@@ -181,6 +211,36 @@ class ProviderAdapterTest {
             ProviderFailure.AUTHENTICATION,
             (result as ProviderTestResult.Failed).failure,
         )
+    }
+
+    /**
+     * Gemini rejects a bad key with 400, not 401.
+     *
+     * The body below is what the live endpoint actually returns — checked
+     * against it with a deliberately invalid key. Before this, a mistyped or
+     * revoked key produced "the provider answered with something this app could
+     * not read", which is the least useful of the seven messages for by far the
+     * likeliest mistake. Found on a device, by pressing the button.
+     *
+     * Watched failing with the 400 branch removed: reported FORMAT.
+     */
+    @Test
+    fun `gemini's 400 for a bad key is reported as an authentication failure`() = runTest {
+        server.enqueue(
+            MockResponse.Builder()
+                .code(400)
+                .body(
+                    """{"error":{"code":400,"message":"API key not valid. Please pass a """ +
+                        """valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":""" +
+                        """"API_KEY_INVALID"}]}}""",
+                )
+                .build(),
+        )
+
+        val result = gemini.testConnection(configFor(ProviderId.GEMINI, "gemini-3.5-flash"))
+
+        val failed = result as ProviderTestResult.Failed
+        assertEquals("detail was ${failed.detail}", ProviderFailure.AUTHENTICATION, failed.failure)
     }
 
     /**

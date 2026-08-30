@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
@@ -146,6 +147,7 @@ internal fun AiSettingsScreen(
             KeyField(
                 key = state.keyDraft,
                 hasStoredKey = state.hasKey,
+                keyRequired = state.settings.provider.requiresKey,
                 canSave = state.canSaveKey,
                 onKeyChange = onKeyChange,
                 onSave = onSaveKey,
@@ -288,6 +290,7 @@ internal fun AiSettingsScreen(
 private fun KeyField(
     key: String,
     hasStoredKey: Boolean,
+    keyRequired: Boolean,
     canSave: Boolean,
     onKeyChange: (String) -> Unit,
     onSave: () -> Unit,
@@ -320,7 +323,13 @@ private fun KeyField(
 
         Text(
             text = stringResource(
-                if (hasStoredKey) R.string.ai_key_stored else R.string.ai_key_missing,
+                when {
+                    hasStoredKey -> R.string.ai_key_stored
+                    // A local model server does not want one, so "no key yet"
+                    // would read as an unfinished setup that is in fact done.
+                    !keyRequired -> R.string.ai_key_optional
+                    else -> R.string.ai_key_missing
+                },
             ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -409,15 +418,26 @@ private fun TestConnection(
 
         result?.let {
             val failed = it is ProviderTestResult.Failed
-            Text(
-                text = stringResource(it.messageRes()),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (failed) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
+            val tint = if (failed) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
+                Icon(
+                    painter = if (failed) RfIcons.Error else RfIcons.Completed,
+                    // The sentence beside it already says which it is, so a
+                    // description here would be read out twice.
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(Space.s5),
+                )
+                Text(
+                    text = stringResource(it.messageRes()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tint,
+                )
+            }
         }
     }
 }
@@ -466,6 +486,7 @@ private fun ProviderTestResult.messageRes(): Int = when (this) {
  */
 private fun EndpointRefusal.messageRes(): Int = when (this) {
     EndpointRefusal.BLANK, EndpointRefusal.MALFORMED -> R.string.ai_url_malformed
+    EndpointRefusal.MISSING_SCHEME -> R.string.ai_url_missing_scheme
     EndpointRefusal.UNSUPPORTED_SCHEME -> R.string.ai_url_scheme
     EndpointRefusal.CLEARTEXT_NOT_ALLOWED -> R.string.ai_url_cleartext
     EndpointRefusal.CLEARTEXT_NOT_LOCAL -> R.string.ai_url_not_local

@@ -733,9 +733,49 @@ removing the padding and watching it stay red.
 **All 14 instrumentation tests now pass on the Galaxy S23:** the six in `:app`,
 and the eight in `core:secrets` for the first time since they were written.
 
-**Still not verified:** no real provider has answered, and "Test connection" has
-never returned anything but a disabled button, because reaching it needs an API
-key this session could not supply.
+### 2.3c — What pressing the button found
+
+The maintainer configured a real Gemini key and got a successful connection
+test. **That is the first confirmation that a live provider's response shape
+matches what `GeminiProvider` parses**, and no test in this repo could have
+given it — every one of them answers from a local server this project wrote.
+
+Three changes came out of that round.
+
+**A key is no longer required to test the generic provider.** Ollama and LM
+Studio ignore the field entirely, so demanding one meant typing a throwaway
+value to satisfy a check that protected nothing. `ProviderId.requiresKey` is
+false for `OPENAI_COMPATIBLE`; the button now wants an *address* instead. The
+adapter omits the `Authorization` header altogether when there is no key, rather
+than sending `Bearer ` — a malformed credential some servers reject and none
+read as "none offered".
+
+**A bare host name says what it is missing.** `laptop-tulpar` — a Tailscale
+MagicDNS name, a LAN hostname — used to be "that is not a web address". It now
+reports `MISSING_SCHEME` and asks for `https://` in front. Nothing is guessed on
+the user's behalf: which scheme it should be is the security-relevant half of
+the answer. The same name *with* `https://` is accepted with nothing switched
+on, which is how a Tailscale or reverse-proxied server is reached.
+
+**A bad Gemini key was reported as a parsing failure.** This is the one worth
+remembering. Gemini answers an invalid key with `400 INVALID_ARGUMENT` and
+`"reason": "API_KEY_INVALID"` — not 401 — so the shared status mapping fell
+through to its `else` and said "the provider answered with something this app
+could not read". The likeliest mistake anyone can make got the least useful of
+the seven messages. Verified against the live endpoint with a deliberately
+invalid key, fixed locally in `GeminiProvider` rather than in `failureForStatus`
+(a generation request has a body, and a body can be wrong on its own account),
+and watched failing with the branch removed.
+
+Found by pressing the button on a device. Nothing else would have.
+
+The result now carries a check or an error mark beside the sentence, from
+`RfIcons` rather than literal emoji so it takes the theme's colours and scales
+with the font.
+
+**Still not verified:** a *successful* connection has only been seen by the
+maintainer, not captured here; and no generation request has ever been made,
+because that is 2.4.
 
 ### 2.4 — The generation pipeline — next
 

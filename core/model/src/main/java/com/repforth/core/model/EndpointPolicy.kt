@@ -11,6 +11,17 @@ enum class EndpointRefusal {
     /** Not a URL at all, or one with no host. */
     MALFORMED,
 
+    /**
+     * A bare host, with no `https://` in front of it.
+     *
+     * Told apart from [MALFORMED] because it is the likeliest thing anyone
+     * types — a machine name copied from somewhere that did not include the
+     * scheme — and "that is not a web address" is a poor reply to something
+     * that very nearly is one. Nothing is assumed on the user's behalf: which
+     * scheme it should be is exactly the security-relevant part of the answer.
+     */
+    MISSING_SCHEME,
+
     /** A scheme this app will not speak — `ftp://`, `file://`, and friends. */
     UNSUPPORTED_SCHEME,
 
@@ -69,6 +80,9 @@ object EndpointPolicy {
     fun check(url: String, allowCleartext: Boolean): EndpointVerdict {
         val trimmed = url.trim()
         if (trimmed.isEmpty()) return EndpointVerdict.Refused(EndpointRefusal.BLANK)
+        if ("://" !in trimmed) {
+            return EndpointVerdict.Refused(EndpointRefusal.MISSING_SCHEME)
+        }
 
         val uri = try {
             URI(trimmed)

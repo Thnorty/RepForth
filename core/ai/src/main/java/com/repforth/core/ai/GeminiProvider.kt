@@ -67,7 +67,7 @@ internal class GeminiProvider(
 
         if (reply.code !in 200..299) {
             return ProviderTestResult.Failed(
-                failureForStatus(reply.code),
+                failureFor(reply.code),
                 "HTTP ${reply.code}",
             )
         }
@@ -92,6 +92,24 @@ internal class GeminiProvider(
             )
         }
     }
+
+    /**
+     * Gemini answers an invalid key with 400, not 401.
+     *
+     * Verified against the live endpoint: a bad key returns
+     * `400 INVALID_ARGUMENT` with `"reason": "API_KEY_INVALID"`, which the
+     * shared status mapping reads as a 4xx it does not recognise and reports as
+     * "the provider answered with something this app could not read". That is
+     * the single most likely thing to go wrong — a mistyped or revoked key —
+     * getting the least useful of the seven messages.
+     *
+     * Kept local to this call rather than folded into `failureForStatus`,
+     * because a 400 elsewhere means something else: a generation request has a
+     * body, and a body can be wrong on its own account. The model list has no
+     * body and no parameters, so a 400 here can only be about the credential.
+     */
+    private fun failureFor(code: Int): ProviderFailure =
+        if (code == 400) ProviderFailure.AUTHENTICATION else failureForStatus(code)
 
     @Serializable
     private data class ModelList(

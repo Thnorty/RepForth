@@ -93,6 +93,7 @@
     <string name="ai_key_hint">Anahtarını yapıştır</string>
     <string name="ai_key_stored">Bu sağlayıcı için bir anahtar kayıtlı. Bu telefonda şifreli tutuluyor ve bir daha gösterilemez.</string>
     <string name="ai_key_missing">Henüz anahtar yok. Sen bir tane ekleyene kadar Koç dahili planlayıcıyı kullanır.</string>
+    <string name="ai_key_optional">Anahtar yok. Ollama gibi yerel sunucular anahtar istemez; barındırılan bir servis ister.</string>
     <string name="ai_key_save">Anahtarı kaydet</string>
     <string name="ai_key_delete">Anahtarı sil</string>
     <string name="ai_key_saved">Anahtar kaydedildi.</string>
@@ -104,6 +105,7 @@
     <string name="ai_base_url">Adres</string>
     <string name="ai_base_url_hint">https://sunucun/v1/</string>
     <string name="ai_url_malformed">Bu bir web adresi değil.</string>
+    <string name="ai_url_missing_scheme">Adresi https:// ile başlat — ya da kendi ağındaki bir sunucu için http:// ile.</string>
     <string name="ai_url_scheme">Yalnızca https:// adreslerine izin verilir.</string>
     <string name="ai_url_cleartext">Düz http:// kapalı. Kullanmak için Gelişmiş bölümünden yerel model sunucularını aç.</string>
     <string name="ai_url_not_local">Düz http:// yalnızca kendi ağındaki bir adres için geçerli, örneğin 192.168.1.42. İnternetteki her şey için https:// gerekir.</string>

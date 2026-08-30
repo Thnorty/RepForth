@@ -106,15 +106,22 @@ class ProviderRepository @Inject constructor(
     }
 
     /**
-     * The configuration for one call, or null when no key is stored.
+     * The configuration for one call, or null when the provider needs a key and
+     * there is not one.
      *
      * Null rather than an exception: "the user has not set this up" is an
      * ordinary state that the caller answers by falling back to the rules
      * engine (§8, step 8), not an error worth a stack trace.
+     *
+     * A provider with [ProviderId.requiresKey] false gets a config with an
+     * empty key, because a local model server does not want one — and the
+     * adapter leaves the header off entirely rather than sending an empty
+     * credential, which some servers reject and none accept.
      */
     suspend fun configFor(settings: ProviderSettings): ProviderConfig? {
-        val key = secrets.get(settings.provider.secretId()) ?: return null
-        return ProviderConfig(settings = settings, apiKey = key)
+        val key = secrets.get(settings.provider.secretId())
+        if (key == null && settings.provider.requiresKey) return null
+        return ProviderConfig(settings = settings, apiKey = key.orEmpty())
     }
 }
 

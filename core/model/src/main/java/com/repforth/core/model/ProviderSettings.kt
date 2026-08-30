@@ -10,9 +10,21 @@ package com.repforth.core.model
  * different protocols — Anthropic's native API among them — get their own
  * adapter later rather than being bent into one of these.
  */
-enum class ProviderId {
-    GEMINI,
-    OPENAI_COMPATIBLE,
+enum class ProviderId(
+    /**
+     * Whether the app should refuse to try without a key.
+     *
+     * False for the generic provider, and that is the point of it: Ollama and
+     * LM Studio ignore the field entirely, so demanding one would mean typing a
+     * throwaway value to get past a check that protects nothing. A hosted
+     * OpenAI-compatible service does need one — and says so itself, with a 401
+     * this app reports accurately. Better to let the server answer than to
+     * guess on its behalf.
+     */
+    val requiresKey: Boolean,
+) {
+    GEMINI(requiresKey = true),
+    OPENAI_COMPATIBLE(requiresKey = false),
 }
 
 /**

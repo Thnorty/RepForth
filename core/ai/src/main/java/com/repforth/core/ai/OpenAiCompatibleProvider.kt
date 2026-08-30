@@ -36,7 +36,15 @@ internal class OpenAiCompatibleProvider(
 
         val request = Request.Builder()
             .url(config.baseUrl + "models")
-            .header("Authorization", "Bearer ${config.apiKey}")
+            .apply {
+                // Omitted entirely when there is no key. `Bearer ` with nothing
+                // after it is a malformed credential: some servers reject it
+                // outright, and none treat it as "no credential offered",
+                // which is what a local model server is expecting.
+                if (config.apiKey.isNotBlank()) {
+                    header("Authorization", "Bearer ${config.apiKey}")
+                }
+            }
             .get()
             .build()
 

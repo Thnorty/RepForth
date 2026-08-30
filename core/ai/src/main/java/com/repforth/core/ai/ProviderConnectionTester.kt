@@ -25,9 +25,9 @@ class ProviderConnectionTester @Inject constructor(
     suspend fun test(): ProviderTestResult {
         val settings = repository.settings.first()
         val config = repository.configFor(settings)
-            // No key is not a network failure, and saying so would send the
-            // user to check their connection over a field they have not filled
-            // in yet.
+            // Only reachable for a provider that requires a key. Not a network
+            // failure, and saying so would send the user to check their
+            // connection over a field they have not filled in yet.
             ?: return ProviderTestResult.Failed(ProviderFailure.AUTHENTICATION, "no key stored")
 
         val adapter = adapters[settings.provider]
