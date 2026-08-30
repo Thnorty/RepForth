@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -75,9 +76,7 @@ class BuilderFlowTest {
         compose.onNode(hasSetTextAction()).performClick()
         compose.onNode(hasSetTextAction()).performTextInput("Keyboard test")
 
-        compose.waitUntil(IME_TIMEOUT_MS) { imeHeight() > 0 }
-
-        val save = compose.onNodeWithText("Save workout").fetchSemanticsNode()
+        val save = awaitSettledSaveButton()
         val keyboardTop = windowHeight() - imeHeight()
 
         assertTrue(
@@ -157,6 +156,41 @@ class BuilderFlowTest {
         )
     }
 
+    /**
+     * Waits for the keyboard *and* for the layout to have moved out of its way.
+     *
+     * `waitUntil { imeHeight() > 0 }` is not enough, and the difference cost a
+     * red build on a screen that was demonstrably correct in a screenshot taken
+     * on the same device a minute earlier. `rootWindowInsets` reports the IME's
+     * final height the moment its window is created, which is several frames
+     * before Compose has recomposed and re-laid-out around the new inset — so
+     * the assertion compared a settled keyboard against the button's position
+     * from before the padding applied, and read it at the bottom of the window.
+     *
+     * Waiting for the bounds to stop moving is deliberately not the same as
+     * waiting for them to be correct. A build where the shell does not pad its
+     * bottom edge settles immediately, at the wrong place, and the assertion
+     * below still fails — which is the whole point of the test. Re-checked by
+     * removing the padding from the shell: still red, and for the right reason.
+     */
+    private fun awaitSettledSaveButton(): SemanticsNode {
+        compose.waitUntil(IME_TIMEOUT_MS) { imeHeight() > 0 }
+        compose.waitForIdle()
+
+        var previous = Float.NaN
+        var settled = 0
+        compose.waitUntil(IME_TIMEOUT_MS) {
+            val bottom = saveButton().boundsInWindow.bottom
+            settled = if (bottom == previous) settled + 1 else 0
+            previous = bottom
+            settled >= STABLE_FRAMES
+        }
+        return saveButton()
+    }
+
+    private fun saveButton(): SemanticsNode =
+        compose.onNodeWithText("Save workout").fetchSemanticsNode()
+
     /** The bottom inset the keyboard currently occupies, in pixels. */
     private fun imeHeight(): Int {
         var height = 0
@@ -182,6 +216,9 @@ class BuilderFlowTest {
 
         /** The keyboard animates in, and Samsung's takes its time. */
         const val IME_TIMEOUT_MS = 10_000L
+
+        /** Consecutive identical readings before the layout counts as settled. */
+        const val STABLE_FRAMES = 3
 
         /** A name that exists in the pinned catalog and is unambiguous. */
         const val CATALOG_EXERCISE = "barbell bench press"

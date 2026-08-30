@@ -107,8 +107,8 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-373 unit tests across 46 classes, plus six instrumentation tests on a Galaxy
-S23 and eight in `core:secrets`, all passing. Room schema v1 exported and
+373 unit tests across 46 classes, plus fourteen instrumentation tests
+watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
 **The previous figure in this file — "313 across 42" — was wrong**, and by more
@@ -715,8 +715,26 @@ cleartext *name* said "type the numeric address of the machine", which is sound
 advice for `my-desktop.local` and bad advice for `api.openai.com`. One message
 now covers both — numeric address for your own network, https for anything else.
 
-**Still not verified:** no real provider has answered, and "Test connection"
-has never returned anything but a disabled button, because reaching it needs a
+**A fifth thing turned up in the instrumentation suite, and it was the test's
+fault, not the app's.** `theSaveButtonStaysAboveTheKeyboard` failed on a build
+whose screenshot, taken minutes earlier on the same device, plainly showed the
+button above the keyboard. Cause: `rootWindowInsets` reports the IME's final
+height the moment its window is created, several frames before Compose has
+re-laid-out around it — so `waitUntil { imeHeight() > 0 }` returned and the
+assertion read the button's position from before the padding applied. It now
+waits for the bounds to stop moving as well.
+
+Worth noting because the two readings are indistinguishable: the flake reported
+`2287.0`, and so did a deliberately broken build with the shell padding removed.
+A settled-bounds wait is not the same as waiting for the assertion to pass — a
+broken build settles immediately at the wrong place — and that was re-checked by
+removing the padding and watching it stay red.
+
+**All 14 instrumentation tests now pass on the Galaxy S23:** the six in `:app`,
+and the eight in `core:secrets` for the first time since they were written.
+
+**Still not verified:** no real provider has answered, and "Test connection" has
+never returned anything but a disabled button, because reaching it needs an API
 key this session could not supply.
 
 ### 2.4 — The generation pipeline — next
