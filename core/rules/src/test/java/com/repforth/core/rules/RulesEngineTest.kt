@@ -76,6 +76,32 @@ class RulesEngineTest {
 
     private fun generate(request: GenerationRequest) = engine.generate(request, library, "Test plan")
 
+    @Test
+    fun `candidate filtering is stable and exposes the same hard-rule boundary`() {
+        val excluded = library.first()
+        val request = GenerationRequest(
+            profile = profile(
+                exclusions = setOf(
+                    MovementExclusion(ExclusionKind.EXERCISE, excluded.id.value),
+                ),
+            ),
+        )
+
+        val forward = engine.filterCandidates(request, library)
+        val reversed = engine.filterCandidates(request, library.reversed())
+
+        assertEquals(forward, reversed)
+        assertTrue(excluded !in forward.eligibleCandidates)
+        assertEquals(
+            RejectionReason.EXCLUDED_EXERCISE,
+            forward.rejections.single { it.id == excluded.id }.reason,
+        )
+        assertEquals(
+            forward.eligibleCandidates.map { it.id.value }.sorted(),
+            forward.eligibleCandidates.map { it.id.value },
+        )
+    }
+
     // ── Determinism ──────────────────────────────────────────────────────────
 
     @Test

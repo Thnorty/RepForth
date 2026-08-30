@@ -30,6 +30,9 @@ class FakeAiProvider(
     /** Requests are separate so a connection assertion cannot consume generation state. */
     val workoutCalls = mutableListOf<Pair<ProviderConfig, AiWorkoutRequest>>()
 
+    /** Null on the first attempt; populated only for the single repair attempt. */
+    val workoutRetryFeedback = mutableListOf<AiWorkoutRetryFeedback?>()
+
     override suspend fun testConnection(config: ProviderConfig): ProviderTestResult {
         calls += config
         return next
@@ -38,8 +41,10 @@ class FakeAiProvider(
     override suspend fun generateWorkout(
         config: ProviderConfig,
         request: AiWorkoutRequest,
+        retryFeedback: AiWorkoutRetryFeedback?,
     ): ProviderGenerationResult {
         workoutCalls += config to request
+        workoutRetryFeedback += retryFeedback
         return nextWorkout
     }
 }

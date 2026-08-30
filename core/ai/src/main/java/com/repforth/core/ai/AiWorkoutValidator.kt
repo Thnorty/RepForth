@@ -32,6 +32,65 @@ data class AiWorkoutContractViolation(
     val exerciseId: String? = null,
 )
 
+enum class AiWorkoutRetryIssueKind {
+    FORMAT,
+    CONTRACT,
+    RULE,
+}
+
+/**
+ * Compact, typed feedback for the one repair attempt allowed by §8.
+ *
+ * It contains codes and exercise ids only. Rule details are deliberately left
+ * out: they are local diagnostics, not provider instructions, and allowing an
+ * arbitrary string through here would create a second prompt-input surface.
+ */
+data class AiWorkoutRetryIssue(
+    val kind: AiWorkoutRetryIssueKind,
+    val code: String,
+    val exerciseId: String? = null,
+)
+
+data class AiWorkoutRetryFeedback(
+    val issues: List<AiWorkoutRetryIssue>,
+) {
+    init {
+        require(issues.isNotEmpty()) { "Retry feedback must explain what failed" }
+    }
+
+    companion object {
+        val Malformed = AiWorkoutRetryFeedback(
+            listOf(AiWorkoutRetryIssue(AiWorkoutRetryIssueKind.FORMAT, "malformed_response")),
+        )
+
+        fun from(result: AiWorkoutValidationResult): AiWorkoutRetryFeedback {
+            require(!result.isValid) { "A valid response does not need retry feedback" }
+            return AiWorkoutRetryFeedback(
+                issues = buildList {
+                    result.contractViolations.forEach { violation ->
+                        add(
+                            AiWorkoutRetryIssue(
+                                kind = AiWorkoutRetryIssueKind.CONTRACT,
+                                code = violation.issue.name.lowercase(),
+                                exerciseId = violation.exerciseId,
+                            ),
+                        )
+                    }
+                    result.ruleViolations.forEach { violation ->
+                        add(
+                            AiWorkoutRetryIssue(
+                                kind = AiWorkoutRetryIssueKind.RULE,
+                                code = violation.reason.name.lowercase(),
+                                exerciseId = violation.id?.value,
+                            ),
+                        )
+                    }
+                },
+            )
+        }
+    }
+}
+
 data class AiWorkoutValidationResult(
     /** Mechanically normalised only when every check passed. */
     val response: AiWorkoutResponse?,

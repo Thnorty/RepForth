@@ -94,6 +94,7 @@ internal class OpenAiCompatibleProvider(
     override suspend fun generateWorkout(
         config: ProviderConfig,
         request: AiWorkoutRequest,
+        retryFeedback: AiWorkoutRetryFeedback?,
     ): ProviderGenerationResult {
         if (config.baseUrl.isBlank()) {
             return ProviderGenerationResult.Failed(ProviderFailure.ENDPOINT_REFUSED, "no address")
@@ -103,7 +104,10 @@ internal class OpenAiCompatibleProvider(
             val body = ChatCompletionRequest(
                 model = config.model,
                 messages = listOf(
-                    ChatMessage(role = "user", content = request.toGenerationPrompt()),
+                    ChatMessage(
+                        role = "user",
+                        content = request.toGenerationPrompt(retryFeedback),
+                    ),
                 ),
                 responseFormat = ChatResponseFormat(
                     type = "json_schema",

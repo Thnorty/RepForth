@@ -93,5 +93,6 @@ interface AiProvider {
     suspend fun generateWorkout(
         config: ProviderConfig,
         request: AiWorkoutRequest,
+        retryFeedback: AiWorkoutRetryFeedback? = null,
     ): ProviderGenerationResult
 }

@@ -19,6 +19,12 @@ data class GenerationOutcome(
     val succeeded: Boolean get() = plan != null
 }
 
+/** The hard-rule boundary shared by local and provider-backed generation. */
+data class CandidateFilterOutcome(
+    val eligibleCandidates: List<ExerciseCandidate>,
+    val rejections: List<Rejection>,
+)
+
 /**
  * Builds a workout from constraints, with no provider involved (§8).
  *
@@ -45,22 +51,18 @@ class RulesEngine(
         candidates: List<ExerciseCandidate>,
         planName: String,
     ): GenerationOutcome {
-        val rejections = mutableListOf<Rejection>()
-
-        val eligible = candidates.filter { candidate ->
-            val reason = disqualify(candidate, request)
-            if (reason != null) rejections += Rejection(candidate.id, reason)
-            reason == null
-        }
-
-        // Deterministic ordering before anything random happens. Candidates
-        // arrive in whatever order SQLite returned them, and a plan must not
-        // depend on that — §8 requires the same seed to give the same plan.
-        val ordered = eligible.sortedBy { it.id.value }
+        val filtered = filterCandidates(request, candidates)
+        val rejections = filtered.rejections.toMutableList()
         val random = Random(request.seed)
 
         val wanted = request.targetMuscles.map { it.canonical }.toSet()
-        val selected = select(ordered, wanted, request, random, rejections)
+        val selected = select(
+            filtered.eligibleCandidates,
+            wanted,
+            request,
+            random,
+            rejections,
+        )
 
         if (selected.isEmpty()) {
             return GenerationOutcome(null, rejections, wanted)
@@ -87,6 +89,30 @@ class RulesEngine(
             ),
             rejections = rejections,
             uncoveredMuscles = wanted - covered,
+        )
+    }
+
+    /**
+     * Applies every candidate-level hard constraint before either generator sees
+     * the catalog (§8 steps 2–3).
+     *
+     * The result is sorted because SQLite does not promise row order. The AI
+     * request and the rules generator must therefore receive the same stable
+     * sequence, rather than each growing a subtly different filtering pass.
+     */
+    fun filterCandidates(
+        request: GenerationRequest,
+        candidates: List<ExerciseCandidate>,
+    ): CandidateFilterOutcome {
+        val rejections = mutableListOf<Rejection>()
+        val eligible = candidates.filter { candidate ->
+            val reason = disqualify(candidate, request)
+            if (reason != null) rejections += Rejection(candidate.id, reason)
+            reason == null
+        }
+        return CandidateFilterOutcome(
+            eligibleCandidates = eligible.sortedBy { it.id.value },
+            rejections = rejections,
         )
     }
 

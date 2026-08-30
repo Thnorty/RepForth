@@ -99,11 +99,16 @@ internal class GeminiProvider(
     override suspend fun generateWorkout(
         config: ProviderConfig,
         request: AiWorkoutRequest,
+        retryFeedback: AiWorkoutRetryFeedback?,
     ): ProviderGenerationResult {
         val wireRequest = runCatching {
             val body = GeminiGenerateRequest(
                 contents = listOf(
-                    GeminiContent(parts = listOf(GeminiPart(text = request.toGenerationPrompt()))),
+                    GeminiContent(
+                        parts = listOf(
+                            GeminiPart(text = request.toGenerationPrompt(retryFeedback)),
+                        ),
+                    ),
                 ),
                 generationConfig = GeminiGenerationConfig(
                     responseMimeType = "application/json",

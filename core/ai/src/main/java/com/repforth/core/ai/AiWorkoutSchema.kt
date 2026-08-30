@@ -99,11 +99,29 @@ object AiWorkoutJsonSchema {
 }
 
 /** One prompt shape, regardless of which provider carries it. */
-internal fun AiWorkoutRequest.toGenerationPrompt(): String = """
+internal fun AiWorkoutRequest.toGenerationPrompt(
+    retryFeedback: AiWorkoutRetryFeedback? = null,
+): String = """
     Arrange a workout from the typed request below.
     Use only exercise IDs in candidate_exercises and obey every constraint.
     Return only JSON matching the supplied schema.
     Write rationale in the request locale: $locale.
+    ${retryFeedback?.toPromptLine().orEmpty()}
 
     ${AiWorkoutCodec.encode(this)}
 """.trimIndent()
+
+private fun AiWorkoutRetryFeedback.toPromptLine(): String {
+    val encoded = buildJsonArray {
+        issues.forEach { issue ->
+            add(
+                buildJsonObject {
+                    put("kind", issue.kind.name.lowercase())
+                    put("code", issue.code)
+                    issue.exerciseId?.let { put("exercise_id", it) }
+                },
+            )
+        }
+    }
+    return "The previous answer failed validation. Correct these errors: $encoded"
+}

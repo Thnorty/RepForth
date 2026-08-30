@@ -185,6 +185,25 @@ class ProviderGenerationTest {
         assertTrue(fake.calls.isEmpty())
     }
 
+    @Test
+    fun `retry feedback is encoded as typed JSON rather than interpolated text`() {
+        val prompt = workoutRequest.toGenerationPrompt(
+            AiWorkoutRetryFeedback(
+                listOf(
+                    AiWorkoutRetryIssue(
+                        kind = AiWorkoutRetryIssueKind.CONTRACT,
+                        code = "exercise_not_offered",
+                        exerciseId = "id-with-\"quote",
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(prompt.contains("The previous answer failed validation"))
+        assertTrue(prompt.contains("\"kind\":\"contract\""))
+        assertTrue(prompt.contains("id-with-\\\"quote"))
+    }
+
     private fun configFor(
         provider: ProviderId,
         model: String,

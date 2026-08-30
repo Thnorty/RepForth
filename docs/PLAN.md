@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
-| 2 — AI providers | §19 | **In progress.** Storage, settings, contracts, and provider generation transport done; orchestration and Coach remain |
+| 2 — AI providers | §19 | **In progress.** Storage, settings, contracts, transport, and orchestration done; Coach integration remains |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
@@ -110,18 +110,19 @@ exist, and remain the only untested category.
 | A key only where a key is needed; a bad one named correctly | `ef43cc2` |
 | **§8 amended** — the address rule removed entirely | `7ce01b1` |
 | **Phase 2** — validated AI workout contract and corrected CI trigger | `5bb27bc` |
+| **Phase 2** — structured provider generation over one shared schema | `ee9d19e` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-379 unit tests across 49 classes, plus fourteen instrumentation tests
+390 unit tests across 50 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
-Counted from the JUnit XML and de-duplicated across build variants. There are 49
-classes that contain tests and 50 Kotlin files under `src/test`; the extra file
+Counted from the JUnit XML and de-duplicated across build variants. There are 50
+classes that contain tests and 51 Kotlin files under `src/test`; the extra file
 is `core:transfer`'s shared fakes. The distinction is recorded because a number
 nobody can reproduce is worse than no number.
 
@@ -873,16 +874,32 @@ response, quota mapping, unusable addresses, and the fake provider. The
 schema-to-`WorkoutLimits` guard was watched failing by drifting `maxItems` and
 then restored.
 
+The orchestration boundary is complete. `RulesEngine.filterCandidates` is now
+the one deterministic candidate-level hard-rule pass used before either local
+or provider generation, so the provider never sees an excluded, unavailable or
+off-target exercise. `AiWorkoutGenerator` resolves provider configuration for
+one call, validates the first answer, and permits one repair attempt only for a
+malformed or locally invalid response. That attempt receives compact typed error
+codes and exercise ids encoded as JSON; it never receives rule-detail strings or
+raw provider output. Missing configuration, a missing adapter, every actionable
+provider failure, an empty eligible set, and a second invalid answer all return
+the existing deterministic `GenerationOutcome` with a typed fallback reason.
+
+Eleven further unit tests cover all five fallback reasons, every provider failure
+category, stable local filtering, first-attempt success, both repair paths, typed
+feedback transport and deterministic fallback. The malformed-output retry test
+was watched failing after the retry condition was deliberately changed, then the
+condition was restored. The full placeholder assembly, 390-test suite and lint
+all pass after restoration.
+
 **Repetition ranges stay ranges at this boundary.** The builder currently edits a
 single repetition target. Until the integration slice decides how that range is
 presented, validation uses its upper bound only for the conservative duration
 estimate; it does not silently choose a displayed or persisted target.
 
-Still to build, in dependency order:
+Still to build:
 
-1. Orchestration: deterministic local filter, provider call, validation-error
-   retry once, and rules-only fallback for missing, failed or still-invalid AI.
-2. Builder integration and the user-facing retry/fallback notice. No generation
+1. Builder integration and the user-facing retry/fallback notice. No generation
    request has reached a live provider yet.
 
 ### 2.5 — Coach UI
