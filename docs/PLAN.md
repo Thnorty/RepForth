@@ -103,7 +103,7 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 2** — cleartext to the user's own network, guarded in code | `181e5cc` |
 | Three defects the phone found on the provider screen | `8c42019` |
 | A key only where a key is needed; a bad one named correctly | `ef43cc2` |
-| **§8 amended** — the address rule removed entirely | pending |
+| **§8 amended** — the address rule removed entirely | `7ce01b1` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
