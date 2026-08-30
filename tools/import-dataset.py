@@ -33,6 +33,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA_DIR = os.path.join(ROOT, "core/database/schemas/com.repforth.core.database.RepForthDatabase")
 DB_OUT = os.path.join(ROOT, "core/database/src/main/assets/repforth.db")
 MANIFEST_OUT = os.path.join(ROOT, "dataset/media-manifest.json")
+MANIFEST_ASSET_OUT = os.path.join(ROOT, "core/media/src/main/assets/media-manifest.json")
 REPORT_OUT = os.path.join(ROOT, "dataset/import-report.json")
 VOCABULARY = os.path.join(ROOT, "core/model/src/test/resources/dataset-vocabulary.json")
 
@@ -272,9 +273,12 @@ def main():
     print("hashing media for %d records" % len(records))
     entries = build_manifest(records, root, repository, commit, media_version,
                              attributions.pop(), MANIFEST_OUT)
+    os.makedirs(os.path.dirname(MANIFEST_ASSET_OUT), exist_ok=True)
+    with open(MANIFEST_OUT, "r", encoding="utf-8") as src, open(MANIFEST_ASSET_OUT, "w", encoding="utf-8", newline="\n") as dst:
+        dst.write(src.read())
     total_bytes = sum(e["thumbnail"]["bytes"] + e["animation"]["bytes"] for e in entries)
-    print("wrote %s (%d entries, %.1f MB of media described)"
-          % (os.path.relpath(MANIFEST_OUT, ROOT), len(entries), total_bytes / 1e6))
+    print("wrote %s and %s (%d entries, %.1f MB of media described)"
+          % (os.path.relpath(MANIFEST_OUT, ROOT), os.path.relpath(MANIFEST_ASSET_OUT, ROOT), len(entries), total_bytes / 1e6))
 
     report = {
         "commit": commit,

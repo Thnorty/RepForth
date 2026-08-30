@@ -12,6 +12,7 @@ dependencies {
     // core:database — a DAO in a feature module is a storage detail escaping.
     api(project(":core:model"))
     implementation(project(":core:database"))
+    implementation(project(":core:media"))
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

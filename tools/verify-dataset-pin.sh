@@ -40,6 +40,7 @@ OFFENDERS=$(git grep -l --fixed-strings "$SHA" -- . \
   ":(exclude)tools/verify-dataset-pin.sh" \
   ":(exclude)dataset/" \
   ":(exclude)core/model/src/test/resources/dataset-vocabulary.json" \
+  ":(exclude)core/media/src/main/assets/media-manifest.json" \
   || true)
 
 if [ -n "$OFFENDERS" ]; then

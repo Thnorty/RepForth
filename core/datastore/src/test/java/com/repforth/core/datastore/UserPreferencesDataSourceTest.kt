@@ -49,6 +49,7 @@ class UserPreferencesDataSourceTest {
         assertEquals(false, defaults.reducedMotion)
         assertEquals(true, defaults.hapticsEnabled)
         assertEquals(false, defaults.onboardingComplete)
+        assertEquals(true, defaults.mediaWifiOnly)
     }
 
     @Test
@@ -61,6 +62,7 @@ class UserPreferencesDataSourceTest {
         source.setReducedMotion(true)
         source.setHapticsEnabled(false)
         source.setOnboardingComplete(true)
+        source.setMediaWifiOnly(false)
 
         assertEquals(
             UserPreferences(
@@ -71,6 +73,7 @@ class UserPreferencesDataSourceTest {
                 reducedMotion = true,
                 hapticsEnabled = false,
                 onboardingComplete = true,
+                mediaWifiOnly = false,
             ),
             source.preferences.first(),
         )

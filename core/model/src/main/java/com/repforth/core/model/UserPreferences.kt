@@ -20,6 +20,7 @@ data class UserPreferences(
     val reducedMotion: Boolean,
     val hapticsEnabled: Boolean,
     val onboardingComplete: Boolean,
+    val mediaWifiOnly: Boolean = true,
 ) {
     companion object {
         /**
@@ -42,6 +43,7 @@ data class UserPreferences(
             reducedMotion = false,
             hapticsEnabled = true,
             onboardingComplete = false,
+            mediaWifiOnly = true,
         )
     }
 }

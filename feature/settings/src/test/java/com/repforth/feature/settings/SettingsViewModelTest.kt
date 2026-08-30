@@ -25,6 +25,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+import com.repforth.core.media.cache.MediaCacheManager
+import java.io.File
+
 /**
  * Settings, minus the file picker.
  *
@@ -39,6 +42,8 @@ class SettingsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var preferences: UserPreferencesDataSource
     private lateinit var transfer: RecordingTransfer
+    private lateinit var mediaCache: MediaCacheManager
+    private lateinit var cacheDir: File
     private lateinit var viewModel: SettingsViewModel
 
     @Before
@@ -46,11 +51,15 @@ class SettingsViewModelTest {
         Dispatchers.setMain(dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
         transfer = RecordingTransfer()
-        viewModel = SettingsViewModel(preferences, transfer, NoContentResolver())
+        cacheDir = File(System.getProperty("java.io.tmpdir"), "repforth_test_media_${System.currentTimeMillis()}")
+        cacheDir.mkdirs()
+        mediaCache = MediaCacheManager(cacheDir, dispatcher)
+        viewModel = SettingsViewModel(preferences, transfer, NoContentResolver(), mediaCache)
     }
 
     @After
     fun tearDown() {
+        cacheDir.deleteRecursively()
         Dispatchers.resetMain()
     }
 
@@ -180,6 +189,33 @@ class SettingsViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertNull(state().message)
+    }
+
+    @Test
+    fun `clearing media cache empties cache directory and posts MediaCacheCleared message`() = runTest(dispatcher) {
+        activate()
+        // Create a dummy file in cache
+        val sampleFile = File(cacheDir, "sample.bin")
+        sampleFile.writeBytes(ByteArray(1024))
+        mediaCache.calculateCacheSize()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onClearMediaCache()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SettingsMessage.MediaCacheCleared, state().message)
+        assertEquals(0L, state().cacheSizeBytes)
+    }
+
+    @Test
+    fun `toggling media wifi only setting updates preferences`() = runTest(dispatcher) {
+        activate()
+        assertEquals(true, state().preferences.mediaWifiOnly)
+
+        viewModel.onMediaWifiOnlyChange(false)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(false, state().preferences.mediaWifiOnly)
     }
 
     private fun preview(newTemplates: Int = 0) = ImportPreview(

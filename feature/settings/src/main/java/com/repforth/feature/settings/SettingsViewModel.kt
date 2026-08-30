@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import com.repforth.core.media.cache.MediaCacheManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -37,11 +38,14 @@ sealed interface SettingsMessage {
 
     data object AppReset : SettingsMessage
 
+    data object MediaCacheCleared : SettingsMessage
+
     data class ImportRefused(val failure: ImportFailure) : SettingsMessage
 }
 
 data class SettingsUiState(
     val preferences: UserPreferences = UserPreferences.Default,
+    val cacheSizeBytes: Long = 0L,
     /** Set when a file has been read and is waiting to be confirmed. */
     val pendingImport: PendingImport? = null,
     val message: SettingsMessage? = null,
@@ -71,13 +75,14 @@ class SettingsViewModel @Inject constructor(
     private val preferences: UserPreferencesDataSource,
     private val transfer: DataTransfer,
     private val contentResolver: ContentResolver,
+    private val mediaCache: MediaCacheManager,
 ) : ViewModel() {
 
     private val local = MutableStateFlow(SettingsUiState())
 
     val uiState: StateFlow<SettingsUiState> =
-        combine(preferences.preferences, local) { stored, state ->
-            state.copy(preferences = stored)
+        combine(preferences.preferences, mediaCache.cacheSize, local) { stored, cacheSize, state ->
+            state.copy(preferences = stored, cacheSizeBytes = cacheSize)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -95,6 +100,19 @@ class SettingsViewModel @Inject constructor(
     fun onHapticsChange(enabled: Boolean) = edit { preferences.setHapticsEnabled(enabled) }
 
     fun onReducedMotionChange(enabled: Boolean) = edit { preferences.setReducedMotion(enabled) }
+
+    fun onMediaWifiOnlyChange(enabled: Boolean) = edit { preferences.setMediaWifiOnly(enabled) }
+
+    fun onClearMediaCache() {
+        viewModelScope.launch {
+            local.value = local.value.copy(busy = true)
+            mediaCache.clearCache()
+            local.value = local.value.copy(
+                busy = false,
+                message = SettingsMessage.MediaCacheCleared,
+            )
+        }
+    }
 
     /**
      * Writes the export to wherever the system file picker put it.
@@ -202,6 +220,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             local.value = local.value.copy(busy = true)
             transfer.resetApp()
+            mediaCache.clearCache()
             local.value = local.value.copy(busy = false, message = SettingsMessage.AppReset)
         }
     }

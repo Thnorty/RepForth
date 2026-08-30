@@ -24,6 +24,16 @@
     <string name="settings_reduced_motion">Hareketi azalt</string>
     <string name="settings_reduced_motion_sub">Daha kısa ve sade animasyonlar.</string>
 
+    <string name="settings_media">Medya</string>
+    <string name="settings_media_wifi_only">Yalnızca Wi-Fi ile indir</string>
+    <string name="settings_media_wifi_only_sub">Egzersiz görselleri önbelleğe alınırken hücresel veri kullanımını engelle.</string>
+    <string name="settings_clear_media_cache">Medya önbelleğini temizle</string>
+    <string name="settings_clear_media_cache_sub">%1$s kullanılıyor (250 MB sınır).</string>
+    <string name="settings_clear_media_cache_title">Medya önbelleği temizlensin mi?</string>
+    <string name="settings_clear_media_cache_body">İndirilen egzersiz görselleri ve animasyonları silinecek. İhtiyaç duyulduğunda tekrar indirilecektir.</string>
+    <string name="settings_clear_media_cache_confirm">Önbelleği temizle</string>
+    <string name="settings_media_cache_cleared">Medya önbelleği temizlendi.</string>
+
     <string name="settings_data">Verilerin</string>
     <string name="settings_export">Dışa aktar</string>
     <string name="settings_export_sub">Profilin, planların ve geçmişin tek bir JSON dosyasında.</string>

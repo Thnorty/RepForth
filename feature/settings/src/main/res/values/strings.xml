@@ -24,6 +24,16 @@
     <string name="settings_reduced_motion">Reduce motion</string>
     <string name="settings_reduced_motion_sub">Shorter, plainer animations.</string>
 
+    <string name="settings_media">Media</string>
+    <string name="settings_media_wifi_only">Download on Wi-Fi only</string>
+    <string name="settings_media_wifi_only_sub">Prevent cellular data usage when caching exercise visuals.</string>
+    <string name="settings_clear_media_cache">Clear media cache</string>
+    <string name="settings_clear_media_cache_sub">%1$s used (250 MB cap).</string>
+    <string name="settings_clear_media_cache_title">Clear media cache?</string>
+    <string name="settings_clear_media_cache_body">Downloaded exercise images and animations will be deleted. They will be downloaded again when needed.</string>
+    <string name="settings_clear_media_cache_confirm">Clear cache</string>
+    <string name="settings_media_cache_cleared">Media cache cleared.</string>
+
     <string name="settings_data">Your data</string>
     <string name="settings_export">Export</string>
     <string name="settings_export_sub">Your profile, plans and history, as one JSON file.</string>

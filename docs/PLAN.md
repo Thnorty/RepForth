@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | Not started |
+| 3 — Polished phone | §19 | **In progress.** 3.1 Media Downloader & Disk Cache done |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
 
@@ -937,6 +937,35 @@ a discard confirmation dialog.
 
 ---
 
+## Phase 3 — Polished phone
+
+§19 covers on-demand exercise media downloading and disk caching, media UI in catalog
+and active workout session, live session UX polish, full audio cues, theme switching,
+and localized strings.
+
+### 3.1 — Media Downloader & Bounded Disk Cache — **done**
+
+The media delivery pipeline (§9) is built in a dedicated `core:media` module.
+Media metadata and checksums come from `media-manifest.json` (SHA-256 + exact byte count).
+`MediaDownloader` streams downloads with incremental SHA-256 verification and byte-size
+checks into temp files, performing an atomic rename to promote verified assets into the
+durable cache. Tampered or truncated payloads fail with `MediaIntegrityException` and are
+immediately removed.
+
+`MediaCacheManager` maintains the on-disk cache hierarchy under
+`exercise_media/<mediaVersion>/<exerciseId>/<mediaType>/<sha256>.bin`, tracks total byte size
+reactively, implements LRU eviction when exceeding the 250 MB cap, and supports clearing.
+`RepForthImageLoader` configures a shared Coil 3 `ImageLoader` with animated GIF decoding.
+`ExerciseMedia` provides a 1:1 Compose component supporting `SMALL` (48dp), `MEDIUM` (72dp),
+and `FLUSH` full-width layouts with fallback to `RfIcons.Exercises`.
+
+In `feature:settings`, a **Media** section exposes the Wi-Fi only toggle switch and a
+clear cache action row with live size formatted in MB and a confirmation dialog.
+`NetworkBoundaryTest` was updated and asserts that network clients are bounded strictly
+to `core:ai` and `core:media`.
+
+---
+
 ## Decisions already made
 
 Closed. Reopen only with a reason, and update the guideline in the same change.
@@ -959,7 +988,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Gemini's endpoint is fixed in the adapter | A stored address must not be able to redirect a Gemini key, and it is the only address protection left | `GeminiProvider.kt` |
 | User-installed CAs stay untrusted | A self-signed local server is the other way people ask for LAN support, and the worse one | `network_security_config.xml` |
 | The provider key is required only where the provider requires it | Ollama and LM Studio ignore it; demanding one meant typing a throwaway value past a check that protected nothing | `ProviderId.requiresKey` |
-| Only `core:ai` may declare an HTTP client | Keeps "where does this app talk out, and why" answerable from one place | `NetworkBoundaryTest.kt` |
+| Only `core:ai` and `core:media` may declare an HTTP client | Keeps network access bounded strictly to AI generation and on-demand media downloads | `NetworkBoundaryTest.kt` |
 
 Still open, and fine to leave open (§21): final application ID, accent colour,
 app icon, and the exact licence.

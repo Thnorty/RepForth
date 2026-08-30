@@ -62,6 +62,8 @@ class UserPreferencesDataSource @Inject constructor(
         it[Keys.ONBOARDING_COMPLETE] = complete
     }
 
+    suspend fun setMediaWifiOnly(enabled: Boolean) = edit { it[Keys.MEDIA_WIFI_ONLY] = enabled }
+
     /**
      * Forgets every preference (§7's "reset app").
      *
@@ -84,6 +86,7 @@ class UserPreferencesDataSource @Inject constructor(
         val REDUCED_MOTION = booleanPreferencesKey("reduced_motion")
         val HAPTICS = booleanPreferencesKey("haptics_enabled")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
+        val MEDIA_WIFI_ONLY = booleanPreferencesKey("media_wifi_only")
     }
 
     private companion object {
@@ -111,6 +114,8 @@ class UserPreferencesDataSource @Inject constructor(
                 ?: UserPreferences.Default.hapticsEnabled,
             onboardingComplete = preferences[Keys.ONBOARDING_COMPLETE]
                 ?: UserPreferences.Default.onboardingComplete,
+            mediaWifiOnly = preferences[Keys.MEDIA_WIFI_ONLY]
+                ?: UserPreferences.Default.mediaWifiOnly,
         )
     }
 }

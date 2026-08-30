@@ -40,32 +40,40 @@ class NetworkBoundaryTest {
      * the app talks to the network for some other reason, and §4's promise that
      * everything stays on the phone would need rewording rather than defending.
      */
+    /**
+     * Exactly two modules may declare an HTTP client: core:ai and core:media (§9, §18).
+     *
+     * Every outbound request belongs to either the AI provider feature (optional BYOK)
+     * or on-demand exercise media downloading. A client anywhere else would mean
+     * the app talks to the network for some other reason, breaking the local-first
+     * architecture boundary.
+     */
     @Test
-    fun `only core ai depends on an http client`() {
+    fun `only core ai and core media depend on an http client`() {
         val declaring = root.walkTopDown()
             .onEnter { it.name !in IGNORED_DIRS }
             .filter { it.name == "build.gradle.kts" }
             .filter { "okhttp" in it.readText() }
-            .map { it.parentFile.relativeTo(root).invariantSeparatorsPath }
+            .map { it.parentFile!!.relativeTo(root).invariantSeparatorsPath }
+            .sorted()
             .toList()
 
         assertEquals(
-            "An HTTP client is declared outside core:ai, in $declaring. This app " +
-                "makes network requests for exactly one optional feature; a " +
-                "second client means that is no longer true.",
-            listOf("core/ai"),
+            "An HTTP client is declared outside core:ai and core:media, in $declaring. This app " +
+                "makes network requests for exactly two features; a " +
+                "third client means that is no longer true.",
+            listOf("core/ai", "core/media"),
             declaring,
         )
     }
 
     /**
-     * Exactly one file may turn a request into a call.
+     * Exactly two files may turn a request into a call.
      *
-     * One place that builds the socket is one place to read when asking what
-     * leaves the device, what timeout applies, and what happens to a failure.
+     * ProviderHttp for AI requests and MediaDownloader for exercise media downloads.
      */
     @Test
-    fun `only ProviderHttp turns a request into a call`() {
+    fun `only ProviderHttp and MediaDownloader turn a request into a call`() {
         val callers = root.walkTopDown()
             .onEnter { it.name !in IGNORED_DIRS }
             .filter {
@@ -74,11 +82,15 @@ class NetworkBoundaryTest {
             }
             .filter { "newCall(" in it.readText() }
             .map { it.relativeTo(root).invariantSeparatorsPath }
+            .sorted()
             .toList()
 
         assertEquals(
-            "Something other than ProviderHttp.kt is making HTTP calls: $callers.",
-            listOf("core/ai/src/main/java/com/repforth/core/ai/http/ProviderHttp.kt"),
+            "Something other than ProviderHttp.kt and MediaDownloader.kt is making HTTP calls: $callers.",
+            listOf(
+                "core/ai/src/main/java/com/repforth/core/ai/http/ProviderHttp.kt",
+                "core/media/src/main/java/com/repforth/core/media/download/MediaDownloader.kt",
+            ),
             callers,
         )
     }

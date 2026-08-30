@@ -75,6 +75,8 @@ fun SettingsRoute(
         onKeepScreenOnChange = viewModel::onKeepScreenOnChange,
         onHapticsChange = viewModel::onHapticsChange,
         onReducedMotionChange = viewModel::onReducedMotionChange,
+        onMediaWifiOnlyChange = viewModel::onMediaWifiOnlyChange,
+        onClearMediaCache = viewModel::onClearMediaCache,
         onOpenAiSettings = onOpenAiSettings,
         onExport = { exportTo.launch(exportName) },
         // Not filtered to JSON: a file manager that saved the export without a
@@ -99,6 +101,8 @@ internal fun SettingsScreen(
     onKeepScreenOnChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
     onReducedMotionChange: (Boolean) -> Unit,
+    onMediaWifiOnlyChange: (Boolean) -> Unit,
+    onClearMediaCache: () -> Unit,
     onOpenAiSettings: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
@@ -111,6 +115,7 @@ internal fun SettingsScreen(
 ) {
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var confirmingReset by rememberSaveable { mutableStateOf(false) }
+    var confirmingClearMediaCache by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -201,6 +206,27 @@ internal fun SettingsScreen(
                 detail = stringResource(R.string.settings_reduced_motion_sub),
                 checked = state.preferences.reducedMotion,
                 onCheckedChange = onReducedMotionChange,
+            )
+        }
+
+        item(key = "media") { SectionLabel(stringResource(R.string.settings_media)) }
+
+        item(key = "media-wifi-only") {
+            SwitchRow(
+                label = stringResource(R.string.settings_media_wifi_only),
+                detail = stringResource(R.string.settings_media_wifi_only_sub),
+                checked = state.preferences.mediaWifiOnly,
+                onCheckedChange = onMediaWifiOnlyChange,
+            )
+        }
+
+        item(key = "clear-media-cache") {
+            val cacheMb = "%.1f MB".format(state.cacheSizeBytes / (1024f * 1024f))
+            ActionRow(
+                label = stringResource(R.string.settings_clear_media_cache),
+                detail = stringResource(R.string.settings_clear_media_cache_sub, cacheMb),
+                enabled = !state.busy,
+                onClick = { confirmingClearMediaCache = true },
             )
         }
 
@@ -299,6 +325,19 @@ internal fun SettingsScreen(
         )
     }
 
+    if (confirmingClearMediaCache) {
+        DestructiveDialog(
+            title = stringResource(R.string.settings_clear_media_cache_title),
+            body = stringResource(R.string.settings_clear_media_cache_body),
+            confirm = stringResource(R.string.settings_clear_media_cache_confirm),
+            onConfirm = {
+                confirmingClearMediaCache = false
+                onClearMediaCache()
+            },
+            onDismiss = { confirmingClearMediaCache = false },
+        )
+    }
+
     state.message?.let { message ->
         MessageDialog(message = message, onDismiss = onMessageShown)
     }
@@ -380,6 +419,7 @@ private fun MessageDialog(message: SettingsMessage, onDismiss: () -> Unit) {
         SettingsMessage.Imported -> stringResource(R.string.settings_imported)
         SettingsMessage.WorkoutDataDeleted -> stringResource(R.string.settings_deleted)
         SettingsMessage.AppReset -> stringResource(R.string.settings_reset_done)
+        SettingsMessage.MediaCacheCleared -> stringResource(R.string.settings_media_cache_cleared)
         is SettingsMessage.ImportRefused -> stringResource(
             when (message.failure) {
                 is ImportFailure.Unreadable -> R.string.settings_import_unreadable

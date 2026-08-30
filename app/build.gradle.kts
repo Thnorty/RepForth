@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
+    implementation(project(":core:media"))
     // Only to answer "has onboarding happened?" — the app shell reads the
     // profile's existence, never its contents.
     implementation(project(":core:user-data"))

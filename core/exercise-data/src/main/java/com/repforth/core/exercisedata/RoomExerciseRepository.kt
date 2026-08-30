@@ -11,6 +11,8 @@ import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Muscle
+import com.repforth.core.media.MediaResolver
+import com.repforth.core.media.PlaceholderMediaResolver
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.map
  */
 internal class RoomExerciseRepository @Inject constructor(
     private val dao: ExerciseDao,
+    private val mediaResolver: MediaResolver = PlaceholderMediaResolver(),
 ) : ExerciseRepository {
 
     override suspend fun count(): Int = dao.count()
@@ -40,8 +43,12 @@ internal class RoomExerciseRepository @Inject constructor(
         ).map { rows -> rows.map(ExerciseSummaryRow::toSummary) }
     }
 
-    override suspend fun find(id: ExerciseId): Exercise? =
-        dao.findById(id.value)?.toDomain()
+    override suspend fun find(id: ExerciseId): Exercise? {
+        val row = dao.findById(id.value) ?: return null
+        val thumb = mediaResolver.resolveThumbnail(id)
+        val anim = mediaResolver.resolveAnimation(id)
+        return row.toDomain(thumbnail = thumb, animation = anim)
+    }
 
     override suspend fun summaries(
         ids: Collection<ExerciseId>,

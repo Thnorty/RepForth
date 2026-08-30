@@ -37,6 +37,8 @@ coroutines = "1.10.2"
 # compileSdk and AGP to move first, and the failure if they do not is an AAR
 # metadata error at app assembly — not at the point the version is changed.
 okhttp = "5.4.0"
+# §9: "Use one app-wide Coil ImageLoader with memory and disk caches."
+coil = "3.1.0"
 sqliteJdbc = "3.49.1.0"
 room = "2.7.2"
 # Pinned to the Dagger release contemporary with Kotlin 2.1.20. Newer Hilt
@@ -86,6 +88,10 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 # the client: what is worth asserting is the bytes on the wire and what happens
 # to a real 401, and a mocked OkHttp asserts neither.
 okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "okhttp" }
+
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+coil-gif = { group = "io.coil-kt.coil3", name = "coil-gif", version.ref = "coil" }
 
 # Test-only: lets the packaged catalog be inspected on the JVM, so the data
 # tests §17 asks for do not need a device.
