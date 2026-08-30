@@ -98,7 +98,7 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 2** — secret storage, and a CI scan for key-shaped content | `2eb17e0` |
 | **Phase 2** — provider settings, and the endpoint rule that guards them | `1113597` |
 | **Phase 2** — the two provider adapters, and a connection test that explains itself | `2eb5796` |
-| **Phase 2** — cleartext to the user's own network, guarded in code | pending |
+| **Phase 2** — cleartext to the user's own network, guarded in code | `181e5cc` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
