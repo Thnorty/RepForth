@@ -294,5 +294,21 @@ class ProviderAdapterTest {
         )
     }
 
+    @Test
+    fun `an unusable generic address is a typed failure rather than an exception`() = runTest {
+        val config = ProviderConfig(
+            settings = ProviderSettings.Default.copy(
+                provider = ProviderId.OPENAI_COMPATIBLE,
+                baseUrl = "not a URL",
+            ),
+            apiKey = "test-not-a-real-key",
+        )
+
+        val result = openAi.testConnection(config) as ProviderTestResult.Failed
+
+        assertEquals(ProviderFailure.ENDPOINT_REFUSED, result.failure)
+        assertEquals(0, server.requestCount)
+    }
+
     private fun ok(body: String) = MockResponse.Builder().code(200).body(body).build()
 }

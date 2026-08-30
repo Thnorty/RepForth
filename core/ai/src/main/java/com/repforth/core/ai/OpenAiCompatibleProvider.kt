@@ -1,14 +1,19 @@
 package com.repforth.core.ai
 
 import com.repforth.core.ai.http.ProviderHttp
+import com.repforth.core.ai.http.PROVIDER_JSON_MEDIA_TYPE
 import com.repforth.core.ai.http.failureForStatus
+import com.repforth.core.ai.http.providerEndpoint
 import com.repforth.core.ai.http.toProviderFailure
 import com.repforth.core.model.ProviderConfig
 import com.repforth.core.model.ProviderId
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Anything that speaks the OpenAI request and response shape (§8).
@@ -19,8 +24,8 @@ import okhttp3.Request
  * adapter is written to that shape and nothing else — a provider with its own
  * protocol gets its own adapter rather than a special case in here.
  *
- * The address comes from the user, which is why every request goes through
- * [ProviderHttp] and its endpoint check rather than straight to OkHttp.
+ * The address comes from the user. [ProviderHttp] applies the shared timeout,
+ * cancellation, and failure mapping; it deliberately does not police the URL.
  */
 internal class OpenAiCompatibleProvider(
     private val http: ProviderHttp,
@@ -34,19 +39,18 @@ internal class OpenAiCompatibleProvider(
             return ProviderTestResult.Failed(ProviderFailure.ENDPOINT_REFUSED, "no address")
         }
 
-        val request = Request.Builder()
-            .url(config.baseUrl + "models")
-            .apply {
-                // Omitted entirely when there is no key. `Bearer ` with nothing
-                // after it is a malformed credential: some servers reject it
-                // outright, and none treat it as "no credential offered",
-                // which is what a local model server is expecting.
-                if (config.apiKey.isNotBlank()) {
-                    header("Authorization", "Bearer ${config.apiKey}")
-                }
-            }
-            .get()
-            .build()
+        val request = runCatching {
+            Request.Builder()
+                .url(providerEndpoint(config.baseUrl, "models"))
+                .withOptionalApiKey(config)
+                .get()
+                .build()
+        }.getOrElse {
+            return ProviderTestResult.Failed(
+                ProviderFailure.ENDPOINT_REFUSED,
+                "invalid address",
+            )
+        }
 
         val reply = http.send(
             request = request,
@@ -87,6 +91,89 @@ internal class OpenAiCompatibleProvider(
         }
     }
 
+    override suspend fun generateWorkout(
+        config: ProviderConfig,
+        request: AiWorkoutRequest,
+    ): ProviderGenerationResult {
+        if (config.baseUrl.isBlank()) {
+            return ProviderGenerationResult.Failed(ProviderFailure.ENDPOINT_REFUSED, "no address")
+        }
+
+        val wireRequest = runCatching {
+            val body = ChatCompletionRequest(
+                model = config.model,
+                messages = listOf(
+                    ChatMessage(role = "user", content = request.toGenerationPrompt()),
+                ),
+                responseFormat = ChatResponseFormat(
+                    type = "json_schema",
+                    jsonSchema = ChatJsonSchema(
+                        name = AI_WORKOUT_SCHEMA_NAME,
+                        strict = true,
+                        schema = AiWorkoutJsonSchema.value,
+                    ),
+                ),
+            )
+            Request.Builder()
+                .url(providerEndpoint(config.baseUrl, "chat/completions"))
+                .withOptionalApiKey(config)
+                .post(json.encodeToString(body).toRequestBody(PROVIDER_JSON_MEDIA_TYPE))
+                .build()
+        }.getOrElse {
+            return ProviderGenerationResult.Failed(
+                ProviderFailure.ENDPOINT_REFUSED,
+                "invalid address",
+            )
+        }
+
+        val reply = http.send(
+            request = wireRequest,
+            timeoutSeconds = config.settings.requestTimeoutSeconds,
+        ).getOrElse { cause ->
+            return ProviderGenerationResult.Failed(cause.toProviderFailure(), cause.message)
+        }
+
+        if (reply.code !in 200..299) {
+            return ProviderGenerationResult.Failed(
+                failureForStatus(reply.code),
+                "HTTP ${reply.code}",
+            )
+        }
+
+        val envelope = runCatching {
+            json.decodeFromString<ChatCompletionResponse>(reply.body)
+        }.getOrElse {
+            return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Invalid OpenAI-compatible response envelope",
+            )
+        }
+        val message = envelope.choices.firstOrNull()?.message
+            ?: return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "OpenAI-compatible response contained no choice",
+            )
+        if (!message.refusal.isNullOrBlank()) {
+            return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Provider refused workout generation",
+            )
+        }
+        val structured = message.content
+            ?: return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "OpenAI-compatible response contained no structured workout",
+            )
+
+        return when (val decoded = AiWorkoutCodec.decodeResponse(structured)) {
+            is AiWorkoutDecodeResult.Ok -> ProviderGenerationResult.Ok(decoded.response)
+            AiWorkoutDecodeResult.Malformed -> ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "OpenAI-compatible provider returned a malformed structured workout",
+            )
+        }
+    }
+
     @Serializable
     private data class ModelList(
         @SerialName("data") val data: List<Model> = emptyList(),
@@ -94,4 +181,52 @@ internal class OpenAiCompatibleProvider(
 
     @Serializable
     private data class Model(@SerialName("id") val id: String)
+
+    /** A keyless local server receives no malformed empty credential. */
+    private fun Request.Builder.withOptionalApiKey(config: ProviderConfig): Request.Builder =
+        apply {
+            if (config.apiKey.isNotBlank()) {
+                header("Authorization", "Bearer ${config.apiKey}")
+            }
+        }
+
+    @Serializable
+    private data class ChatCompletionRequest(
+        val model: String,
+        val messages: List<ChatMessage>,
+        @SerialName("response_format") val responseFormat: ChatResponseFormat,
+    )
+
+    @Serializable
+    private data class ChatMessage(
+        val role: String,
+        val content: String,
+    )
+
+    @Serializable
+    private data class ChatResponseFormat(
+        val type: String,
+        @SerialName("json_schema") val jsonSchema: ChatJsonSchema,
+    )
+
+    @Serializable
+    private data class ChatJsonSchema(
+        val name: String,
+        val strict: Boolean,
+        val schema: JsonObject,
+    )
+
+    @Serializable
+    private data class ChatCompletionResponse(
+        val choices: List<ChatChoice> = emptyList(),
+    )
+
+    @Serializable
+    private data class ChatChoice(val message: ChatResponseMessage? = null)
+
+    @Serializable
+    private data class ChatResponseMessage(
+        val content: String? = null,
+        val refusal: String? = null,
+    )
 }

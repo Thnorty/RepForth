@@ -1,15 +1,19 @@
 package com.repforth.core.ai
 
 import com.repforth.core.ai.http.ProviderHttp
+import com.repforth.core.ai.http.PROVIDER_JSON_MEDIA_TYPE
 import com.repforth.core.ai.http.failureForStatus
+import com.repforth.core.ai.http.providerEndpoint
 import com.repforth.core.ai.http.toProviderFailure
 import com.repforth.core.model.ProviderConfig
 import com.repforth.core.model.ProviderId
 import com.repforth.core.model.ProviderSettings
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Gemini, over its own REST API (§8).
@@ -52,8 +56,8 @@ internal class GeminiProvider(
      */
     override suspend fun testConnection(config: ProviderConfig): ProviderTestResult {
         val request = Request.Builder()
-            .url(baseUrl + "models")
-            .header("x-goog-api-key", config.apiKey)
+            .url(providerEndpoint(baseUrl, "models"))
+            .withApiKey(config)
             .get()
             .build()
 
@@ -92,6 +96,78 @@ internal class GeminiProvider(
         }
     }
 
+    override suspend fun generateWorkout(
+        config: ProviderConfig,
+        request: AiWorkoutRequest,
+    ): ProviderGenerationResult {
+        val wireRequest = runCatching {
+            val body = GeminiGenerateRequest(
+                contents = listOf(
+                    GeminiContent(parts = listOf(GeminiPart(text = request.toGenerationPrompt()))),
+                ),
+                generationConfig = GeminiGenerationConfig(
+                    responseMimeType = "application/json",
+                    responseJsonSchema = AiWorkoutJsonSchema.value,
+                ),
+            )
+            Request.Builder()
+                .url(
+                    providerEndpoint(
+                        baseUrl,
+                        "models/${config.model}:generateContent",
+                    ),
+                )
+                .withApiKey(config)
+                .post(json.encodeToString(body).toRequestBody(PROVIDER_JSON_MEDIA_TYPE))
+                .build()
+        }.getOrElse {
+            return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Invalid provider request configuration",
+            )
+        }
+
+        val reply = http.send(
+            request = wireRequest,
+            timeoutSeconds = config.settings.requestTimeoutSeconds,
+        ).getOrElse { cause ->
+            return ProviderGenerationResult.Failed(cause.toProviderFailure(), cause.message)
+        }
+
+        if (reply.code !in 200..299) {
+            return ProviderGenerationResult.Failed(
+                failureForGeneration(reply.code, reply.body),
+                "HTTP ${reply.code}",
+            )
+        }
+
+        val envelope = runCatching {
+            json.decodeFromString<GeminiGenerateResponse>(reply.body)
+        }.getOrElse {
+            return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Invalid Gemini response envelope",
+            )
+        }
+        val structured = envelope.candidates
+            .firstOrNull()
+            ?.content
+            ?.parts
+            ?.firstNotNullOfOrNull(GeminiPart::text)
+            ?: return ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Gemini response contained no structured workout",
+            )
+
+        return when (val decoded = AiWorkoutCodec.decodeResponse(structured)) {
+            is AiWorkoutDecodeResult.Ok -> ProviderGenerationResult.Ok(decoded.response)
+            AiWorkoutDecodeResult.Malformed -> ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Gemini returned a malformed structured workout",
+            )
+        }
+    }
+
     /**
      * Gemini answers an invalid key with 400, not 401.
      *
@@ -110,6 +186,22 @@ internal class GeminiProvider(
     private fun failureFor(code: Int): ProviderFailure =
         if (code == 400) ProviderFailure.AUTHENTICATION else failureForStatus(code)
 
+    private fun Request.Builder.withApiKey(config: ProviderConfig): Request.Builder =
+        header("x-goog-api-key", config.apiKey)
+
+    private fun failureForGeneration(code: Int, body: String): ProviderFailure {
+        if (code == 404) return ProviderFailure.MODEL_NOT_FOUND
+        if (code != 400) return failureForStatus(code)
+
+        val invalidKey = runCatching { json.decodeFromString<GeminiErrorEnvelope>(body) }
+            .getOrNull()
+            ?.error
+            ?.details
+            ?.any { it.reason == "API_KEY_INVALID" }
+            ?: false
+        return if (invalidKey) ProviderFailure.AUTHENTICATION else ProviderFailure.FORMAT
+    }
+
     @Serializable
     private data class ModelList(
         @SerialName("models") val models: List<Model> = emptyList(),
@@ -117,4 +209,39 @@ internal class GeminiProvider(
 
     @Serializable
     private data class Model(@SerialName("name") val name: String)
+
+    @Serializable
+    private data class GeminiGenerateRequest(
+        val contents: List<GeminiContent>,
+        @SerialName("generationConfig") val generationConfig: GeminiGenerationConfig,
+    )
+
+    @Serializable
+    private data class GeminiGenerationConfig(
+        @SerialName("responseMimeType") val responseMimeType: String,
+        @SerialName("responseJsonSchema") val responseJsonSchema: kotlinx.serialization.json.JsonObject,
+    )
+
+    @Serializable
+    private data class GeminiGenerateResponse(
+        val candidates: List<GeminiCandidate> = emptyList(),
+    )
+
+    @Serializable
+    private data class GeminiCandidate(val content: GeminiContent? = null)
+
+    @Serializable
+    private data class GeminiContent(val parts: List<GeminiPart> = emptyList())
+
+    @Serializable
+    private data class GeminiPart(val text: String? = null)
+
+    @Serializable
+    private data class GeminiErrorEnvelope(val error: GeminiError? = null)
+
+    @Serializable
+    private data class GeminiError(val details: List<GeminiErrorDetail> = emptyList())
+
+    @Serializable
+    private data class GeminiErrorDetail(val reason: String? = null)
 }

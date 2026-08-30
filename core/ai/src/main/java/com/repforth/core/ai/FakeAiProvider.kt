@@ -18,13 +18,28 @@ import com.repforth.core.model.ProviderId
 class FakeAiProvider(
     override val id: ProviderId = ProviderId.GEMINI,
     var next: ProviderTestResult = ProviderTestResult.Ok(modelConfirmed = true),
+    var nextWorkout: ProviderGenerationResult = ProviderGenerationResult.Failed(
+        ProviderFailure.FORMAT,
+        "No workout fixture configured",
+    ),
 ) : AiProvider {
 
     /** Every config it was called with, so a test can assert what was sent. */
     val calls = mutableListOf<ProviderConfig>()
 
+    /** Requests are separate so a connection assertion cannot consume generation state. */
+    val workoutCalls = mutableListOf<Pair<ProviderConfig, AiWorkoutRequest>>()
+
     override suspend fun testConnection(config: ProviderConfig): ProviderTestResult {
         calls += config
         return next
+    }
+
+    override suspend fun generateWorkout(
+        config: ProviderConfig,
+        request: AiWorkoutRequest,
+    ): ProviderGenerationResult {
+        workoutCalls += config to request
+        return nextWorkout
     }
 }

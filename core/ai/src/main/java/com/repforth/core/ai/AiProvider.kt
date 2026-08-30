@@ -28,7 +28,7 @@ enum class ProviderFailure {
     /** Got there and could not understand the reply. */
     FORMAT,
 
-    /** This app refused to send: the address is not one it will talk to (§8). */
+    /** No usable endpoint was configured; this is not an address policy (§8). */
     ENDPOINT_REFUSED,
 
     /** The provider itself is broken right now. */
@@ -54,6 +54,16 @@ sealed interface ProviderTestResult {
     ) : ProviderTestResult
 }
 
+sealed interface ProviderGenerationResult {
+    data class Ok(val response: AiWorkoutResponse) : ProviderGenerationResult
+
+    /** [detail] is redacted diagnostic context, never the provider body. */
+    data class Failed(
+        val failure: ProviderFailure,
+        val detail: String? = null,
+    ) : ProviderGenerationResult
+}
+
 /**
  * One AI provider, as §8 defines it.
  *
@@ -62,10 +72,9 @@ sealed interface ProviderTestResult {
  * keeping a plaintext key alive for the life of the process, which is the thing
  * `core:secrets` exists to avoid.
  *
- * **Only [testConnection] so far, and that is deliberate.** The shared workout
- * contract and validator now exist, but the provider-specific envelope, retry,
- * and fallback path do not. The generation method lands with those pieces so an
- * interface method is never present without a complete caller and outcome.
+ * Generation returns a typed outcome rather than throwing for provider,
+ * network, or format failures. The later orchestration layer can therefore
+ * retry or fall back without parsing exceptions or provider messages.
  */
 interface AiProvider {
     val id: ProviderId
@@ -79,4 +88,10 @@ interface AiProvider {
      * not have to catch exceptions to render them.
      */
     suspend fun testConnection(config: ProviderConfig): ProviderTestResult
+
+    /** Requests one structured workout; validation happens at the next boundary. */
+    suspend fun generateWorkout(
+        config: ProviderConfig,
+        request: AiWorkoutRequest,
+    ): ProviderGenerationResult
 }

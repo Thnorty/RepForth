@@ -12,9 +12,17 @@ import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+
+internal val PROVIDER_JSON_MEDIA_TYPE: MediaType = "application/json; charset=utf-8".toMediaType()
+
+/** Joins an endpoint without imposing an address policy that §8 removed. */
+internal fun providerEndpoint(baseUrl: String, relativePath: String): String =
+    baseUrl.trimEnd('/') + "/" + relativePath.trimStart('/')
 
 /**
  * What a provider adapter got back: the status, and the body as text.

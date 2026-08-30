@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
-| 2 — AI providers | §19 | **In progress.** Storage, settings, adapters, and generation contracts done; orchestration and Coach remain |
+| 2 — AI providers | §19 | **In progress.** Storage, settings, contracts, and provider generation transport done; orchestration and Coach remain |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
@@ -109,18 +109,19 @@ exist, and remain the only untested category.
 | The keyboard test stopped measuring the frame before the padding | `e5090e7` |
 | A key only where a key is needed; a bad one named correctly | `ef43cc2` |
 | **§8 amended** — the address rule removed entirely | `7ce01b1` |
+| **Phase 2** — validated AI workout contract and corrected CI trigger | `5bb27bc` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-367 unit tests across 47 classes, plus fourteen instrumentation tests
+379 unit tests across 49 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
-Counted from the JUnit XML and de-duplicated across build variants. There are 47
-classes that contain tests and 48 Kotlin files under `src/test`; the extra file
+Counted from the JUnit XML and de-duplicated across build variants. There are 49
+classes that contain tests and 50 Kotlin files under `src/test`; the extra file
 is `core:transfer`'s shared fakes. The distinction is recorded because a number
 nobody can reproduce is worse than no number.
 
@@ -142,6 +143,12 @@ it does they must not reach a public runner (§18).
 The workflow originally watched pushes to `main` while the repository's default
 and only branch is `master`, so it had never run on a push. The trigger and the
 Gradle shared-cache writer now name `master`; pull-request behaviour is unchanged.
+The first corrected push run, `33303060115`, passed wrapper validation, assemble,
+unit tests, and lint on `master`.
+
+That run also reported maintenance debt which is not a failure today: GitHub is
+forcing several Node-20 actions onto Node 24, and `actions/setup-java@v4` is now
+deprecated in favour of v5. Upgrade those actions as a separate CI-only change.
 
 Two things this slice turned up, both worth remembering:
 
@@ -850,6 +857,22 @@ the user's equipment, exclusions, muscles and session ceiling to `RulesEngine`.
 The strict unknown-field check was watched failing by temporarily allowing unknown
 keys. Fourteen new unit tests cover this slice.
 
+The provider boundary is now complete too. One versioned JSON Schema is built from
+`WorkoutLimits` and supplied to both structured-output APIs: Gemini receives it as
+`generationConfig.responseJsonSchema`, while the generic adapter sends it through
+Chat Completions as strict `response_format.json_schema`. Provider envelopes remain
+forward-compatible and internal; the workout inside them is decoded by the strict
+shared codec, and raw provider bodies or refusal text never enter diagnostic results.
+The adapters join a base URL and path in one place, omit empty bearer credentials,
+and return typed auth, quota, network, model, server, endpoint, or format outcomes.
+
+Twelve further unit tests exercise both POST requests against MockWebServer, including
+their paths, headers, prompts, exact shared schema, successful response extraction,
+unknown envelope fields, strict workout fields, refusals, Gemini's unusual invalid-key
+response, quota mapping, unusable addresses, and the fake provider. The
+schema-to-`WorkoutLimits` guard was watched failing by drifting `maxItems` and
+then restored.
+
 **Repetition ranges stay ranges at this boundary.** The builder currently edits a
 single repetition target. Until the integration slice decides how that range is
 presented, validation uses its upper bound only for the conservative duration
@@ -857,11 +880,9 @@ estimate; it does not silently choose a displayed or persisted target.
 
 Still to build, in dependency order:
 
-1. The versioned JSON Schema supplied to each provider's structured-output API.
-2. `generateWorkout` in both adapters, with provider envelopes kept internal.
-3. Orchestration: deterministic local filter, provider call, validation-error
+1. Orchestration: deterministic local filter, provider call, validation-error
    retry once, and rules-only fallback for missing, failed or still-invalid AI.
-4. Builder integration and the user-facing retry/fallback notice. No generation
+2. Builder integration and the user-facing retry/fallback notice. No generation
    request has reached a live provider yet.
 
 ### 2.5 — Coach UI
