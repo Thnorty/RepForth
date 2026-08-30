@@ -61,10 +61,10 @@ data class PlannedExercise(
      * Work plus rest, estimated.
      *
      * Rest is exact. Work is not: a rep takes as long as it takes, and the
-     * dataset says nothing about tempo. [SECONDS_PER_REP] is a stated assumption
-     * rather than a measurement, chosen so a set of ten lands near half a minute,
-     * which is the common case. It exists to keep a plan inside a session-length
-     * ceiling, not to promise a finish time.
+     * dataset says nothing about tempo. [WorkoutLimits.secondsPerRepEstimate] is
+     * a stated assumption rather than a measurement, chosen so a set of ten
+     * lands near half a minute, which is the common case. It exists to keep a
+     * plan inside a session-length ceiling, not to promise a finish time.
      *
      * The last set's rest still counts. In practice a user does rest after their
      * final set before moving on, and leaving it out makes long plans look
@@ -73,15 +73,12 @@ data class PlannedExercise(
     val estimatedDurationMs: Long
         get() {
             val workPerSet = when (val t = target) {
-                is ExerciseTarget.Reps -> t.reps * SECONDS_PER_REP * 1000L
+                is ExerciseTarget.Reps ->
+                    t.reps * WorkoutLimits.secondsPerRepEstimate * 1000L
                 is ExerciseTarget.Duration -> t.durationMs
             }
             return target.sets * (workPerSet + restMs)
         }
-
-    private companion object {
-        const val SECONDS_PER_REP = 3
-    }
 }
 
 /**

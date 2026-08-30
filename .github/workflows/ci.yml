@@ -6,7 +6,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
 
 # A superseded run tells you nothing useful, so stop paying for it.
 concurrency:
@@ -44,7 +44,7 @@ jobs:
         with:
           # Only the default branch writes the shared cache; pull requests read
           # it. Otherwise a branch can poison the cache for everyone else.
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
 
       # A committed key is not recoverable by deleting it — the object stays in
       # history. Cheaper to refuse the commit. GitHub's own secret scanning and

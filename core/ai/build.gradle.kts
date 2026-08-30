@@ -12,6 +12,9 @@ dependencies {
     // Provider types are domain types: the settings screen reads them without
     // depending on how they are stored or which adapter speaks to the network.
     api(project(":core:model"))
+    // The provider validator delegates hard constraints to the same engine that
+    // builds local plans; a second implementation would drift.
+    api(project(":core:rules"))
 
     // The two halves of a provider configuration. They are joined here and
     // nowhere else, which is what keeps the key out of DataStore.

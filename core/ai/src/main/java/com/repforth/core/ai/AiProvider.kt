@@ -62,12 +62,10 @@ sealed interface ProviderTestResult {
  * keeping a plaintext key alive for the life of the process, which is the thing
  * `core:secrets` exists to avoid.
  *
- * **Only [testConnection] so far, and that is deliberate.** §8's interface also
- * has `generateWorkout` and `coach`, whose request and response contracts are
- * the subject of the next slice — writing them now would mean guessing a shape
- * that slice is going to derive properly, and then having two versions of it.
- * Adding a method to an interface is cheap; unpicking a contract that shipped
- * wrong is not.
+ * **Only [testConnection] so far, and that is deliberate.** The shared workout
+ * contract and validator now exist, but the provider-specific envelope, retry,
+ * and fallback path do not. The generation method lands with those pieces so an
+ * interface method is never present without a complete caller and outcome.
  */
 interface AiProvider {
     val id: ProviderId

@@ -11,6 +11,7 @@ import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.model.toggleRegion
 import com.repforth.core.model.toggleSynonyms
 import com.repforth.core.model.BodyRegion
@@ -385,10 +386,10 @@ class BuilderViewModel @Inject constructor(
         toMutableList().apply { add(to, removeAt(from)) }
 
     internal companion object {
-        val SETS_RANGE = 1..10
-        val REPS_RANGE = 1..100
-        val DURATION_RANGE = 5..3_600
-        val REST_RANGE = 0..600
+        val SETS_RANGE = WorkoutLimits.sets
+        val REPS_RANGE = WorkoutLimits.reps
+        val DURATION_RANGE = WorkoutLimits.durationSeconds
+        val REST_RANGE = WorkoutLimits.restSeconds
     }
 }
 

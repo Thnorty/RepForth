@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
-| 2 — AI providers | §19 | **In progress.** Key storage done; providers and pipeline remain |
+| 2 — AI providers | §19 | **In progress.** Storage, settings, adapters, and generation contracts done; orchestration and Coach remain |
 | 3 — Polished phone | §19 | Not started |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
@@ -115,15 +115,14 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-353 unit tests across 45 classes, plus fourteen instrumentation tests
+367 unit tests across 47 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
-**The previous figure in this file — "313 across 42" — was wrong**, and by more
-than this phase added: there are 44 test source files under `src/test`, and
-there were 38 before this session. Counted from the JUnit XML and cross-checked
-against the files, because a number nobody can reproduce is worse than no
-number.
+Counted from the JUnit XML and de-duplicated across build variants. There are 47
+classes that contain tests and 48 Kotlin files under `src/test`; the extra file
+is `core:transfer`'s shared fakes. The distinction is recorded because a number
+nobody can reproduce is worse than no number.
 
 ---
 
@@ -139,6 +138,10 @@ half-lands.
 `assemblePlaceholderDebug`, `test`, and `lint`, plus dependency review on pull
 requests. `licensed` is deliberately not built: it has no assets yet, and once
 it does they must not reach a public runner (§18).
+
+The workflow originally watched pushes to `main` while the repository's default
+and only branch is `master`, so it had never run on a push. The trigger and the
+Gradle shared-cache writer now name `master`; pull-request behaviour is unchanged.
 
 Two things this slice turned up, both worth remembering:
 
@@ -164,10 +167,11 @@ Two things this slice turned up, both worth remembering:
 cannot do these:**
 
 - Enable secret scanning and push protection (free on public repositories).
-  The workflow's secret-hygiene step only catches credential-shaped *filenames*;
-  it does not scan file contents for token formats.
+  The workflow catches credential-shaped filenames and the two provider-key
+  formats this app accepts in tracked content; GitHub's scanner covers broader
+  formats and push protection can stop a secret before it enters history.
 - Require the `Build and test` and `Validate Gradle wrapper` checks to pass
-  before merge, on a protected `main`. Until that is set, CI reports failures
+  before merge, on a protected `master`. Until that is set, CI reports failures
   but cannot stop them landing.
 
 ### 0.2 — Navigation shell — **done**
@@ -830,11 +834,35 @@ manifest is safe because the app narrows it — that check is gone — so it cla
 something smaller and true: one module reaches the network, through one file.
 That is a scope control rather than a cleartext control, and the file says so.
 
-### 2.4 — The generation pipeline — next
+### 2.4 — The generation pipeline — **in progress**
 
-Typed intent, local candidate filter, hard rules before the model, structured
-output against a versioned schema, local validation, one retry, and the
-rules-only fallback that already exists. §8's diagram is the specification.
+The first boundary is built: versioned, serializable workout request and response
+contracts; a compact request mapper that sends constraints and candidate metadata
+but not profile identity, exercise names or instructions; strict response decoding;
+and local validation before a response can become a plan. Numeric limits now live
+once in `WorkoutLimits`, shared by the builder, rules engine and provider validator,
+so an answer cannot pass one boundary and be silently clamped by the next.
+
+The validator checks schema version, order, offered and duplicate exercise ids,
+sets, repetition ranges, durations, rest, target type and rationale. Only then
+does it project the answer into the existing `WorkoutTemplate` shape and delegate
+the user's equipment, exclusions, muscles and session ceiling to `RulesEngine`.
+The strict unknown-field check was watched failing by temporarily allowing unknown
+keys. Fourteen new unit tests cover this slice.
+
+**Repetition ranges stay ranges at this boundary.** The builder currently edits a
+single repetition target. Until the integration slice decides how that range is
+presented, validation uses its upper bound only for the conservative duration
+estimate; it does not silently choose a displayed or persisted target.
+
+Still to build, in dependency order:
+
+1. The versioned JSON Schema supplied to each provider's structured-output API.
+2. `generateWorkout` in both adapters, with provider envelopes kept internal.
+3. Orchestration: deterministic local filter, provider call, validation-error
+   retry once, and rules-only fallback for missing, failed or still-invalid AI.
+4. Builder integration and the user-facing retry/fallback notice. No generation
+   request has reached a live provider yet.
 
 ### 2.5 — Coach UI
 

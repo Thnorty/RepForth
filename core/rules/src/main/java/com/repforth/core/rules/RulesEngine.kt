@@ -6,6 +6,7 @@ import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.model.WorkoutLimits
 import kotlin.random.Random
 
 /** A generated plan and the audit trail §8 asks for. */
@@ -169,7 +170,7 @@ class RulesEngine(
         // Round two: fill the remaining time, preferring what is least covered.
         for (candidate in candidates.sortedByDescending { score(it, wanted, coverage, request, random) }) {
             if (candidate in chosen) continue
-            if (chosen.size >= MAX_EXERCISES) break
+            if (chosen.size >= WorkoutLimits.maxExercises) break
 
             val cost = costOf(candidate, prescription)
             if (usedMs + cost > request.sessionLengthMs) {
@@ -276,9 +277,6 @@ class RulesEngine(
     }
 
     private companion object {
-        /** Beyond this a session stops being a workout and becomes a list. */
-        const val MAX_EXERCISES = 10
-
         /** How many exercises may touch one muscle before it is over-served. */
         const val MAX_PER_MUSCLE = 3
 
