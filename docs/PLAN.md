@@ -32,12 +32,14 @@ and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
 larger than they sound. Every screen has been exercised on hardware by hand and
 by `adb input tap`.
 
-**Five defects have been found on a device and by nothing else:** the launch
+**Eight defects have been found on a device and by nothing else:** the launch
 crash from Auto Backup restoring an old database, onboarding drawing under the
 camera cutout, a slider whose sixth value could not be selected, the Hilt crash
 when the locale was overridden, and the builder's Save button sitting behind the
 keyboard — enabled, invisible, and untappable, so a plan could not be saved at
-all.
+all; and three on the AI settings screen (2.3b): a keyboard that rewrote a
+typed URL, switch rows that only responded on the switch itself, and a
+disclosure that looked like a heading.
 
 Six instrumentation tests now exist. Three open screens and would not have
 caught any of the five; three interact — type, tap, save — and the keyboard one
@@ -682,6 +684,40 @@ way the rule in `AGENTS.md` asks: the task reported `UP-TO-DATE`, a build file
 outside `:app`'s classpath was edited, and the task then ran and failed. Without
 that declaration the guard would have been silent on exactly the change it
 exists to catch.
+
+### 2.3b — What the device found
+
+The AI settings screen reached a Galaxy S23 for the first time. It rendered, it
+did not crash, and the whole cleartext path works end to end: a LAN address is
+accepted with the switch on, refused with it off, and a public address is
+refused either way. Three defects, none of which any JVM test could have seen.
+
+- **Samsung's keyboard rewrote the address.** `http://api.openai.com/v1/`
+  arrived as `http://api. openai. com/v1/` — a space after every dot.
+  `KeyboardType.Uri` does not stop autocorrect on this keyboard; the field now
+  sets `autoCorrectEnabled = false` and `KeyboardCapitalization.None`, as the
+  key field already did. The symptom was an address the user typed correctly
+  being rejected as malformed, with nothing on screen to explain it. The model
+  field had the same hole and is fixed too.
+- **Switch rows could only be tapped on the switch.** `SwitchRow` put the
+  listener on the `Switch`, so the label and the explanation — most of the row —
+  did nothing. Now the row is `toggleable`, which also merges it into one
+  accessibility node instead of announcing an unnamed switch after the text.
+  This was never specific to this screen: Keep screen on, Vibration and Reduce
+  motion had it too, and have had since Phase 1.
+- **"Advanced" read as a heading, not a control.** An `ActionRow` with the
+  detail line "Request timeout" and no affordance — nothing suggested the
+  timeout and the local-server switch were behind it, so they were effectively
+  missing. It has a chevron now, and a subtitle that says what is inside.
+
+A fourth thing was wrong and only the device made it obvious: the refusal for a
+cleartext *name* said "type the numeric address of the machine", which is sound
+advice for `my-desktop.local` and bad advice for `api.openai.com`. One message
+now covers both — numeric address for your own network, https for anything else.
+
+**Still not verified:** no real provider has answered, and "Test connection"
+has never returned anything but a disabled button, because reaching it needs a
+key this session could not supply.
 
 ### 2.4 — The generation pipeline — next
 

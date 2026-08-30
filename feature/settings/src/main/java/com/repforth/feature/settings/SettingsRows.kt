@@ -1,6 +1,7 @@
 package com.repforth.feature.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 
@@ -65,6 +67,16 @@ internal fun <T> ChoiceRow(
     }
 }
 
+/**
+ * A label, an explanation, and a switch — tappable anywhere along the row.
+ *
+ * `toggleable` on the Row rather than a listener on the Switch alone. Found on
+ * a device: tapping the words did nothing, so the only target was the switch
+ * itself, about 15% of a row the user has every reason to read as one control.
+ * It also merges the row into a single node for accessibility, so TalkBack
+ * announces the label, the explanation and the state together instead of
+ * offering an unnamed switch after them.
+ */
 @Composable
 internal fun SwitchRow(
     label: String,
@@ -76,6 +88,11 @@ internal fun SwitchRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Target.min)
+            .toggleable(
+                value = checked,
+                onValueChange = onCheckedChange,
+                role = Role.Switch,
+            )
             .padding(vertical = Space.s2),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Space.s3),
@@ -88,7 +105,9 @@ internal fun SwitchRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        // Null: the row owns the click, and a switch with its own handler
+        // would take the tap back and double-report the state change.
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

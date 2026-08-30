@@ -82,6 +82,9 @@ object RfIcons {
     val Expand: Painter
         @Composable get() = painterResource(R.drawable.rf_sym_expand_more)
 
+    val Collapse: Painter
+        @Composable get() = painterResource(R.drawable.rf_sym_expand_less)
+
     val More: Painter
         @Composable get() = painterResource(R.drawable.rf_sym_more_vert)
 

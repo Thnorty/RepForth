@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -23,17 +25,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.semantics.password
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -161,6 +167,10 @@ internal fun AiSettingsScreen(
                     )
                 },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    autoCorrectEnabled = false,
+                    capitalization = KeyboardCapitalization.None,
+                ),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -177,8 +187,16 @@ internal fun AiSettingsScreen(
                         { Text(stringResource(refusal.messageRes())) }
                     },
                     singleLine = true,
+                    // Found on a device: Samsung's keyboard turned
+                    // `http://api.openai.com/v1/` into
+                    // `http://api. openai. com/v1/` — a space after every dot.
+                    // KeyboardType.Uri alone does not stop it, and the result
+                    // is a URL the user typed correctly and the app rejects as
+                    // malformed, with no clue why.
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
+                        autoCorrectEnabled = false,
+                        capitalization = KeyboardCapitalization.None,
                         imeAction = ImeAction.Done,
                     ),
                     modifier = Modifier.fillMaxWidth(),
@@ -196,12 +214,7 @@ internal fun AiSettingsScreen(
         }
 
         item(key = "advanced") {
-            ActionRow(
-                label = stringResource(R.string.ai_advanced),
-                detail = stringResource(R.string.ai_timeout),
-                enabled = true,
-                onClick = onAdvancedToggled,
-            )
+            AdvancedHeader(expanded = state.advancedShown, onToggle = onAdvancedToggled)
         }
 
         if (state.advancedShown) {
@@ -326,6 +339,49 @@ private fun KeyField(
                 }
             }
         }
+    }
+}
+
+/**
+ * The disclosure that opens the advanced section.
+ *
+ * It used to be an `ActionRow`, which on a device read as a heading with a
+ * stray subtitle: bold word, grey line under it, no affordance at all. Nothing
+ * suggested the timeout and the local-server switch were behind it, so they
+ * were effectively missing. A chevron that turns over is the whole fix.
+ */
+@Composable
+private fun AdvancedHeader(expanded: Boolean, onToggle: () -> Unit) {
+    val state = stringResource(
+        if (expanded) R.string.ai_advanced_expanded else R.string.ai_advanced_collapsed,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Target.min)
+            .clickable(onClick = onToggle)
+            .semantics { stateDescription = state }
+            .padding(vertical = Space.s2),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Space.s3),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.ai_advanced),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = stringResource(R.string.ai_advanced_sub),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            painter = if (expanded) RfIcons.Collapse else RfIcons.Expand,
+            // The row carries the name and the state; a description here would
+            // be read out a second time.
+            contentDescription = null,
+        )
     }
 }
 

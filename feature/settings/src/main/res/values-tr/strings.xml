@@ -105,12 +105,15 @@
     <string name="ai_base_url_hint">https://sunucun/v1/</string>
     <string name="ai_url_malformed">Bu bir web adresi değil.</string>
     <string name="ai_url_scheme">Yalnızca https:// adreslerine izin verilir.</string>
-    <string name="ai_url_cleartext">Düz http:// kapalı. Kullanmak için aşağıdan yerel model sunucularını aç.</string>
+    <string name="ai_url_cleartext">Düz http:// kapalı. Kullanmak için Gelişmiş bölümünden yerel model sunucularını aç.</string>
     <string name="ai_url_not_local">Düz http:// yalnızca kendi ağındaki bir adres için geçerli, örneğin 192.168.1.42. İnternetteki her şey için https:// gerekir.</string>
-    <string name="ai_url_needs_address">Makinenin adını değil sayısal adresini yaz — örneğin http://192.168.1.42:11434/v1/.</string>
+    <string name="ai_url_needs_address">Düz http:// için kendi ağındaki bir makinenin sayısal adresi gerekir, örneğin http://192.168.1.42:11434/v1/. İnternetteki her şey için https:// gerekir.</string>
     <string name="ai_url_credentials">Adrese kullanıcı adı ya da parola koyma.</string>
 
     <string name="ai_advanced">Gelişmiş</string>
+    <string name="ai_advanced_sub">İstek zaman aşımı ve yerel model sunucuları.</string>
+    <string name="ai_advanced_expanded">Açık</string>
+    <string name="ai_advanced_collapsed">Kapalı</string>
     <string name="ai_timeout">İstek zaman aşımı</string>
     <plurals name="ai_timeout_seconds">
         <item quantity="one">%1$d saniye</item>
