@@ -52,16 +52,14 @@ class ProviderAdapterTest {
     }
 
     /**
-     * The server is on `127.0.0.1`, so every test here needs the cleartext
-     * setting on — which also means the loopback path is exercised rather than
-     * described.
+     * The server is on `127.0.0.1` over plain http, which the app sends to
+     * without comment — there is no address policy left to satisfy.
      */
     private fun configFor(provider: ProviderId, model: String) = ProviderConfig(
         settings = ProviderSettings.Default.copy(
             provider = provider,
             model = model,
             baseUrl = server.url("/v1/").toString(),
-            allowCleartext = true,
         ),
         apiKey = "test-not-a-real-key",
     )
@@ -125,7 +123,6 @@ class ProviderAdapterTest {
                 provider = ProviderId.GEMINI,
                 model = "gemini-3.5-flash",
                 baseUrl = "https://somewhere-that-is-not-google.example/v1/",
-                allowCleartext = true,
             ),
             apiKey = "test-not-a-real-key",
         )
@@ -163,7 +160,6 @@ class ProviderAdapterTest {
                 provider = ProviderId.OPENAI_COMPATIBLE,
                 model = "llama3.1",
                 baseUrl = server.url("/v1/").toString(),
-                allowCleartext = true,
             ),
             apiKey = "",
         )
@@ -275,53 +271,13 @@ class ProviderAdapterTest {
 
         assertEquals(ProviderFailure.FORMAT, (result as ProviderTestResult.Failed).failure)
     }
-
     /**
-     * The test this file exists for.
+     * The one thing still refused before a socket is opened: nowhere to send it.
      *
-     * The endpoint rule has to hold at the socket, not only in the settings
-     * screen — a check that lives in a text field is one the next caller skips.
-     * So this asserts both that the call is refused *and* that the server never
-     * heard from us: a refusal reported after the key was already sent would be
-     * worthless.
-     *
-     * Watched failing with the `EndpointPolicy` check removed from
-     * `ProviderHttp.send`: the request arrived, key and all.
+     * Everything else this file used to assert about an address is gone (§8,
+     * amended) — scheme, host, cleartext. An empty field is not a policy
+     * judgement, it is an unfinished form.
      */
-    @Test
-    fun `a cleartext address is not contacted at all when the setting is off`() = runTest {
-        server.enqueue(ok("""{"data":[{"id":"llama3.1"}]}"""))
-
-        val config = ProviderConfig(
-            settings = ProviderSettings.Default.copy(
-                provider = ProviderId.OPENAI_COMPATIBLE,
-                model = "llama3.1",
-                baseUrl = server.url("/v1/").toString(),
-                allowCleartext = false,
-            ),
-            apiKey = "test-not-a-real-key",
-        )
-
-        val result = openAi.testConnection(config)
-
-        // The request count is asserted first and the type before the cast, so
-        // removing the endpoint check reports "the key was sent" rather than a
-        // ClassCastException that names nothing.
-        assertEquals(
-            "The key must not reach a server this app refused to talk to",
-            0,
-            server.requestCount,
-        )
-        assertTrue(
-            "Expected a refusal, got $result",
-            result is ProviderTestResult.Failed,
-        )
-        assertEquals(
-            ProviderFailure.ENDPOINT_REFUSED,
-            (result as ProviderTestResult.Failed).failure,
-        )
-    }
-
     @Test
     fun `the generic provider with no address is refused before any lookup`() = runTest {
         val config = ProviderConfig(

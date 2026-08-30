@@ -46,7 +46,6 @@ import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.ai.ProviderTestResult
-import com.repforth.core.model.EndpointRefusal
 import com.repforth.core.model.ProviderId
 import com.repforth.core.model.ProviderSettings
 
@@ -66,7 +65,6 @@ fun AiSettingsRoute(
         onModelChange = viewModel::onModelChange,
         onBaseUrlChange = viewModel::onBaseUrlChange,
         onTimeoutChange = viewModel::onTimeoutChange,
-        onAllowCleartextChange = viewModel::onAllowCleartextChange,
         onAdvancedToggled = viewModel::onAdvancedToggled,
         onTestConnection = viewModel::onTestConnection,
         onDeleteEverything = viewModel::onDeleteEverything,
@@ -97,7 +95,6 @@ internal fun AiSettingsScreen(
     onModelChange: (String) -> Unit,
     onBaseUrlChange: (String) -> Unit,
     onTimeoutChange: (Int) -> Unit,
-    onAllowCleartextChange: (Boolean) -> Unit,
     onAdvancedToggled: () -> Unit,
     onTestConnection: () -> Unit,
     onDeleteEverything: () -> Unit,
@@ -184,10 +181,6 @@ internal fun AiSettingsScreen(
                     onValueChange = onBaseUrlChange,
                     label = { Text(stringResource(R.string.ai_base_url)) },
                     placeholder = { Text(stringResource(R.string.ai_base_url_hint)) },
-                    isError = state.baseUrlRefusal != null,
-                    supportingText = state.baseUrlRefusal?.let { refusal ->
-                        { Text(stringResource(refusal.messageRes())) }
-                    },
                     singleLine = true,
                     // Found on a device: Samsung's keyboard turned
                     // `http://api.openai.com/v1/` into
@@ -227,14 +220,6 @@ internal fun AiSettingsScreen(
                 )
             }
 
-            item(key = "cleartext") {
-                SwitchRow(
-                    label = stringResource(R.string.ai_cleartext),
-                    detail = stringResource(R.string.ai_cleartext_sub),
-                    checked = state.settings.allowCleartext,
-                    onCheckedChange = onAllowCleartextChange,
-                )
-            }
         }
 
         item(key = "delete-all") {
@@ -477,19 +462,3 @@ private fun ProviderTestResult.messageRes(): Int = when (this) {
     }
 }
 
-/**
- * Why an address was refused, in words that say what to do about it.
- *
- * §8 asks for actionable errors. "Invalid URL" is not one; "plain http:// works
- * only for a server on your own network" tells the user both what happened and
- * which of their two options applies.
- */
-private fun EndpointRefusal.messageRes(): Int = when (this) {
-    EndpointRefusal.BLANK, EndpointRefusal.MALFORMED -> R.string.ai_url_malformed
-    EndpointRefusal.MISSING_SCHEME -> R.string.ai_url_missing_scheme
-    EndpointRefusal.UNSUPPORTED_SCHEME -> R.string.ai_url_scheme
-    EndpointRefusal.CLEARTEXT_NOT_ALLOWED -> R.string.ai_url_cleartext
-    EndpointRefusal.CLEARTEXT_NOT_LOCAL -> R.string.ai_url_not_local
-    EndpointRefusal.CLEARTEXT_NEEDS_ADDRESS -> R.string.ai_url_needs_address
-    EndpointRefusal.EMBEDDED_CREDENTIALS -> R.string.ai_url_credentials
-}

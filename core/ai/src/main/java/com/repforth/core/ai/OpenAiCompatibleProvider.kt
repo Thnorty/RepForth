@@ -51,7 +51,6 @@ internal class OpenAiCompatibleProvider(
         val reply = http.send(
             request = request,
             timeoutSeconds = config.settings.requestTimeoutSeconds,
-            allowCleartext = config.settings.allowCleartext,
         ).getOrElse { cause ->
             return ProviderTestResult.Failed(cause.toProviderFailure(), cause.message)
         }

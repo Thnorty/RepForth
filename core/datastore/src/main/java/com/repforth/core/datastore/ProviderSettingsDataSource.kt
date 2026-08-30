@@ -2,7 +2,6 @@ package com.repforth.core.datastore
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -73,10 +72,6 @@ class ProviderSettingsDataSource @Inject constructor(
         )
     }
 
-    suspend fun setAllowCleartext(allowed: Boolean) = edit {
-        it[Keys.ALLOW_CLEARTEXT] = allowed
-    }
-
     /**
      * Removes the provider configuration and nothing else (§8's "delete all
      * provider settings").
@@ -111,7 +106,6 @@ class ProviderSettingsDataSource @Inject constructor(
         val PROVIDER = stringPreferencesKey("ai_provider")
         val BASE_URL = stringPreferencesKey("ai_base_url")
         val TIMEOUT_SECONDS = intPreferencesKey("ai_timeout_seconds")
-        val ALLOW_CLEARTEXT = booleanPreferencesKey("ai_allow_cleartext")
 
         fun model(provider: ProviderId) =
             stringPreferencesKey("ai_model_${provider.name.lowercase()}")
@@ -124,7 +118,7 @@ class ProviderSettingsDataSource @Inject constructor(
          * asked for everything to be deleted.
          */
         fun all(): List<Preferences.Key<*>> =
-            listOf(PROVIDER, BASE_URL, TIMEOUT_SECONDS, ALLOW_CLEARTEXT) +
+            listOf(PROVIDER, BASE_URL, TIMEOUT_SECONDS) +
                 ProviderId.entries.map(::model)
     }
 
@@ -141,8 +135,6 @@ class ProviderSettingsDataSource @Inject constructor(
                 baseUrl = preferences[Keys.BASE_URL] ?: ProviderSettings.Default.baseUrl,
                 requestTimeoutSeconds = preferences[Keys.TIMEOUT_SECONDS]
                     ?: ProviderSettings.Default.requestTimeoutSeconds,
-                allowCleartext = preferences[Keys.ALLOW_CLEARTEXT]
-                    ?: ProviderSettings.Default.allowCleartext,
             )
         }
     }

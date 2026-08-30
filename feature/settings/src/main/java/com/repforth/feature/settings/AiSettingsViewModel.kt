@@ -5,9 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.repforth.core.ai.ProviderConnectionTester
 import com.repforth.core.ai.ProviderRepository
 import com.repforth.core.ai.ProviderTestResult
-import com.repforth.core.model.EndpointPolicy
-import com.repforth.core.model.EndpointRefusal
-import com.repforth.core.model.EndpointVerdict
 import com.repforth.core.model.ProviderId
 import com.repforth.core.model.ProviderSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,8 +36,6 @@ data class AiSettingsUiState(
     val keyDraft: String = "",
     val model: String = ProviderSettings.Default.model,
     val baseUrl: String = "",
-    /** Why the typed address would be refused, or null while it is fine. */
-    val baseUrlRefusal: EndpointRefusal? = null,
     val advancedShown: Boolean = false,
     /** True while a connection test is in flight. */
     val testing: Boolean = false,
@@ -65,7 +60,7 @@ data class AiSettingsUiState(
     val canTest: Boolean
         get() = !testing && when (settings.provider) {
             ProviderId.GEMINI -> hasKey
-            ProviderId.OPENAI_COMPATIBLE -> baseUrl.isNotBlank() && baseUrlRefusal == null
+            ProviderId.OPENAI_COMPATIBLE -> baseUrl.isNotBlank()
         }
 }
 
@@ -78,10 +73,10 @@ data class AiSettingsUiState(
  * has no field for a stored key, so "never shown again in full" is a property of
  * the type rather than a rule the screen has to remember.
  *
- * The address is validated for display but stored as typed. Refusing to store a
- * half-typed URL would fight the user mid-keystroke; what matters is that
- * [EndpointPolicy] is also consulted before a request is sent, which is the
- * check that actually protects anything.
+ * **The address is not validated at all**, deliberately — §8 was amended to say
+ * so. Whatever is typed is what gets sent. If the server answers, that is the
+ * answer; if it does not, the connection test says why in the provider's own
+ * terms rather than this app's.
  */
 @HiltViewModel
 class AiSettingsViewModel @Inject constructor(
@@ -122,7 +117,6 @@ class AiSettingsViewModel @Inject constructor(
             keyDraft = draft.key,
             model = draft.model ?: settings.model,
             baseUrl = baseUrl,
-            baseUrlRefusal = refusalFor(baseUrl, settings.allowCleartext),
             advancedShown = draft.advancedShown,
             testing = draft.testing,
             testResult = draft.testResult,
@@ -209,10 +203,6 @@ class AiSettingsViewModel @Inject constructor(
         viewModelScope.launch { providers.setRequestTimeoutSeconds(seconds) }
     }
 
-    fun onAllowCleartextChange(allowed: Boolean) {
-        viewModelScope.launch { providers.setAllowCleartext(allowed) }
-    }
-
     /**
      * §8's "Test connection".
      *
@@ -246,17 +236,5 @@ class AiSettingsViewModel @Inject constructor(
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
-
-        /**
-         * An empty field is not an error, it is a field nobody has filled in
-         * yet — so BLANK never becomes a red message under the cursor.
-         */
-        fun refusalFor(baseUrl: String, allowCleartext: Boolean): EndpointRefusal? {
-            if (baseUrl.isBlank()) return null
-            return when (val verdict = EndpointPolicy.check(baseUrl, allowCleartext)) {
-                is EndpointVerdict.Allowed -> null
-                is EndpointVerdict.Refused -> verdict.reason
-            }
-        }
     }
 }

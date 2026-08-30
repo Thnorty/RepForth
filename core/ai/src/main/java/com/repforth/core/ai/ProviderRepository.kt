@@ -66,8 +66,6 @@ class ProviderRepository @Inject constructor(
         store.setRequestTimeoutSeconds(seconds)
 
 
-    suspend fun setAllowCleartext(allowed: Boolean) = store.setAllowCleartext(allowed)
-
     /**
      * Stores a key for [provider].
      *

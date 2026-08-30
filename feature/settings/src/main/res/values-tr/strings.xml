@@ -104,16 +104,9 @@
 
     <string name="ai_base_url">Adres</string>
     <string name="ai_base_url_hint">https://sunucun/v1/</string>
-    <string name="ai_url_malformed">Bu bir web adresi değil.</string>
-    <string name="ai_url_missing_scheme">Adresi https:// ile başlat — ya da kendi ağındaki bir sunucu için http:// ile.</string>
-    <string name="ai_url_scheme">Yalnızca https:// adreslerine izin verilir.</string>
-    <string name="ai_url_cleartext">Düz http:// kapalı. Kullanmak için Gelişmiş bölümünden yerel model sunucularını aç.</string>
-    <string name="ai_url_not_local">Düz http:// yalnızca kendi ağındaki bir adres için geçerli, örneğin 192.168.1.42. İnternetteki her şey için https:// gerekir.</string>
-    <string name="ai_url_needs_address">Düz http:// için kendi ağındaki bir makinenin sayısal adresi gerekir, örneğin http://192.168.1.42:11434/v1/. İnternetteki her şey için https:// gerekir.</string>
-    <string name="ai_url_credentials">Adrese kullanıcı adı ya da parola koyma.</string>
 
     <string name="ai_advanced">Gelişmiş</string>
-    <string name="ai_advanced_sub">İstek zaman aşımı ve yerel model sunucuları.</string>
+    <string name="ai_advanced_sub">Yanıt için ne kadar bekleneceği.</string>
     <string name="ai_advanced_expanded">Açık</string>
     <string name="ai_advanced_collapsed">Kapalı</string>
     <string name="ai_timeout">İstek zaman aşımı</string>
@@ -121,8 +114,6 @@
         <item quantity="one">%1$d saniye</item>
         <item quantity="other">%1$d saniye</item>
     </plurals>
-    <string name="ai_cleartext">Yerel model sunucusuna izin ver</string>
-    <string name="ai_cleartext_sub">Ollama ve LM Studio gibi araçlar için düz http:// adresinin bu cihazdaki ya da kendi ağındaki bir model sunucusuna ulaşmasını sağlar. İnternetteki adresler bu ayar ne olursa olsun yalnızca https:// kalır.</string>
 
     <string name="ai_delete_all">Tüm sağlayıcı ayarlarını sil</string>
     <string name="ai_delete_all_sub">Sağlayıcıyı, modeli, adresi ve kayıtlı her anahtarı unutur.</string>

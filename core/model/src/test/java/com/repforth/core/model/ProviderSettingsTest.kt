@@ -65,59 +65,6 @@ class ProviderSettingsTest {
         )
     }
 
-    /**
-     * Gemini's endpoint is https, and the cleartext switch cannot touch it.
-     *
-     * Three separate things have to hold for that, so all three are asserted
-     * here rather than left to be inferred: the constant is https, the settings
-     * type refuses to substitute a stored address for it, and the policy is
-     * unaffected by the developer switch either way.
-     *
-     * The switch is for a model server on the user's own network. Nothing about
-     * turning it on may change how the app talks to a provider on the internet.
-     */
-    @Test
-    fun `a public provider is https, switch or no switch`() {
-        assertTrue(
-            "Gemini's endpoint must be https",
-            ProviderSettings.GEMINI_BASE_URL.startsWith("https://"),
-        )
-
-        val settings = ProviderSettings.Default.copy(
-            provider = ProviderId.GEMINI,
-            baseUrl = "http://not-google.example/v1/",
-            allowCleartext = true,
-        )
-        assertEquals(
-            "A stored cleartext address must not displace the fixed endpoint",
-            ProviderSettings.GEMINI_BASE_URL,
-            settings.effectiveBaseUrl,
-        )
-
-        listOf(false, true).forEach { switch ->
-            assertTrue(
-                "The endpoint must be allowed with the switch $switch, unchanged",
-                EndpointPolicy.check(settings.effectiveBaseUrl, switch)
-                    is EndpointVerdict.Allowed,
-            )
-        }
-    }
-
-    /**
-     * And the reverse: with the switch on, a public provider over http is still
-     * refused. Turning on "local model servers" is not a way to downgrade a
-     * hosted provider to cleartext.
-     */
-    @Test
-    fun `the switch cannot downgrade a hosted provider to cleartext`() {
-        val verdict = EndpointPolicy.check(
-            "http://api.openai.com/v1/",
-            allowCleartext = true,
-        )
-
-        assertTrue("$verdict", verdict is EndpointVerdict.Refused)
-    }
-
     @Test
     fun `gemini has a fixed endpoint that the stored base url cannot override`() {
         val settings = ProviderSettings.Default.copy(
@@ -150,11 +97,20 @@ class ProviderSettingsTest {
     }
 
     @Test
-    fun `a fresh install starts with no key and no cleartext`() {
+    fun `a fresh install has no address of its own`() {
         assertEquals("", ProviderSettings.Default.baseUrl)
-        assertFalse(
-            "Cleartext must be opt-in, never the starting state",
-            ProviderSettings.Default.allowCleartext,
+    }
+
+    /**
+     * Gemini's endpoint is https and fixed, which is now the only thing keeping
+     * a Gemini key off a cleartext socket — the app no longer inspects
+     * addresses at all (§8, amended). For the generic provider there is nothing
+     * equivalent, and that is the accepted consequence.
+     */
+    @Test
+    fun `gemini's own endpoint is https`() {
+        assertTrue(
+            ProviderSettings.GEMINI_BASE_URL.startsWith("https://"),
         )
     }
 

@@ -317,7 +317,15 @@ Do not depend on a vendor SDK in domain code. Direct HTTP clients make dynamic e
 - A disclosure that prompts are sent directly to the selected third party.
 - Never send the key or provider configuration to the watch.
 
-Allow only `https://` endpoints by default. A developer setting may permit cleartext `http://` for a loopback/LAN model such as Ollama or LM Studio, with a prominent warning and narrowly scoped Android network-security configuration.
+**Amended.** This section originally read: *“Allow only `https://` endpoints by default. A developer setting may permit cleartext `http://` for a loopback/LAN model such as Ollama or LM Studio, with a prominent warning and narrowly scoped Android network-security configuration.”*
+
+That is no longer the rule. **The app does not inspect the base URL the user supplies.** Whatever is typed is sent, over whatever scheme is typed, to whatever host it names. There is no allowlist, no scheme check, no private-address rule, and no developer setting — if the server answers, that is the answer. The Android network-security configuration permits cleartext unconditionally, and nothing in the app narrows it.
+
+The reason for the change is that the original rule could not express the case it named first. A network-security configuration lists hosts, not ranges, so “any address on the user’s own network” is not writable in it; enforcing the rule in Kotlin instead meant a validation layer that refused bare machine names, demanded numeric addresses, and still could not tell a Tailscale name from a public one. The friction fell entirely on the person running a local model server — the exact user the setting existed for.
+
+**The accepted cost, stated once here so it is not rediscovered later:** an API key sent to an `http://` endpoint travels in a request header in clear text, readable by anything on the path between the phone and that server, and the app does not warn about it. This is a deliberate decision by the maintainer, taken with that consequence spelled out. Anyone proposing to reinstate a check should read this paragraph first and argue against it rather than around it.
+
+Two things are unchanged and still load-bearing. Gemini’s endpoint is fixed in code and cannot be redirected by a stored address, so a Gemini key cannot be sent anywhere but Google. User-installed certificate authorities remain untrusted, so a self-signed local server is not a supported setup.
 
 ### Secure API-key storage
 

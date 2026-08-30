@@ -152,13 +152,11 @@ class ProviderRepositoryTest {
     fun `deleting everything removes both halves for every provider`() = runTest {
         ProviderId.entries.forEach { repository.setKey(it, "test-key-for-testing") }
         repository.setBaseUrl("https://api.example.com/v1/")
-        repository.setAllowCleartext(true)
 
         repository.deleteAll()
 
         assertTrue("Ciphertext left behind: ${secrets.storedIds}", secrets.storedIds.isEmpty())
         assertEquals("", repository.settings.first().baseUrl)
-        assertFalse(repository.settings.first().allowCleartext)
     }
 
     @Test

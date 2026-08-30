@@ -1,8 +1,6 @@
 package com.repforth.core.ai.http
 
 import com.repforth.core.ai.ProviderFailure
-import com.repforth.core.model.EndpointPolicy
-import com.repforth.core.model.EndpointVerdict
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
@@ -32,14 +30,15 @@ internal class HttpReply(val code: Int, val body: String)
  *
  * §8: "Do not depend on a vendor SDK in domain code. Direct HTTP clients make
  * dynamic endpoints, local model servers, and consistent cancellation/error
- * handling easier." This is that client, and the three things it centralises are
- * exactly the three that would otherwise be written twice and differently:
- * the endpoint check, the timeout, and the mapping from a failure to a category
- * the user can act on.
+ * handling easier." This is that client, and it centralises the two things that
+ * would otherwise be written twice and differently: the timeout, and the mapping
+ * from a failure to a category the user can act on.
  *
- * **The endpoint is checked here, not only in the settings screen.** A rule that
- * lives in a text field is a rule the next caller skips. This is the last place
- * before the socket, so it is the place that matters.
+ * **The address is not inspected.** §8 was amended deliberately: whatever the
+ * user typed is what gets sent, over whatever scheme they typed. There is no
+ * allowlist and no scheme check, here or anywhere else — if the server answers,
+ * that is the answer. The cost is stated in the guideline: a key sent over
+ * `http://` is readable in transit, and nothing in the app will say so.
  */
 internal class ProviderHttp(private val client: OkHttpClient) {
 
@@ -52,13 +51,7 @@ internal class ProviderHttp(private val client: OkHttpClient) {
     suspend fun send(
         request: Request,
         timeoutSeconds: Int,
-        allowCleartext: Boolean,
     ): Result<HttpReply> {
-        val verdict = EndpointPolicy.check(request.url.toString(), allowCleartext)
-        if (verdict is EndpointVerdict.Refused) {
-            return Result.failure(RefusedEndpoint(verdict.reason.name))
-        }
-
         // A per-call timeout on a shared client. `newBuilder` copies the
         // configuration but keeps the connection pool and dispatcher, so this
         // is not a new client per request — which is the usual way this goes
@@ -101,9 +94,6 @@ internal class ProviderHttp(private val client: OkHttpClient) {
     }
 }
 
-/** Thrown by [ProviderHttp.send] when this app will not talk to the address. */
-internal class RefusedEndpoint(val reason: String) : IOException("endpoint refused: $reason")
-
 /**
  * Turns a thrown failure into a category the user can act on.
  *
@@ -112,7 +102,6 @@ internal class RefusedEndpoint(val reason: String) : IOException("endpoint refus
  * signal: the app could not reach the provider.
  */
 internal fun Throwable.toProviderFailure(): ProviderFailure = when (this) {
-    is RefusedEndpoint -> ProviderFailure.ENDPOINT_REFUSED
     // InterruptedIOException covers OkHttp's own call timeout, which is not a
     // SocketTimeoutException and would otherwise fall through to NETWORK with a
     // message nobody could act on.

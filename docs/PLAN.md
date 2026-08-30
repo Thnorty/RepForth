@@ -101,13 +101,16 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 2** — provider settings, and the endpoint rule that guards them | `1113597` |
 | **Phase 2** — the two provider adapters, and a connection test that explains itself | `2eb5796` |
 | **Phase 2** — cleartext to the user's own network, guarded in code | `181e5cc` |
+| Three defects the phone found on the provider screen | `8c42019` |
+| A key only where a key is needed; a bad one named correctly | `ef43cc2` |
+| **§8 amended** — the address rule removed entirely | pending |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:model`, `core:rules`,
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-373 unit tests across 46 classes, plus fourteen instrumentation tests
+353 unit tests across 45 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
@@ -773,9 +776,48 @@ The result now carries a check or an error mark beside the sentence, from
 `RfIcons` rather than literal emoji so it takes the theme's colours and scales
 with the font.
 
-**Still not verified:** a *successful* connection has only been seen by the
-maintainer, not captured here; and no generation request has ever been made,
-because that is 2.4.
+**Verified since:** a successful connection with a real Gemini key, reported on
+the device with a tick. The failure path was confirmed here with a deliberately
+invalid key. No generation request has been made — that is 2.4.
+
+### 2.3d — The address rule was removed, and §8 amended
+
+The maintainer's decision, taken after the risk was put to them explicitly, and
+recorded here with the reasoning rather than as a diff.
+
+**The app no longer inspects the address.** `EndpointPolicy` is deleted, along
+with the cleartext switch, the scheme check, the private-address rule and every
+message that went with them. Whatever is typed is sent, over whatever scheme is
+typed. `http://laptop-tulpar:11434/v1/` now works; so does plain `http` to
+anything on the internet. The network security config permits cleartext
+unconditionally and nothing narrows it.
+
+§8 has been amended in the same change — `PROJECT_GUIDELINE.md` is the
+specification and `AGENTS.md` says it wins, so leaving the old rule there while
+the code did the opposite would have been the worst of the three options. The
+amendment states the accepted cost in the guideline itself: **an API key sent to
+an `http://` endpoint is readable in transit and the app will not warn about
+it.** Anyone who later proposes reinstating a check should argue against that
+paragraph rather than around it.
+
+The case for removal, fairly put: the original rule could not express the case
+it named first. A network-security configuration lists hosts, not ranges, so
+"any address on the user's own network" is not writable in it. Enforcing it in
+Kotlin instead produced a validation layer that refused bare machine names,
+demanded numeric addresses, and still could not tell a Tailscale name from a
+public one — with all of the friction landing on the person running a local
+model server, who was the entire reason the setting existed. Two rounds of this
+file were spent narrowing and re-widening that rule before it was dropped.
+
+Two protections survive and are not incidental: Gemini's endpoint is fixed in
+code, so a Gemini key cannot be redirected by a stored address; and
+user-installed certificate authorities stay untrusted, so a self-signed local
+server is not a supported setup.
+
+`CleartextGuardTest` became `NetworkBoundaryTest`. It can no longer claim the
+manifest is safe because the app narrows it — that check is gone — so it claims
+something smaller and true: one module reaches the network, through one file.
+That is a scope control rather than a cleartext control, and the file says so.
 
 ### 2.4 — The generation pipeline — next
 

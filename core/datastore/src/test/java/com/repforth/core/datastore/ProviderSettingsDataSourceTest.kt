@@ -8,7 +8,6 @@ import com.repforth.core.testing.FakePreferencesStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Test
 
 /**
@@ -86,7 +85,6 @@ class ProviderSettingsDataSourceTest {
         preferences.setThemeMode(ThemeMode.DARK)
         source.setProvider(ProviderId.OPENAI_COMPATIBLE)
         source.setBaseUrl("https://api.example.com/v1/")
-        source.setAllowCleartext(true)
 
         source.clear()
 
@@ -131,6 +129,5 @@ class ProviderSettingsDataSourceTest {
         }
 
         assertEquals(ProviderSettings.Default.provider, source.settings.first().provider)
-        assertFalse(source.settings.first().allowCleartext)
     }
 }

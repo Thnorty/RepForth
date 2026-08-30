@@ -41,6 +41,12 @@ enum class ProviderId(
  * endpoint is fixed, and §8 says the field is not even shown for it — but the
  * value is still stored per provider so that switching to the generic provider
  * and back does not silently discard what the user typed.
+ *
+ * **Nothing here validates the address.** §8 was amended for this: the app does
+ * not inspect what the user types, and `http://` to anywhere is permitted. The
+ * consequence is stated once in the guideline and not re-litigated in code — an
+ * API key sent over `http://` is readable in transit, and the app will not warn
+ * about it.
  */
 data class ProviderSettings(
     val provider: ProviderId,
@@ -49,12 +55,6 @@ data class ProviderSettings(
     /** Only meaningful for [ProviderId.OPENAI_COMPATIBLE]; blank means unset. */
     val baseUrl: String,
     val requestTimeoutSeconds: Int,
-    /**
-     * Permits `http://` to a loopback or private address (§8's developer
-     * setting). Off by default, and [EndpointPolicy] still refuses cleartext to
-     * anywhere that is not local even when this is on.
-     */
-    val allowCleartext: Boolean,
 ) {
     /** The base URL actually used, which is fixed for Gemini. */
     val effectiveBaseUrl: String
@@ -91,7 +91,6 @@ data class ProviderSettings(
             model = DEFAULT_GEMINI_MODEL,
             baseUrl = "",
             requestTimeoutSeconds = DEFAULT_TIMEOUT_SECONDS,
-            allowCleartext = false,
         )
 
         /** The stock model id for a provider, used when the field is cleared. */

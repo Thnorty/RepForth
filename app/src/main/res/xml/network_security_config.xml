@@ -1,41 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cleartext, and where the rule that limits it actually lives (§8).
+  Cleartext is permitted, and nothing narrows it.
 
-  §8 allows plain http for a local model server such as Ollama or LM Studio,
-  "with a prominent warning and narrowly scoped Android network-security
-  configuration". The warning is on the settings screen. The narrow scope is
-  NOT here, and it cannot be:
+  §8 originally required https-only with a developer setting for a local model
+  server. That was amended: the app does not inspect the address the user
+  supplies, on the grounds that if the server answers, that is the answer. There
+  is no EndpointPolicy any more, and no scheme check anywhere.
 
-  This file lists hosts. It has no way to express "any address on the user's own
-  network", and the user's LAN address — 192.168.1.42, or whatever their router
-  handed out — is not knowable when the app is built. An allowlist of literal
-  hosts would mean a user running Ollama on their desktop simply cannot reach
-  it, which is the case §8 names first.
+  The cost, recorded here because this file is where someone will look: an API
+  key sent to an `http://` endpoint is readable by anything on the path between
+  the phone and that server, and the app will not say so.
 
-  So the platform permits cleartext and EndpointPolicy decides. It refuses
-  http:// unless the user has switched it on AND the address is a numeric
-  address on a private network. A public host over http is refused whatever this
-  file says.
+  What is still deliberate is the trust anchors below. User-installed
+  certificates are not trusted — the default above API 24, restated so that a
+  later edit has to remove a line rather than forget one. Without it, a
+  self-signed local server would become a supported setup, which is the other
+  way people ask for LAN support and a considerably worse one.
 
-  That moves a platform guarantee into application code, which is only safe if
-  the application code is the only door. CleartextGuardTest keeps it that way:
-  exactly one module depends on an HTTP client, exactly one file makes calls
-  with it, and that file consults EndpointPolicy before every request. If any of
-  those three stops being true, this file has quietly become the app's whole
-  cleartext policy — and it does not have one.
+  NetworkBoundaryTest asserts this file still permits cleartext, so that
+  reversing the decision fails a test rather than quietly breaking a local
+  model server on the user's own network.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
-            <!--
-              System CAs only. User-installed certificates are deliberately not
-              trusted: that is the default above API 24, and restating it here
-              means a later edit to this file has to remove a line rather than
-              forget one. It also keeps a self-signed local server from being a
-              supported setup, which would be the other way people ask for LAN
-              support and a much worse one.
-            -->
             <certificates src="system" />
         </trust-anchors>
     </base-config>
