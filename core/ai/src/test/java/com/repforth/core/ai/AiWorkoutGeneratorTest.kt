@@ -13,7 +13,6 @@ import com.repforth.core.model.ProviderId
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 import com.repforth.core.rules.GenerationRequest
-import com.repforth.core.rules.RulesEngine
 import com.repforth.core.testing.FakePreferencesStore
 import com.repforth.core.testing.InMemorySecretStore
 import kotlinx.coroutines.test.runTest
@@ -34,7 +33,6 @@ class AiWorkoutGeneratorTest {
             request = request(targetMuscles = setOf(Muscle.PECTORALS)),
             locale = Language.TURKISH,
             candidates = listOf(candidate("row", Muscle.LATS), candidate("press", Muscle.PECTORALS)),
-            planName = "Test plan",
         ) as AiWorkoutGenerationOutcome.Provider
 
         assertEquals(1, outcome.attempts)
@@ -55,7 +53,6 @@ class AiWorkoutGeneratorTest {
             request(),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
-            "Test plan",
         ) as AiWorkoutGenerationOutcome.Provider
 
         assertEquals(2, outcome.attempts)
@@ -83,7 +80,6 @@ class AiWorkoutGeneratorTest {
             request(),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
-            "Test plan",
         ) as AiWorkoutGenerationOutcome.Provider
 
         assertEquals(2, outcome.attempts)
@@ -91,31 +87,26 @@ class AiWorkoutGeneratorTest {
     }
 
     @Test
-    fun `a second invalid answer falls back to the deterministic rules result`() = runTest {
+    fun `a second invalid answer produces failure outcome`() = runTest {
         val invalid = valid("not-offered")
         val provider = SequencedProvider(invalid, invalid)
         val harness = harness(provider)
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
-        val request = request(seed = 42)
+        val request = request()
         val candidates = listOf(candidate("press", Muscle.PECTORALS))
 
         val outcome = harness.generator.generate(
             request,
             Language.ENGLISH,
             candidates,
-            "Test plan",
-        ) as AiWorkoutGenerationOutcome.Rules
+        ) as AiWorkoutGenerationOutcome.Failure
 
-        assertEquals(AiFallbackReason.INVALID_RESPONSE, outcome.reason)
+        assertEquals(AiGenerationFailureReason.INVALID_RESPONSE, outcome.reason)
         assertEquals(2, outcome.attempts)
-        assertEquals(
-            RulesEngine().generate(request, candidates, "Test plan"),
-            outcome.generation,
-        )
     }
 
     @Test
-    fun `format failure after repair becomes invalid-response fallback`() = runTest {
+    fun `format failure after repair becomes invalid-response failure`() = runTest {
         val provider = SequencedProvider(
             ProviderGenerationResult.Failed(ProviderFailure.FORMAT),
             ProviderGenerationResult.Failed(ProviderFailure.FORMAT),
@@ -127,16 +118,15 @@ class AiWorkoutGeneratorTest {
             request(),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
-            "Test plan",
-        ) as AiWorkoutGenerationOutcome.Rules
+        ) as AiWorkoutGenerationOutcome.Failure
 
-        assertEquals(AiFallbackReason.INVALID_RESPONSE, outcome.reason)
+        assertEquals(AiGenerationFailureReason.INVALID_RESPONSE, outcome.reason)
         assertEquals(ProviderFailure.FORMAT, outcome.providerFailure)
         assertEquals(2, outcome.attempts)
     }
 
     @Test
-    fun `actionable provider failures fall back immediately without a billable retry`() = runTest {
+    fun `actionable provider failures fail immediately without a billable retry`() = runTest {
         ProviderFailure.entries.filterNot { it == ProviderFailure.FORMAT }.forEach { failure ->
             val provider = SequencedProvider(ProviderGenerationResult.Failed(failure))
             val harness = harness(provider)
@@ -146,18 +136,17 @@ class AiWorkoutGeneratorTest {
                 request(),
                 Language.ENGLISH,
                 listOf(candidate("press", Muscle.PECTORALS)),
-                "Test plan",
-            ) as AiWorkoutGenerationOutcome.Rules
+            ) as AiWorkoutGenerationOutcome.Failure
 
             assertEquals(failure, outcome.providerFailure)
-            assertEquals(AiFallbackReason.PROVIDER_FAILURE, outcome.reason)
+            assertEquals(AiGenerationFailureReason.PROVIDER_FAILURE, outcome.reason)
             assertEquals(1, outcome.attempts)
             assertEquals(1, provider.calls.size)
         }
     }
 
     @Test
-    fun `missing key falls back before an adapter is called`() = runTest {
+    fun `missing key fails before an adapter is called`() = runTest {
         val provider = SequencedProvider(valid("press"))
         val harness = harness(provider)
 
@@ -165,16 +154,15 @@ class AiWorkoutGeneratorTest {
             request(),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
-            "Test plan",
-        ) as AiWorkoutGenerationOutcome.Rules
+        ) as AiWorkoutGenerationOutcome.Failure
 
-        assertEquals(AiFallbackReason.NO_PROVIDER_CONFIGURATION, outcome.reason)
+        assertEquals(AiGenerationFailureReason.NO_PROVIDER_CONFIGURATION, outcome.reason)
         assertEquals(0, outcome.attempts)
         assertTrue(provider.calls.isEmpty())
     }
 
     @Test
-    fun `missing adapter is a local fallback rather than an exception`() = runTest {
+    fun `missing adapter is a failure outcome rather than an exception`() = runTest {
         val harness = harness(provider = null)
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
 
@@ -182,10 +170,9 @@ class AiWorkoutGeneratorTest {
             request(),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
-            "Test plan",
-        ) as AiWorkoutGenerationOutcome.Rules
+        ) as AiWorkoutGenerationOutcome.Failure
 
-        assertEquals(AiFallbackReason.NO_PROVIDER_ADAPTER, outcome.reason)
+        assertEquals(AiGenerationFailureReason.NO_PROVIDER_ADAPTER, outcome.reason)
         assertEquals(0, outcome.attempts)
     }
 
@@ -198,13 +185,11 @@ class AiWorkoutGeneratorTest {
             request(targetMuscles = setOf(Muscle.PECTORALS)),
             Language.ENGLISH,
             listOf(candidate("row", Muscle.LATS)),
-            "Test plan",
-        ) as AiWorkoutGenerationOutcome.Rules
+        ) as AiWorkoutGenerationOutcome.Failure
 
-        assertEquals(AiFallbackReason.NO_ELIGIBLE_CANDIDATES, outcome.reason)
+        assertEquals(AiGenerationFailureReason.NO_ELIGIBLE_CANDIDATES, outcome.reason)
         assertEquals(0, outcome.attempts)
         assertTrue(provider.calls.isEmpty())
-        assertNull(outcome.generation.plan)
     }
 
     private fun harness(provider: AiProvider?): Harness {
@@ -223,7 +208,6 @@ class AiWorkoutGeneratorTest {
 
     private fun request(
         targetMuscles: Set<Muscle> = setOf(Muscle.PECTORALS),
-        seed: Long = 0,
     ) = GenerationRequest(
         profile = UserProfile(
             id = "private-profile",
@@ -236,7 +220,6 @@ class AiWorkoutGeneratorTest {
             exclusions = emptySet(),
         ),
         targetMuscles = targetMuscles,
-        seed = seed,
     )
 
     private fun candidate(id: String, muscle: Muscle) = ExerciseCandidate(

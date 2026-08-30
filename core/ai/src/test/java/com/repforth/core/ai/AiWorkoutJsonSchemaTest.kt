@@ -31,6 +31,7 @@ class AiWorkoutJsonSchemaTest {
         assertRange(fields.getValue("sets").jsonObject, WorkoutLimits.sets)
         assertRange(fields.getValue("rest_seconds").jsonObject, WorkoutLimits.restSeconds)
         assertRange(fields.getValue("duration_seconds").nullableValue(), WorkoutLimits.durationSeconds)
+        assertDoubleRange(fields.getValue("weight_kg").nullableValue(), WorkoutLimits.weightKg)
 
         assertRange(fields.getValue("repetitions").nullableValue(), WorkoutLimits.reps)
     }
@@ -65,6 +66,11 @@ class AiWorkoutJsonSchemaTest {
         assertEquals(range.last, schema.int("maximum"))
     }
 
+    private fun assertDoubleRange(schema: JsonObject, range: ClosedFloatingPointRange<Double>) {
+        assertEquals(range.start, schema.double("minimum"), 0.001)
+        assertEquals(range.endInclusive, schema.double("maximum"), 0.001)
+    }
+
     private fun rootProperties() = AiWorkoutJsonSchema.value.properties()
 
     private fun JsonObject.properties() = getValue("properties").jsonObject
@@ -73,4 +79,6 @@ class AiWorkoutJsonSchemaTest {
         jsonObject.getValue("anyOf").jsonArray.first().jsonObject
 
     private fun JsonObject.int(name: String) = getValue(name).jsonPrimitive.content.toInt()
+
+    private fun JsonObject.double(name: String) = getValue(name).jsonPrimitive.content.toDouble()
 }

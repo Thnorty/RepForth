@@ -37,7 +37,7 @@ enum class PlanSource {
     /** Built by hand in the workout builder. */
     MANUAL,
 
-    /** Produced by the rules engine, with no provider involved. */
+    /** Legacy origin retained so plans saved before local generation was removed still load. */
     RULES,
 
     /** Produced from an AI request, then validated against the same rules. */

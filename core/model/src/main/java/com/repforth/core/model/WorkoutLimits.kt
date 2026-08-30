@@ -12,6 +12,7 @@ object WorkoutLimits {
     val reps = 1..100
     val durationSeconds = 5..3_600
     val restSeconds = 0..600
+    val weightKg = 0.0..500.0
 
     const val maxExercises = 10
 

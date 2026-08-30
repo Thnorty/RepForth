@@ -24,6 +24,7 @@ enum class AiWorkoutIssue {
     DURATION_OUT_OF_RANGE,
     TARGET_TYPE_MISMATCH,
     REST_OUT_OF_RANGE,
+    WEIGHT_OUT_OF_RANGE,
     RATIONALE_MISSING,
 }
 
@@ -153,6 +154,10 @@ class AiWorkoutValidator(
             if (exercise.restSeconds !in WorkoutLimits.restSeconds) {
                 violations += AiWorkoutContractViolation(AiWorkoutIssue.REST_OUT_OF_RANGE, id)
             }
+            val weight = exercise.weightKg
+            if (weight != null && weight !in WorkoutLimits.weightKg) {
+                violations += AiWorkoutContractViolation(AiWorkoutIssue.WEIGHT_OUT_OF_RANGE, id)
+            }
 
             val repetitions = exercise.repetitions
             val duration = exercise.durationSeconds
@@ -226,10 +231,12 @@ private fun AiWorkoutResponse.toValidationPlan() = WorkoutTemplate(
                 ExerciseTarget.Reps(
                     sets = exercise.sets,
                     reps = repetitions,
+                    weightKg = exercise.weightKg,
                 )
             } ?: ExerciseTarget.Duration(
                 sets = exercise.sets,
                 durationMs = requireNotNull(exercise.durationSeconds) * 1_000L,
+                weightKg = exercise.weightKg,
             ),
             restMs = exercise.restSeconds * 1_000L,
         )

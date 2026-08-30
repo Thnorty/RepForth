@@ -43,8 +43,9 @@ configure a provider and supply your own key, then and only then:
   the database, in ordinary preferences, in logs, in exports, in backups, or in
   any message to the watch. That is a requirement with tests attached, not an
   aspiration.
-- The app must remain fully useful with no provider configured. Rules-only plan
-  generation is a requirement, not a degraded fallback.
+- The manual builder, sessions, history, and progress remain fully useful with
+  no provider configured. Coach generation requires the provider you selected;
+  a provider failure never creates a substitute plan locally.
 
 **Phase 3 — media.** In the `licensed` flavour only, images are fetched from a
 pinned GitHub commit when first shown, and cached on the device. The default

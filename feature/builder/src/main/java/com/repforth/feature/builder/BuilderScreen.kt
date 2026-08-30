@@ -44,8 +44,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.repforth.core.ai.AiFallbackReason
-import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
@@ -114,6 +112,7 @@ fun BuilderRoute(
             onRegionToggled = viewModel::onCoachRegionToggled,
             onGenerate = { name -> viewModel.onGenerate(name, language) },
             onCancelGenerate = viewModel::onCancelGenerate,
+            onDismissError = viewModel::onDismissCoachError,
             onClose = viewModel::onCoachClose,
             modifier = modifier,
         )
@@ -123,7 +122,6 @@ fun BuilderRoute(
             onNameChange = viewModel::onNameChange,
             onAddExercise = viewModel::onPickerOpen,
             onCoach = viewModel::onCoachOpen,
-            onRetryCoach = { viewModel.onGenerate(defaultCoachName, language) },
             onRemove = viewModel::onRemove,
             onMove = viewModel::onMove,
             onSetsChange = viewModel::onSetsChange,
@@ -166,7 +164,6 @@ internal fun BuilderScreen(
     onNameChange: (String) -> Unit,
     onAddExercise: () -> Unit,
     onCoach: () -> Unit,
-    onRetryCoach: () -> Unit,
     onRemove: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
     onSetsChange: (Int, Int) -> Unit,
@@ -200,7 +197,7 @@ internal fun BuilderScreen(
 
             state.coachNotice?.let { notice ->
                 item(key = "coach_notice") {
-                    CoachNoticeCard(notice = notice, onRetry = onRetryCoach)
+                    CoachNoticeCard(notice = notice)
                 }
             }
 
@@ -246,10 +243,6 @@ internal fun BuilderScreen(
             }
 
             item(key = "coach") {
-                // Offered on the same footing as adding one by hand, not as a
-                // banner above it. §3 makes the rules engine the default rather
-                // than a fallback, and §12 puts it inside the builder — so it
-                // reads as the other way to fill this list, which is what it is.
                 OutlinedButton(
                     onClick = onCoach,
                     modifier = Modifier
@@ -268,7 +261,6 @@ internal fun BuilderScreen(
 @Composable
 private fun CoachNoticeCard(
     notice: CoachNotice,
-    onRetry: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -276,44 +268,15 @@ private fun CoachNoticeCard(
             verticalArrangement = Arrangement.spacedBy(Space.s2),
         ) {
             Text(
-                text = when (notice) {
-                    is CoachNotice.Provider -> stringResource(
-                        R.string.coach_provider_rationale,
-                        notice.rationale,
-                    )
-                    is CoachNotice.Fallback -> stringResource(notice.messageRes)
-                },
+                text = stringResource(
+                    R.string.coach_provider_rationale,
+                    notice.rationale,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            if (notice is CoachNotice.Fallback && notice.canRetry) {
-                OutlinedButton(
-                    onClick = onRetry,
-                    modifier = Modifier.heightIn(min = Target.min),
-                ) {
-                    Text(stringResource(R.string.coach_retry))
-                }
-            }
         }
     }
 }
-
-private val CoachNotice.Fallback.messageRes: Int
-    get() = when (reason) {
-        AiFallbackReason.NO_PROVIDER_CONFIGURATION -> R.string.coach_local_no_configuration
-        AiFallbackReason.NO_PROVIDER_ADAPTER -> R.string.coach_local_no_adapter
-        AiFallbackReason.INVALID_RESPONSE -> R.string.coach_local_invalid_response
-        AiFallbackReason.NO_ELIGIBLE_CANDIDATES -> R.string.coach_local_no_candidates
-        AiFallbackReason.PROVIDER_FAILURE -> when (providerFailure) {
-            ProviderFailure.AUTHENTICATION -> R.string.coach_local_authentication
-            ProviderFailure.MODEL_NOT_FOUND -> R.string.coach_local_model_not_found
-            ProviderFailure.QUOTA -> R.string.coach_local_quota
-            ProviderFailure.NETWORK -> R.string.coach_local_network
-            ProviderFailure.FORMAT -> R.string.coach_local_invalid_response
-            ProviderFailure.ENDPOINT_REFUSED -> R.string.coach_local_endpoint
-            ProviderFailure.SERVER -> R.string.coach_local_server
-            null -> R.string.coach_local_provider_failure
-        }
-    }
 
 /**
  * The estimate and the way out, pinned below the list.

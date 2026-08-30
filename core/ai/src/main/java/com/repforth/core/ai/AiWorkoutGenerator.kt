@@ -3,14 +3,13 @@ package com.repforth.core.ai
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.Language
 import com.repforth.core.model.ProviderId
-import com.repforth.core.rules.GenerationOutcome
 import com.repforth.core.rules.GenerationRequest
 import com.repforth.core.rules.RulesEngine
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
 
-enum class AiFallbackReason {
+enum class AiGenerationFailureReason {
     NO_ELIGIBLE_CANDIDATES,
     NO_PROVIDER_CONFIGURATION,
     NO_PROVIDER_ADAPTER,
@@ -18,16 +17,15 @@ enum class AiFallbackReason {
     INVALID_RESPONSE,
 }
 
-/** A provider result that passed every local check, or the deterministic path. */
+/** A provider result that passed every local check, or a failure outcome. */
 sealed interface AiWorkoutGenerationOutcome {
     data class Provider(
         val response: AiWorkoutResponse,
         val attempts: Int,
     ) : AiWorkoutGenerationOutcome
 
-    data class Rules(
-        val generation: GenerationOutcome,
-        val reason: AiFallbackReason,
+    data class Failure(
+        val reason: AiGenerationFailureReason,
         val attempts: Int,
         val providerFailure: ProviderFailure? = null,
     ) : AiWorkoutGenerationOutcome
@@ -45,7 +43,6 @@ interface AiWorkoutGenerationService {
         request: GenerationRequest,
         locale: Language,
         candidates: List<ExerciseCandidate>,
-        planName: String,
     ): AiWorkoutGenerationOutcome
 }
 
@@ -55,8 +52,7 @@ interface AiWorkoutGenerationService {
  * Provider configuration is resolved for this call and never retained. The
  * candidate catalog is reduced by [RulesEngine] before it crosses the network;
  * provider output then comes back through [AiWorkoutValidator]. Only malformed
- * or locally invalid output gets the single repair attempt. Every other failure
- * goes straight to the deterministic generator, so AI is never a requirement.
+ * or locally invalid output gets the single repair attempt.
  */
 @Singleton
 class AiWorkoutGenerator @Inject constructor(
@@ -70,34 +66,24 @@ class AiWorkoutGenerator @Inject constructor(
         request: GenerationRequest,
         locale: Language,
         candidates: List<ExerciseCandidate>,
-        planName: String,
     ): AiWorkoutGenerationOutcome {
         val filtered = rules.filterCandidates(request, candidates)
         if (filtered.eligibleCandidates.isEmpty()) {
-            return fallback(
-                request,
-                candidates,
-                planName,
-                AiFallbackReason.NO_ELIGIBLE_CANDIDATES,
+            return AiWorkoutGenerationOutcome.Failure(
+                reason = AiGenerationFailureReason.NO_ELIGIBLE_CANDIDATES,
                 attempts = 0,
             )
         }
 
         val settings = repository.settings.first()
         val config = repository.configFor(settings)
-            ?: return fallback(
-                request,
-                candidates,
-                planName,
-                AiFallbackReason.NO_PROVIDER_CONFIGURATION,
+            ?: return AiWorkoutGenerationOutcome.Failure(
+                reason = AiGenerationFailureReason.NO_PROVIDER_CONFIGURATION,
                 attempts = 0,
             )
         val provider = providers[config.provider]
-            ?: return fallback(
-                request,
-                candidates,
-                planName,
-                AiFallbackReason.NO_PROVIDER_ADAPTER,
+            ?: return AiWorkoutGenerationOutcome.Failure(
+                reason = AiGenerationFailureReason.NO_PROVIDER_ADAPTER,
                 attempts = 0,
             )
         val providerRequest = AiWorkoutRequest.from(
@@ -127,8 +113,6 @@ class AiWorkoutGenerator @Inject constructor(
                         retryFeedback = AiWorkoutRetryFeedback.from(validation),
                         request = request,
                         eligibleCandidates = filtered.eligibleCandidates,
-                        allCandidates = candidates,
-                        planName = planName,
                     )
                 }
             }
@@ -142,15 +126,10 @@ class AiWorkoutGenerator @Inject constructor(
                         retryFeedback = AiWorkoutRetryFeedback.Malformed,
                         request = request,
                         eligibleCandidates = filtered.eligibleCandidates,
-                        allCandidates = candidates,
-                        planName = planName,
                     )
                 } else {
-                    fallback(
-                        request,
-                        candidates,
-                        planName,
-                        AiFallbackReason.PROVIDER_FAILURE,
+                    AiWorkoutGenerationOutcome.Failure(
+                        reason = AiGenerationFailureReason.PROVIDER_FAILURE,
                         attempts = 1,
                         providerFailure = first.failure,
                     )
@@ -166,8 +145,6 @@ class AiWorkoutGenerator @Inject constructor(
         retryFeedback: AiWorkoutRetryFeedback,
         request: GenerationRequest,
         eligibleCandidates: List<ExerciseCandidate>,
-        allCandidates: List<ExerciseCandidate>,
-        planName: String,
     ): AiWorkoutGenerationOutcome {
         return when (val second = provider.generateWorkout(config, providerRequest, retryFeedback)) {
             is ProviderGenerationResult.Ok -> {
@@ -178,42 +155,22 @@ class AiWorkoutGenerator @Inject constructor(
                         attempts = 2,
                     )
                 } else {
-                    fallback(
-                        request,
-                        allCandidates,
-                        planName,
-                        AiFallbackReason.INVALID_RESPONSE,
+                    AiWorkoutGenerationOutcome.Failure(
+                        reason = AiGenerationFailureReason.INVALID_RESPONSE,
                         attempts = 2,
                     )
                 }
             }
 
-            is ProviderGenerationResult.Failed -> fallback(
-                request,
-                allCandidates,
-                planName,
+            is ProviderGenerationResult.Failed -> AiWorkoutGenerationOutcome.Failure(
                 reason = if (second.failure == ProviderFailure.FORMAT) {
-                    AiFallbackReason.INVALID_RESPONSE
+                    AiGenerationFailureReason.INVALID_RESPONSE
                 } else {
-                    AiFallbackReason.PROVIDER_FAILURE
+                    AiGenerationFailureReason.PROVIDER_FAILURE
                 },
                 attempts = 2,
                 providerFailure = second.failure,
             )
         }
     }
-
-    private fun fallback(
-        request: GenerationRequest,
-        candidates: List<ExerciseCandidate>,
-        planName: String,
-        reason: AiFallbackReason,
-        attempts: Int,
-        providerFailure: ProviderFailure? = null,
-    ) = AiWorkoutGenerationOutcome.Rules(
-        generation = rules.generate(request, candidates, planName),
-        reason = reason,
-        attempts = attempts,
-        providerFailure = providerFailure,
-    )
 }

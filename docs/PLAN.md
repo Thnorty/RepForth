@@ -21,7 +21,7 @@ which decisions are closed so they are not reopened.
 | Phase | Guideline | State |
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
-| 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, and Coach |
+| 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **In progress.** 3.1 Media Downloader & Disk Cache done |
 | 4 — Wear remote | §19 | Not started |
@@ -844,7 +844,7 @@ manifest is safe because the app narrows it — that check is gone — so it cla
 something smaller and true: one module reaches the network, through one file.
 That is a scope control rather than a cleartext control, and the file says so.
 
-### 2.4 — The generation pipeline — **complete in code; live verification pending**
+### 2.4 — The generation pipeline — **complete and live-provider verified**
 
 The first boundary is built: versioned, serializable workout request and response
 contracts; a compact request mapper that sends constraints and candidate metadata
@@ -876,23 +876,13 @@ response, quota mapping, unusable addresses, and the fake provider. The
 schema-to-`WorkoutLimits` guard was watched failing by drifting `maxItems` and
 then restored.
 
-The orchestration boundary is complete. `RulesEngine.filterCandidates` is now
-the one deterministic candidate-level hard-rule pass used before either local
-or provider generation, so the provider never sees an excluded, unavailable or
-off-target exercise. `AiWorkoutGenerator` resolves provider configuration for
-one call, validates the first answer, and permits one repair attempt only for a
-malformed or locally invalid response. That attempt receives compact typed error
-codes and exercise ids encoded as JSON; it never receives rule-detail strings or
-raw provider output. Missing configuration, a missing adapter, every actionable
-provider failure, an empty eligible set, and a second invalid answer all return
-the existing deterministic `GenerationOutcome` with a typed fallback reason.
-
-Eleven further unit tests cover all five fallback reasons, every provider failure
-category, stable local filtering, first-attempt success, both repair paths, typed
-feedback transport and deterministic fallback. The malformed-output retry test
-was watched failing after the retry condition was deliberately changed, then the
-condition was restored. The full placeholder assembly, 393-test suite and lint
-all pass after restoration.
+The orchestration boundary is complete. `RulesEngine.filterCandidates` is the
+single candidate-level hard-rule pass before provider generation, so the
+provider never sees an excluded, unavailable or off-target exercise.
+`AiWorkoutGenerator` resolves provider configuration for one call, validates the
+first answer, and permits one repair attempt only for malformed or locally
+invalid output. That attempt receives compact typed error codes and exercise ids
+encoded as JSON; it never receives rule-detail strings or raw provider output.
 
 **The response contract now uses one exact repetition target.** Version 1 copied
 the guideline's original repetition-range wording even though the builder and
@@ -900,42 +890,39 @@ saved-plan model both hold one number. Collapsing `8–12` into a midpoint would
 discard provider output invisibly, so the specification was corrected and schema
 version 2 requires the provider to choose the editable target itself.
 
-The builder now consumes the orchestration boundary rather than calling
-`RulesEngine` directly. It passes the active app language, maps a validated
-provider response into the same editable draft cards as a manual or rules plan,
-and preserves the exact repetition or duration target without another clamp or
-conversion. Saving retains `AI` or `RULES` as the plan's origin; the provider's
-localized rationale is shown above the cards.
+The builder consumes that boundary, passes the active app language, maps a
+validated response into editable draft cards, and preserves exact repetition,
+duration, and starting-weight targets. The provider's localized rationale is
+shown above the cards.
 
-Every deterministic fallback is visible in English and Turkish. Missing
-configuration explains that the plan was built locally; authentication, model,
-quota, network, endpoint, server and invalid-response failures each name the
-actionable category. Provider failures and a still-invalid repaired response
-offer a direct retry while retaining the selected muscles. The UI depends on a
-small generation interface, so these paths are tested without HTTP or encrypted
-storage.
+**The local plan generator and every automatic fallback have now been removed by
+product decision.** `core:rules` still filters candidates and validates provider
+answers locally, but it no longer arranges or prescribes a workout. Missing
+configuration, timeout, network, authentication, quota, adapter, empty-candidate,
+and invalid-response outcomes leave the builder untouched. A timeout has its own
+typed category and popup; the popup retains muscle selections and offers Retry.
+`PlanSource.RULES` remains only so plans saved by earlier development builds can
+still be read.
 
-Two builder tests cover exact repetition and duration projection, locale,
-rationale, source persistence, actionable network fallback and retry-state
-preservation. The exact-target test was watched failing after the projection was
-deliberately changed from `12` to `13`, then restored. Placeholder assembly, all
-393 unit tests and lint pass after restoration.
-
-Remaining verification:
-
-1. Run generation against a configured live provider on a device. No generation
-   request has reached a live provider yet.
+**Live evidence:** the configured provider generated a workout successfully on
+the Xiaomi Android 11/API 30 device, confirmed by the maintainer. That same run
+exposed the faint loading treatment that motivated the UI change below.
 
 ### 2.5 — Coach UI — **complete**
 
-Muscle-specific generation now flows through the optional provider and arrives in
-the builder as the same editable draft the rules engine produces. During generation,
-the selector remains visible in a read-only locked state with dimmed controls while
-the action button transitions to an animated breathing and electric lime glowing state
-with an in-button spinner and active status text ("Building workout…"). Back gestures
-and close actions are guarded: in Coach during active generation, a confirmation dialog
-allows cleanly cancelling and exiting; in the Builder, unsaved draft changes trigger
-a discard confirmation dialog.
+Muscle-specific generation flows through the configured provider and arrives as
+an editable draft. During generation, the selector and action button give way to
+a high-contrast primary-container card: an 80dp indeterminate ring around the
+Coach icon, a clear heading, and explanatory text. It uses the system-respecting
+Material progress animation rather than a custom glow, and the card is announced
+as a polite live region. Back gestures and close actions remain guarded by the
+cancel-generation confirmation. Provider errors appear in a popup; retryable
+errors keep the request intact and provide Retry, while configuration errors give
+one clear dismissal action.
+
+Device verification remains for the redesigned loading card and timeout popup.
+Placeholder assembly, all 409 unit tests, and lint pass for the complete current
+worktree after the local generator removal.
 
 ---
 

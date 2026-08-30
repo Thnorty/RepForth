@@ -74,6 +74,17 @@ class AiWorkoutContractTest {
     }
 
     @Test
+    fun `structured response with weight_kg decodes`() {
+        val result = AiWorkoutCodec.decodeResponse(
+            """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":10,"weight_kg":25.0,"rest_seconds":60}],"rationale":"Balanced volume"}""",
+        )
+
+        val response = (result as AiWorkoutDecodeResult.Ok).response
+        assertEquals("a", response.exercises.single().exerciseId)
+        assertEquals(25.0, response.exercises.single().weightKg ?: 0.0, 0.001)
+    }
+
+    @Test
     fun `version two rejects the old repetition range shape`() {
         val result = AiWorkoutCodec.decodeResponse(
             """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":{"minimum":8,"maximum":12},"rest_seconds":60}],"rationale":"Balanced volume"}""",

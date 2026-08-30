@@ -23,9 +23,8 @@ dependencies {
     // The one door to plans and the profile.
     implementation(project(":core:user-data"))
 
-    // Coach's deterministic path (§3): the builder is where every generated
-    // plan lands, because §12 makes Coach a mode inside the builder rather than
-    // a screen of its own.
+    // Coach's local constraint boundary: provider candidates and answers are
+    // filtered and validated here before editable rows reach the builder.
     implementation(project(":core:rules"))
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -149,12 +149,4 @@ class RulesValidationTest {
         assertTrue("expected at least three, got $violations", violations.size >= 3)
     }
 
-    @Test
-    fun `what the engine generates always passes its own validation`() {
-        // The property that makes §8's reuse meaningful. If generate and validate
-        // could disagree, "validated against the rules engine" would mean nothing.
-        val request = GenerationRequest(profile(), setOf(Muscle.PECTORALS, Muscle.BICEPS), seed = 9)
-        val generated = engine.generate(request, catalog.values.toList(), "generated")
-        assertEquals(emptyList<Violation>(), engine.validate(generated.plan!!, request, catalog))
-    }
 }

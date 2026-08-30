@@ -455,10 +455,10 @@ private fun ProviderTestResult.messageRes(): Int = when (this) {
         ProviderFailure.AUTHENTICATION -> R.string.ai_test_auth
         ProviderFailure.MODEL_NOT_FOUND -> R.string.ai_test_model
         ProviderFailure.QUOTA -> R.string.ai_test_quota
+        ProviderFailure.TIMEOUT -> R.string.ai_test_network
         ProviderFailure.NETWORK -> R.string.ai_test_network
         ProviderFailure.FORMAT -> R.string.ai_test_format
         ProviderFailure.ENDPOINT_REFUSED -> R.string.ai_test_endpoint
         ProviderFailure.SERVER -> R.string.ai_test_server
     }
 }
-

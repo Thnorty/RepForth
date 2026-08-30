@@ -1,7 +1,7 @@
 package com.repforth.feature.builder
 
 import com.repforth.core.ai.AI_WORKOUT_SCHEMA_VERSION
-import com.repforth.core.ai.AiFallbackReason
+import com.repforth.core.ai.AiGenerationFailureReason
 import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
@@ -12,7 +12,6 @@ import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.Exercise
-import com.repforth.core.common.time.FakeTimeSource
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.allMuscles
 import com.repforth.core.model.synonyms
@@ -28,7 +27,6 @@ import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.rules.GenerationRequest
-import com.repforth.core.rules.RulesEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -72,7 +70,7 @@ class BuilderViewModelTest {
         catalog = FakeExercises()
         profiles = FakeProfiles()
         generator = FakeWorkoutGenerator()
-        viewModel = BuilderViewModel(templates, catalog, profiles, FakeTimeSource(), generator)
+        viewModel = BuilderViewModel(templates, catalog, profiles, generator)
     }
 
     @After
@@ -101,22 +99,19 @@ class BuilderViewModelTest {
         )
 
     @Test
-    fun `a generated plan arrives as editable drafts`() = runTest(dispatcher) {
-        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS), candidate("b", Muscle.LATS))
+    fun `missing provider configuration leaves the builder unchanged and explains setup`() =
+        runTest(dispatcher) {
+            catalog.catalog = listOf(candidate("a", Muscle.PECTORALS), candidate("b", Muscle.LATS))
+            viewModel.onCoachOpen()
 
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
-        advanceUntilIdle()
+            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            advanceUntilIdle()
 
-        assertTrue("Coach produced rows", state.exercises.isNotEmpty())
-        assertNull(state.coachFailure)
-        assertFalse("The sheet closes on success", state.coaching)
-        assertFalse(state.generating)
-        assertEquals(PlanSource.RULES, state.source)
-        assertEquals(
-            AiFallbackReason.NO_PROVIDER_CONFIGURATION,
-            (state.coachNotice as CoachNotice.Fallback).reason,
-        )
-    }
+            assertTrue("No local substitute is built", state.exercises.isEmpty())
+            assertEquals(R.string.coach_error_no_config_title, state.coachError?.titleRes)
+            assertTrue("Coach stays open so setup can be corrected", state.coaching)
+            assertFalse(state.generating)
+        }
 
     @Test
     fun `a provider answer keeps its exact targets rationale locale and source`() =
@@ -155,7 +150,7 @@ class BuilderViewModelTest {
             assertFalse(state.exercises[0].timed)
             assertEquals(45, state.exercises[1].durationSeconds)
             assertTrue(state.exercises[1].timed)
-            assertEquals("Dengeli hacim", (state.coachNotice as CoachNotice.Provider).rationale)
+            assertEquals("Dengeli hacim", state.coachNotice?.rationale)
 
             viewModel.onSave()
             advanceUntilIdle()
@@ -165,7 +160,7 @@ class BuilderViewModelTest {
         }
 
     @Test
-    fun `provider failure builds locally and leaves the request ready to retry`() =
+    fun `provider failure shows error dialog and leaves the request ready to retry`() =
         runTest(dispatcher) {
             catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
             generator.failure = ProviderFailure.NETWORK
@@ -174,10 +169,11 @@ class BuilderViewModelTest {
             viewModel.onGenerate("Coach plan", Language.ENGLISH)
             advanceUntilIdle()
 
-            val notice = state.coachNotice as CoachNotice.Fallback
-            assertEquals(AiFallbackReason.PROVIDER_FAILURE, notice.reason)
-            assertEquals(ProviderFailure.NETWORK, notice.providerFailure)
-            assertTrue(notice.canRetry)
+            val error = state.coachError
+            assertEquals(R.string.coach_error_network_title, error?.titleRes)
+            assertEquals(R.string.coach_error_network_body, error?.messageRes)
+            assertTrue(error?.canRetry == true)
+            assertTrue("No local plan is generated on provider failure", state.exercises.isEmpty())
             assertEquals(Muscle.PECTORALS.synonyms, state.coachMuscles)
 
             viewModel.onGenerate("Coach plan", Language.ENGLISH)
@@ -185,6 +181,23 @@ class BuilderViewModelTest {
 
             assertEquals(2, generator.locales.size)
             assertEquals(Muscle.PECTORALS.synonyms, state.coachMuscles)
+        }
+
+    @Test
+    fun `timeout failure shows timeout dialog with retry enabled`() =
+        runTest(dispatcher) {
+            catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+            generator.failure = ProviderFailure.TIMEOUT
+            viewModel.onCoachMuscleToggled(Muscle.PECTORALS)
+
+            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            advanceUntilIdle()
+
+            val error = state.coachError
+            assertEquals(R.string.coach_error_timeout_title, error?.titleRes)
+            assertEquals(R.string.coach_error_timeout_body, error?.messageRes)
+            assertTrue(error?.canRetry == true)
+            assertTrue("No local plan is generated on timeout", state.exercises.isEmpty())
         }
 
     /**
@@ -203,6 +216,19 @@ class BuilderViewModelTest {
 
     @Test
     fun `a name the user typed survives generation`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            exercises = listOf(
+                AiPlannedExercise(
+                    exerciseId = "a",
+                    order = 0,
+                    sets = 3,
+                    repetitions = 10,
+                    restSeconds = 60,
+                ),
+            ),
+            rationale = "Rationale",
+        )
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
         viewModel.onNameChange("Leg day")
 
@@ -214,6 +240,19 @@ class BuilderViewModelTest {
 
     @Test
     fun `an empty name takes the default`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            exercises = listOf(
+                AiPlannedExercise(
+                    exerciseId = "a",
+                    order = 0,
+                    sets = 3,
+                    repetitions = 10,
+                    restSeconds = 60,
+                ),
+            ),
+            rationale = "Rationale",
+        )
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
         viewModel.onGenerate("Coach plan", Language.ENGLISH)
@@ -235,24 +274,6 @@ class BuilderViewModelTest {
         assertFalse(state.generating)
     }
 
-    /**
-     * The dominant rejection is the one worth showing. A catalog refused
-     * entirely on equipment must not be reported as a muscle problem.
-     */
-    @Test
-    fun `an unusable catalog reports the constraint that blocked it`() = runTest(dispatcher) {
-        catalog.catalog = listOf(
-            candidate("a", Muscle.PECTORALS, Equipment.BARBELL),
-            candidate("b", Muscle.LATS, Equipment.BARBELL),
-        )
-
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
-        advanceUntilIdle()
-
-        assertEquals(CoachFailure.EQUIPMENT, state.coachFailure)
-        assertTrue(state.exercises.isEmpty())
-    }
-
     @Test
     fun `an empty catalog does not crash`() = runTest(dispatcher) {
         catalog.catalog = emptyList()
@@ -260,7 +281,8 @@ class BuilderViewModelTest {
         viewModel.onGenerate("Coach plan", Language.ENGLISH)
         advanceUntilIdle()
 
-        assertEquals(CoachFailure.NOTHING, state.coachFailure)
+        assertEquals(R.string.coach_error_no_candidates_title, state.coachError?.titleRes)
+        assertTrue(state.exercises.isEmpty())
     }
 
     /**
@@ -548,16 +570,18 @@ private class FakeWorkoutGenerator : AiWorkoutGenerationService {
         request: GenerationRequest,
         locale: Language,
         candidates: List<ExerciseCandidate>,
-        planName: String,
     ): AiWorkoutGenerationOutcome {
         locales += locale
         response?.let { return AiWorkoutGenerationOutcome.Provider(it, attempts = 1) }
-        return AiWorkoutGenerationOutcome.Rules(
-            generation = RulesEngine().generate(request, candidates, planName),
+        return AiWorkoutGenerationOutcome.Failure(
             reason = if (failure == null) {
-                AiFallbackReason.NO_PROVIDER_CONFIGURATION
+                if (candidates.isEmpty()) {
+                    AiGenerationFailureReason.NO_ELIGIBLE_CANDIDATES
+                } else {
+                    AiGenerationFailureReason.NO_PROVIDER_CONFIGURATION
+                }
             } else {
-                AiFallbackReason.PROVIDER_FAILURE
+                AiGenerationFailureReason.PROVIDER_FAILURE
             },
             attempts = if (failure == null) 0 else 1,
             providerFailure = failure,

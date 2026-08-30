@@ -105,15 +105,14 @@ internal class ProviderHttp(private val client: OkHttpClient) {
 /**
  * Turns a thrown failure into a category the user can act on.
  *
- * Deliberately coarse. "Could not resolve host" and "TLS handshake failed" are
- * different to a developer and identical to someone standing in a gym with no
- * signal: the app could not reach the provider.
+ * Connection failures stay deliberately coarse, but a deadline is separate:
+ * Coach gives a timeout its own retryable message rather than blaming the
+ * user's connection.
  */
 internal fun Throwable.toProviderFailure(): ProviderFailure = when (this) {
     // InterruptedIOException covers OkHttp's own call timeout, which is not a
-    // SocketTimeoutException and would otherwise fall through to NETWORK with a
-    // message nobody could act on.
-    is SocketTimeoutException, is InterruptedIOException -> ProviderFailure.NETWORK
+    // SocketTimeoutException and would otherwise fall through to NETWORK.
+    is SocketTimeoutException, is InterruptedIOException -> ProviderFailure.TIMEOUT
     is UnknownHostException, is SSLException, is IOException -> ProviderFailure.NETWORK
     else -> ProviderFailure.NETWORK
 }

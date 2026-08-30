@@ -55,6 +55,12 @@ object AiWorkoutJsonSchema {
                     WorkoutLimits.durationSeconds.last,
                 ),
             ),
+            "weight_kg" to nullable(
+                numberSchema(
+                    WorkoutLimits.weightKg.start,
+                    WorkoutLimits.weightKg.endInclusive,
+                ),
+            ),
             "rest_seconds" to integerSchema(
                 WorkoutLimits.restSeconds.first,
                 WorkoutLimits.restSeconds.last,
@@ -62,6 +68,12 @@ object AiWorkoutJsonSchema {
             "tempo" to nullable(buildJsonObject { put("type", "string") }),
         ),
     )
+
+    private fun numberSchema(minimum: Double, maximum: Double) = buildJsonObject {
+        put("type", "number")
+        put("minimum", minimum)
+        put("maximum", maximum)
+    }
 
     private fun integerSchema(minimum: Int, maximum: Int) = buildJsonObject {
         put("type", "integer")
@@ -91,9 +103,14 @@ object AiWorkoutJsonSchema {
 internal fun AiWorkoutRequest.toGenerationPrompt(
     retryFeedback: AiWorkoutRetryFeedback? = null,
 ): String = """
-    Arrange a workout from the typed request below.
+    Arrange a comprehensive, well-structured workout from the typed request below.
+    Structure the workout logically:
+    - Start with 1-2 appropriate warm-up / dynamic mobility / activation movements for the target muscle groups.
+    - Follow with the main resistance / working exercises matching the training goal and constraints.
+    - End with 1-2 stretching / mobility cool-down exercises for the worked muscles.
     Use only exercise IDs in candidate_exercises and obey every constraint.
     Choose one exact integer in repetitions for each repetition-based exercise; never return a range.
+    For weighted exercises (e.g. barbell, dumbbell, cable, machine), specify an appropriate starting weight in weight_kg based on the user's experience ($experience) and goal ($goal). For bodyweight or non-weighted movements, set weight_kg to null.
     Return only JSON matching the supplied schema.
     Write rationale in the request locale: $locale.
     ${retryFeedback?.toPromptLine().orEmpty()}

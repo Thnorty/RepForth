@@ -100,6 +100,23 @@ class AiWorkoutValidatorTest {
     }
 
     @Test
+    fun `weight out of range is rejected`() {
+        val invalid = reps("press", 0).copy(weightKg = 600.0)
+        val result = validator.validate(response(listOf(invalid)), request(), listOf(press))
+
+        assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.WEIGHT_OUT_OF_RANGE })
+    }
+
+    @Test
+    fun `valid weight is preserved in the validated response`() {
+        val valid = reps("press", 0).copy(weightKg = 45.0)
+        val result = validator.validate(response(listOf(valid)), request(), listOf(press))
+
+        assertTrue(result.isValid)
+        assertEquals(45.0, result.response!!.exercises.single().weightKg ?: 0.0, 0.001)
+    }
+
+    @Test
     fun `timed and repetition candidates cannot swap target types`() {
         val result = validator.validate(
             response(listOf(reps("run", 0), duration("press", 1))),

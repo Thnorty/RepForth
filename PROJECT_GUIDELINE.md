@@ -1,7 +1,7 @@
 # RepForth — Android & Wear OS Project Guideline
 
 Status: approved technical direction  
-Last updated: 2026-08-27
+Last updated: 2026-08-30
 
 This document is the implementation source of truth for a local-first, open-source exercise app built with native Kotlin and Jetpack Compose for Android phones and Wear OS watches.
 
@@ -16,7 +16,7 @@ This document is the implementation source of truth for a local-first, open-sour
 | Watch independence | Connected-phone remote only; the phone is always authoritative |
 | Backend | None |
 | Accounts and sync | None; all user data remains on the phone |
-| AI | Deterministic rules engine plus an optional user-configured cloud model |
+| AI | Optional user-configured cloud model, with local candidate filtering and output validation |
 | API credentials | Bring your own key (BYOK), entered in Settings |
 | Initial AI support | Native Gemini adapter plus a generic OpenAI-compatible adapter |
 | Exercise data | `hasaneyldrm/exercises-dataset`, imported and versioned in the app project |
@@ -50,7 +50,6 @@ The watch is a focused remote for an active phone workout. It shows the current 
 - Search and filter the full bundled catalog (1,324 records at the pinned commit) by name, body part, target muscle, secondary muscle, and equipment.
 - Exercise details with English/Turkish instructions, thumbnail, and tap-to-play GIF in licensed flavors; placeholder flavors show generated art plus the full text instructions.
 - Manual workout builder.
-- Rules-only workout generator that works without an API key or internet access.
 - AI-assisted generation from natural language and explicit muscle-group selections.
 - Editable generated plan before starting.
 - Active workout mode with sets, reps, weights, timed intervals, rest timer, pause, skip, replacement, and notes.
@@ -151,7 +150,7 @@ repforth/
 │   ├── wear-protocol/           # Phone/watch state and command DTOs
 │   ├── exercise-data/           # Dataset importer and exercise repository
 │   ├── media/                   # URL manifest, Coil configuration, cache policy
-│   ├── rules/                   # Candidate selection and rules-only generation
+│   ├── rules/                   # Candidate filtering and generated-plan validation
 │   └── ai/                      # Provider interfaces, clients, validation
 ├── feature/
 │   ├── onboarding/
@@ -280,7 +279,7 @@ No backend is needed. The phone calls the provider directly using the key suppli
 - Provider usage, cost, retention, and rate limits belong to the user’s provider account.
 - The app cannot hide or subsidize a shared developer API key.
 - The app must clearly show what workout/profile text will leave the device.
-- Provider availability is optional; every essential workout function needs a non-AI fallback.
+- Provider availability is optional; manual planning, sessions, history, and progress remain fully usable without AI.
 
 ### Provider abstraction
 
@@ -345,10 +344,11 @@ No client-side storage can make a user-entered secret impossible to extract on a
 flowchart TD
     INPUT["User request"] --> INTENT["Typed workout intent"]
     INTENT --> FILTER["Deterministic candidate filter"]
-    FILTER --> MODEL["Optional AI arrangement"]
+    FILTER --> MODEL["Configured AI provider"]
     MODEL --> VALIDATE["Schema and rule validation"]
     VALIDATE --> PLAN["Editable workout plan"]
-    VALIDATE -->|"Invalid or unavailable"| FALLBACK["Rules-only plan"]
+    MODEL -->|"Unavailable or timed out"| ERROR["Actionable error and retry"]
+    VALIDATE -->|"Still invalid after repair"| ERROR
 ```
 
 1. Build a typed `WorkoutIntent` from explicit UI controls. Natural language may fill missing values, but it never overrides explicit selections.
@@ -358,7 +358,7 @@ flowchart TD
 5. Require structured output matching a versioned JSON Schema.
 6. Validate exercise IDs, types, ranges, duration estimate, volume, order, and exclusions locally.
 7. Repair only safe mechanical issues locally; otherwise retry once with validation errors.
-8. Fall back to the deterministic generator if the provider is missing, offline, rate-limited, or still invalid.
+8. If the provider is missing, unavailable, timed out, rate-limited, or still invalid, preserve the request and show an actionable error. Never silently substitute a locally generated plan.
 9. Show the plan as editable cards and require the user to start it explicitly.
 
 ### Request contract
@@ -384,7 +384,7 @@ All categorical values are the normalized language-neutral tokens produced by th
 
 The response contains only dataset exercise IDs, order, sets, one exact repetition target or duration, rest seconds, optional tempo, and short rationale. The builder and saved-plan model both edit and persist one repetition target, so the provider contract must not return a range that would be silently collapsed. Define numeric limits in code, not only in the prompt.
 
-### Initial rules engine
+### Local constraint and validation rules
 
 Hard rules:
 
@@ -396,16 +396,8 @@ Hard rules:
 - Apply beginner-safe set/repetition/rest ranges and conservative volume.
 - Timed and repetition-based exercises must use the correct target type.
 
-Soft scoring:
-
-- Primary requested muscle match.
-- Secondary requested muscle match.
-- Equipment preference.
-- Balanced movement patterns.
-- User history: avoid repeatedly skipped exercises and rotate equivalents.
-- Difficulty feedback/RPE and recent training volume.
-
-The rules engine must be deterministic for a supplied seed. Persist the seed with generated plans so failures are reproducible.
+These rules filter the catalog before a provider call and validate the returned
+plan afterward. They do not arrange or prescribe a local substitute workout.
 
 ### Coach safety
 
@@ -572,7 +564,7 @@ Phone bottom navigation:
 
 The workout builder is not a top-level destination; it opens from Plans (“New workout”), from Today, and from the edit action on any saved or generated plan. The builder has two modes: **manual**, and **Coach** — the AI path that accepts a structured request plus optional conversational refinement.
 
-Coach is a mode inside the builder rather than a fifth destination or a replacement for Plans. Two constraints drive this: AI is optional by design (§3 requires rules-only generation, §15 requires the app to work with no key), so a top-level tab must not degrade into a setup prompt for users who never configure a provider; and this section already requires generated results to be editable workout cards rather than a chat transcript, which a chat-shaped destination would fight. Plans, by contrast, is populated for every user from the first saved workout.
+Coach is a mode inside the builder rather than a fifth destination or a replacement for Plans. AI is optional, while the manual builder remains fully useful without a provider, so a top-level tab must not degrade into a setup prompt for users who never configure one. Generated results also need to become editable workout cards rather than a chat transcript, which a chat-shaped destination would fight. Plans, by contrast, is populated for every user from the first saved workout.
 
 Settings is opened from the top app bar/profile icon. The AI-generated result is rendered as editable workout cards, never only as a chat bubble.
 
@@ -640,9 +632,9 @@ Default policy:
 
 | Situation | Required behavior |
 |---|---|
-| No API key | Rules-only generation works; Coach explains how to configure a provider |
-| AI offline/timeout | Preserve inputs, offer retry, and generate locally |
-| Invalid AI JSON | Validate, retry once, then local fallback with a concise notice |
+| No API key | Manual planning remains available; Coach explains how to configure a provider |
+| AI offline/timeout | Preserve inputs, name the failure in a popup, and offer retry |
+| Invalid AI JSON | Validate, retry once with typed feedback, then show a retryable error |
 | Provider auth/quota error | Specific corrective message; never erase the user’s request |
 | Media offline | Cached media or placeholder plus full text instructions |
 | Media hash mismatch | Delete file, record a redacted diagnostic, and do not decode it |
@@ -669,8 +661,8 @@ Use typed error categories and user-actionable messages. Do not expose raw provi
 ### Unit tests
 
 - Candidate filtering for muscle groups, equipment, exclusions, and experience.
-- Workout scoring, deterministic seed behavior, volume, order, and duration estimates.
-- AI response schema/range/ID validation and fallback selection.
+- Candidate filtering plus AI response schema/range/ID, volume, order, and duration validation.
+- Provider timeout classification and retry-state preservation.
 - Timer calculations and every workout state transition.
 - English/Turkish localization mappings.
 - Watch protocol serialization, revision checks, and idempotent commands.
@@ -684,7 +676,7 @@ Use typed error categories and user-actionable messages. Do not expose raw provi
 
 ### UI/instrumentation tests
 
-- Onboarding to first rules-only plan.
+- Onboarding to first manually built plan.
 - Provider configuration using a local fake server; CI never calls a paid API.
 - Edit/start/complete/restore workout flows.
 - Search and filters in both locales.
@@ -755,7 +747,7 @@ Avoid putting licensed media or user keys into public CI artifacts. Release sign
 ### Phase 2 — AI providers
 
 - Secure key storage and provider settings.
-- Gemini adapter, generic OpenAI-compatible adapter, structured contracts, validation, and local fallback.
+- Gemini adapter, generic OpenAI-compatible adapter, structured contracts, validation, and retryable failures.
 - AI coach and muscle-specific generation UI.
 
 ### Phase 3 — Polished phone experience

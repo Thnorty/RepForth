@@ -112,6 +112,7 @@ data class AiPlannedExercise(
     val sets: Int,
     val repetitions: Int? = null,
     @SerialName("duration_seconds") val durationSeconds: Int? = null,
+    @SerialName("weight_kg") val weightKg: Double? = null,
     @SerialName("rest_seconds") val restSeconds: Int,
     val tempo: String? = null,
 )

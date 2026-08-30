@@ -22,7 +22,10 @@ enum class ProviderFailure {
     /** Rate limited or out of credit — the user's account, not this app. */
     QUOTA,
 
-    /** Never got there: no connection, DNS, TLS, or the request timed out. */
+    /** The provider did not answer before the configured request deadline. */
+    TIMEOUT,
+
+    /** Never got there: no connection, DNS, or TLS. */
     NETWORK,
 
     /** Got there and could not understand the reply. */
@@ -74,7 +77,7 @@ sealed interface ProviderGenerationResult {
  *
  * Generation returns a typed outcome rather than throwing for provider,
  * network, or format failures. The later orchestration layer can therefore
- * retry or fall back without parsing exceptions or provider messages.
+ * retry or report the failure without parsing exceptions or provider messages.
  */
 interface AiProvider {
     val id: ProviderId

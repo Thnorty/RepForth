@@ -49,15 +49,16 @@ own. An exercise is fully usable from its text in that flavour.
 
 ## Bring your own AI key
 
-RepForth has no AI service behind it. When the coach ships in Phase 2, it will
-call **the provider you configure with a key you supply** — Gemini, or any
+RepForth has no AI service behind it. Coach calls **the provider you configure
+with a key you supply** — Gemini, or any
 OpenAI-compatible endpoint. There is no shared key, no proxy, and no default
 provider.
 
 That has consequences worth knowing before you enable it: your workout request
 is sent to that provider under their terms and their privacy policy, and you pay
-for the tokens. The app works completely without it — rules-only plan generation
-is a requirement, not a fallback. See [`PRIVACY.md`](PRIVACY.md).
+for the tokens. The manual builder, sessions, history, and progress work without
+it; Coach generation itself requires the provider you configured. See
+[`PRIVACY.md`](PRIVACY.md).
 
 ## The exercise dataset
 

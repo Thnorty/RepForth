@@ -34,12 +34,6 @@ data class GenerationRequest(
      */
     val equipmentOverride: Set<Equipment>? = null,
 
-    /**
-     * The seed. §8 requires deterministic behaviour for a given seed, so the same
-     * request twice produces the same plan — which is what makes a generated plan
-     * reproducible in a bug report and testable at all.
-     */
-    val seed: Long = 0L,
 ) {
     val sessionLengthMs: Long
         get() = sessionLengthMsOverride ?: profile.sessionLengthMs
@@ -57,7 +51,7 @@ data class GenerationRequest(
 /**
  * Why a candidate could not be used.
  *
- * Kept rather than discarded because §8 requires a generation audit, and because
+ * Kept rather than discarded because §8 requires a constraint audit, and because
  * "no exercises matched" is a useless thing to tell a user who has excluded most
  * of the catalog without realising.
  */
@@ -78,8 +72,7 @@ data class Rejection(val id: ExerciseId, val reason: RejectionReason)
 /**
  * A rule a plan breaks.
  *
- * The same type is returned whether the plan came from the rules engine or from
- * a provider: §8 requires AI output to be validated against these rules, and
- * reusing the vocabulary means the failure reads the same either way.
+ * §8 requires AI output to be validated against these rules before it reaches
+ * the editable builder.
  */
 data class Violation(val id: ExerciseId?, val reason: RejectionReason, val detail: String)

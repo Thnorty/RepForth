@@ -281,6 +281,6 @@ class ProviderGenerationTest {
         )
 
         const val validWorkoutJson =
-            """{"schema_version":2,"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":10,"duration_seconds":null,"rest_seconds":60,"tempo":null}],"rationale":"Balanced volume"}"""
+            """{"schema_version":2,"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":10,"duration_seconds":null,"weight_kg":null,"rest_seconds":60,"tempo":null}],"rationale":"Balanced volume"}"""
     }
 }

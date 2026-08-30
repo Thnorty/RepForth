@@ -2,12 +2,11 @@ package com.repforth.feature.builder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.repforth.core.ai.AiFallbackReason
+import com.repforth.core.ai.AiGenerationFailureReason
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
 import com.repforth.core.ai.ProviderFailure
-import com.repforth.core.common.time.TimeSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
@@ -23,8 +22,6 @@ import com.repforth.core.model.toggleRegion
 import com.repforth.core.model.toggleSynonyms
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.rules.GenerationRequest
-import com.repforth.core.rules.Rejection
-import com.repforth.core.rules.RejectionReason
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -98,21 +95,14 @@ enum class CoachFailure {
     NOTHING,
 }
 
-/** What happened when Coach successfully filled the editable builder. */
-sealed interface CoachNotice {
-    /** A locally validated provider answer, including its user-facing reason. */
-    data class Provider(val rationale: String) : CoachNotice
+data class CoachError(
+    val titleRes: Int,
+    val messageRes: Int,
+    val canRetry: Boolean,
+)
 
-    /** The deterministic plan used when the optional provider path was unavailable. */
-    data class Fallback(
-        val reason: AiFallbackReason,
-        val providerFailure: ProviderFailure? = null,
-    ) : CoachNotice {
-        val canRetry: Boolean
-            get() = reason == AiFallbackReason.PROVIDER_FAILURE ||
-                reason == AiFallbackReason.INVALID_RESPONSE
-    }
-}
+/** The rationale from a locally validated provider answer. */
+data class CoachNotice(val rationale: String)
 
 data class BuilderUiState(
     /** Null while building a new plan; set when editing a saved one. */
@@ -133,7 +123,9 @@ data class BuilderUiState(
     val generating: Boolean = false,
     /** Why the last generation produced nothing, or null. */
     val coachFailure: CoachFailure? = null,
-    /** Provider rationale or an honest explanation of deterministic fallback. */
+    /** Error dialog state when AI generation fails or times out. */
+    val coachError: CoachError? = null,
+    /** Provider rationale for successfully generated workout. */
     val coachNotice: CoachNotice? = null,
 ) {
     val isEditing: Boolean get() = planId != null
@@ -186,7 +178,6 @@ class BuilderViewModel @Inject constructor(
     private val templates: TemplateRepository,
     private val exercises: ExerciseRepository,
     private val profiles: ProfileRepository,
-    private val time: TimeSource,
     private val generator: AiWorkoutGenerationService,
 ) : ViewModel() {
 
@@ -231,19 +222,23 @@ class BuilderViewModel @Inject constructor(
     private var generationJob: Job? = null
 
     fun onCoachOpen() = update {
-        copy(coaching = true, coachFailure = null, coachNotice = null)
+        copy(coaching = true, coachFailure = null, coachError = null, coachNotice = null)
     }
 
     fun onCoachClose() {
         generationJob?.cancel()
         generationJob = null
-        update { copy(coaching = false, coachFailure = null, generating = false) }
+        update { copy(coaching = false, coachFailure = null, coachError = null, generating = false) }
     }
 
     fun onCancelGenerate() {
         generationJob?.cancel()
         generationJob = null
-        update { copy(generating = false) }
+        update { copy(generating = false, coachError = null) }
+    }
+
+    fun onDismissCoachError() = update {
+        copy(coachError = null)
     }
 
     /**
@@ -255,15 +250,15 @@ class BuilderViewModel @Inject constructor(
      * onboarding and Coach cannot drift apart about what a muscle is.
      */
     fun onCoachMuscleToggled(muscle: Muscle) = update {
-        copy(coachMuscles = coachMuscles.toggleSynonyms(muscle), coachFailure = null)
+        copy(coachMuscles = coachMuscles.toggleSynonyms(muscle), coachFailure = null, coachError = null)
     }
 
     fun onCoachRegionToggled(region: BodyRegion) = update {
-        copy(coachMuscles = coachMuscles.toggleRegion(region), coachFailure = null)
+        copy(coachMuscles = coachMuscles.toggleRegion(region), coachFailure = null, coachError = null)
     }
 
     /**
-     * Builds a plan through the validated provider-or-rules pipeline (§3, §8).
+     * Builds a plan through the validated AI provider pipeline (§3, §8).
      *
      * The result lands as the same draft list the manual path produces, so it
      * is editable before it is saved and nothing is written until the user says
@@ -279,7 +274,7 @@ class BuilderViewModel @Inject constructor(
         if (_uiState.value.generating) return
         generationJob?.cancel()
         generationJob = viewModelScope.launch {
-            update { copy(generating = true, coachFailure = null, coachNotice = null) }
+            update { copy(generating = true, coachFailure = null, coachError = null, coachNotice = null) }
 
             val profile = profiles.getProfile()
             if (profile == null) {
@@ -290,10 +285,6 @@ class BuilderViewModel @Inject constructor(
             val request = GenerationRequest(
                 profile = profile,
                 targetMuscles = _uiState.value.coachMuscles,
-                // §8 requires a seed to be reproducible, not that it be fixed.
-                // Taking it from the clock is what makes a second tap a second
-                // answer rather than the same plan again.
-                seed = time.now(),
             )
             val candidates = exercises.candidates()
             val planName = _uiState.value.name.ifBlank { defaultName }
@@ -301,7 +292,6 @@ class BuilderViewModel @Inject constructor(
                 request = request,
                 locale = locale,
                 candidates = candidates,
-                planName = planName,
             )) {
                 is AiWorkoutGenerationOutcome.Provider -> {
                     val ids = outcome.response.exercises.map { ExerciseId(it.exerciseId) }
@@ -314,36 +304,17 @@ class BuilderViewModel @Inject constructor(
                             generating = false,
                             coaching = false,
                             coachFailure = null,
-                            coachNotice = CoachNotice.Provider(outcome.response.rationale),
+                            coachError = null,
+                            coachNotice = CoachNotice(outcome.response.rationale),
                         )
                     }
                 }
 
-                is AiWorkoutGenerationOutcome.Rules -> {
-                    val plan = outcome.generation.plan
-                    if (plan == null) {
-                        update {
-                            copy(
-                                generating = false,
-                                coachFailure = outcome.generation.rejections.dominantFailure(),
-                            )
-                        }
-                        return@launch
-                    }
-
-                    val names = exercises.summaries(plan.exercises.map { it.exerciseId })
+                is AiWorkoutGenerationOutcome.Failure -> {
                     update {
                         copy(
-                            name = plan.name,
-                            source = PlanSource.RULES,
-                            exercises = plan.exercises.toDrafts(names),
                             generating = false,
-                            coaching = false,
-                            coachFailure = null,
-                            coachNotice = CoachNotice.Fallback(
-                                reason = outcome.reason,
-                                providerFailure = outcome.providerFailure,
-                            ),
+                            coachError = outcome.toCoachError(),
                         )
                     }
                 }
@@ -516,26 +487,60 @@ private fun AiWorkoutResponse.toDrafts(
         sets = planned.sets,
         reps = planned.repetitions ?: DEFAULT_DRAFT_REPS,
         durationSeconds = planned.durationSeconds ?: DEFAULT_DRAFT_DURATION_SECONDS,
+        weightKg = planned.weightKg,
         restSeconds = planned.restSeconds,
         timed = planned.durationSeconds != null,
     )
 }
 
-/**
- * The reason to show when nothing could be built.
- *
- * The most common rejection, because that is the constraint actually doing the
- * blocking: someone whose whole catalog was refused on equipment is told about
- * equipment, not about the muscle they picked.
- */
-private fun List<Rejection>.dominantFailure(): CoachFailure {
-    val reason = groupingBy { it.reason }.eachCount().maxByOrNull { it.value }?.key
-    return when (reason) {
-        RejectionReason.EQUIPMENT_UNAVAILABLE -> CoachFailure.EQUIPMENT
-        RejectionReason.EXCLUDED_EXERCISE, RejectionReason.EXCLUDED_MUSCLE -> CoachFailure.EXCLUSIONS
-        RejectionReason.WRONG_MUSCLE -> CoachFailure.MUSCLES
-        else -> CoachFailure.NOTHING
+private fun AiWorkoutGenerationOutcome.Failure.toCoachError(): CoachError = when (reason) {
+    AiGenerationFailureReason.NO_PROVIDER_CONFIGURATION -> CoachError(
+        titleRes = R.string.coach_error_no_config_title,
+        messageRes = R.string.coach_error_no_config_body,
+        canRetry = false,
+    )
+    AiGenerationFailureReason.NO_PROVIDER_ADAPTER -> CoachError(
+        titleRes = R.string.coach_error_no_adapter_title,
+        messageRes = R.string.coach_error_no_adapter_body,
+        canRetry = false,
+    )
+    AiGenerationFailureReason.NO_ELIGIBLE_CANDIDATES -> CoachError(
+        titleRes = R.string.coach_error_no_candidates_title,
+        messageRes = R.string.coach_error_no_candidates_body,
+        canRetry = false,
+    )
+    AiGenerationFailureReason.PROVIDER_FAILURE -> when (providerFailure) {
+        ProviderFailure.TIMEOUT -> CoachError(
+            titleRes = R.string.coach_error_timeout_title,
+            messageRes = R.string.coach_error_timeout_body,
+            canRetry = true,
+        )
+        ProviderFailure.NETWORK -> CoachError(
+            titleRes = R.string.coach_error_network_title,
+            messageRes = R.string.coach_error_network_body,
+            canRetry = true,
+        )
+        ProviderFailure.AUTHENTICATION -> CoachError(
+            titleRes = R.string.coach_error_auth_title,
+            messageRes = R.string.coach_error_auth_body,
+            canRetry = false,
+        )
+        ProviderFailure.QUOTA -> CoachError(
+            titleRes = R.string.coach_error_quota_title,
+            messageRes = R.string.coach_error_quota_body,
+            canRetry = true,
+        )
+        else -> CoachError(
+            titleRes = R.string.coach_error_failed_title,
+            messageRes = R.string.coach_error_failed_body,
+            canRetry = true,
+        )
     }
+    AiGenerationFailureReason.INVALID_RESPONSE -> CoachError(
+        titleRes = R.string.coach_error_failed_title,
+        messageRes = R.string.coach_error_failed_body,
+        canRetry = true,
+    )
 }
 
 private const val DEFAULT_DRAFT_REPS = 10
