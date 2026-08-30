@@ -31,6 +31,7 @@
     <string name="builder_pick_close">Close</string>
     <string name="builder_pick_empty">Nothing matches that.</string>
     <string name="builder_pick_added">%1$s added</string>
+    <string name="builder_add_to_workout">Add to workout</string>
 
     <string name="plans_new">New workout</string>
     <string name="plans_empty">No saved workouts yet.</string>

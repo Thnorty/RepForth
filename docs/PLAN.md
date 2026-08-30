@@ -119,7 +119,7 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-406 unit tests across 52 classes, plus fourteen instrumentation tests
+409 unit tests across 54 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
@@ -969,18 +969,22 @@ to `core:ai` and `core:media`.
 ### 3.2 — Exercise Media Display & Session Integration — **done**
 
 Exercise media rendering and background prefetching are integrated across all exercise and workout workflows:
-- **Exercise Catalog & Detail Sheet (`feature:exercises`)**:
-  - `ExerciseRow` displays 1:1 `SMALL` (48dp) exercise thumbnail alongside exercise title and target muscle / equipment chips.
-  - Tapping an exercise opens `ExerciseDetailSheet` (ModalBottomSheet) with a `FLUSH` aspect-ratio-locked `ExerciseMedia` hero, legal attribution text (`© Gym visual — https://gymvisual.com/`), primary and secondary muscle chips, equipment chips, and localized step-by-step instructions in the user's selected language.
+- **Shared Detail Sheet (`core:media`)**:
+  - `ExerciseDetailSheet` provides a reusable modal sheet displaying a `FLUSH` aspect-ratio-locked `ExerciseMedia` hero, legal attribution text (`© Gym visual — https://gymvisual.com/`), primary and secondary muscle chips, equipment chips, and localized step-by-step instructions.
+  - Inset below system status bars and camera punch holes (`statusBarsPadding()`).
+  - Supports a pinned, non-scrolling bottom action container so actions remain always visible regardless of instruction length.
+- **Exercise Catalog (`feature:exercises`)**:
+  - `ExerciseRow` displays 1:1 `SMALL` (48dp) exercise thumbnails alongside exercise title and target muscle / equipment chips.
+  - Tapping an exercise opens `ExerciseDetailSheet` with default "Close" button.
   - Obeys `reducedMotion` preference (disables animated GIF autoplay and displays static thumbnail instead).
 - **Running Session Screen (`feature:session`)**:
-  - `TargetPanel` renders `ExerciseMedia` for active exercise (`ExerciseMediaSize.MEDIUM`) with numeric hero.
+  - `TargetPanel` renders prominent hero `ExerciseMedia` for active exercise (spanning ~92% screen width with 1.1 aspect ratio) stacked above the numeric hero.
   - `RestPanel` displays a "Next up" preview card with thumbnail (`ExerciseMediaSize.SMALL`) and name for the next exercise.
   - `SessionViewModel` prefetches media on a background IO coroutine for the current and next 2 upcoming exercises via `MediaDownloader.prefetch()`.
 - **Workout Builder & Picker (`feature:builder`)**:
-  - `ExercisePicker` lists exercises with `SMALL` thumbnails.
+  - `ExercisePicker` lists exercises with `SMALL` thumbnails. Tapping an exercise opens `ExerciseDetailSheet` with a pinned, always-visible **"Add to workout"** button.
   - Builder cards (`ExerciseCard`) display the selected exercise thumbnail beside the exercise name and set configuration.
-- Verified with unit tests (`ExercisesViewModelTest`, `SessionViewModelTest`), `./gradlew test`, `./gradlew assemblePlaceholderDebug`, and `./gradlew lint`.
+- Verified with 409 unit tests (`ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`), `./gradlew test`, `./gradlew assemblePlaceholderDebug`, and `./gradlew lint`.
 
 ---
 

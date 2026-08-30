@@ -2,9 +2,12 @@ package com.repforth.feature.builder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.CatalogFilter
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.model.Exercise
 import com.repforth.core.model.ExerciseSummary
+import com.repforth.core.model.Language
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,10 +20,14 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class PickerUiState(
     val query: String = "",
     val results: List<ExerciseSummary> = emptyList(),
+    val selectedExercise: Exercise? = null,
+    val reducedMotion: Boolean = false,
+    val language: Language? = null,
     val loading: Boolean = true,
 )
 
@@ -35,10 +42,12 @@ data class PickerUiState(
  */
 @HiltViewModel
 class PickerViewModel @Inject constructor(
-    repository: ExerciseRepository,
+    private val repository: ExerciseRepository,
+    preferences: UserPreferencesDataSource,
 ) : ViewModel() {
 
     private val query = MutableStateFlow("")
+    private val selectedExercise = MutableStateFlow<Exercise?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private val results = query
@@ -50,8 +59,15 @@ class PickerViewModel @Inject constructor(
         .flatMapLatest { text -> repository.observeCatalog(CatalogFilter(query = text)) }
 
     val uiState: StateFlow<PickerUiState> =
-        combine(query, results) { text, matches ->
-            PickerUiState(query = text, results = matches, loading = false)
+        combine(query, results, selectedExercise, preferences.preferences) { text, matches, selected, userPrefs ->
+            PickerUiState(
+                query = text,
+                results = matches,
+                selectedExercise = selected,
+                reducedMotion = userPrefs.reducedMotion,
+                language = userPrefs.language,
+                loading = false,
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -60,6 +76,16 @@ class PickerViewModel @Inject constructor(
 
     fun onQueryChange(text: String) {
         query.value = text
+    }
+
+    fun onSelectExercise(summary: ExerciseSummary) {
+        viewModelScope.launch {
+            selectedExercise.value = repository.find(summary.id)
+        }
+    }
+
+    fun onDismissDetail() {
+        selectedExercise.value = null
     }
 
     private companion object {

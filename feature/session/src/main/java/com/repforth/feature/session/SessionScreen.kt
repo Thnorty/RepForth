@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -324,6 +325,7 @@ private fun RestPanel(state: SessionUiState) {
 private fun TargetPanel(state: SessionUiState) {
     val target = state.target ?: return
     Column(
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Space.s3),
     ) {
@@ -332,13 +334,15 @@ private fun TargetPanel(state: SessionUiState) {
         }
         if (mediaRef != null) {
             Box(
-                modifier = Modifier.size(140.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.92f)
+                    .aspectRatio(1.1f),
                 contentAlignment = Alignment.Center,
             ) {
                 ExerciseMedia(
                     mediaRef = mediaRef,
                     contentDescription = state.currentName,
-                    size = ExerciseMediaSize.MEDIUM,
+                    size = ExerciseMediaSize.FLUSH,
                 )
             }
         }

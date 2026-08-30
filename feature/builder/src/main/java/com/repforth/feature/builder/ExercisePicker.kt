@@ -34,6 +34,8 @@ import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Button
+import com.repforth.core.media.ui.ExerciseDetailSheet
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.MediaRef
@@ -101,10 +103,35 @@ internal fun ExercisePicker(
             ),
         ) {
             items(state.results, key = { it.id.value }) { exercise ->
-                PickerRow(exercise = exercise, onClick = { onPicked(exercise.id, exercise.name, exercise.thumbnail) })
+                PickerRow(exercise = exercise, onClick = { viewModel.onSelectExercise(exercise) })
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
+    }
+
+    state.selectedExercise?.let { selected ->
+        ExerciseDetailSheet(
+            exercise = selected,
+            reducedMotion = state.reducedMotion,
+            language = state.language,
+            targetLabel = stringResource(selected.target.labelRes),
+            equipmentLabel = stringResource(selected.equipment.labelRes),
+            secondaryMuscleLabels = selected.secondaryMuscles.map { stringResource(it.labelRes) },
+            onDismiss = viewModel::onDismissDetail,
+            bottomAction = {
+                Button(
+                    onClick = {
+                        onPicked(selected.id, selected.name, selected.thumbnail)
+                        viewModel.onDismissDetail()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Target.min),
+                ) {
+                    Text(stringResource(R.string.builder_add_to_workout))
+                }
+            },
+        )
     }
 }
 

@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.exercisedata.labelRes
+import com.repforth.core.media.ui.ExerciseDetailSheet
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.BodyPart
@@ -144,6 +145,9 @@ internal fun ExercisesScreen(
             exercise = exercise,
             reducedMotion = state.reducedMotion,
             language = state.language,
+            targetLabel = stringResource(exercise.target.labelRes),
+            equipmentLabel = stringResource(exercise.equipment.labelRes),
+            secondaryMuscleLabels = exercise.secondaryMuscles.map { stringResource(it.labelRes) },
             onDismiss = onDismissDetail,
         )
     }
@@ -229,128 +233,6 @@ private fun ExerciseRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
-}
-
-/**
- * Full detail modal sheet for an exercise.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ExerciseDetailSheet(
-    exercise: Exercise,
-    reducedMotion: Boolean,
-    language: Language?,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = Layout.gutterPhone)
-                .padding(bottom = Space.s6)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Space.s3),
-        ) {
-            Text(
-                text = exercise.name,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
-            // 1:1 Flush Media Display
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
-            ) {
-                val mediaRef = if (reducedMotion) exercise.thumbnail else exercise.animation
-                ExerciseMedia(
-                    mediaRef = mediaRef,
-                    contentDescription = exercise.name,
-                    size = ExerciseMediaSize.FLUSH,
-                )
-            }
-
-            // Legal attribution notice (§6)
-            if (exercise.attribution.isNotBlank()) {
-                Text(
-                    text = exercise.attribution,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // Target & Equipment chips
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Space.s2),
-            ) {
-                AssistChip(
-                    onClick = {},
-                    label = { Text(stringResource(exercise.target.labelRes)) },
-                )
-                AssistChip(
-                    onClick = {},
-                    label = { Text(stringResource(exercise.equipment.labelRes)) },
-                )
-            }
-
-            if (exercise.secondaryMuscles.isNotEmpty()) {
-                val secondaryNames = exercise.secondaryMuscles
-                    .map { stringResource(it.labelRes) }
-                    .joinToString(", ")
-                Text(
-                    text = stringResource(R.string.exercises_secondary_muscles, secondaryNames),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-            // Step-by-step instructions
-            Text(
-                text = stringResource(R.string.exercises_instructions),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-
-            val activeLang = language ?: Language.ENGLISH
-            val steps = exercise.instructions[activeLang].steps
-            Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
-                steps.forEachIndexed { index, step ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Space.s2),
-                        verticalAlignment = Alignment.Top,
-                    ) {
-                        Text(
-                            text = "${index + 1}.",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = step,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = Space.s3),
-            ) {
-                Text(stringResource(R.string.exercises_close_detail))
-            }
         }
     }
 }

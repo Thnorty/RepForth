@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":core:ai"))
 
     // The catalog, for picking exercises and resolving a plan's names.
+    implementation(project(":core:datastore"))
     implementation(project(":core:exercise-data"))
     implementation(project(":core:media"))
 

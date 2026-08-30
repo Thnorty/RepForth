@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="exercise_detail_instructions">Instructions</string>
+    <string name="exercise_detail_secondary_muscles">Secondary: %1$s</string>
+    <string name="exercise_detail_close">Close</string>
+</resources>

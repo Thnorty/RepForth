@@ -47,8 +47,6 @@ fun ExerciseMedia(
     val shape = RoundedCornerShape(size.cornerRadius)
     val sizeModifier = if (size == ExerciseMediaSize.FLUSH) {
         modifier
-            .fillMaxSize()
-            .aspectRatio(1f)
     } else {
         modifier.size(size.dp)
     }

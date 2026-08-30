@@ -31,6 +31,7 @@
     <string name="builder_pick_close">Kapat</string>
     <string name="builder_pick_empty">Eşleşen bir şey yok.</string>
     <string name="builder_pick_added">%1$s eklendi</string>
+    <string name="builder_add_to_workout">Antrenmana ekle</string>
 
     <string name="plans_new">Yeni antrenman</string>
     <string name="plans_empty">Henüz kayıtlı antrenman yok.</string>
