@@ -272,7 +272,7 @@ class ProviderGenerationTest {
                     exerciseId = "exercise-a",
                     order = 0,
                     sets = 3,
-                    repetitions = AiRepetitionRange(8, 12),
+                    repetitions = 10,
                     restSeconds = 60,
                 ),
             ),
@@ -280,6 +280,6 @@ class ProviderGenerationTest {
         )
 
         const val validWorkoutJson =
-            """{"schema_version":1,"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":{"minimum":8,"maximum":12},"duration_seconds":null,"rest_seconds":60,"tempo":null}],"rationale":"Balanced volume"}"""
+            """{"schema_version":2,"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":10,"duration_seconds":null,"rest_seconds":60,"tempo":null}],"rationale":"Balanced volume"}"""
     }
 }

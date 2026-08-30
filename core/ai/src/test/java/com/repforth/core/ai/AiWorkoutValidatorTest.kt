@@ -86,7 +86,7 @@ class AiWorkoutValidatorTest {
     fun `numeric limits reject values the builder would otherwise clamp`() {
         val invalid = reps("press", 0).copy(
             sets = 11,
-            repetitions = AiRepetitionRange(0, 101),
+            repetitions = 0,
             restSeconds = 601,
         )
 
@@ -94,7 +94,7 @@ class AiWorkoutValidatorTest {
 
         assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.SETS_OUT_OF_RANGE })
         assertTrue(
-            result.contractViolations.any { it.issue == AiWorkoutIssue.REPETITIONS_OUT_OF_RANGE },
+            result.contractViolations.any { it.issue == AiWorkoutIssue.REPETITION_OUT_OF_RANGE },
         )
         assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.REST_OUT_OF_RANGE })
     }
@@ -116,7 +116,9 @@ class AiWorkoutValidatorTest {
     @Test
     fun `schema version and rationale are mandatory`() {
         val result = validator.validate(
-            response(listOf(reps("press", 0)), rationale = " ").copy(schemaVersion = 2),
+            response(listOf(reps("press", 0)), rationale = " ").copy(
+                schemaVersion = AI_WORKOUT_SCHEMA_VERSION + 1,
+            ),
             request(),
             listOf(press),
         )
@@ -138,24 +140,24 @@ class AiWorkoutValidatorTest {
     }
 
     @Test
-    fun `duration ceiling uses the upper end of a repetition range`() {
-        val wideRange = reps("press", 0).copy(
+    fun `duration ceiling uses the exact repetition target`() {
+        val target = reps("press", 0).copy(
             sets = 2,
-            repetitions = AiRepetitionRange(8, 12),
+            repetitions = 10,
             restSeconds = 60,
         )
 
-        val result = validator.validate(response(listOf(wideRange)), request(), listOf(press))
+        val result = validator.validate(response(listOf(target)), request(), listOf(press))
 
         assertTrue(result.isValid)
-        assertEquals(192_000L, result.estimatedDurationMs)
+        assertEquals(180_000L, result.estimatedDurationMs)
     }
 
     @Test
     fun `a structurally valid plan still cannot exceed the session ceiling`() {
         val long = reps("press", 0).copy(
             sets = 10,
-            repetitions = AiRepetitionRange(100, 100),
+            repetitions = 100,
             restSeconds = 600,
         )
 
@@ -182,7 +184,7 @@ class AiWorkoutValidatorTest {
         exerciseId = id,
         order = order,
         sets = 3,
-        repetitions = AiRepetitionRange(8, 12),
+        repetitions = 10,
         restSeconds = 60,
         tempo = tempo,
     )

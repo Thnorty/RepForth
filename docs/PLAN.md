@@ -117,7 +117,7 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-390 unit tests across 50 classes, plus fourteen instrumentation tests
+391 unit tests across 50 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
@@ -852,7 +852,7 @@ once in `WorkoutLimits`, shared by the builder, rules engine and provider valida
 so an answer cannot pass one boundary and be silently clamped by the next.
 
 The validator checks schema version, order, offered and duplicate exercise ids,
-sets, repetition ranges, durations, rest, target type and rationale. Only then
+sets, repetition targets, durations, rest, target type and rationale. Only then
 does it project the answer into the existing `WorkoutTemplate` shape and delegate
 the user's equipment, exclusions, muscles and session ceiling to `RulesEngine`.
 The strict unknown-field check was watched failing by temporarily allowing unknown
@@ -889,13 +889,14 @@ Eleven further unit tests cover all five fallback reasons, every provider failur
 category, stable local filtering, first-attempt success, both repair paths, typed
 feedback transport and deterministic fallback. The malformed-output retry test
 was watched failing after the retry condition was deliberately changed, then the
-condition was restored. The full placeholder assembly, 390-test suite and lint
+condition was restored. The full placeholder assembly, 391-test suite and lint
 all pass after restoration.
 
-**Repetition ranges stay ranges at this boundary.** The builder currently edits a
-single repetition target. Until the integration slice decides how that range is
-presented, validation uses its upper bound only for the conservative duration
-estimate; it does not silently choose a displayed or persisted target.
+**The response contract now uses one exact repetition target.** Version 1 copied
+the guideline's original repetition-range wording even though the builder and
+saved-plan model both hold one number. Collapsing `8–12` into a midpoint would
+discard provider output invisibly, so the specification was corrected and schema
+version 2 requires the provider to choose the editable target itself.
 
 Still to build:
 

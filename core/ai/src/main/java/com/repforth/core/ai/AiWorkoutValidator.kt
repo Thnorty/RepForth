@@ -20,7 +20,7 @@ enum class AiWorkoutIssue {
     DUPLICATE_EXERCISE,
     SETS_OUT_OF_RANGE,
     TARGET_SHAPE,
-    REPETITIONS_OUT_OF_RANGE,
+    REPETITION_OUT_OF_RANGE,
     DURATION_OUT_OF_RANGE,
     TARGET_TYPE_MISMATCH,
     REST_OUT_OF_RANGE,
@@ -96,7 +96,7 @@ data class AiWorkoutValidationResult(
     val response: AiWorkoutResponse?,
     val contractViolations: List<AiWorkoutContractViolation>,
     val ruleViolations: List<Violation>,
-    /** Conservative: repetition ranges use their upper bound. */
+    /** The same deterministic estimate the builder shows. */
     val estimatedDurationMs: Long?,
 ) {
     val isValid: Boolean
@@ -159,13 +159,9 @@ class AiWorkoutValidator(
             if ((repetitions == null) == (duration == null)) {
                 violations += AiWorkoutContractViolation(AiWorkoutIssue.TARGET_SHAPE, id)
             } else if (repetitions != null) {
-                if (
-                    repetitions.minimum !in WorkoutLimits.reps ||
-                    repetitions.maximum !in WorkoutLimits.reps ||
-                    repetitions.minimum > repetitions.maximum
-                ) {
+                if (repetitions !in WorkoutLimits.reps) {
                     violations += AiWorkoutContractViolation(
-                        AiWorkoutIssue.REPETITIONS_OUT_OF_RANGE,
+                        AiWorkoutIssue.REPETITION_OUT_OF_RANGE,
                         id,
                     )
                 }
@@ -215,9 +211,7 @@ class AiWorkoutValidator(
 }
 
 /**
- * A validation-only projection. The response keeps its repetition range; using
- * the upper bound here makes the session-ceiling check conservative without
- * deciding which single target the current builder should display later.
+ * A validation-only projection using the exact target the builder will display.
  */
 private fun AiWorkoutResponse.toValidationPlan() = WorkoutTemplate(
     id = "ai-validation",
@@ -231,7 +225,7 @@ private fun AiWorkoutResponse.toValidationPlan() = WorkoutTemplate(
             target = exercise.repetitions?.let { repetitions ->
                 ExerciseTarget.Reps(
                     sets = exercise.sets,
-                    reps = repetitions.maximum,
+                    reps = repetitions,
                 )
             } ?: ExerciseTarget.Duration(
                 sets = exercise.sets,

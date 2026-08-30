@@ -382,7 +382,7 @@ flowchart TD
 
 All categorical values are the normalized language-neutral tokens produced by the importer (§6, step 4), never raw upstream display strings such as `body weight`. Only `locale` and free-text rationale are language-dependent.
 
-The response contains only dataset exercise IDs, order, sets, repetition range or duration, rest seconds, optional tempo, and short rationale. Define numeric limits in code, not only in the prompt.
+The response contains only dataset exercise IDs, order, sets, one exact repetition target or duration, rest seconds, optional tempo, and short rationale. The builder and saved-plan model both edit and persist one repetition target, so the provider contract must not return a range that would be silently collapsed. Define numeric limits in code, not only in the prompt.
 
 ### Initial rules engine
 

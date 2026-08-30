@@ -257,7 +257,7 @@ class AiWorkoutGeneratorTest {
                     exerciseId = id,
                     order = 0,
                     sets = 3,
-                    repetitions = AiRepetitionRange(8, 12),
+                    repetitions = 10,
                     restSeconds = 60,
                 ),
             ),

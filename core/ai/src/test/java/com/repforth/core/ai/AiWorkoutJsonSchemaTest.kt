@@ -32,9 +32,7 @@ class AiWorkoutJsonSchemaTest {
         assertRange(fields.getValue("rest_seconds").jsonObject, WorkoutLimits.restSeconds)
         assertRange(fields.getValue("duration_seconds").nullableValue(), WorkoutLimits.durationSeconds)
 
-        val repetitions = fields.getValue("repetitions").nullableValue().properties()
-        assertRange(repetitions.getValue("minimum").jsonObject, WorkoutLimits.reps)
-        assertRange(repetitions.getValue("maximum").jsonObject, WorkoutLimits.reps)
+        assertRange(fields.getValue("repetitions").nullableValue(), WorkoutLimits.reps)
     }
 
     @Test
@@ -48,8 +46,6 @@ class AiWorkoutJsonSchemaTest {
             .getValue("items")
             .jsonObject
         assertClosed(exercise)
-        assertClosed(exercise.properties().getValue("repetitions").nullableValue())
-
         assertFalse(
             "Nullable means an explicit JSON null, not an omitted property",
             exercise.getValue("required").jsonArray.isEmpty(),

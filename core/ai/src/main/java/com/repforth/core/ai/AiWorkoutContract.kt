@@ -10,7 +10,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-const val AI_WORKOUT_SCHEMA_VERSION = 1
+const val AI_WORKOUT_SCHEMA_VERSION = 2
 
 /**
  * The compact, language-neutral request sent to a provider (§8).
@@ -110,16 +110,10 @@ data class AiPlannedExercise(
     @SerialName("exercise_id") val exerciseId: String,
     val order: Int,
     val sets: Int,
-    val repetitions: AiRepetitionRange? = null,
+    val repetitions: Int? = null,
     @SerialName("duration_seconds") val durationSeconds: Int? = null,
     @SerialName("rest_seconds") val restSeconds: Int,
     val tempo: String? = null,
-)
-
-@Serializable
-data class AiRepetitionRange(
-    val minimum: Int,
-    val maximum: Int,
 )
 
 sealed interface AiWorkoutDecodeResult {

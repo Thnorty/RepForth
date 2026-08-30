@@ -65,18 +65,27 @@ class AiWorkoutContractTest {
     @Test
     fun `valid structured response decodes`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":1,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":{"minimum":8,"maximum":12},"rest_seconds":60}],"rationale":"Balanced volume"}""",
+            """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":10,"rest_seconds":60}],"rationale":"Balanced volume"}""",
         )
 
         val response = (result as AiWorkoutDecodeResult.Ok).response
         assertEquals("a", response.exercises.single().exerciseId)
-        assertEquals(12, response.exercises.single().repetitions!!.maximum)
+        assertEquals(10, response.exercises.single().repetitions)
+    }
+
+    @Test
+    fun `version two rejects the old repetition range shape`() {
+        val result = AiWorkoutCodec.decodeResponse(
+            """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":{"minimum":8,"maximum":12},"rest_seconds":60}],"rationale":"Balanced volume"}""",
+        )
+
+        assertEquals(AiWorkoutDecodeResult.Malformed, result)
     }
 
     @Test
     fun `unknown fields are rejected inside the versioned contract`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":1,"exercises":[],"rationale":"x","surprise":true}""",
+            """{"schema_version":2,"exercises":[],"rationale":"x","surprise":true}""",
         )
 
         assertEquals(AiWorkoutDecodeResult.Malformed, result)
@@ -85,7 +94,7 @@ class AiWorkoutContractTest {
     @Test
     fun `missing required fields are rejected rather than defaulted`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":1,"exercises":[]}""",
+            """{"schema_version":2,"exercises":[]}""",
         )
 
         assertEquals(AiWorkoutDecodeResult.Malformed, result)

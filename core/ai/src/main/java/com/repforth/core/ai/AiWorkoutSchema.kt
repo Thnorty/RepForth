@@ -47,18 +47,7 @@ object AiWorkoutJsonSchema {
             "order" to integerSchema(0, WorkoutLimits.maxExercises - 1),
             "sets" to integerSchema(WorkoutLimits.sets.first, WorkoutLimits.sets.last),
             "repetitions" to nullable(
-                objectSchema(
-                    properties = linkedMapOf(
-                        "minimum" to integerSchema(
-                            WorkoutLimits.reps.first,
-                            WorkoutLimits.reps.last,
-                        ),
-                        "maximum" to integerSchema(
-                            WorkoutLimits.reps.first,
-                            WorkoutLimits.reps.last,
-                        ),
-                    ),
-                ),
+                integerSchema(WorkoutLimits.reps.first, WorkoutLimits.reps.last),
             ),
             "duration_seconds" to nullable(
                 integerSchema(
