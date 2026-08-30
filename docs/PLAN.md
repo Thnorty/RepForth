@@ -32,19 +32,23 @@ and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
 larger than they sound. Every screen has been exercised on hardware by hand and
 by `adb input tap`.
 
-**Eight defects have been found on a device and by nothing else:** the launch
+**Nine defects have been found on a device and by nothing else:** the launch
 crash from Auto Backup restoring an old database, onboarding drawing under the
 camera cutout, a slider whose sixth value could not be selected, the Hilt crash
 when the locale was overridden, and the builder's Save button sitting behind the
 keyboard — enabled, invisible, and untappable, so a plan could not be saved at
 all; and three on the AI settings screen (2.3b): a keyboard that rewrote a
 typed URL, switch rows that only responded on the switch itself, and a
-disclosure that looked like a heading.
+disclosure that looked like a heading; and a bad Gemini key reported as a
+parsing failure rather than a rejected key (2.3c), which no local-server test
+could have caught because Gemini answers 400 where the shared mapping expected
+401.
 
-Six instrumentation tests now exist. Three open screens and would not have
-caught any of the five; three interact — type, tap, save — and the keyboard one
-is a direct regression guard for the fifth, watched failing with the shell's
-padding removed. Screenshot tests still do not exist.
+Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
+`:app`, eight in `core:secrets`. Of the six, three open screens and would not
+have caught any of the nine; three interact — type, tap, save — and the keyboard
+one is a direct regression guard for the fifth. Screenshot tests still do not
+exist, and remain the only untested category.
 
 ### Built so far
 
@@ -102,6 +106,7 @@ padding removed. Screenshot tests still do not exist.
 | **Phase 2** — the two provider adapters, and a connection test that explains itself | `2eb5796` |
 | **Phase 2** — cleartext to the user's own network, guarded in code | `181e5cc` |
 | Three defects the phone found on the provider screen | `8c42019` |
+| The keyboard test stopped measuring the frame before the padding | `e5090e7` |
 | A key only where a key is needed; a bad one named correctly | `ef43cc2` |
 | **§8 amended** — the address rule removed entirely | `7ce01b1` |
 
@@ -559,6 +564,9 @@ whose name reads like a credential appears on the persisted type, the other
 fails if `ProviderConfig` ever prints its key, which a `data class` would do by
 default and which would put the key in every log line that touched it.
 
+**Superseded by 2.3d — `EndpointPolicy` was deleted and §8 amended. Kept for the
+reasoning, not as a description of the code.**
+
 **`EndpointPolicy` lives in `core:model`, not in the settings screen.** §8 allows
 a developer setting for cleartext to a local model server; the trap is reading
 that as "cleartext is allowed now". It is not — `http://` to a public host stays
@@ -651,10 +659,13 @@ the second thing here that needs a phone in hand.
   parses is unverified, and stays unverified until someone puts a real key in
   the app — which is a thing only the maintainer can do.
 
-### 2.3a — Cleartext to the user's own network
+### 2.3a — Cleartext to the user's own network — **superseded by 2.3d**
 
-A correction to 2.3, and the reasoning is worth keeping because the first answer
-was wrong in a way that looked rigorous.
+A correction to 2.3, itself reversed a day later when the whole address rule was
+removed. Kept because the reasoning is what made 2.3d's case: this is the round
+that established the platform cannot express the rule, which is why enforcing it
+in Kotlin was the only option, which is why removing it entirely became the
+honest alternative to a validation layer nobody wanted.
 
 2.3 shipped cleartext restricted to loopback, on the grounds that a
 network-security configuration lists hosts and cannot express "any
@@ -850,6 +861,11 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Hilt pinned below latest | Newer releases ship a plugin built against a newer Kotlin stdlib | `libs.versions.toml` |
 | CI builds `placeholder` only | §20's claim is that the public source builds with no private credentials; `licensed` assets must not reach a public runner | `.github/workflows/ci.yml` |
 | Guard tests declare their files as task inputs | Otherwise the task is UP-TO-DATE and passes on the exact change it guards | `GuardTestInputs.kt` |
+| The app does not inspect the provider address | Every rule that could be written refused the local model server it existed for; the cost — a key readable over `http://` — is accepted and stated | Guideline §8, amended |
+| Gemini's endpoint is fixed in the adapter | A stored address must not be able to redirect a Gemini key, and it is the only address protection left | `GeminiProvider.kt` |
+| User-installed CAs stay untrusted | A self-signed local server is the other way people ask for LAN support, and the worse one | `network_security_config.xml` |
+| The provider key is required only where the provider requires it | Ollama and LM Studio ignore it; demanding one meant typing a throwaway value past a check that protected nothing | `ProviderId.requiresKey` |
+| Only `core:ai` may declare an HTTP client | Keeps "where does this app talk out, and why" answerable from one place | `NetworkBoundaryTest.kt` |
 
 Still open, and fine to leave open (§21): final application ID, accent colour,
 app icon, and the exact licence.
@@ -866,11 +882,17 @@ app icon, and the exact licence.
   an activity start from instrumentation and the permission that would allow it
   cannot be set over adb. Paired-watch tests still have no hardware at all, so
   Phase 4 remains unverifiable here.
-- **The network security config permits cleartext, and `EndpointPolicy` is the
-  only thing narrowing it.** That is deliberate and reasoned (2.3a), but it does
-  mean a second HTTP client anywhere in the app would bypass the whole rule
-  silently. `CleartextGuardTest` is what stands between that and a shipped
-  build; do not weaken it to make a dependency fit.
+- **Cleartext is permitted and nothing narrows it (2.3d, §8 amended).** There is
+  no address policy any more: a base URL typed as `http://` is sent as `http://`,
+  to any host, and the API key rides in a header in clear text. That is the
+  maintainer's decision, taken with the consequence stated, and §8 carries the
+  reasoning. What it means for anyone changing this code is that there is no
+  second line of defence — nothing downstream will catch an address a screen
+  lets through, because nothing downstream looks.
+- **`NetworkBoundaryTest` is a scope control, not a security one.** It asserts
+  one module reaches the network through one file, which is what keeps "where
+  does this app talk out" answerable. Do not read it as protecting cleartext; it
+  used to, and no longer does.
 - **uiautomator is not a reliable oracle near the bottom of the screen.** It
   reports the legacy application frame as the window (1080x2266 on a 1080x2400
   phone) and clips anything below it to `bounds=[0,0][0,0]`, whether or not the
