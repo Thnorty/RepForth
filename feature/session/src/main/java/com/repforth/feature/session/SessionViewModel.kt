@@ -9,6 +9,7 @@ import com.repforth.core.media.download.MediaPrefetchRequest
 import com.repforth.core.model.Exercise
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.MediaRef
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
@@ -18,6 +19,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+/** Preview of what comes next during rest (either next set of current movement or next movement). */
+data class NextUpPreview(
+    val thumbnail: MediaRef,
+    val name: String,
+    val nextSetNumber: Int? = null,
+    val totalSets: Int? = null,
+)
 
 /** What the running workout screen draws. */
 data class SessionUiState(
@@ -40,6 +49,36 @@ data class SessionUiState(
             val currIdx = snapshot?.currentExerciseIndex ?: return null
             val nextPlanned = snapshot.exercises.getOrNull(currIdx + 1) ?: return null
             return summaries[nextPlanned.exerciseId.value]
+        }
+
+    val nextUpPreview: NextUpPreview?
+        get() {
+            val snap = snapshot ?: return null
+            if (snap.isLastSetOfExercise) {
+                // Moving to the next exercise in the plan
+                val nextPlanned = snap.exercises.getOrNull(snap.currentExerciseIndex + 1) ?: return null
+                val summary = summaries[nextPlanned.exerciseId.value] ?: return null
+                return NextUpPreview(
+                    thumbnail = summary.thumbnail,
+                    name = summary.name,
+                    nextSetNumber = 1,
+                    totalSets = nextPlanned.target.sets,
+                )
+            } else {
+                // Next set of the current exercise
+                val currPlanned = snap.currentExercise ?: return null
+                val summary = summaries[currPlanned.exerciseId.value]
+                val thumbnail = currentExercise?.thumbnail ?: summary?.thumbnail ?: MediaRef.Unavailable
+                val name = currentName ?: summary?.name ?: ""
+                val nextSetNum = snap.currentSetIndex + 2
+                val totalSets = currPlanned.target.sets
+                return NextUpPreview(
+                    thumbnail = thumbnail,
+                    name = name,
+                    nextSetNumber = nextSetNum,
+                    totalSets = totalSets,
+                )
+            }
         }
 
     val setNumber: Int get() = (snapshot?.currentSetIndex ?: 0) + 1

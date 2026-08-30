@@ -339,6 +339,47 @@ class SessionViewModelTest {
             state.snapshot!!.exercises.first().sets.size,
         )
     }
+
+    @Test
+    fun `next up preview reflects next set of same exercise during rest and next exercise on last set`() = runTest(dispatcher) {
+        viewModel.start(TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+
+        // Complete set 1 of 3 (Bench Press) -> enters RESTING
+        viewModel.onCompleteSet(reps = 8, weightKg = 80.0, durationMs = null)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SessionPhase.RESTING, state.phase)
+        val preview = state.nextUpPreview
+        assertNotNull(preview)
+        assertEquals("Bench press", preview?.name)
+        assertEquals(2, preview?.nextSetNumber)
+        assertEquals(3, preview?.totalSets)
+
+        // Skip rest to go to set 2
+        viewModel.onSkipRest()
+        testScheduler.advanceUntilIdle()
+
+        // Complete set 2 of 3 (Bench Press)
+        viewModel.onCompleteSet(reps = 8, weightKg = 80.0, durationMs = null)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SessionPhase.RESTING, state.phase)
+        assertEquals("Bench press", state.nextUpPreview?.name)
+        assertEquals(3, state.nextUpPreview?.nextSetNumber)
+
+        // Skip rest to go to set 3 (last set of Bench Press)
+        viewModel.onSkipRest()
+        testScheduler.advanceUntilIdle()
+
+        // Complete set 3 of 3 (Bench Press) -> next is Row
+        viewModel.onCompleteSet(reps = 8, weightKg = 80.0, durationMs = null)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SessionPhase.RESTING, state.phase)
+        assertEquals("Row", state.nextUpPreview?.name)
+        assertEquals(1, state.nextUpPreview?.nextSetNumber)
+    }
 }
 
 private const val TEMPLATE_ID = "template-1"

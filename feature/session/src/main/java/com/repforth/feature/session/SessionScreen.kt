@@ -296,7 +296,7 @@ private fun RestPanel(state: SessionUiState) {
             )
         }
 
-        state.nextExerciseSummary?.let { next ->
+        state.nextUpPreview?.let { next ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -315,6 +315,13 @@ private fun RestPanel(state: SessionUiState) {
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
+                    if (next.nextSetNumber != null && next.totalSets != null) {
+                        Text(
+                            text = stringResource(R.string.session_set_of, next.nextSetNumber, next.totalSets),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

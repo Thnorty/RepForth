@@ -119,7 +119,7 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-409 unit tests across 54 classes, plus fourteen instrumentation tests
+410 unit tests across 54 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
 committed.
 
