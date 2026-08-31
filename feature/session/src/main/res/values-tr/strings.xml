@@ -13,6 +13,7 @@
         <item quantity="other">%1$d saniye</item>
     </plurals>
     <string name="session_target_weight">%1$s %2$s</string>
+    <string name="session_target_bodyweight">Vücut ağırlığı</string>
 
     <string name="session_seconds">Saniye</string>
     <string name="session_reps">Tekrar</string>

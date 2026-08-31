@@ -247,8 +247,13 @@ private fun WeekCard(state: TodayUiState) {
                 horizontalArrangement = Arrangement.spacedBy(Space.s8),
             ) {
                 Column {
+                    val count = if (state.trainingDaysPerWeek != null) {
+                        state.progress.daysThisWeek
+                    } else {
+                        state.progress.workoutsThisWeek
+                    }
                     Text(
-                        text = state.progress.workoutsThisWeek.toString(),
+                        text = count.toString(),
                         style = RepForthNumeric.md,
                     )
                     Text(
@@ -262,7 +267,7 @@ private fun WeekCard(state: TodayUiState) {
                             pluralStringResource(
                                 R.plurals.today_week_of_target,
                                 target,
-                                state.progress.workoutsThisWeek,
+                                state.progress.daysThisWeek,
                                 target,
                             )
                         } ?: stringResource(

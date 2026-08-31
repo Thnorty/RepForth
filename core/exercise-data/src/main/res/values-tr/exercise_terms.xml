@@ -125,4 +125,19 @@
     <string name="equipment_upper_body_ergometer_detail">Kollarla pedal çevrilen üst vücut ergometresi.</string>
     <string name="equipment_weighted_detail">Ağırlık kemeri gibi ek yükle yapılan vücut ağırlığı egzersizi.</string>
     <string name="equipment_wheel_roller_detail">Karın egzersizlerinde ileri geri yuvarlanan, saplı küçük karın tekerleği.</string>
+
+    <!-- Training Goal -->
+    <string name="goal_strength">Güç</string>
+    <string name="goal_hypertrophy">Hipertrofi</string>
+    <string name="goal_endurance">Dayanıklılık</string>
+    <string name="goal_general_fitness">Genel kondisyon</string>
+    <string name="goal_strength_detail">Daha ağır yük, daha az tekrar, daha uzun dinlenme.</string>
+    <string name="goal_hypertrophy_detail">Kas hacmi. Orta yük, orta tekrar.</string>
+    <string name="goal_endurance_detail">Daha hafif yük, daha çok tekrar, kısa dinlenme.</string>
+    <string name="goal_general_fitness_detail">Dengeli bir karışım. İyi bir başlangıç.</string>
+
+    <!-- Experience Level -->
+    <string name="experience_beginner">1 yıldan az</string>
+    <string name="experience_intermediate">1 - 3 yıl</string>
+    <string name="experience_advanced">3 yıldan fazla</string>
 </resources>

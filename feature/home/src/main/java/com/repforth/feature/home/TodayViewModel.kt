@@ -26,7 +26,7 @@ data class TodayUiState(
     val next: WorkoutTemplate? = null,
     /** When [next] was last performed, or null if never. */
     val nextLastPerformedAt: Long? = null,
-    val progress: ProgressSummary = ProgressSummary(0, 0, 0, 0.0, 0),
+    val progress: ProgressSummary = ProgressSummary(),
     val trainingDaysPerWeek: Int? = null,
     val loading: Boolean = true,
 ) {

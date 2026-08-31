@@ -226,4 +226,19 @@ class SessionStatisticsTest {
 
         assertEquals(30 * 60_000L, summary.durationMs)
     }
+
+    @Test
+    fun `multiple sessions on the same day count as one day trained this week`() {
+        val history = listOf(
+            session("s1", at("2026-08-24", hour = 8)),
+            session("s2", at("2026-08-24", hour = 12)),
+            session("s3", at("2026-08-24", hour = 18)),
+            session("s4", at("2026-08-25", hour = 10)),
+        )
+
+        val progress = history.toProgress(at("2026-08-26"), zone)
+
+        assertEquals(4, progress.workoutsThisWeek)
+        assertEquals("Aug 24 (3 sessions) and Aug 25 (1 session) are 2 distinct days", 2, progress.daysThisWeek)
+    }
 }

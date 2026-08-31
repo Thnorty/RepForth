@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Ayarlar: görünüm, antrenman davranışı ve kullanıcının kendi verisi. -->
 <resources>
+    <string name="settings_profile">Antrenman profili</string>
+    <string name="settings_profile_goal">Odak</string>
+    <string name="settings_profile_experience">Deneyim</string>
+    <string name="settings_profile_equipment">Kullanılabilir ekipman</string>
+    <string name="settings_profile_equipment_sub">%1$d seçili</string>
+    <string name="settings_profile_equipment_dialog_title">Kullanılabilir ekipman</string>
+    <string name="settings_profile_equipment_save">Kaydet</string>
+    <string name="settings_profile_equipment_more">Daha fazla ekipman (%1$d)</string>
+    <string name="settings_profile_equipment_fewer">Daha az seçenek</string>
+    <string name="settings_profile_schedule">Program</string>
+    <string name="settings_profile_schedule_sub">Haftada %1$d gün · %2$d dk</string>
+
     <string name="settings_appearance">Görünüm</string>
     <string name="settings_theme">Tema</string>
     <string name="settings_theme_system">Sistem</string>

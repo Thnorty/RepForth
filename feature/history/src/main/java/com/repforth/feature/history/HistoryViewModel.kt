@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 data class HistoryUiState(
-    val progress: ProgressSummary = ProgressSummary(0, 0, 0, 0.0, 0),
+    val progress: ProgressSummary = ProgressSummary(),
     /** Newest first: the last workout is the one being looked for. */
     val workouts: List<WorkoutSummary> = emptyList(),
     /** Exercise names for [ProgressSummary.topMuscles], resolved from the catalog. */

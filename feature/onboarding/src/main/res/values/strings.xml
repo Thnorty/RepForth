@@ -9,20 +9,9 @@
 
     <string name="onboarding_goal_title">What are you training for?</string>
     <string name="onboarding_goal_subtitle">This shapes sets and reps.</string>
-    <string name="goal_strength">Strength</string>
-    <string name="goal_hypertrophy">Hypertrophy</string>
-    <string name="goal_endurance">Endurance</string>
-    <string name="goal_general_fitness">General fitness</string>
-    <string name="goal_strength_detail">Heavier weight, fewer reps, longer rests.</string>
-    <string name="goal_hypertrophy_detail">Muscle size. Moderate weight, moderate reps.</string>
-    <string name="goal_endurance_detail">Lighter weight, more reps, short rests.</string>
-    <string name="goal_general_fitness_detail">A balanced mix. A good default.</string>
 
     <string name="onboarding_experience_title">How long have you been training?</string>
     <string name="onboarding_experience_subtitle">This affects exercise choice and volume.</string>
-    <string name="experience_beginner">Under a year</string>
-    <string name="experience_intermediate">1 to 3 years</string>
-    <string name="experience_advanced">More than 3 years</string>
 
     <string name="onboarding_equipment_title">What can you train with?</string>
     <string name="onboarding_equipment_subtitle">Only these will be programmed. Body weight is already on.</string>

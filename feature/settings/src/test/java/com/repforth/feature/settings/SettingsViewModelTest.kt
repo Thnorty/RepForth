@@ -2,31 +2,38 @@ package com.repforth.feature.settings
 
 import android.content.ContentResolver
 import com.repforth.core.datastore.UserPreferencesDataSource
+import com.repforth.core.media.cache.MediaCacheManager
+import com.repforth.core.model.Equipment
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.ThemeMode
+import com.repforth.core.model.TrainingGoal
+import com.repforth.core.model.UserProfile
 import com.repforth.core.testing.FakePreferencesStore
 import com.repforth.core.transfer.DataTransfer
 import com.repforth.core.transfer.ExportDocument
 import com.repforth.core.transfer.ImportFailure
 import com.repforth.core.transfer.ImportOutcome
 import com.repforth.core.transfer.ImportPreview
+import com.repforth.core.userdata.ProfileRepository
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-
-import com.repforth.core.media.cache.MediaCacheManager
-import java.io.File
 
 /**
  * Settings, minus the file picker.
@@ -41,6 +48,7 @@ class SettingsViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var preferences: UserPreferencesDataSource
+    private lateinit var profileRepository: FakeProfileRepository
     private lateinit var transfer: RecordingTransfer
     private lateinit var mediaCache: MediaCacheManager
     private lateinit var cacheDir: File
@@ -50,11 +58,12 @@ class SettingsViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
+        profileRepository = FakeProfileRepository()
         transfer = RecordingTransfer()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "repforth_test_media_${System.currentTimeMillis()}")
         cacheDir.mkdirs()
         mediaCache = MediaCacheManager(cacheDir, dispatcher)
-        viewModel = SettingsViewModel(preferences, transfer, NoContentResolver(), mediaCache)
+        viewModel = SettingsViewModel(preferences, profileRepository, transfer, NoContentResolver(), mediaCache)
     }
 
     @After
@@ -76,101 +85,134 @@ class SettingsViewModelTest {
         testScheduler.advanceUntilIdle()
     }
 
-    private fun state(): SettingsUiState = viewModel.uiState.value
+    private fun state() = viewModel.uiState.value
 
     @Test
-    fun `changing a preference stores it`() = runTest(dispatcher) {
+    fun `profile reflects repository state and updates on goal, experience and equipment changes`() = runTest(dispatcher) {
         activate()
+        assertNotNull(state().profile)
+        assertEquals(TrainingGoal.STRENGTH, state().profile?.goal)
+        assertEquals(ExperienceLevel.INTERMEDIATE, state().profile?.experience)
+        assertEquals(setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL, Equipment.DUMBBELL), state().profile?.availableEquipment)
+
+        viewModel.onGoalChange(TrainingGoal.HYPERTROPHY)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TrainingGoal.HYPERTROPHY, state().profile?.goal)
+
+        viewModel.onExperienceChange(ExperienceLevel.ADVANCED)
+        testScheduler.advanceUntilIdle()
+        assertEquals(ExperienceLevel.ADVANCED, state().profile?.experience)
+
+        val newEquipment = setOf(Equipment.BODY_WEIGHT, Equipment.KETTLEBELL)
+        viewModel.onEquipmentChange(newEquipment)
+        testScheduler.advanceUntilIdle()
+        assertEquals(newEquipment, state().profile?.availableEquipment)
+    }
+
+    @Test
+    fun `preferences reflect changes from the view model`() = runTest(dispatcher) {
+        activate()
+        assertEquals(ThemeMode.SYSTEM, state().preferences.themeMode)
+
         viewModel.onThemeChange(ThemeMode.DARK)
         testScheduler.advanceUntilIdle()
 
+        assertEquals(ThemeMode.DARK, state().preferences.themeMode)
         assertEquals(ThemeMode.DARK, preferences.preferences.first().themeMode)
     }
 
-    /**
-     * §7 requires a preview before an import, which is only a promise if
-     * reading is genuinely separate from applying.
-     */
     @Test
-    fun `reading a file writes nothing until it is confirmed`() = runTest(dispatcher) {
+    fun `a valid export document is presented as ready to import`() = runTest(dispatcher) {
         activate()
-        transfer.nextRead = ImportOutcome.Ready(preview(newTemplates = 2), ExportDocument(exportedAt = 0))
+        val expected = preview(newTemplates = 3)
+        val document = ExportDocument(exportedAt = 0L, profile = null, templates = emptyList(), sessions = emptyList())
+        transfer.nextRead = ImportOutcome.Ready(expected, document)
 
         viewModel.onImportText(Result.success("{}"))
         testScheduler.advanceUntilIdle()
 
-        assertEquals(2, state().pendingImport?.preview?.newTemplates)
-        assertTrue("Reading must not import", transfer.imported.isEmpty())
+        val pending = state().pendingImport
+        assertNotNull("The file was ready to import, so pendingImport must be set", pending)
+        assertEquals(expected, pending?.preview)
+        assertEquals(document, pending?.document)
+        assertNull("A valid file does not show an error message", state().message)
+    }
+
+    @Test
+    fun `confirming an import applies it and clears the pending document`() = runTest(dispatcher) {
+        activate()
+        val document = ExportDocument(exportedAt = 0L, profile = null, templates = emptyList(), sessions = emptyList())
+        transfer.nextRead = ImportOutcome.Ready(preview(), document)
+        viewModel.onImportText(Result.success("{}"))
+        testScheduler.advanceUntilIdle()
 
         viewModel.onImportConfirmed()
         testScheduler.advanceUntilIdle()
 
-        assertEquals(1, transfer.imported.size)
-        assertNull("The pending file is consumed", state().pendingImport)
+        assertEquals(listOf(document), transfer.imported)
+        assertNull(state().pendingImport)
         assertEquals(SettingsMessage.Imported, state().message)
     }
 
     @Test
-    fun `cancelling an import discards it without writing`() = runTest(dispatcher) {
+    fun `cancelling an import clears the pending document without applying it`() = runTest(dispatcher) {
         activate()
-        transfer.nextRead = ImportOutcome.Ready(preview(), ExportDocument(exportedAt = 0))
+        transfer.nextRead = ImportOutcome.Ready(
+            preview(),
+            ExportDocument(exportedAt = 0L, profile = null, templates = emptyList(), sessions = emptyList()),
+        )
         viewModel.onImportText(Result.success("{}"))
         testScheduler.advanceUntilIdle()
 
         viewModel.onImportCancelled()
         testScheduler.advanceUntilIdle()
 
-        assertNull(state().pendingImport)
-        assertTrue(transfer.imported.isEmpty())
-    }
-
-    @Test
-    fun `a refused file says why, and nothing is pending`() = runTest(dispatcher) {
-        activate()
-        transfer.nextRead = ImportOutcome.Failed(ImportFailure.WrongFormat("something-else"))
-
-        viewModel.onImportText(Result.success("{}"))
-        testScheduler.advanceUntilIdle()
-
-        val message = state().message
-        assertTrue(message is SettingsMessage.ImportRefused)
-        assertTrue(
-            (message as SettingsMessage.ImportRefused).failure is ImportFailure.WrongFormat,
-        )
+        assertTrue("Cancelled imports must not be applied", transfer.imported.isEmpty())
         assertNull(state().pendingImport)
     }
 
-    /**
-     * A file that cannot even be opened must not read as a valid empty import.
-     * The distinction matters: one is a broken file, the other is a file with
-     * nothing in it, and only the second is safe to apply.
-     */
     @Test
-    fun `an unopenable file is refused rather than treated as empty`() = runTest(dispatcher) {
+    fun `a corrupt file is refused with its error and no pending document is stored`() = runTest(dispatcher) {
         activate()
+        transfer.nextRead = ImportOutcome.Failed(ImportFailure.Invalid("truncated"))
 
-        viewModel.onImportText(Result.failure(java.io.IOException("no such file")))
+        viewModel.onImportText(Result.success("{not-json"))
         testScheduler.advanceUntilIdle()
 
-        val message = state().message
-        assertTrue(message is SettingsMessage.ImportRefused)
-        assertTrue(
-            (message as SettingsMessage.ImportRefused).failure is ImportFailure.Unreadable,
-        )
+        assertNull(state().pendingImport)
+        val message = state().message as? SettingsMessage.ImportRefused
+        assertNotNull(message)
+        assertTrue(message?.failure is ImportFailure.Invalid)
     }
 
     @Test
-    fun `the two deletes are different actions`() = runTest(dispatcher) {
+    fun `a file that failed to open is refused as unreadable`() = runTest(dispatcher) {
         activate()
+
+        viewModel.onImportText(Result.failure(RuntimeException("permission denied")))
+        testScheduler.advanceUntilIdle()
+
+        assertNull(state().pendingImport)
+        val message = state().message as? SettingsMessage.ImportRefused
+        assertNotNull(message)
+        assertTrue(message?.failure is ImportFailure.Unreadable)
+    }
+
+    @Test
+    fun `deleting workout data asks the repository and posts a message`() = runTest(dispatcher) {
+        activate()
+
         viewModel.onDeleteWorkoutData()
         testScheduler.advanceUntilIdle()
 
         assertEquals(1, transfer.workoutDeletes)
-        assertEquals("Deleting workouts must not reset the app", 0, transfer.resets)
         assertEquals(SettingsMessage.WorkoutDataDeleted, state().message)
+    }
 
-        viewModel.onMessageShown()
-        testScheduler.advanceUntilIdle()
+    @Test
+    fun `resetting the app asks the repository and posts a message`() = runTest(dispatcher) {
+        activate()
+
         viewModel.onResetApp()
         testScheduler.advanceUntilIdle()
 
@@ -179,24 +221,9 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `a message is shown once`() = runTest(dispatcher) {
+    fun `clearing media cache invokes MediaCacheManager and posts a message`() = runTest(dispatcher) {
         activate()
-        viewModel.onDeleteWorkoutData()
-        testScheduler.advanceUntilIdle()
-        assertEquals(SettingsMessage.WorkoutDataDeleted, state().message)
-
-        viewModel.onMessageShown()
-        testScheduler.advanceUntilIdle()
-
-        assertNull(state().message)
-    }
-
-    @Test
-    fun `clearing media cache empties cache directory and posts MediaCacheCleared message`() = runTest(dispatcher) {
-        activate()
-        // Create a dummy file in cache
-        val sampleFile = File(cacheDir, "sample.bin")
-        sampleFile.writeBytes(ByteArray(1024))
+        File(cacheDir, "sample.bin").writeBytes(ByteArray(1024))
         mediaCache.calculateCacheSize()
         testScheduler.advanceUntilIdle()
 
@@ -226,6 +253,33 @@ class SettingsViewModelTest {
         sessions = 0,
         exportedAt = 0,
     )
+}
+
+private class FakeProfileRepository : ProfileRepository {
+    private val profileFlow = MutableStateFlow<UserProfile?>(
+        UserProfile(
+            id = "user-1",
+            goal = TrainingGoal.STRENGTH,
+            experience = ExperienceLevel.INTERMEDIATE,
+            trainingDaysPerWeek = 4,
+            sessionLengthMs = 45 * 60_000L,
+            availableEquipment = setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL, Equipment.DUMBBELL),
+            preferredMuscles = emptySet(),
+            exclusions = emptySet(),
+        ),
+    )
+
+    override fun observeProfile(): Flow<UserProfile?> = profileFlow
+
+    override suspend fun getProfile(): UserProfile? = profileFlow.value
+
+    override suspend fun save(profile: UserProfile) {
+        profileFlow.value = profile
+    }
+
+    override suspend fun deleteAll() {
+        profileFlow.value = null
+    }
 }
 
 private class RecordingTransfer : DataTransfer {

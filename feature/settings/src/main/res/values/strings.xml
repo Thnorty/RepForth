@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Settings: appearance, workout behaviour, and the user's own data. -->
 <resources>
+    <string name="settings_profile">Training profile</string>
+    <string name="settings_profile_goal">Focus</string>
+    <string name="settings_profile_experience">Experience</string>
+    <string name="settings_profile_equipment">Available equipment</string>
+    <string name="settings_profile_equipment_sub">%1$d selected</string>
+    <string name="settings_profile_equipment_dialog_title">Available equipment</string>
+    <string name="settings_profile_equipment_save">Save</string>
+    <string name="settings_profile_equipment_more">More equipment (%1$d)</string>
+    <string name="settings_profile_equipment_fewer">Fewer options</string>
+    <string name="settings_profile_schedule">Schedule</string>
+    <string name="settings_profile_schedule_sub">%1$d days / week · %2$d min</string>
+
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>

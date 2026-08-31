@@ -5,10 +5,15 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.datastore.UserPreferencesDataSource
+import com.repforth.core.model.Equipment
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
 import com.repforth.core.model.ThemeMode
+import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UnitSystem
 import com.repforth.core.model.UserPreferences
+import com.repforth.core.model.UserProfile
+import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.transfer.DataTransfer
 import com.repforth.core.transfer.ExportDocument
 import com.repforth.core.transfer.ImportFailure
@@ -45,6 +50,7 @@ sealed interface SettingsMessage {
 
 data class SettingsUiState(
     val preferences: UserPreferences = UserPreferences.Default,
+    val profile: UserProfile? = null,
     val cacheSizeBytes: Long = 0L,
     /** Set when a file has been read and is waiting to be confirmed. */
     val pendingImport: PendingImport? = null,
@@ -73,6 +79,7 @@ data class PendingImport(val preview: ImportPreview, val document: ExportDocumen
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val preferences: UserPreferencesDataSource,
+    private val profileRepository: ProfileRepository,
     private val transfer: DataTransfer,
     private val contentResolver: ContentResolver,
     private val mediaCache: MediaCacheManager,
@@ -81,13 +88,34 @@ class SettingsViewModel @Inject constructor(
     private val local = MutableStateFlow(SettingsUiState())
 
     val uiState: StateFlow<SettingsUiState> =
-        combine(preferences.preferences, mediaCache.cacheSize, local) { stored, cacheSize, state ->
-            state.copy(preferences = stored, cacheSizeBytes = cacheSize)
+        combine(preferences.preferences, profileRepository.observeProfile(), mediaCache.cacheSize, local) { stored, userProfile, cacheSize, state ->
+            state.copy(preferences = stored, profile = userProfile, cacheSizeBytes = cacheSize)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
             initialValue = SettingsUiState(),
         )
+
+    fun onGoalChange(goal: TrainingGoal) {
+        viewModelScope.launch {
+            val current = profileRepository.getProfile() ?: return@launch
+            profileRepository.save(current.copy(goal = goal))
+        }
+    }
+
+    fun onExperienceChange(experience: ExperienceLevel) {
+        viewModelScope.launch {
+            val current = profileRepository.getProfile() ?: return@launch
+            profileRepository.save(current.copy(experience = experience))
+        }
+    }
+
+    fun onEquipmentChange(equipment: Set<Equipment>) {
+        viewModelScope.launch {
+            val current = profileRepository.getProfile() ?: return@launch
+            profileRepository.save(current.copy(availableEquipment = equipment))
+        }
+    }
 
     fun onThemeChange(mode: ThemeMode) = edit { preferences.setThemeMode(mode) }
 

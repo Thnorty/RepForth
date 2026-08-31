@@ -355,6 +355,7 @@ private fun TargetPanel(state: SessionUiState) {
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            val units = LocalUnitSystem.current
             Text(
                 text = when (target) {
                     is ExerciseTarget.Reps -> target.reps.toString()
@@ -364,14 +365,18 @@ private fun TargetPanel(state: SessionUiState) {
             )
             Text(
                 text = when (target) {
-                    is ExerciseTarget.Reps -> stringResource(R.string.session_reps)
+                    is ExerciseTarget.Reps -> {
+                        val weightPart = target.weightKg?.takeIf { it > 0.0 }?.let { weight ->
+                            " · ${units.formatWeight(weight)} ${units.symbol}"
+                        } ?: ""
+                        "${stringResource(R.string.session_reps)}$weightPart"
+                    }
                     is ExerciseTarget.Duration -> stringResource(R.string.session_seconds)
                 },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            target.weightKg?.let { weight ->
-                val units = LocalUnitSystem.current
+            target.weightKg?.takeIf { it > 0.0 }?.let { weight ->
                 Text(
                     text = stringResource(
                         R.string.session_target_weight,
@@ -379,6 +384,13 @@ private fun TargetPanel(state: SessionUiState) {
                         units.symbol,
                     ),
                     style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } ?: run {
+                Text(
+                    text = stringResource(R.string.session_target_bodyweight),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -417,11 +429,16 @@ private fun SessionControls(
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
         if (state.isActive && state.target is ExerciseTarget.Reps) {
+            val targetReps = (state.target as? ExerciseTarget.Reps)?.reps
+            val targetWeight = state.target?.weightKg
             Row(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
                 OutlinedTextField(
                     value = reps,
                     onValueChange = { reps = it.filter(Char::isDigit).take(MAX_DIGITS) },
                     label = { Text(stringResource(R.string.session_reps)) },
+                    placeholder = {
+                        targetReps?.let { Text(it.toString()) }
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
@@ -433,6 +450,11 @@ private fun SessionControls(
                     },
                     label = {
                         Text(stringResource(R.string.session_weight, units.symbol))
+                    },
+                    placeholder = {
+                        targetWeight?.takeIf { it > 0.0 }?.let {
+                            Text(units.formatWeight(it))
+                        }
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

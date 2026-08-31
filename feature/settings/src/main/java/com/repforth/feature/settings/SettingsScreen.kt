@@ -12,7 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -24,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,8 +40,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.exercisedata.detailRes
+import com.repforth.core.exercisedata.labelRes
+import com.repforth.core.model.Equipment
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
 import com.repforth.core.model.ThemeMode
+import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UnitSystem
 import com.repforth.core.transfer.ImportFailure
 
@@ -69,6 +79,9 @@ fun SettingsRoute(
 
     SettingsScreen(
         state = state,
+        onGoalChange = viewModel::onGoalChange,
+        onExperienceChange = viewModel::onExperienceChange,
+        onEquipmentChange = viewModel::onEquipmentChange,
         onThemeChange = viewModel::onThemeChange,
         onLanguageChange = viewModel::onLanguageChange,
         onUnitsChange = viewModel::onUnitsChange,
@@ -95,6 +108,9 @@ fun SettingsRoute(
 @Composable
 internal fun SettingsScreen(
     state: SettingsUiState,
+    onGoalChange: (TrainingGoal) -> Unit,
+    onExperienceChange: (ExperienceLevel) -> Unit,
+    onEquipmentChange: (Set<Equipment>) -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
     onLanguageChange: (Language?) -> Unit,
     onUnitsChange: (UnitSystem) -> Unit,
@@ -116,12 +132,55 @@ internal fun SettingsScreen(
     var confirmingDelete by rememberSaveable { mutableStateOf(false) }
     var confirmingReset by rememberSaveable { mutableStateOf(false) }
     var confirmingClearMediaCache by rememberSaveable { mutableStateOf(false) }
+    var editingEquipment by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = Layout.gutterPhone, vertical = Space.s3),
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
+        state.profile?.let { profile ->
+            item(key = "profile") { SectionLabel(stringResource(R.string.settings_profile)) }
+
+            item(key = "goal") {
+                ChoiceRow(
+                    label = stringResource(R.string.settings_profile_goal),
+                    options = TrainingGoal.entries,
+                    selected = profile.goal,
+                    labelOf = { stringResource(it.labelRes) },
+                    onSelected = onGoalChange,
+                )
+            }
+
+            item(key = "experience") {
+                ChoiceRow(
+                    label = stringResource(R.string.settings_profile_experience),
+                    options = ExperienceLevel.entries,
+                    selected = profile.experience,
+                    labelOf = { stringResource(it.labelRes) },
+                    onSelected = onExperienceChange,
+                )
+            }
+
+            item(key = "equipment") {
+                ActionRow(
+                    label = stringResource(R.string.settings_profile_equipment),
+                    detail = stringResource(R.string.settings_profile_equipment_sub, profile.availableEquipment.size),
+                    enabled = !state.busy,
+                    onClick = { editingEquipment = true },
+                )
+            }
+
+            item(key = "schedule") {
+                val days = profile.trainingDaysPerWeek
+                val minutes = (profile.sessionLengthMs / 60_000L).toInt()
+                InfoRow(
+                    label = stringResource(R.string.settings_profile_schedule),
+                    detail = stringResource(R.string.settings_profile_schedule_sub, days, minutes),
+                )
+            }
+        }
+
         item(key = "appearance") { SectionLabel(stringResource(R.string.settings_appearance)) }
 
         item(key = "theme") {
@@ -291,6 +350,14 @@ internal fun SettingsScreen(
         }
     }
 
+    if (editingEquipment) {
+        EquipmentDialog(
+            selected = state.profile?.availableEquipment ?: emptySet(),
+            onSave = onEquipmentChange,
+            onDismiss = { editingEquipment = false },
+        )
+    }
+
     state.pendingImport?.let { pending ->
         ImportDialog(
             pending = pending,
@@ -434,6 +501,133 @@ private fun MessageDialog(message: SettingsMessage, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         text = { Text(text) },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+    )
+}
+
+@Composable
+private fun InfoRow(label: String, detail: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Target.min)
+            .padding(vertical = Space.s2),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = detail,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun EquipmentDialog(
+    selected: Set<Equipment>,
+    onSave: (Set<Equipment>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draft by remember { mutableStateOf(selected) }
+    var moreEquipment by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_profile_equipment_dialog_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Space.s2),
+            ) {
+                Equipment.COMMON.forEach { eq ->
+                    val checked = eq in draft
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Target.min)
+                            .clickable {
+                                draft = if (checked) draft - eq else draft + eq
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Space.s3),
+                    ) {
+                        Checkbox(
+                            checked = checked,
+                            onCheckedChange = { isChecked ->
+                                draft = if (isChecked) draft + eq else draft - eq
+                            },
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = stringResource(eq.labelRes), style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = stringResource(eq.detailRes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                TextButton(onClick = { moreEquipment = !moreEquipment }) {
+                    Text(
+                        if (moreEquipment) {
+                            stringResource(R.string.settings_profile_equipment_fewer)
+                        } else {
+                            stringResource(R.string.settings_profile_equipment_more, Equipment.UNCOMMON.size)
+                        },
+                    )
+                }
+
+                if (moreEquipment) {
+                    Equipment.UNCOMMON.forEach { eq ->
+                        val checked = eq in draft
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = Target.min)
+                                .clickable {
+                                    draft = if (checked) draft - eq else draft + eq
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Space.s3),
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { isChecked ->
+                                    draft = if (isChecked) draft + eq else draft - eq
+                                },
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = stringResource(eq.labelRes), style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = stringResource(eq.detailRes),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(draft)
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.settings_profile_equipment_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.settings_cancel))
+            }
+        },
     )
 }
 

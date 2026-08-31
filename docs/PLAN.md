@@ -971,7 +971,15 @@ Exercise media rendering and background prefetching are integrated across all ex
 - **Workout Builder & Picker (`feature:builder`)**:
   - `ExercisePicker` lists exercises with `SMALL` thumbnails. Tapping an exercise opens `ExerciseDetailSheet` with a pinned, always-visible **"Add to workout"** button.
   - Builder cards (`ExerciseCard`) display the selected exercise thumbnail beside the exercise name and set configuration.
-- Verified with 409 unit tests (`ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`), `./gradlew test`, `./gradlew assemblePlaceholderDebug`, and `./gradlew lint`.
+- **Training Profile Settings (`feature:settings`)**:
+  - Added dedicated **Training profile** section to Settings allowing users to view and update their onboarding settings: Focus / Goal (`ChoiceRow`), Training Years / Experience (`ChoiceRow`), Available Equipment (`ActionRow` with interactive `EquipmentDialog` checkbox selector), and Schedule (`InfoRow`).
+  - Shared domain labels (`TrainingGoal.labelRes`, `TrainingGoal.detailRes`, `ExperienceLevel.labelRes`) moved into `core:exercise-data`'s `ProfileTerms.kt` and `exercise_terms.xml` ("Write it once").
+- **Week Progress, Workout Weight & Coach Structure Polish**:
+  - `ProgressSummary` now tracks `daysThisWeek` (distinct calendar training days in the current week) so "X of Y days" correctly represents distinct training days (preventing "7 of 3 days" when multiple workouts occur on the same day).
+  - Active workout `TargetPanel` renders prescribed target weight prominently alongside rep counts (with `Bodyweight` fallback), and set input fields offer placeholder text from the targets.
+  - AI Coach prompt (`AiWorkoutSchema.toGenerationPrompt`) instructs structured three-phase workout programming: warm-up/activation first, core resistance sets, and stretching/cool-down finish.
+  - AI Coach wire contract (`AiPlannedExercise`), JSON schema (`weight_kg`), validator, and builder mapping now support prescribing starting baseline weights based on user experience level and goal.
+- Verified as part of the current 413-test suite (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `SessionStatisticsTest`, `TodayViewModelTest`, `SettingsViewModelTest`, `ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`), plus `./gradlew assemblePlaceholderDebug` and `./gradlew lint`.
 
 ---
 

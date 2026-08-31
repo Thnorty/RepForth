@@ -13,6 +13,7 @@
         <item quantity="other">%1$d seconds</item>
     </plurals>
     <string name="session_target_weight">%1$s %2$s</string>
+    <string name="session_target_bodyweight">Bodyweight</string>
 
     <string name="session_seconds">Seconds</string>
     <string name="session_reps">Reps</string>

@@ -34,12 +34,14 @@ data class WorkoutSummary(
  * The Progress tab's headline figures (§12: history, streaks, volume).
  */
 data class ProgressSummary(
-    val workouts: Int,
-    val workoutsThisWeek: Int,
+    val workouts: Int = 0,
+    val workoutsThisWeek: Int = 0,
+    /** Distinct calendar days with at least one workout in the current week. */
+    val daysThisWeek: Int = 0,
     /** Consecutive weeks, ending with this one, containing at least one workout. */
-    val streakWeeks: Int,
-    val totalVolumeKg: Double,
-    val totalSets: Int,
+    val streakWeeks: Int = 0,
+    val totalVolumeKg: Double = 0.0,
+    val totalSets: Int = 0,
     /** Most-trained muscles recently, most first. Empty until the catalog is joined. */
     val topMuscles: List<String> = emptyList(),
 )
@@ -84,10 +86,16 @@ fun List<SessionSnapshot>.toProgress(
 ): ProgressSummary {
     val summaries = map { it.toSummary() }
     val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
+    val thisWeekSummaries = summaries.filter { it.startedAt.weekOf(zone) == today.weekStart() }
+    val daysThisWeek = thisWeekSummaries
+        .map { Instant.ofEpochMilli(it.startedAt).atZone(zone).toLocalDate() }
+        .distinct()
+        .size
 
     return ProgressSummary(
         workouts = summaries.size,
-        workoutsThisWeek = summaries.count { it.startedAt.weekOf(zone) == today.weekStart() },
+        workoutsThisWeek = thisWeekSummaries.size,
+        daysThisWeek = daysThisWeek,
         streakWeeks = summaries.streakWeeks(today, zone),
         totalVolumeKg = summaries.sumOf { it.volumeKg },
         totalSets = summaries.sumOf { it.setsCompleted },
