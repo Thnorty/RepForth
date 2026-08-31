@@ -47,6 +47,7 @@
     <string name="coach_close">Kapat</string>
     <string name="coach_any">İstediğin kasları seç ya da vücut haritasına hiç dokunma; Koç, açılıştaki hedefini, ekipmanını ve antrenman süreni kullansın.</string>
     <string name="coach_generate">Oluştur</string>
+    <string name="coach_generating_action">Hazırlanıyor…</string>
     <string name="coach_generating_title">Antrenmanın hazırlanıyor</string>
     <string name="coach_generating_body">Profilin, ekipmanın ve seçtiğin kaslar kontrol ediliyor. Bu işlem biraz sürebilir.</string>
     <string name="coach_cancel_dialog_title">Antrenman oluşturma iptal edilsin mi?</string>

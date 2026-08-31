@@ -47,6 +47,7 @@
     <string name="coach_close">Close</string>
     <string name="coach_any">Pick the muscles you want, or leave the body map alone and Coach uses your goal, equipment and session length from onboarding.</string>
     <string name="coach_generate">Build it</string>
+    <string name="coach_generating_action">Building…</string>
     <string name="coach_generating_title">Building your workout</string>
     <string name="coach_generating_body">Checking your profile, equipment and selected muscles. This can take a moment.</string>
     <string name="coach_cancel_dialog_title">Cancel workout generation?</string>
