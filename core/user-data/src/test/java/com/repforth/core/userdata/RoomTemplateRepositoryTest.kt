@@ -62,6 +62,58 @@ class RoomTemplateRepositoryTest {
         assertEquals(ExerciseTarget.Reps(3, 10, 50.0), found.exercises[0].target)
     }
 
+    /**
+     * Saving a day of a week must not take it out of the week.
+     *
+     * `WorkoutTemplate` is the standalone-plan shape and carries nothing about
+     * weeks, while `replaceTemplate` upserts with REPLACE — so an entity built
+     * from the domain type alone reset `week_id`, `week_position` and
+     * `day_of_week` to null. Editing one day of a saved week and saving it would
+     * have removed that day from the week and left it loose in the library,
+     * with no way back. Found while making a week's day rows tappable in Plans,
+     * which is what would have fired it.
+     */
+    @Test
+    fun `saving a day of a week keeps it in that week`() = runTest {
+        fakeDao.upsertTemplate(
+            WorkoutTemplateEntity(
+                id = "day-1",
+                name = "Push",
+                notes = null,
+                source = PlanSource.AI.name,
+                weekId = "week-1",
+                weekPosition = 2,
+                dayOfWeek = 3,
+                createdAt = 1L,
+                updatedAt = 1L,
+            ),
+        )
+
+        repository.save(sampleTemplate("day-1", "Push, edited"))
+
+        val stored = fakeDao.findById("day-1")!!.template
+        assertEquals("Push, edited", stored.name)
+        assertEquals("week-1", stored.weekId)
+        assertEquals(2, stored.weekPosition)
+        assertEquals(3, stored.dayOfWeek)
+        assertTrue(
+            "A day of a week must not appear in the standalone plan list",
+            repository.observeAll().first().none { it.id == "day-1" },
+        )
+    }
+
+    /** A plan that was never in a week does not acquire one by being saved. */
+    @Test
+    fun `saving a standalone plan leaves it standalone`() = runTest {
+        repository.save(sampleTemplate("tmpl-1", "Chest"))
+        repository.save(sampleTemplate("tmpl-1", "Chest, edited"))
+
+        val stored = fakeDao.findById("tmpl-1")!!.template
+        assertNull(stored.weekId)
+        assertNull(stored.weekPosition)
+        assertNull(stored.dayOfWeek)
+    }
+
     @Test
     fun `observeAll returns standalone templates`() = runTest {
         repository.save(sampleTemplate("tmpl-1", "Chest"))

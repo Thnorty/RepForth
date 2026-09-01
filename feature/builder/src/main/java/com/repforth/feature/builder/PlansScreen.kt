@@ -138,6 +138,7 @@ internal fun PlansScreen(
                     WeeklyPlanCard(
                         week = week,
                         onStartDay = onStartPlan,
+                        onEditDay = onEditPlan,
                         onDelete = { weekPendingDeletion = week.id },
                         onSetActive = { onSetActiveWeek(week.id) },
                     )
@@ -221,6 +222,7 @@ internal fun PlansScreen(
 private fun WeeklyPlanCard(
     week: TrainingWeek,
     onStartDay: (String) -> Unit,
+    onEditDay: (String) -> Unit,
     onDelete: () -> Unit,
     onSetActive: () -> Unit,
     modifier: Modifier = Modifier,
@@ -297,9 +299,20 @@ private fun WeeklyPlanCard(
                                 .padding(vertical = Space.s1),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            // A day of a week opens the same way a standalone
+                            // plan does: tapping the row edits it. It was the
+                            // only row in the app that looked like a plan and
+                            // did nothing, and the Start button beside it made
+                            // that read as deliberate rather than missing.
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { onEditDay(day.workout.id) }
+                                    .heightIn(min = Target.min)
+                                    .padding(vertical = Space.s1),
+                            ) {
                                 Text(
-                                    text = "${stringResource(R.string.week_day_header, day.position + 1)}: ${day.title}",
+                                    text = weekDayLabel(day.position, day.title),
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 Text(

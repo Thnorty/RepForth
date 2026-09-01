@@ -221,6 +221,117 @@ class AiWorkoutValidatorTest {
     }
 
     /**
+     * The failure that prompted the floor, reproduced.
+     *
+     * Seven days at forty-five minutes each came back as seven eight-minute days
+     * totalling 56 minutes, and broke no rule the app had: every number in the
+     * contract was a ceiling, so the safest answer a model could give was the
+     * smallest one.
+     */
+    @Test
+    fun `a week that uses almost none of the time available is rejected`() {
+        val tiny = reps("press").copy(sets = 1, repetitions = 5, restSeconds = 30)
+
+        val result = validator.validate(
+            responseWithDays(List(7) { day("Day", listOf(tiny)) }),
+            request(days = 7, sessionMinutes = 45),
+            catalogOf(8),
+        )
+
+        assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.WEEK_TOO_SHORT })
+        assertFalse(result.isValid)
+    }
+
+    /** A full week is not second-guessed. */
+    @Test
+    fun `a week that uses its time is accepted`() {
+        val full = reps("press").copy(sets = 5, repetitions = 12, restSeconds = 120)
+
+        val result = validator.validate(
+            responseWithDays(List(7) { day("Day", listOf(full, reps("row").copy(sets = 5, repetitions = 12, restSeconds = 120))) }),
+            request(days = 7, sessionMinutes = 45),
+            catalogOf(8),
+        )
+
+        assertTrue(result.contractViolations.toString(), result.isValid)
+    }
+
+    /**
+     * A week the app merely disagrees with is still the coach's to write.
+     *
+     * The maintainer's decision: the session length is a ceiling, and how long a
+     * day should be is the coach's judgement. Roughly half the budget is what a
+     * real generated week looks like under this app's formula — it counts only
+     * work and rest, so it reads about 40% short of the same session in a gym —
+     * and rejecting that would be the app overruling the programming.
+     */
+    @Test
+    fun `a week at half its budget is the coach making a call, not a failure`() {
+        // Five exercises, 3x10, 60s rest: 22.5 minutes a day by this app's
+        // formula, which is what a real generated week looks like. Half of a
+        // 45-minute budget, and not something to reject.
+        val result = validator.validate(
+            responseWithDays(List(7) { workingDay(exercises = 5, sets = 3, reps = 10, rest = 60) }),
+            request(days = 7, sessionMinutes = 45),
+            catalogOf(8),
+        )
+
+        assertEquals(7 * 1_350_000L, result.estimatedDurationMs)
+        assertTrue(result.contractViolations.toString(), result.isValid)
+    }
+
+    /** One deliberately light day among six full ones is normal programming. */
+    @Test
+    fun `a single light day does not fail the week`() {
+        val result = validator.validate(
+            responseWithDays(
+                List(6) { workingDay(exercises = 5, sets = 4, reps = 12, rest = 90) } +
+                    workingDay(exercises = 2, sets = 2, reps = 8, rest = 30, title = "Recovery"),
+            ),
+            request(days = 7, sessionMinutes = 45),
+            catalogOf(8),
+        )
+
+        assertTrue(result.contractViolations.toString(), result.isValid)
+    }
+
+    /**
+     * A thin catalog is the user's own constraint, not the model failing.
+     *
+     * Someone whose filters leave a handful of exercises cannot fill a long
+     * session however hard the model tries, and failing their generation to make
+     * a point about volume would be the app blaming the model for that.
+     */
+    @Test
+    fun `a short week is allowed when the catalog cannot fill one`() {
+        val tiny = reps("press").copy(sets = 1, repetitions = 5, restSeconds = 30)
+
+        val result = validator.validate(
+            responseWithDays(List(7) { day("Day", listOf(tiny)) }),
+            request(days = 7, sessionMinutes = 45),
+            listOf(press, row),
+        )
+
+        assertFalse(result.contractViolations.any { it.issue == AiWorkoutIssue.WEEK_TOO_SHORT })
+        assertTrue(result.isValid)
+    }
+
+    /** The repair attempt is told what to do about it, not just that it happened. */
+    @Test
+    fun `the short-week rejection explains itself to the model`() {
+        val tiny = reps("press").copy(sets = 1, repetitions = 5, restSeconds = 30)
+
+        val result = validator.validate(
+            responseWithDays(List(7) { day("Day", listOf(tiny)) }),
+            request(days = 7, sessionMinutes = 45),
+            catalogOf(8),
+        )
+
+        val issue = AiWorkoutRetryFeedback.from(result).issues.single { it.code == "week_too_short" }
+        assertTrue(issue.explanation.contains("time available"))
+    }
+
+    /**
      * A rule failure has to say which day it happened on.
      *
      * The rules engine validates a day at a time and cannot know, so the
@@ -268,6 +379,29 @@ class AiWorkoutValidatorTest {
 
         assertEquals("day 2, exercise row: sets must be 1-10", issue.describe())
     }
+
+    /** A day of [exercises] distinct movements, all prescribed the same way. */
+    private fun workingDay(
+        exercises: Int,
+        sets: Int,
+        reps: Int,
+        rest: Int,
+        title: String = "Day",
+    ) = day(
+        title,
+        catalogOf(exercises).take(exercises).map {
+            AiPlannedExercise(
+                exerciseId = it.id.value,
+                sets = sets,
+                repetitions = reps,
+                restSeconds = rest,
+            )
+        },
+    )
+
+    /** Enough offered candidates that the thin-catalog escape does not apply. */
+    private fun catalogOf(size: Int) =
+        listOf(press, row) + (2 until size).map { candidate("extra-$it", Muscle.QUADS) }
 
     private fun response(
         exercises: List<AiPlannedExercise>,

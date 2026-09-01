@@ -1,6 +1,7 @@
 package com.repforth.feature.builder
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
@@ -53,6 +55,8 @@ import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.designsystem.theme.formatWeight
 import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.designsystem.theme.toKilograms
+import com.repforth.core.exercisedata.labelRes
+import com.repforth.core.media.ui.ExerciseDetailSheet
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.BodyRegion
@@ -138,6 +142,7 @@ fun BuilderRoute(
             onDayTitleChange = viewModel::onDayTitleChange,
             onToggleDayExpanded = viewModel::onToggleDayExpanded,
             onAddExerciseToDay = { day -> viewModel.onPickerOpen(day) },
+            onOpenExerciseDetail = viewModel::onShowExerciseDetail,
             onRemoveExerciseFromDay = { day, i -> viewModel.onRemove(i, day) },
             onMoveExerciseInDay = { day, from, to -> viewModel.onMove(from, to, day) },
             onSetsChangeInDay = { day, i, v -> viewModel.onSetsChange(i, v, day) },
@@ -155,6 +160,7 @@ fun BuilderRoute(
             state = state,
             onNameChange = viewModel::onNameChange,
             onAddExercise = { viewModel.onPickerOpen() },
+            onOpenExerciseDetail = viewModel::onShowExerciseDetail,
             onCoach = viewModel::onCoachOpen,
             onRemove = viewModel::onRemove,
             onMove = viewModel::onMove,
@@ -189,6 +195,23 @@ fun BuilderRoute(
             },
         )
     }
+
+    // Rendered here rather than inside either screen, because the standalone
+    // builder and the week review both raise it and it is the same sheet: it
+    // belongs to the builder, not to one of its two layouts. No bottom action —
+    // the exercise is already in the plan, so "Add" would be the one thing it
+    // must not offer.
+    state.detailExercise?.let { detail ->
+        ExerciseDetailSheet(
+            exercise = detail,
+            reducedMotion = state.reducedMotion,
+            language = state.language,
+            targetLabel = stringResource(detail.target.labelRes),
+            equipmentLabel = stringResource(detail.equipment.labelRes),
+            secondaryMuscleLabels = detail.secondaryMuscles.map { stringResource(it.labelRes) },
+            onDismiss = viewModel::onDismissExerciseDetail,
+        )
+    }
 }
 
 /** Stateless, so it can be previewed and tested without Hilt or a database. */
@@ -197,6 +220,7 @@ internal fun BuilderScreen(
     state: BuilderUiState,
     onNameChange: (String) -> Unit,
     onAddExercise: () -> Unit,
+    onOpenExerciseDetail: (ExerciseId) -> Unit,
     onCoach: () -> Unit,
     onRemove: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -254,6 +278,7 @@ internal fun BuilderScreen(
                     draft = draft,
                     index = index,
                     total = state.exercises.size,
+                    onOpenDetail = { onOpenExerciseDetail(draft.exerciseId) },
                     onRemove = { onRemove(index) },
                     onMove = { to -> onMove(index, to) },
                     onSetsChange = { onSetsChange(index, it) },
@@ -374,6 +399,7 @@ internal fun ExerciseCard(
     draft: DraftExercise,
     index: Int,
     total: Int,
+    onOpenDetail: () -> Unit,
     onRemove: () -> Unit,
     onMove: (Int) -> Unit,
     onSetsChange: (Int) -> Unit,
@@ -392,21 +418,41 @@ internal fun ExerciseCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Space.s3),
             ) {
-                ExerciseMedia(
-                    mediaRef = draft.thumbnail,
-                    contentDescription = draft.name,
-                    size = ExerciseMediaSize.SMALL,
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = draft.name,
-                        style = MaterialTheme.typography.titleMedium,
+                // The thumbnail and name are one target rather than two: they
+                // are the part of the row that identifies the exercise, and
+                // they sit beside three destructive-ish icon buttons that must
+                // stay separately hittable.
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(
+                            onClick = onOpenDetail,
+                            onClickLabel = stringResource(
+                                R.string.builder_open_detail,
+                                draft.name,
+                            ),
+                        )
+                        .heightIn(min = Target.min),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Space.s3),
+                ) {
+                    ExerciseMedia(
+                        mediaRef = draft.thumbnail,
+                        contentDescription = draft.name,
+                        size = ExerciseMediaSize.SMALL,
                     )
-                    Text(
-                        text = stringResource(R.string.builder_position, index + 1, total),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = draft.name,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = stringResource(R.string.builder_position, index + 1, total),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
 
                 // The three controls sit in their own row so the outer

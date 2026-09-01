@@ -1,5 +1,7 @@
 package com.repforth.feature.builder
 
+import com.repforth.core.datastore.UserPreferencesDataSource
+import com.repforth.core.testing.FakePreferencesStore
 import com.repforth.core.ai.AI_WORKOUT_SCHEMA_VERSION
 import com.repforth.core.ai.AiGenerationFailureReason
 import com.repforth.core.ai.AiPlannedDay
@@ -20,7 +22,10 @@ import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.InstructionText
 import com.repforth.core.model.Language
+import com.repforth.core.model.LocalizedInstructions
+import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.UserProfile
@@ -75,7 +80,14 @@ class BuilderViewModelTest {
         catalog = FakeExercises()
         profiles = FakeProfiles()
         generator = FakeWorkoutGenerator()
-        viewModel = BuilderViewModel(templates, catalog, profiles, generator, weeks)
+        viewModel = BuilderViewModel(
+            templates,
+            catalog,
+            profiles,
+            generator,
+            weeks,
+            UserPreferencesDataSource(FakePreferencesStore()),
+        )
     }
 
     @After
@@ -809,8 +821,92 @@ private class RecordingTemplateRepository : TemplateRepository {
     override suspend fun deleteAll() = saved.clear()
 }
 
+class BuilderExerciseDetailTest {
+
+    private val dispatcher = StandardTestDispatcher()
+    private lateinit var catalog: FakeExercises
+    private lateinit var viewModel: BuilderViewModel
+
+    private val bench = Exercise(
+        id = ExerciseId("ex-1"),
+        name = "barbell bench press",
+        bodyPart = BodyPart.CHEST,
+        target = Muscle.PECTORALS,
+        muscleGroup = Muscle.PECTORALS,
+        secondaryMuscles = setOf(Muscle.TRICEPS),
+        equipment = Equipment.BARBELL,
+        instructions = LocalizedInstructions(
+            mapOf(
+                Language.ENGLISH to InstructionText(listOf("Press the bar up.")),
+                Language.TURKISH to InstructionText(listOf("Barı yukarı it.")),
+            ),
+        ),
+        thumbnail = MediaRef.Unavailable,
+        animation = MediaRef.Unavailable,
+    )
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+        catalog = FakeExercises()
+        catalog.details = mapOf(bench.id to bench)
+        viewModel = BuilderViewModel(
+            RecordingTemplateRepository(),
+            catalog,
+            FakeProfiles(),
+            FakeWorkoutGenerator(),
+            RecordingWeekRepository(),
+            UserPreferencesDataSource(FakePreferencesStore()),
+        )
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    /**
+     * The builder could show what an exercise was nowhere at all: the detail
+     * sheet was reachable from the catalog tab and the picker, so once a row was
+     * in a plan there was no way to see how to perform it. Noticed on a
+     * generated week, where nobody chose the exercises by hand.
+     */
+    @Test
+    fun `a row in the plan can open its catalog entry`() = runTest(dispatcher) {
+        viewModel.onShowExerciseDetail(bench.id)
+        advanceUntilIdle()
+
+        assertEquals(bench, viewModel.uiState.value.detailExercise)
+    }
+
+    @Test
+    fun `dismissing closes the sheet`() = runTest(dispatcher) {
+        viewModel.onShowExerciseDetail(bench.id)
+        advanceUntilIdle()
+        viewModel.onDismissExerciseDetail()
+
+        assertNull(viewModel.uiState.value.detailExercise)
+    }
+
+    /**
+     * A plan can outlive an exercise the catalog no longer ships. The row keeps
+     * its id as a name in that case; tapping it must open nothing rather than
+     * take the screen down.
+     */
+    @Test
+    fun `a row whose exercise has left the catalog opens nothing`() = runTest(dispatcher) {
+        viewModel.onShowExerciseDetail(ExerciseId("vanished"))
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.detailExercise)
+    }
+}
+
 private class FakeExercises : ExerciseRepository {
     var catalog: List<ExerciseCandidate> = emptyList()
+
+    /** Full records, for the detail sheet. Empty unless a test needs one. */
+    var details: Map<ExerciseId, Exercise> = emptyMap()
 
     override suspend fun candidates(): List<ExerciseCandidate> = catalog
 
@@ -818,7 +914,7 @@ private class FakeExercises : ExerciseRepository {
 
     override fun observeCatalog(filter: CatalogFilter): Flow<List<ExerciseSummary>> = emptyFlow()
 
-    override suspend fun find(id: ExerciseId): Exercise? = null
+    override suspend fun find(id: ExerciseId): Exercise? = details[id]
 
     override suspend fun summaries(
         ids: Collection<ExerciseId>,

@@ -19,6 +19,7 @@
     <string name="builder_mode_duration">Süre</string>
 
     <string name="builder_remove">%1$s egzersizini kaldır</string>
+    <string name="builder_open_detail">%1$s egzersizinin ayrıntılarını göster</string>
     <string name="builder_move_up">%1$s egzersizini yukarı taşı</string>
     <string name="builder_move_down">%1$s egzersizini aşağı taşı</string>
     <string name="builder_position">%2$d egzersizden %1$d.</string>

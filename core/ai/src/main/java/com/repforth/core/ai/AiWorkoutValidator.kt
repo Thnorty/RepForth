@@ -27,6 +27,9 @@ enum class AiWorkoutIssue {
     REST_OUT_OF_RANGE,
     WEIGHT_OUT_OF_RANGE,
     RATIONALE_MISSING,
+
+    /** The week uses so little of the session time that it is not what was asked for. */
+    WEEK_TOO_SHORT,
 }
 
 data class AiWorkoutContractViolation(
@@ -149,6 +152,9 @@ private fun AiWorkoutIssue.explain(): String = when (this) {
         "weight_kg must be ${WorkoutLimits.weightKg.start}-${WorkoutLimits.weightKg.endInclusive}, " +
             "or null"
     AiWorkoutIssue.RATIONALE_MISSING -> "rationale is empty"
+    AiWorkoutIssue.WEEK_TOO_SHORT ->
+        "the week uses almost none of the time available; a lighter day is fine, a " +
+            "whole week of them is not - add working exercises or sets"
 }
 
 /**
@@ -345,12 +351,53 @@ class AiWorkoutValidator(
                 .map { it.copy(dayIndex = dayIdx) }
         }
 
+        // Checked here rather than beside the per-exercise rules, because it is
+        // the only question that cannot be asked of one day: a light day inside
+        // a seven-day week is a normal thing to programme, and a week of seven
+        // light days is not the week that was asked for.
+        val fillViolations = buildList {
+            if (isUnderFilled(totalEstimatedDurationMs, request, offeredCandidates.size)) {
+                add(AiWorkoutContractViolation(AiWorkoutIssue.WEEK_TOO_SHORT))
+            }
+        }
+
         return AiWorkoutValidationResult(
-            response = normalised.takeIf { ruleViolations.isEmpty() },
-            contractViolations = emptyList(),
+            response = normalised.takeIf { ruleViolations.isEmpty() && fillViolations.isEmpty() },
+            contractViolations = fillViolations,
             ruleViolations = ruleViolations,
             estimatedDurationMs = totalEstimatedDurationMs,
         )
+    }
+
+    /**
+     * Whether the week used so little of its time that it answers a different
+     * question than the one asked.
+     *
+     * Every other number in the contract is a ceiling, and a model given only
+     * ceilings minimises: a seven-day week at forty-five minutes a day came back
+     * as seven eight-minute days totalling 56 minutes, breaking no rule the app
+     * had. The prompt now asks for a band rather than a cap; this is what stops
+     * the pathological case coming back, and what gives the repair attempt
+     * something to repair.
+     *
+     * Set low on purpose. Deciding a day should be short is the coach's job, not
+     * this function's — see [AiPlanFill.MIN_WEEK_FRACTION]. This is only meant to
+     * catch a week that ignored the budget, and it should stay quiet about every
+     * week that merely disagrees with it.
+     *
+     * [candidateCount] buys a thin catalog out of it. Someone whose filters leave
+     * a handful of exercises cannot fill a long session however hard the model
+     * tries, and failing their generation to make a point about volume would be
+     * the app blaming the model for the user's own constraints.
+     */
+    private fun isUnderFilled(
+        totalEstimatedMs: Long,
+        request: GenerationRequest,
+        candidateCount: Int,
+    ): Boolean {
+        if (candidateCount < WorkoutLimits.maxExercisesPerDay) return false
+        val budgetMs = request.sessionLengthMs * request.days
+        return totalEstimatedMs < budgetMs * AiPlanFill.MIN_WEEK_FRACTION
     }
 }
 

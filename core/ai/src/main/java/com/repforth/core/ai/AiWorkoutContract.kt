@@ -11,6 +11,53 @@ import kotlinx.serialization.json.Json
 const val AI_WORKOUT_SCHEMA_VERSION = 4
 
 /**
+ * How much of the session the answer is expected to use.
+ *
+ * Every other number in this contract is a ceiling, and a model asked only for
+ * ceilings minimises: told "keep each day at or under 2700 seconds", "at most 8
+ * exercises per day, at least 1", and that going over is rejected, the safest
+ * answer it can give is three exercises and a short rest. That is what it gave
+ * — a seven-day week where every day ran eight minutes against a forty-five
+ * minute session, and the whole week totalled 56 minutes. Nothing was wrong
+ * with it by any rule the app had.
+ *
+ * So the session length is stated as a target band rather than a cap, and the
+ * prompt tells the model to do the app's arithmetic rather than judge by how
+ * long a session takes in a real gym — the app's formula counts only work and
+ * rest, so the two disagree by roughly 40% and the model was trusting its own.
+ *
+ * The band is an aim, not a quota. Only [MIN_WEEK_FRACTION] is enforced, and it
+ * sits far below: the maintainer's decision is that the ceiling is the contract
+ * and how long a day should be is the coach's judgement, so a week the app
+ * merely disagrees with must still be allowed through.
+ */
+object AiPlanFill {
+    /**
+     * The bottom of the band the prompt asks a day to land in, as a fraction of
+     * the session. Above the enforced floor, so an honest attempt is never
+     * rejected for missing the target by a little.
+     */
+    const val TARGET_DAY_FRACTION = 0.8
+
+    /**
+     * The floor [AiWorkoutValidator] enforces, across the week rather than per
+     * day, and deliberately far below [TARGET_DAY_FRACTION].
+     *
+     * It is a safety net against the budget being ignored outright, not a
+     * quota. How long a day should be is the coach's judgement — a light day, a
+     * deload, a short session between two hard ones are all things a week is
+     * supposed to be able to contain, and the maintainer's decision is that the
+     * app must not overrule them. The session length is a ceiling; this only
+     * catches an answer that used almost none of it, which is the failure that
+     * prompted it: a seven-day week that came back at 18% of its budget.
+     *
+     * Per day rather than per week would forbid the light day directly, which is
+     * why it is not per day.
+     */
+    const val MIN_WEEK_FRACTION = 0.3
+}
+
+/**
  * What the provider is told, in locally trusted types (§8).
  *
  * Two rules decide what belongs here, and both were arrived at by measuring the

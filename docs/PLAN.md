@@ -1156,6 +1156,123 @@ never been sent at all — the same stale-artifact failure `SchemaDumpGuardTest`
 exists to prevent for the dump, in the one file that had no guard. The probe now
 warns when the staged cases are older than `tools/gemini-schema.json`.
 
+### 4.5 — What the first real week exposed — **built and installed, not yet eyeballed**
+
+Two bugs reported by the maintainer on the Galaxy S23, on the first week a live
+provider ever returned. Neither is about the AI; both are places the week path
+had never been used. A third, worse one fell out of fixing the second.
+
+**"Day 1: Day 1: Chest".** Two screens rendered a day's name and both appended
+the title to a "Day N" header — `PlansScreen` joining with `": "`,
+`WeekReviewScreen` with `" · "`, neither noticing the title very often already
+began with the day number. It arrived carrying one by two separate routes:
+nothing told the model not to write "Day 1: Push" in a field called `title`, and
+the app's own fallback for a blank title (`coach_day_default_title`, "Day %1$d")
+has always been character-for-character what `week_day_header` renders beside
+it. `weekDayLabel()` is now the one place that knows how to name a day; it drops
+the redundant prefix, case-insensitively, because Turkish writes `1. Gün` as the
+header and `1. gün` as the fallback. The prompt also now tells the model the app
+supplies the number, which is the actual fix — the stripping catches a model
+that does it anyway.
+
+The separator check inside it is load-bearing and was watched failing: "Day 10
+recap" starts with "Day 1" and is not day one.
+
+**A day of a week could not be opened from Plans.** Tapping "Day 1 · Chest" did
+nothing. It was the only row in the app that looked like a plan and behaved like
+a label — `PlanCard` makes the whole card `clickable` to edit, and the day rows
+inside `WeeklyPlanCard` had no click at all, with a Start button beside them
+making the omission read as deliberate. They now open the same way a standalone
+plan does.
+
+**Which uncovered the real problem.** Wiring that tap up would have destroyed
+data. `RoomTemplateRepository.save()` built its entity from `WorkoutTemplate`
+alone — the standalone-plan shape, which carries nothing about weeks — and
+`replaceTemplate` upserts with `OnConflictStrategy.REPLACE`. So every save reset
+`week_id`, `week_position` and `day_of_week` to null. Editing one day of a saved
+week and saving it would have taken that day out of the week and left it loose
+in the plan library, with no way back and nothing on screen to say it had
+happened. The three columns are now carried forward from the existing row,
+exactly as `created_at` already was. Watched failing.
+
+Nothing could reach this before, which is why it survived: the only writer of
+week days was `WeekRepository`, and no screen offered a way to save one on its
+own.
+
+**An exercise inside a plan could not be looked up.** Found while misreading the
+report above, and worth keeping: `ExerciseDetailSheet` was reachable from the
+catalog tab and from the picker and nowhere else, so once a row was in a plan
+there was no way to see how to perform it. Invisible while every plan was built
+by hand, and immediately obvious on a generated week, where nobody chose the
+exercises. The thumbnail and name in `ExerciseCard` are now one tap target that
+opens the sheet, which covers the standalone builder and the week review
+together because both render that card. The full `Exercise` loads on tap rather
+than being held: a plan of eight would otherwise pull eight sets of instruction
+steps in both languages to show one. No bottom action on the sheet — the
+exercise is already in the plan, so "Add" is the one thing it must not offer.
+
+**Every number in the AI contract was a ceiling, so the model minimised.** Seven
+days at forty-five minutes each came back as seven eight-minute days totalling
+56 minutes — and broke no rule the app had. Read the prompt from the model's
+side and it is the correct answer: "keep each day at or under 2700 seconds", "at
+most 8 exercises per day, at least 1", "a day over budget is rejected", and
+nothing anywhere saying a day could be too small. The safest answer to a set of
+one-directional constraints is the smallest one.
+
+The prompt now states the session as a **band** — "aim each day at 2160-2700
+seconds", both ends named, plus "usually 4-6 working exercises" and "8 per day is
+the hard maximum, not the target". That alone took the next seven-day week from
+eight-minute days to 19-26 minute days.
+
+**Which surfaced the thing underneath: the estimator and the model disagree by
+about 40%, and they are measuring different things.** Benchmarked against
+sessions of known length — StrongLifts 5x5 reads 26 minutes against a real 45-60;
+a six-exercise 3x10 day at 60s rest reads 27 against a real 45-55. The formula
+counts work and rest and nothing else: no setup, no walking to the rack, no
+loading plates, no warm-up sets, and 3s/rep is light for loaded work. So a model
+programming a genuine 45-minute session scores 22 by our arithmetic and looks
+like it under-filled.
+
+The dangerous fix would have been to push harder on the prompt: reaching 2700s
+under this formula takes 22-30 working sets, which is a 75-90 minute session in a
+gym. Handing someone twice the workout they asked for, to satisfy a number.
+
+**Decision (maintainer): the app's formula is the definition, not real gym
+time.** The session length is a ceiling and the arithmetic is what it is
+measured with; the coach must compute in those terms rather than from experience
+of how long training takes. So the estimator is untouched, and the prompt now
+says outright that the formula "is the only definition of a day's length here"
+and that setup and walking are not counted, on purpose.
+
+**And a shorter day stays the coach's call.** `AiPlanFill.MIN_WEEK_FRACTION` is
+enforced but set at 30% of the week's budget — a safety net against the budget
+being ignored outright, not a quota. A light day, a deload, a short session
+between two hard ones are all things a week is supposed to contain, and the app
+must not overrule them: at 30% the 56-minute week (18%) still fails while a real
+generated week (around 50%) passes with room. It is across the week rather than
+per day for the same reason, and skipped entirely when the offered catalog holds
+fewer exercises than a day may contain — someone whose filters leave a handful
+cannot fill a long session however hard the model tries, and failing their
+generation over it would be the app blaming the model for the user's own
+constraints.
+
+Being a contract violation rather than a rule one means the single repair
+attempt gets it, with a sentence saying what to add.
+
+Guards proven by breaking them: the day-number stripping (three tests red), the
+detail lookup (one red), the week-ownership carry-forward (one red), and the
+under-fill floor (two red, and two more asserting that a half-full week and a
+week with one light day are both left alone).
+
+Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
+assemblePlaceholderDebug` run separately, then installed and launched on the
+S23 — alive, empty crash buffer.
+
+**Nobody has looked at any of it on screen.** Two deserve a real check: the
+detachment fix (save an edit to one day of a week, confirm the week still has
+all its days) and the fill floor (generate seven days at forty-five minutes and
+see whether the days are now full).
+
 ---
 
 ## Decisions already made

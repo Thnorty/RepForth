@@ -8,7 +8,9 @@ import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
 import com.repforth.core.ai.ProviderFailure
+import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.model.Exercise
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
@@ -194,6 +196,18 @@ data class BuilderUiState(
     val coachError: CoachError? = null,
     /** Provider rationale for successfully generated workout. */
     val coachNotice: CoachNotice? = null,
+    /**
+     * The exercise whose detail sheet is open, or null.
+     *
+     * The full [Exercise] rather than the draft row, because the sheet shows
+     * instructions and animation and a draft carries neither. Loaded on tap; a
+     * plan of eight would otherwise pull eight sets of instruction steps in
+     * both languages to show one.
+     */
+    val detailExercise: Exercise? = null,
+    /** From preferences, for the detail sheet's animation and instructions. */
+    val reducedMotion: Boolean = false,
+    val language: Language? = null,
 ) {
     val isEditing: Boolean get() = planId != null
     val isWeeklyPlan: Boolean get() = weekDays.isNotEmpty()
@@ -251,6 +265,7 @@ class BuilderViewModel @Inject constructor(
     private val profiles: ProfileRepository,
     private val generator: AiWorkoutGenerationService,
     private val weeks: WeekRepository,
+    preferences: UserPreferencesDataSource,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuilderUiState())
@@ -269,7 +284,35 @@ class BuilderViewModel @Inject constructor(
                     ?: _uiState.value.coachDays,
             )
         }
+        viewModelScope.launch {
+            preferences.preferences.collect { userPrefs ->
+                update {
+                    copy(reducedMotion = userPrefs.reducedMotion, language = userPrefs.language)
+                }
+            }
+        }
     }
+
+    /**
+     * Opens the catalog entry behind a row of the plan being edited.
+     *
+     * The builder could show what an exercise *was* nowhere at all: the detail
+     * sheet was reachable from the catalog tab and from the picker, so once a
+     * row was in a plan the only way to see how to perform it was to go and
+     * find it again. Noticed on a generated week, where it matters most,
+     * because nobody chose those exercises by hand.
+     *
+     * A row whose exercise has left the catalog opens nothing rather than
+     * failing: the row already renders its id as a name in that case, and the
+     * plan is still editable around it.
+     */
+    fun onShowExerciseDetail(id: ExerciseId) {
+        viewModelScope.launch {
+            exercises.find(id)?.let { found -> update { copy(detailExercise = found) } }
+        }
+    }
+
+    fun onDismissExerciseDetail() = update { copy(detailExercise = null) }
 
     /**
      * Loads a saved plan for editing.

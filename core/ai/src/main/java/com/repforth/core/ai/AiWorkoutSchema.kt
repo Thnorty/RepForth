@@ -143,7 +143,10 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
 
     appendLine("SHAPE OF EACH DAY")
     appendLine("1. Open with 1-2 warm-up movements for the muscles that day trains.")
-    appendLine("2. Then the working exercises: compound and heaviest first, isolation last.")
+    appendLine(
+        "2. Then the working exercises - usually 4-6 of them: compound and heaviest " +
+            "first, isolation last.",
+    )
     appendLine("3. Close with 1-2 stretches for the muscles that day worked.")
     appendLine(
         "The catalog names say which is which: a row named \"... stretch\" is a stretch, " +
@@ -160,18 +163,38 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
     appendLine("- The same exercise may appear on different days, but never twice in one day.")
     appendLine()
 
-    appendLine("TIME BUDGET - this is checked, and a day over budget is rejected")
+    val budgetSeconds = sessionDurationMinutes * 60
+    val targetSeconds = (budgetSeconds * AiPlanFill.TARGET_DAY_FRACTION).toInt()
+    appendLine("TIME BUDGET - this person has $sessionDurationMinutes minutes a day, and expects to use them")
     appendLine(
         "A day costs the sum over its exercises of " +
             "sets x (repetitions x ${WorkoutLimits.secondsPerRepEstimate} + rest_seconds) seconds, " +
             "or sets x (duration_seconds + rest_seconds) for timed ones. " +
             "The last set's rest counts.",
     )
-    appendLine("Keep each day's total at or under ${sessionDurationMinutes * 60} seconds.")
+    appendLine(
+        "That arithmetic is the only definition of a day's length here. Do not judge " +
+            "it by how long the session would take in a real gym - setup, walking " +
+            "between stations and warm-up sets are not counted, on purpose. Add the " +
+            "numbers up yourself before you answer.",
+    )
+    appendLine("Aim each day at $targetSeconds-$budgetSeconds seconds by that arithmetic.")
+    appendLine(
+        "- over $budgetSeconds seconds is rejected outright; that ceiling is the one " +
+            "hard rule here",
+    )
+    appendLine(
+        "- under the band is allowed when you mean it - a lighter day inside a hard " +
+            "week is good programming - but a day of two or three exercises is not a " +
+            "training session, and a whole week of them is not what was asked for",
+    )
     appendLine()
 
     appendLine("NUMBERS - all checked on arrival, anything outside is rejected")
-    appendLine("- at most ${WorkoutLimits.maxExercisesPerDay} exercises per day, at least 1")
+    appendLine(
+        "- ${WorkoutLimits.maxExercisesPerDay} exercises per day is the hard maximum, " +
+            "not the target; the target is the time budget above",
+    )
     appendLine(
         "- sets ${WorkoutLimits.sets.first}-${WorkoutLimits.sets.last}; " +
             "repetitions ${WorkoutLimits.reps.first}-${WorkoutLimits.reps.last}; " +
@@ -192,6 +215,11 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
     )
     appendLine("- exercise_id must be copied exactly from the catalog; no other exercise exists")
     appendLine("- focus_muscles: the target_muscle values of the rows you used that day")
+    appendLine(
+        "- title: name what the day trains and nothing else, such as \"Chest and " +
+            "triceps\". The app prints the day number beside it, so a title that " +
+            "starts with one reads as \"Day 1 - Day 1: ...\".",
+    )
     appendLine("- rationale: one short paragraph explaining the week you built")
     appendLine()
 
@@ -200,7 +228,10 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
         appendLine()
     }
 
-    appendLine("CATALOG - the only exercises that exist (${candidates.size} rows)")
+    appendLine(
+        "CATALOG - the only exercises that exist " +
+            "(${candidates.size} ${if (candidates.size == 1) "row" else "rows"})",
+    )
     appendLine(AiExerciseCandidate.CATALOG_HEADER)
     candidates.forEach { appendLine(it.toCatalogRow()) }
 }.trim()

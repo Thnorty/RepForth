@@ -26,7 +26,8 @@ internal class RoomTemplateRepository @Inject constructor(
 
     override suspend fun save(template: WorkoutTemplate) {
         val now = time.now()
-        val createdAt = dao.findById(template.id)?.template?.createdAt ?: now
+        val existing = dao.findById(template.id)?.template
+        val createdAt = existing?.createdAt ?: now
 
         dao.replaceTemplate(
             template = WorkoutTemplateEntity(
@@ -34,6 +35,16 @@ internal class RoomTemplateRepository @Inject constructor(
                 name = template.name,
                 notes = template.notes,
                 source = template.source.name,
+                // Carried forward, not defaulted. `WorkoutTemplate` is the
+                // standalone-plan shape and says nothing about weeks, while
+                // `replaceTemplate` upserts with REPLACE — so building the
+                // entity from the domain type alone reset all three of these to
+                // null and quietly took the day out of its week. Editing one day
+                // of a saved week and saving it would have removed that day from
+                // the week and left it loose in the plan library.
+                weekId = existing?.weekId,
+                weekPosition = existing?.weekPosition,
+                dayOfWeek = existing?.dayOfWeek,
                 createdAt = createdAt,
                 updatedAt = now,
             ),

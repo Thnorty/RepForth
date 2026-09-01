@@ -19,6 +19,7 @@
     <string name="builder_mode_duration">Time</string>
 
     <string name="builder_remove">Remove %1$s</string>
+    <string name="builder_open_detail">Show details for %1$s</string>
     <string name="builder_move_up">Move %1$s earlier</string>
     <string name="builder_move_down">Move %1$s later</string>
     <string name="builder_position">%1$d of %2$d</string>

@@ -27,6 +27,7 @@ import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.model.ExerciseId
 
 /**
  * Multi-day weekly plan review screen (§5, `docs/WEEKLY_PLANS.md`).
@@ -43,6 +44,7 @@ internal fun WeekReviewScreen(
     onDayTitleChange: (Int, String) -> Unit,
     onToggleDayExpanded: (Int) -> Unit,
     onAddExerciseToDay: (Int) -> Unit,
+    onOpenExerciseDetail: (ExerciseId) -> Unit,
     onRemoveExerciseFromDay: (Int, Int) -> Unit,
     onMoveExerciseInDay: (Int, Int, Int) -> Unit,
     onSetsChangeInDay: (Int, Int, Int) -> Unit,
@@ -108,6 +110,7 @@ internal fun WeekReviewScreen(
                     onToggleExpanded = { onToggleDayExpanded(day.dayIndex) },
                     onTitleChange = { onDayTitleChange(day.dayIndex, it) },
                     onAddExercise = { onAddExerciseToDay(day.dayIndex) },
+                    onOpenExerciseDetail = onOpenExerciseDetail,
                     onRemoveExercise = { exIdx -> onRemoveExerciseFromDay(day.dayIndex, exIdx) },
                     onMoveExercise = { from, to -> onMoveExerciseInDay(day.dayIndex, from, to) },
                     onSetsChange = { exIdx, sets -> onSetsChangeInDay(day.dayIndex, exIdx, sets) },
@@ -141,6 +144,7 @@ private fun DayAccordionCard(
     onToggleExpanded: () -> Unit,
     onTitleChange: (String) -> Unit,
     onAddExercise: () -> Unit,
+    onOpenExerciseDetail: (ExerciseId) -> Unit,
     onRemoveExercise: (Int) -> Unit,
     onMoveExercise: (Int, Int) -> Unit,
     onSetsChange: (Int, Int) -> Unit,
@@ -165,10 +169,8 @@ private fun DayAccordionCard(
                 horizontalArrangement = Arrangement.spacedBy(Space.s2),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    val dayHeader = stringResource(R.string.week_day_header, day.dayIndex + 1)
-                    val fullTitle = if (day.title.isNotBlank()) "$dayHeader · ${day.title}" else dayHeader
                     Text(
-                        text = fullTitle,
+                        text = weekDayLabel(day.dayIndex, day.title),
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
@@ -205,6 +207,7 @@ private fun DayAccordionCard(
                         draft = draft,
                         index = index,
                         total = day.exercises.size,
+                        onOpenDetail = { onOpenExerciseDetail(draft.exerciseId) },
                         onRemove = { onRemoveExercise(index) },
                         onMove = { to -> onMoveExercise(index, to) },
                         onSetsChange = { onSetsChange(index, it) },
