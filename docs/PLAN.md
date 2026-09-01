@@ -991,7 +991,7 @@ Exercise media rendering and background prefetching are integrated across all ex
   - AI Coach wire contract (`AiPlannedExercise`), JSON schema (`weight_kg`), validator, and builder mapping now support prescribing starting baseline weights based on user experience level and goal.
 - Verified as part of the 427-test suite (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `SessionStatisticsTest`, `TodayViewModelTest`, `SettingsViewModelTest`, `ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`, `TrainingWeekTest`, `RoomWeekRepositoryTest`, `RoomTemplateRepositoryTest`, `DataTransferTest`), plus `./gradlew assemblePlaceholderDebug` and `./gradlew lint`.
 
-### 4.1 — Weekly Plans: Domain and Persistence (Slice W1) — **done, migration unproven**
+### 4.1 — Weekly Plans: Domain and Persistence (Slice W1) — **done, migration proven on a device**
 
 Domain and persistence foundation for multi-day weekly plans (§1, §3, `docs/WEEKLY_PLANS.md`):
 - **Domain Layer (`core:model`)**:
@@ -1008,7 +1008,7 @@ Domain and persistence foundation for multi-day weekly plans (§1, §3, `docs/WE
   - Wired `weeks.deleteAll()` into `DefaultDataTransfer.deleteWorkoutData()`, which `resetApp()` calls, so both paths clear weeks. `ResetCoverageTest` guards it.
   - Weeks and the workouts inside them are exported and imported (`WeekDto`, `WeekDayDto`, export format version 2). This did **not** land with the rest of W1: `TemplateDao.observeAll()` had already been narrowed to `week_id IS NULL` while the export still read it, so for one commit a generated week was silently absent from the only backup this app has. A version 1 file still imports and simply has no weeks.
 - Verified by `./gradlew test`, `assemblePlaceholderDebug` and `lint` (`TrainingWeekTest`, `RoomWeekRepositoryTest`, `RoomTemplateRepositoryTest`, `DataTransferTest`, `SchemaExportTest`, `UserDataSchemaTest`, `PackagedCatalogTest`).
-- **`MigrationTest` (`core:database`, instrumentation) is written and compiles, and has not been run.** Five tests: that Room validates the migrated schema, that an existing plan and its exercises survive, that `training_week` arrives empty and usable, that deleting a week cascades to its days, and that a standalone workout is not collateral damage. Until a device runs them, the first migration this project has ever written is unproven — and it is the one thing standing between an app update and a user's only copy of their history.
+- **`MigrationTest` (`core:database`, instrumentation) has run and passes.** Five tests: that Room validates the migrated schema, that an existing plan and its exercises survive, that `training_week` arrives empty and usable, that deleting a week cascades to its days, and that a standalone workout is not collateral damage. Executed on a Galaxy S23 (SM-S911B, Android 14) on 2026-08-31: five tests, no failures, recorded in `core/database/build/outputs/androidTest-results/`. This entry said "has not been run" for two days after it had, which is exactly the way `docs/PLAN.md` goes wrong — it goes stale by nobody doing anything.
 
 ### 4.2 — Weekly Plans: Contract v3 & Multi-Day Validation (Slice W2) — **done**, no live provider has yet returned a week
 
@@ -1315,13 +1315,13 @@ app icon, and the exact licence.
   that the body map's tap targets on phone screens feel small for consistent,
   accurate touch input. The artwork is sound, but needs an expanded presentation,
   dedicated zoom/full-screen sheet, or enlarged touch bounds in a follow-up iteration.
-- **The first Room migration has never been executed.** `MigrationTest` exists
-  and compiles; no device has been attached since. Until it runs, an app update
-  over an existing install is untested, and the failure mode is a launch crash
-  for everyone who already has the app. Run
+- **The v1 to v2 migration is proven; no later one exists yet.** `MigrationTest`
+  ran on a Galaxy S23 on 2026-08-31, five tests, no failures. The risk that
+  remains is the next schema change, not this one. Re-run with
   `./gradlew :core:database:connectedAndroidTest` — and read the warning in
   `AGENTS.md` first, because `connectedAndroidTest` uninstalls the app when it
   finishes and uninstalling wipes exactly the data the migration protects.
+  Export first, every time.
 - **A live provider has now returned a week**, on schema version 4: six days
   from Gemini on a Galaxy S23, first try. Every *automated* multi-day test still
   answers from MockWebServer, so the shape is confirmed by hand and not by the
