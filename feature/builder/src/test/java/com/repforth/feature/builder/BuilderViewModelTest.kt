@@ -126,22 +126,18 @@ class BuilderViewModelTest {
                 candidate("b", Muscle.LATS, timed = true),
             )
             generator.response = AiWorkoutResponse(
-                schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
                 days = listOf(
                     AiPlannedDay(
-                        dayIndex = 0,
                         title = "Push",
                         exercises = listOf(
                             AiPlannedExercise(
                                 exerciseId = "a",
-                                order = 0,
                                 sets = 4,
                                 repetitions = 12,
                                 restSeconds = 75,
                             ),
                             AiPlannedExercise(
                                 exerciseId = "b",
-                                order = 1,
                                 sets = 3,
                                 durationSeconds = 45,
                                 restSeconds = 30,
@@ -228,15 +224,12 @@ class BuilderViewModelTest {
     @Test
     fun `a name the user typed survives generation`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(
                 AiPlannedDay(
-                    dayIndex = 0,
                     title = "",
                     exercises = listOf(
                         AiPlannedExercise(
                             exerciseId = "a",
-                            order = 0,
                             sets = 3,
                             repetitions = 10,
                             restSeconds = 60,
@@ -258,15 +251,12 @@ class BuilderViewModelTest {
     @Test
     fun `an empty name takes the default`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(
                 AiPlannedDay(
-                    dayIndex = 0,
                     title = "",
                     exercises = listOf(
                         AiPlannedExercise(
                             exerciseId = "a",
-                            order = 0,
                             sets = 3,
                             repetitions = 10,
                             restSeconds = 60,
@@ -537,21 +527,18 @@ class BuilderViewModelTest {
     @Test
     fun `coach generation creates multi-day draft and enters week review`() = runTest(dispatcher) {
         val day0 = AiPlannedDay(
-            dayIndex = 0,
             title = "Upper Push",
             exercises = listOf(
-                AiPlannedExercise("a", 0, sets = 3, repetitions = 10, restSeconds = 60),
+                AiPlannedExercise("a", sets = 3, repetitions = 10, restSeconds = 60),
             ),
         )
         val day1 = AiPlannedDay(
-            dayIndex = 1,
             title = "Lower & Core",
             exercises = listOf(
-                AiPlannedExercise("b", 0, sets = 3, repetitions = 12, restSeconds = 60),
+                AiPlannedExercise("b", sets = 3, repetitions = 12, restSeconds = 60),
             ),
         )
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(day0, day1),
             rationale = "Two-day split",
         )
@@ -577,8 +564,7 @@ class BuilderViewModelTest {
     @Test
     fun `a multi-day answer is saved as a week`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            days = listOf(day(0, "Push", "a"), day(1, "Pull", "b")),
+            days = listOf(day("Push", "a"), day("Pull", "b")),
             rationale = "Upper/lower",
         )
         catalog.catalog = listOf(
@@ -611,8 +597,7 @@ class BuilderViewModelTest {
     @Test
     fun `a one-day answer is saved as a standalone workout, not a week`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            days = listOf(day(0, "Day 1", "a")),
+            days = listOf(day("Day 1", "a")),
             rationale = "One-day full body",
         )
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
@@ -643,8 +628,7 @@ class BuilderViewModelTest {
     @Test
     fun `a generated week only becomes active when no week is active yet`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            days = listOf(day(0, "Push", "a"), day(1, "Pull", "b")),
+            days = listOf(day("Push", "a"), day("Pull", "b")),
             rationale = "Upper/lower",
         )
         catalog.catalog = listOf(
@@ -682,8 +666,7 @@ class BuilderViewModelTest {
     @Test
     fun `re-saving a week keeps the same template id for each day`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            days = listOf(day(0, "Push", "a"), day(1, "Pull", "b")),
+            days = listOf(day("Push", "a"), day("Pull", "b")),
             rationale = "Upper/lower",
         )
         catalog.catalog = listOf(
@@ -713,22 +696,19 @@ class BuilderViewModelTest {
     @Test
     fun `day operations manipulate targeted day independently`() = runTest(dispatcher) {
         val day0 = AiPlannedDay(
-            dayIndex = 0,
             title = "Day 1",
             exercises = listOf(
-                AiPlannedExercise("a", 0, sets = 3, repetitions = 10, restSeconds = 60),
-                AiPlannedExercise("b", 1, sets = 3, repetitions = 10, restSeconds = 60),
+                AiPlannedExercise("a", sets = 3, repetitions = 10, restSeconds = 60),
+                AiPlannedExercise("b", sets = 3, repetitions = 10, restSeconds = 60),
             ),
         )
         val day1 = AiPlannedDay(
-            dayIndex = 1,
             title = "Day 2",
             exercises = listOf(
-                AiPlannedExercise("c", 0, sets = 3, repetitions = 10, restSeconds = 60),
+                AiPlannedExercise("c", sets = 3, repetitions = 10, restSeconds = 60),
             ),
         )
         generator.response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(day0, day1),
             rationale = "Split",
         )
@@ -767,12 +747,9 @@ class BuilderViewModelTest {
 
 private const val FAKE_CEILING_MINUTES = 45
 
-private fun day(index: Int, title: String, vararg exerciseIds: String) = AiPlannedDay(
-    dayIndex = index,
+private fun day(title: String, vararg exerciseIds: String) = AiPlannedDay(
     title = title,
-    exercises = exerciseIds.mapIndexed { i, id ->
-        AiPlannedExercise(id, i, sets = 3, repetitions = 10, restSeconds = 60)
-    },
+    exercises = exerciseIds.map { AiPlannedExercise(it, sets = 3, repetitions = 10, restSeconds = 60) },
 )
 
 private class RecordingWeekRepository : WeekRepository {

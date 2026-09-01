@@ -14,7 +14,6 @@ import com.repforth.core.rules.GenerationRequest
 import com.repforth.core.rules.RejectionReason
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,19 +23,18 @@ class AiWorkoutValidatorTest {
     private val row = candidate("row", Muscle.LATS)
     private val run = candidate("run", Muscle.CARDIOVASCULAR_SYSTEM, BodyPart.CARDIO)
 
+    /**
+     * Array position is the order, so there is nothing left to sort by.
+     *
+     * The response used to carry an `order` field that the validator checked was
+     * a permutation of the indices and then sorted on — a round trip that could
+     * only restore what the array already said, and that failed a whole week of
+     * generation when it did not.
+     */
     @Test
-    fun `valid response is ordered and mechanically normalized`() {
+    fun `valid response keeps its order and is mechanically normalized`() {
         val response = responseWithDays(
-            days = listOf(
-                day(
-                    index = 0,
-                    title = "  Push  ",
-                    exercises = listOf(
-                        reps("row", order = 1, tempo = "   "),
-                        reps("press", order = 0),
-                    ),
-                ),
-            ),
+            days = listOf(day("  Push  ", listOf(reps("press"), reps("row")))),
             rationale = "  Balanced push and pull.  ",
         )
 
@@ -47,13 +45,12 @@ class AiWorkoutValidatorTest {
         assertEquals("Push", validatedDay.title)
         assertEquals(listOf("press", "row"), validatedDay.exercises.map { it.exerciseId })
         assertEquals("Balanced push and pull.", result.response.rationale)
-        assertNull(validatedDay.exercises.last().tempo)
     }
 
     @Test
     fun `response cannot use an id that was not offered`() {
         val result = validator.validate(
-            response(listOf(reps("catalog-but-filtered", 0))),
+            response(listOf(reps("catalog-but-filtered"))),
             request(days = 1),
             listOf(press),
         )
@@ -68,22 +65,20 @@ class AiWorkoutValidatorTest {
     @Test
     fun `duplicate ids within the same day are rejected`() {
         val result = validator.validate(
-            response(listOf(reps("press", 0), reps("press", 2))),
+            response(listOf(reps("press"), reps("press"))),
             request(days = 1),
             listOf(press),
         )
 
         assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.DUPLICATE_EXERCISE })
-        assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.ORDER })
     }
 
     @Test
     fun `duplicate ids across different days are permitted`() {
         val response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(
-                day(0, "Day 1", listOf(reps("press", 0))),
-                day(1, "Day 2", listOf(reps("press", 0))),
+                day("Day 1", listOf(reps("press"))),
+                day("Day 2", listOf(reps("press"))),
             ),
             rationale = "Full body frequency.",
         )
@@ -95,28 +90,28 @@ class AiWorkoutValidatorTest {
     }
 
     @Test
-    fun `day count mismatch and day index order are reported`() {
+    fun `a week short of the days that were asked for is rejected`() {
         val response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            days = listOf(
-                day(1, "Day 2", listOf(reps("press", 0))),
-            ),
+            days = listOf(day("Day 2", listOf(reps("press")))),
             rationale = "Incomplete week.",
         )
 
         val result = validator.validate(response, request(days = 2), listOf(press))
 
         assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.DAY_COUNT_MISMATCH })
-        assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.DAY_INDEX_ORDER })
         assertFalse(result.isValid)
     }
 
     @Test
     fun `exactly one target shape is required`() {
-        val neither = reps("press", 0).copy(repetitions = null)
-        val both = reps("press", 1).copy(durationSeconds = 30)
+        val neither = reps("press").copy(repetitions = null)
+        val both = reps("row").copy(durationSeconds = 30)
 
-        val result = validator.validate(response(listOf(neither, both)), request(days = 1), listOf(press))
+        val result = validator.validate(
+            response(listOf(neither, both)),
+            request(days = 1),
+            listOf(press, row),
+        )
 
         assertEquals(
             2,
@@ -126,11 +121,7 @@ class AiWorkoutValidatorTest {
 
     @Test
     fun `numeric limits reject values the builder would otherwise clamp`() {
-        val invalid = reps("press", 0).copy(
-            sets = 11,
-            repetitions = 0,
-            restSeconds = 601,
-        )
+        val invalid = reps("press").copy(sets = 11, repetitions = 0, restSeconds = 601)
 
         val result = validator.validate(response(listOf(invalid)), request(days = 1), listOf(press))
 
@@ -143,7 +134,7 @@ class AiWorkoutValidatorTest {
 
     @Test
     fun `weight out of range is rejected`() {
-        val invalid = reps("press", 0).copy(weightKg = 600.0)
+        val invalid = reps("press").copy(weightKg = 600.0)
         val result = validator.validate(response(listOf(invalid)), request(days = 1), listOf(press))
 
         assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.WEIGHT_OUT_OF_RANGE })
@@ -151,7 +142,7 @@ class AiWorkoutValidatorTest {
 
     @Test
     fun `valid weight is preserved in the validated response`() {
-        val valid = reps("press", 0).copy(weightKg = 45.0)
+        val valid = reps("press").copy(weightKg = 45.0)
         val result = validator.validate(response(listOf(valid)), request(days = 1), listOf(press))
 
         assertTrue(result.isValid)
@@ -161,7 +152,7 @@ class AiWorkoutValidatorTest {
     @Test
     fun `timed and repetition candidates cannot swap target types`() {
         val result = validator.validate(
-            response(listOf(reps("run", 0), duration("press", 1))),
+            response(listOf(reps("run"), duration("press"))),
             request(days = 1),
             listOf(run, press),
         )
@@ -173,16 +164,13 @@ class AiWorkoutValidatorTest {
     }
 
     @Test
-    fun `schema version and rationale are mandatory`() {
+    fun `rationale is mandatory`() {
         val result = validator.validate(
-            response(listOf(reps("press", 0)), rationale = " ").copy(
-                schemaVersion = AI_WORKOUT_SCHEMA_VERSION + 1,
-            ),
+            response(listOf(reps("press")), rationale = " "),
             request(days = 1),
             listOf(press),
         )
 
-        assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.SCHEMA_VERSION })
         assertTrue(result.contractViolations.any { it.issue == AiWorkoutIssue.RATIONALE_MISSING })
     }
 
@@ -193,7 +181,7 @@ class AiWorkoutValidatorTest {
             exclusions = setOf(MovementExclusion(ExclusionKind.EXERCISE, press.id.value)),
         )
 
-        val result = validator.validate(response(listOf(reps("press", 0))), excluded, listOf(press))
+        val result = validator.validate(response(listOf(reps("press"))), excluded, listOf(press))
 
         assertEquals(RejectionReason.EXCLUDED_EXERCISE, result.ruleViolations.single().reason)
         assertFalse(result.isValid)
@@ -201,22 +189,13 @@ class AiWorkoutValidatorTest {
 
     @Test
     fun `duration ceiling uses the exact repetition target across days`() {
-        val target1 = reps("press", 0).copy(
-            sets = 2,
-            repetitions = 10,
-            restSeconds = 60,
-        )
-        val target2 = reps("row", 0).copy(
-            sets = 2,
-            repetitions = 10,
-            restSeconds = 60,
-        )
+        val target1 = reps("press").copy(sets = 2, repetitions = 10, restSeconds = 60)
+        val target2 = reps("row").copy(sets = 2, repetitions = 10, restSeconds = 60)
 
         val response = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(
-                day(0, "Day 1", listOf(target1)),
-                day(1, "Day 2", listOf(target2)),
+                day("Day 1", listOf(target1)),
+                day("Day 2", listOf(target2)),
             ),
             rationale = "Split schedule",
         )
@@ -229,11 +208,7 @@ class AiWorkoutValidatorTest {
 
     @Test
     fun `a structurally valid plan still cannot exceed the session ceiling`() {
-        val long = reps("press", 0).copy(
-            sets = 10,
-            repetitions = 100,
-            restSeconds = 600,
-        )
+        val long = reps("press").copy(sets = 10, repetitions = 100, restSeconds = 600)
 
         val result = validator.validate(
             response(listOf(long)),
@@ -245,50 +220,82 @@ class AiWorkoutValidatorTest {
         assertFalse(result.isValid)
     }
 
+    /**
+     * A rule failure has to say which day it happened on.
+     *
+     * The rules engine validates a day at a time and cannot know, so the
+     * validator stamps it. Without this the repair attempt is told to cut an
+     * exercise from a week rather than from Tuesday.
+     */
+    @Test
+    fun `a rule violation names the day it happened on`() {
+        val fine = reps("press").copy(sets = 1, repetitions = 5, restSeconds = 30)
+        val long = reps("row").copy(sets = 10, repetitions = 100, restSeconds = 600)
+
+        val result = validator.validate(
+            responseWithDays(
+                listOf(day("Day 1", listOf(fine)), day("Day 2", listOf(long))),
+            ),
+            request(days = 2, sessionMinutes = 30),
+            listOf(press, row),
+        )
+
+        val violation = result.ruleViolations.single { it.reason == RejectionReason.NO_TIME_LEFT }
+        assertEquals(1, violation.dayIndex)
+    }
+
+    /**
+     * Retry feedback has to be readable, because the model is the reader.
+     *
+     * It used to be a JSON array of this codebase's enum names. `no_time_left`
+     * does not say whether the fix is fewer exercises, fewer sets or less rest.
+     */
+    @Test
+    fun `retry feedback explains the failure in words and locates it`() {
+        val result = validator.validate(
+            responseWithDays(
+                listOf(
+                    day("Day 1", listOf(reps("press"))),
+                    day("Day 2", listOf(reps("row").copy(sets = 99))),
+                ),
+            ),
+            request(days = 2),
+            listOf(press, row),
+        )
+
+        val issue = AiWorkoutRetryFeedback.from(result).issues
+            .single { it.code == "sets_out_of_range" }
+
+        assertEquals("day 2, exercise row: sets must be 1-10", issue.describe())
+    }
+
     private fun response(
         exercises: List<AiPlannedExercise>,
         rationale: String = "A concise reason.",
     ) = AiWorkoutResponse(
-        schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-        days = listOf(day(0, "Day 1", exercises)),
+        days = listOf(day("Day 1", exercises)),
         rationale = rationale,
     )
 
     private fun responseWithDays(
         days: List<AiPlannedDay>,
         rationale: String = "A concise reason.",
-    ) = AiWorkoutResponse(
-        schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-        days = days,
-        rationale = rationale,
-    )
+    ) = AiWorkoutResponse(days = days, rationale = rationale)
 
-    private fun day(
-        index: Int,
-        title: String,
-        exercises: List<AiPlannedExercise>,
-    ) = AiPlannedDay(
-        dayIndex = index,
+    private fun day(title: String, exercises: List<AiPlannedExercise>) = AiPlannedDay(
         title = title,
         exercises = exercises,
     )
 
-    private fun reps(
-        id: String,
-        order: Int,
-        tempo: String? = null,
-    ) = AiPlannedExercise(
+    private fun reps(id: String) = AiPlannedExercise(
         exerciseId = id,
-        order = order,
         sets = 3,
         repetitions = 10,
         restSeconds = 60,
-        tempo = tempo,
     )
 
-    private fun duration(id: String, order: Int) = AiPlannedExercise(
+    private fun duration(id: String) = AiPlannedExercise(
         exerciseId = id,
-        order = order,
         sets = 1,
         durationSeconds = 300,
         restSeconds = 30,

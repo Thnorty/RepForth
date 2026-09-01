@@ -116,6 +116,56 @@ class RulesEngineTest {
         assertEquals(RejectionReason.EXCLUDED_MUSCLE, outcome.rejections.single().reason)
     }
 
+    /**
+     * A movement exclusion used to be advice, not a rule.
+     *
+     * It was passed to the provider as a sentence and checked by nothing on the
+     * way back, so a user who wrote "overhead press" was told it had been
+     * applied and could still be programmed one. The catalog has no vocabulary
+     * for movement patterns, so the name is the only thing there is to match on.
+     */
+    @Test
+    fun `an excluded movement is filtered out by name`() {
+        val overhead = candidate("overhead", Muscle.DELTS).copy(name = "barbell overhead press")
+        val request = GenerationRequest(
+            profile(exclusions = setOf(MovementExclusion(ExclusionKind.MOVEMENT, "overhead press"))),
+        )
+
+        val outcome = engine.filterCandidates(request, library + overhead)
+
+        assertTrue(overhead !in outcome.eligibleCandidates)
+        assertEquals(
+            RejectionReason.EXCLUDED_MOVEMENT,
+            outcome.rejections.single { it.id == overhead.id }.reason,
+        )
+        assertEquals(library.sortedBy { it.id.value }, outcome.eligibleCandidates)
+    }
+
+    /** Someone typing into a text field should not have to match its casing. */
+    @Test
+    fun `movement exclusion matching ignores case and surrounding whitespace`() {
+        val overhead = candidate("overhead", Muscle.DELTS).copy(name = "Barbell Overhead Press")
+        val request = GenerationRequest(
+            profile(exclusions = setOf(MovementExclusion(ExclusionKind.MOVEMENT, "  OVERHEAD press  "))),
+        )
+
+        val outcome = engine.filterCandidates(request, listOf(overhead))
+
+        assertTrue(outcome.eligibleCandidates.isEmpty())
+    }
+
+    /** A movement exclusion that matches nothing must not quietly eat the catalog. */
+    @Test
+    fun `a movement exclusion nothing matches leaves the catalog alone`() {
+        val request = GenerationRequest(
+            profile(exclusions = setOf(MovementExclusion(ExclusionKind.MOVEMENT, "sled push"))),
+        )
+
+        val outcome = engine.filterCandidates(request, library)
+
+        assertEquals(library.sortedBy { it.id.value }, outcome.eligibleCandidates)
+    }
+
     @Test
     fun `unavailable equipment is never offered to the provider`() {
         val request = GenerationRequest(profile(equipment = setOf(Equipment.BODY_WEIGHT)))

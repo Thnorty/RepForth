@@ -89,30 +89,32 @@ class GenerationDeadlineReachesSocketTest {
     )
 
     private fun request(days: Int) = AiWorkoutRequest(
-        schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
         locale = "en",
         goal = "hypertrophy",
         experience = "beginner",
         days = days,
         sessionDurationMinutes = 40,
-        maxExercisesPerDay = com.repforth.core.model.WorkoutLimits.maxExercisesPerDay,
         primaryMuscles = listOf("pectorals"),
         secondaryMuscles = emptyList(),
-        excludedMuscles = emptyList(),
-        excludedExerciseIds = emptyList(),
         excludedMovements = emptyList(),
-        equipment = listOf("dumbbell"),
-        candidateExercises = listOf(
-            AiExerciseCandidate("exercise-a", "pectorals", "dumbbell", AiTargetType.REPETITIONS),
+        candidates = listOf(
+            AiExerciseCandidate(
+                id = "exercise-a",
+                name = "dumbbell bench press",
+                target = "pectorals",
+                secondaryMuscles = listOf("triceps"),
+                equipment = "dumbbell",
+                timed = false,
+            ),
         ),
     )
 
     private companion object {
         val VALID_WORKOUT = """
-            {"schema_version":$AI_WORKOUT_SCHEMA_VERSION,"days":[{"day_index":0,
-            "title":"Push","focus_muscles":[],"exercises":[{"exercise_id":"exercise-a",
-            "order":0,"sets":3,"repetitions":10,"duration_seconds":null,
-            "weight_kg":null,"rest_seconds":60,"tempo":null}]}],"rationale":"ok"}
+            {"days":[{"title":"Push","focus_muscles":[],"exercises":[
+            {"exercise_id":"exercise-a","sets":3,"repetitions":10,
+            "duration_seconds":null,"weight_kg":null,"rest_seconds":60}]}],
+            "rationale":"ok"}
         """.trimIndent().replace("\n", "")
     }
 }

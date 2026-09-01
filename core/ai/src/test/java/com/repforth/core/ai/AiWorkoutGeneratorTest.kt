@@ -36,7 +36,7 @@ class AiWorkoutGeneratorTest {
         ) as AiWorkoutGenerationOutcome.Provider
 
         assertEquals(1, outcome.attempts)
-        assertEquals(listOf("press"), provider.calls.single().request.candidateExercises.map { it.id })
+        assertEquals(listOf("press"), provider.calls.single().request.candidates.map { it.id })
         assertNull(provider.calls.single().retryFeedback)
     }
 
@@ -58,13 +58,8 @@ class AiWorkoutGeneratorTest {
         assertEquals(2, outcome.attempts)
         assertNull(provider.calls.first().retryFeedback)
         assertEquals(
-            AiWorkoutRetryIssue(
-                AiWorkoutRetryIssueKind.CONTRACT,
-                "exercise_not_offered",
-                dayIndex = 0,
-                exerciseId = "not-offered",
-            ),
-            provider.calls.last().retryFeedback!!.issues.single(),
+            AiWorkoutRetryIssueKind.CONTRACT to "exercise_not_offered",
+            provider.calls.last().retryFeedback!!.issues.single().let { it.kind to it.code },
         )
     }
 
@@ -242,15 +237,12 @@ class AiWorkoutGeneratorTest {
 
     private fun valid(id: String) = ProviderGenerationResult.Ok(
         AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(
                 AiPlannedDay(
-                    dayIndex = 0,
                     title = "Push",
                     exercises = listOf(
                         AiPlannedExercise(
                             exerciseId = id,
-                            order = 0,
                             sets = 3,
                             repetitions = 10,
                             restSeconds = 60,

@@ -113,16 +113,29 @@ Write-Host ""
 # they need into it. With none staged, the useful default is the schema the app
 # actually ships, which is the question this tool exists to answer.
 $cases = Join-Path $PSScriptRoot "probe-cases.generated.ps1"
+$schemaDump = Join-Path $PSScriptRoot "gemini-schema.json"
 if (Test-Path $cases) {
+    # Staged cases are scratch and are not regenerated with the schema, so a set
+    # left behind from a previous session silently answers a question nobody
+    # asked. This has already cost one round trip: a stale file carrying the
+    # v3 schema reported PASS while v4 had never been sent at all. Cheap to
+    # notice -- if the dump is newer than the cases, the cases are stale.
+    if ((Test-Path $schemaDump) -and
+        ((Get-Item $schemaDump).LastWriteTimeUtc -gt (Get-Item $cases).LastWriteTimeUtc)) {
+        Write-Host ("  WARNING  {0} is older than gemini-schema.json." -f (Split-Path $cases -Leaf)) -ForegroundColor Yellow
+        Write-Host "           These cases predate the schema the app now sends, so a PASS" -ForegroundColor Yellow
+        Write-Host "           below says nothing about it. Delete the file to test the" -ForegroundColor Yellow
+        Write-Host "           real schema, or restage the cases." -ForegroundColor Yellow
+        Write-Host ""
+    }
     . $cases
 } else {
-    $schemaPath = Join-Path $PSScriptRoot "gemini-schema.json"
-    if (-not (Test-Path $schemaPath)) {
-        Write-Host "No cases staged and no $schemaPath to fall back on." -ForegroundColor Yellow
+    if (-not (Test-Path $schemaDump)) {
+        Write-Host "No cases staged and no $schemaDump to fall back on." -ForegroundColor Yellow
         exit 1
     }
     Invoke-Case "no schema at all" ""
-    Invoke-Case "the schema the app sends" (Get-Content $schemaPath -Raw)
+    Invoke-Case "the schema the app sends" (Get-Content $schemaDump -Raw)
 }
 
 Write-Host ""

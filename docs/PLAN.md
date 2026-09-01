@@ -1064,6 +1064,98 @@ plan card, with no indication that it belongs to a week or which day it is.
 `BuilderViewModel.load()` still only loads templates, so a saved week cannot be
 reopened for editing from Plans.
 
+### 4.4 — The AI request, restructured (schema version 4) — **generated a real week on a Galaxy S23**
+
+A pass over what the app actually sends and asks for, driven by measuring the
+payload rather than reading it. Everything below was counted against the
+packaged catalog.
+
+**Exercise names are now sent, and the request got smaller.** The v3 candidate
+carried `{id, target, equipment, target_type}` and no name, which read as a
+privacy measure and was not one: names are public catalog data and the ids
+already identify them exactly. What it actually did was make **1,265 of the
+1,324 catalog exercises indistinguishable from some other exercise on the
+wire** — 89 arrived as the identical `{abs, body weight, repetitions}` — so
+choosing between them was arbitrary, and the prompt's existing instruction to
+open with warm-ups and close with stretches could not be acted on at all. The
+model's real contribution was volume and prescription; selection was noise.
+
+The catalog now travels as a delimited table instead of an array of JSON
+objects, because repeating field names on every row was most of what the request
+weighed. Over all 1,324 catalog exercises: **112,110 characters carrying four
+fields each, down to 90,205 carrying six.** Around 5,500 tokens cheaper *and*
+strictly more informative — which is how `name`, `secondary_muscles` and the R/T marking were
+all added without the request growing. Rows are ordered by muscle then name, so
+a model choosing chest work reads a contiguous run rather than a list ordered by
+upstream row number.
+
+**Three request fields were removed because they were already true.**
+`excluded_exercise_ids`, `excluded_muscles` and `equipment` all name constraints
+`RulesEngine.filterCandidates` has already applied, so sending them asked the
+model to avoid exercises it could not see.
+
+**`excluded_movements` was decorative, and now is not.** It was the one
+exclusion the catalog filter could not express, so it was sent to the provider
+as advice — and checked by nothing on the way back. Someone who wrote "overhead
+press" was told the exclusion applied and could still be programmed one.
+`RulesEngine` now matches it against the exercise name. That is coarse (a user
+who writes "press" gets a very short catalog and the "nothing matched" screen
+explaining why) but it is what the field claims to do.
+
+**Four response fields were removed because none could carry information.**
+`schema_version` was a constant the app had just sent, echoed back; `day_index`
+and `order` restated array positions; `tempo` was generated, validated,
+normalised and read by nothing. Each was a way for a whole week's generation to
+fail on a fact the JSON structure cannot get wrong — `DAY_INDEX_ORDER` and
+`ORDER` are gone with them. Array position is the order, and always was.
+
+**The prompt now states the duration formula the validator enforces.** A day is
+rejected when `sets × (repetitions × 3 + rest_seconds)`, summed and counting the
+last set's rest, exceeds the session ceiling. The model was never told that, so
+it was failing a check it had no way to pass — and spending the single repair
+attempt on it.
+
+**Retry feedback is sentences, not codes.** It used to be
+`{"kind":"rule","code":"no_time_left"}`. Those names are this codebase's, and a
+model given one could not tell whether the fix was fewer exercises, fewer sets
+or less rest. The mapping is authored locally — our enum to our sentence — so
+nothing the provider said comes back to it as instruction, which was the reason
+codes were used in the first place. A rule violation now also carries which day
+it happened on; the rules engine validates one day at a time and cannot know, so
+`AiWorkoutValidator` stamps it.
+
+**The prompt is one document rather than prose wrapped around a JSON dump.**
+Every constraint used to be stated twice — once in a sentence, once inside the
+encoded request appended below it — leaving the model to work out which copy
+governed. It is now headed sections: brief, day shape, week shape, time budget,
+numeric limits, catalog.
+
+**`-Drepforth.regenerate=true` never reached the test JVM.** `SchemaDumpGuardTest`
+documents it as the way to rewrite `tools/gemini-schema.json`; the flag stopped
+at the Gradle daemon, so the documented command silently reran the failing
+assertion. Forwarded in `configureGuardTestInputs()`, and watched working:
+corrupt the file, guard fails; run with the flag, guard passes.
+
+Guards proven by breaking them: the movement-exclusion filter (disabled it,
+watched two tests go red, restored), and the schema dump (corrupted the JSON,
+watched the guard fail).
+
+Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
+assemblePlaceholderDebug`, each run separately, and then **by generating a real
+six-day week against live Gemini on a Galaxy S23**. It succeeded first try, and
+the maintainer confirmed the thing the change existed for: days now open and
+close correctly, and the exercise choices are visibly deliberate rather than
+arbitrary. That is the first live evidence for §8 that a provider both accepts
+the v4 schema and can act on the catalog now that it carries names.
+
+**A stale scratch file cost a round trip, and now warns.**
+`tools/probe-cases.generated.ps1` is gitignored scratch that overrides the
+probe's default cases. One left over from the previous session still carried the
+v3 schema, so a probe run reported `PASS the fixed real schema` while v4 had
+never been sent at all — the same stale-artifact failure `SchemaDumpGuardTest`
+exists to prevent for the dump, in the one file that had no guard. The probe now
+warns when the staged cases are older than `tools/gemini-schema.json`.
+
 ---
 
 ## Decisions already made
@@ -1113,11 +1205,12 @@ app icon, and the exact licence.
   `./gradlew :core:database:connectedAndroidTest` — and read the warning in
   `AGENTS.md` first, because `connectedAndroidTest` uninstalls the app when it
   finishes and uninstalling wipes exactly the data the migration protects.
-- **No live provider has returned a week.** Every multi-day test answers from
-  MockWebServer. Whether a real model — and particularly a small local one —
-  holds a strict seven-day schema is unmeasured, and it is the risk most likely
-  to change the design. `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its
-  trigger.
+- **A live provider has now returned a week**, on schema version 4: six days
+  from Gemini on a Galaxy S23, first try. Every *automated* multi-day test still
+  answers from MockWebServer, so the shape is confirmed by hand and not by the
+  suite. Whether a **small local model** holds a strict seven-day schema remains
+  unmeasured, and stays the risk most likely to change the design;
+  `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its trigger.
 - **Screenshot tests are still the untested category.** Unit tests and
   instrumentation both run; nothing yet asserts what a screen looks like, so
   every layout regression found so far was found by a person holding a phone.

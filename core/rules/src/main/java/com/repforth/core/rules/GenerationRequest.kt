@@ -1,6 +1,7 @@
 package com.repforth.core.rules
 
 import com.repforth.core.model.Equipment
+import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.UserProfile
@@ -55,6 +56,25 @@ data class GenerationRequest(
 
     val excludedMuscles: Set<Muscle>
         get() = profile.excludedMuscles
+
+    /**
+     * Free-text movement patterns to avoid, trimmed and non-empty.
+     *
+     * The catalog has no vocabulary for these, so they are matched against the
+     * exercise name. That is coarse — "press" would take out several hundred
+     * exercises — but it is what the user asked for and what they would expect,
+     * and until this existed the field was decorative: it was sent to the
+     * provider as advice and checked by nothing on the way back.
+     */
+    val excludedMovements: List<String>
+        get() = profile.exclusions
+            .asSequence()
+            .filter { it.kind == ExclusionKind.MOVEMENT }
+            .map { it.value.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sorted()
+            .toList()
 }
 
 /**
@@ -67,6 +87,9 @@ data class GenerationRequest(
 enum class RejectionReason {
     EXCLUDED_EXERCISE,
     EXCLUDED_MUSCLE,
+
+    /** Its name matches a movement pattern the user excluded. */
+    EXCLUDED_MOVEMENT,
     EQUIPMENT_UNAVAILABLE,
     WRONG_MUSCLE,
     /** Would have pushed the plan past the session-length ceiling. */
@@ -84,4 +107,17 @@ data class Rejection(val id: ExerciseId, val reason: RejectionReason)
  * §8 requires AI output to be validated against these rules before it reaches
  * the editable builder.
  */
-data class Violation(val id: ExerciseId?, val reason: RejectionReason, val detail: String)
+data class Violation(
+    val id: ExerciseId?,
+    val reason: RejectionReason,
+    val detail: String,
+    /**
+     * Which day of the week broke the rule, when that is known.
+     *
+     * The rules engine validates one day at a time and has no idea where it sits
+     * in a week, so this is stamped by whoever is iterating the days. Null from
+     * the engine, filled in by `AiWorkoutValidator` before the repair attempt --
+     * "cut an exercise" is not actionable without knowing which day.
+     */
+    val dayIndex: Int? = null,
+)

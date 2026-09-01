@@ -8,17 +8,15 @@ import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.rules.GenerationRequest
+import com.repforth.core.rules.RejectionReason
 import com.repforth.core.rules.RulesEngine
 import com.repforth.core.rules.Violation
 
 enum class AiWorkoutIssue {
-    SCHEMA_VERSION,
     DAY_COUNT_MISMATCH,
-    DAY_INDEX_ORDER,
     DAY_TITLE_MISSING,
     EMPTY_PLAN,
     TOO_MANY_EXERCISES,
-    ORDER,
     EXERCISE_NOT_OFFERED,
     DUPLICATE_EXERCISE,
     SETS_OUT_OF_RANGE,
@@ -44,19 +42,32 @@ enum class AiWorkoutRetryIssueKind {
 }
 
 /**
- * Compact, typed feedback for the one repair attempt allowed by §8.
+ * One rejection, as a code for this app and a sentence for the model.
  *
- * It contains codes, day indices, and exercise ids only. Rule details are
- * deliberately left out: they are local diagnostics, not provider instructions,
- * and allowing an arbitrary string through here would create a second
- * prompt-input surface.
+ * [code] is the enum name, kept for logs and tests. [explanation] is what
+ * actually goes in the prompt, because `no_time_left` is this codebase's word
+ * and means nothing to anyone else — a model given only the code could not tell
+ * whether it had used too many exercises, too many sets or too much rest.
+ *
+ * Both are authored here. Nothing the provider said is ever fed back to it,
+ * which was the point of using codes originally and survives their explanation.
  */
 data class AiWorkoutRetryIssue(
     val kind: AiWorkoutRetryIssueKind,
     val code: String,
+    val explanation: String,
     val dayIndex: Int? = null,
     val exerciseId: String? = null,
-)
+) {
+    /** The sentence with its location, as one prompt line. */
+    fun describe(): String {
+        val where = listOfNotNull(
+            dayIndex?.let { "day ${it + 1}" },
+            exerciseId?.let { "exercise $it" },
+        ).joinToString(", ")
+        return if (where.isEmpty()) explanation else "$where: $explanation"
+    }
+}
 
 data class AiWorkoutRetryFeedback(
     val issues: List<AiWorkoutRetryIssue>,
@@ -67,7 +78,14 @@ data class AiWorkoutRetryFeedback(
 
     companion object {
         val Malformed = AiWorkoutRetryFeedback(
-            listOf(AiWorkoutRetryIssue(AiWorkoutRetryIssueKind.FORMAT, "malformed_response")),
+            listOf(
+                AiWorkoutRetryIssue(
+                    kind = AiWorkoutRetryIssueKind.FORMAT,
+                    code = "malformed_response",
+                    explanation = "the answer was not JSON matching the schema; return only " +
+                        "that JSON object, with no extra fields and no surrounding text",
+                ),
+            ),
         )
 
         fun from(result: AiWorkoutValidationResult): AiWorkoutRetryFeedback {
@@ -79,6 +97,7 @@ data class AiWorkoutRetryFeedback(
                             AiWorkoutRetryIssue(
                                 kind = AiWorkoutRetryIssueKind.CONTRACT,
                                 code = violation.issue.name.lowercase(),
+                                explanation = violation.issue.explain(),
                                 dayIndex = violation.dayIndex,
                                 exerciseId = violation.exerciseId,
                             ),
@@ -89,6 +108,8 @@ data class AiWorkoutRetryFeedback(
                             AiWorkoutRetryIssue(
                                 kind = AiWorkoutRetryIssueKind.RULE,
                                 code = violation.reason.name.lowercase(),
+                                explanation = violation.explain(),
+                                dayIndex = violation.dayIndex,
                                 exerciseId = violation.id?.value,
                             ),
                         )
@@ -97,6 +118,58 @@ data class AiWorkoutRetryFeedback(
             )
         }
     }
+}
+
+/** The model-facing sentence for each contract failure, with the real limits in it. */
+private fun AiWorkoutIssue.explain(): String = when (this) {
+    AiWorkoutIssue.DAY_COUNT_MISMATCH ->
+        "the days array does not hold the number of days the brief asked for"
+    AiWorkoutIssue.DAY_TITLE_MISSING -> "title is empty"
+    AiWorkoutIssue.EMPTY_PLAN -> "the day has no exercises"
+    AiWorkoutIssue.TOO_MANY_EXERCISES ->
+        "the day has more than ${WorkoutLimits.maxExercisesPerDay} exercises"
+    AiWorkoutIssue.EXERCISE_NOT_OFFERED ->
+        "that exercise_id is not in the catalog; copy ids exactly from it"
+    AiWorkoutIssue.DUPLICATE_EXERCISE -> "that exercise appears twice in the same day"
+    AiWorkoutIssue.SETS_OUT_OF_RANGE ->
+        "sets must be ${WorkoutLimits.sets.first}-${WorkoutLimits.sets.last}"
+    AiWorkoutIssue.TARGET_SHAPE ->
+        "give exactly one of repetitions or duration_seconds and set the other to null"
+    AiWorkoutIssue.REPETITION_OUT_OF_RANGE ->
+        "repetitions must be ${WorkoutLimits.reps.first}-${WorkoutLimits.reps.last}"
+    AiWorkoutIssue.DURATION_OUT_OF_RANGE ->
+        "duration_seconds must be ${WorkoutLimits.durationSeconds.first}-" +
+            "${WorkoutLimits.durationSeconds.last}"
+    AiWorkoutIssue.TARGET_TYPE_MISMATCH ->
+        "that catalog row's R/T marking says the other measure: R rows take repetitions, " +
+            "T rows take duration_seconds"
+    AiWorkoutIssue.REST_OUT_OF_RANGE ->
+        "rest_seconds must be ${WorkoutLimits.restSeconds.first}-${WorkoutLimits.restSeconds.last}"
+    AiWorkoutIssue.WEIGHT_OUT_OF_RANGE ->
+        "weight_kg must be ${WorkoutLimits.weightKg.start}-${WorkoutLimits.weightKg.endInclusive}, " +
+            "or null"
+    AiWorkoutIssue.RATIONALE_MISSING -> "rationale is empty"
+}
+
+/**
+ * The model-facing sentence for each rule failure.
+ *
+ * [Violation.detail] is appended because it carries computed numbers — how long
+ * the day ran against the ceiling — and every string that can appear in it is
+ * written in `RulesEngine`. None of it is provider text.
+ */
+private fun Violation.explain(): String {
+    val sentence = when (reason) {
+        RejectionReason.EXCLUDED_EXERCISE -> "this person must never be given that exercise"
+        RejectionReason.EXCLUDED_MUSCLE -> "that exercise works a muscle this person excludes"
+        RejectionReason.EXCLUDED_MOVEMENT -> "that exercise is a movement pattern this person excludes"
+        RejectionReason.EQUIPMENT_UNAVAILABLE -> "this person does not have that equipment"
+        RejectionReason.WRONG_MUSCLE -> "that exercise is not in the catalog you were given"
+        RejectionReason.NO_TIME_LEFT ->
+            "the day runs past the time available; cut an exercise, sets, or rest"
+        RejectionReason.ENOUGH_COVERAGE -> "that exercise appears twice in the same day"
+    }
+    return "$sentence ($detail)"
 }
 
 data class AiWorkoutValidationResult(
@@ -115,6 +188,11 @@ data class AiWorkoutValidationResult(
  * Treats a provider response as hostile input, then delegates the product's hard
  * constraints to [RulesEngine]. Nothing here trusts a provider because it used
  * the requested schema.
+ *
+ * Day and exercise positions are read from the arrays rather than from fields
+ * the model fills in. That removed two whole classes of rejection — a plan could
+ * previously fail because a model numbered its days from one — without weakening
+ * anything: the array is the order, and it always was.
  */
 class AiWorkoutValidator(
     private val rules: RulesEngine = RulesEngine(),
@@ -127,9 +205,6 @@ class AiWorkoutValidator(
         val violations = mutableListOf<AiWorkoutContractViolation>()
         val offered = offeredCandidates.associateBy { it.id.value }
 
-        if (response.schemaVersion != AI_WORKOUT_SCHEMA_VERSION) {
-            violations += AiWorkoutContractViolation(AiWorkoutIssue.SCHEMA_VERSION)
-        }
         if (response.rationale.isBlank()) {
             violations += AiWorkoutContractViolation(AiWorkoutIssue.RATIONALE_MISSING)
         }
@@ -137,26 +212,21 @@ class AiWorkoutValidator(
             violations += AiWorkoutContractViolation(AiWorkoutIssue.DAY_COUNT_MISMATCH)
         }
 
-        val expectedDayIndices = response.days.indices.toList()
-        if (response.days.map { it.dayIndex } != expectedDayIndices) {
-            violations += AiWorkoutContractViolation(AiWorkoutIssue.DAY_INDEX_ORDER)
-        }
-
-        response.days.forEach { day ->
-            val dayIdx = day.dayIndex
+        response.days.forEachIndexed { dayIdx, day ->
             if (day.title.isBlank()) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.DAY_TITLE_MISSING, dayIndex = dayIdx)
+                violations += AiWorkoutContractViolation(
+                    AiWorkoutIssue.DAY_TITLE_MISSING,
+                    dayIndex = dayIdx,
+                )
             }
             if (day.exercises.isEmpty()) {
                 violations += AiWorkoutContractViolation(AiWorkoutIssue.EMPTY_PLAN, dayIndex = dayIdx)
             }
             if (day.exercises.size > WorkoutLimits.maxExercisesPerDay) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.TOO_MANY_EXERCISES, dayIndex = dayIdx)
-            }
-
-            val expectedOrder = day.exercises.indices.toList()
-            if (day.exercises.map { it.order }.sorted() != expectedOrder) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.ORDER, dayIndex = dayIdx)
+                violations += AiWorkoutContractViolation(
+                    AiWorkoutIssue.TOO_MANY_EXERCISES,
+                    dayIndex = dayIdx,
+                )
             }
 
             // §4.5: An exercise may repeat across days, but MUST NOT repeat within the same day.
@@ -252,32 +322,27 @@ class AiWorkoutValidator(
             )
         }
 
-        // Sorting a complete, unique order is a safe mechanical repair (§8).
-        // Whitespace around optional text is equally mechanical.
+        // Whitespace around model-authored text is a mechanical repair (§8).
         val normalised = response.copy(
-            days = response.days
-                .sortedBy { it.dayIndex }
-                .map { day ->
-                    day.copy(
-                        title = day.title.trim(),
-                        exercises = day.exercises
-                            .sortedBy { it.order }
-                            .map { it.copy(tempo = it.tempo?.trim()?.ifEmpty { null }) },
-                    )
-                },
+            days = response.days.map { it.copy(title = it.title.trim()) },
             rationale = response.rationale.trim(),
         )
 
         val ruleViolations = mutableListOf<Violation>()
         var totalEstimatedDurationMs = 0L
-        normalised.days.forEach { day ->
-            val dayPlan = day.toValidationPlan()
+        normalised.days.forEachIndexed { dayIdx, day ->
+            val dayPlan = day.toValidationPlan(dayIdx)
             totalEstimatedDurationMs += dayPlan.estimatedDurationMs
-            ruleViolations += rules.validate(
-                plan = dayPlan,
-                request = request,
-                catalog = offeredCandidates.associateBy { it.id },
-            )
+            ruleViolations += rules
+                .validate(
+                    plan = dayPlan,
+                    request = request,
+                    catalog = offeredCandidates.associateBy { it.id },
+                )
+                // Which day a rule failed on is the first thing the repair
+                // attempt needs, and the rules engine validates one day at a
+                // time so it cannot know. Stamped here, where it is known.
+                .map { it.copy(dayIndex = dayIdx) }
         }
 
         return AiWorkoutValidationResult(
@@ -292,7 +357,7 @@ class AiWorkoutValidator(
 /**
  * A validation-only projection using the exact target the builder will display.
  */
-private fun AiPlannedDay.toValidationPlan() = WorkoutTemplate(
+private fun AiPlannedDay.toValidationPlan(dayIndex: Int) = WorkoutTemplate(
     id = "ai-validation-day-$dayIndex",
     name = title.ifBlank { "Day ${dayIndex + 1}" },
     source = PlanSource.AI,

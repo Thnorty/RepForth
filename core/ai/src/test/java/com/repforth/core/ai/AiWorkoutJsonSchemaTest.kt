@@ -18,34 +18,42 @@ class AiWorkoutJsonSchemaTest {
         AiWorkoutJsonSchema.value.getValue("required").jsonArray.map { it.jsonPrimitive.content }
 
     private fun sampleRequest() = AiWorkoutRequest(
-        schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
         locale = "en",
         goal = "strength",
         experience = "intermediate",
         days = 3,
         sessionDurationMinutes = 45,
-        maxExercisesPerDay = WorkoutLimits.maxExercisesPerDay,
         primaryMuscles = listOf("pectorals"),
         secondaryMuscles = emptyList(),
-        excludedMuscles = emptyList(),
-        excludedExerciseIds = emptyList(),
         excludedMovements = emptyList(),
-        equipment = listOf("barbell"),
-        candidateExercises = emptyList(),
+        candidates = emptyList(),
     )
 
     @Test
     fun `schema name and version change together`() {
         assertEquals("repforth_workout_v$AI_WORKOUT_SCHEMA_VERSION", AI_WORKOUT_SCHEMA_NAME)
+    }
 
-        // The version was pinned with minimum/maximum until Gemini rejected
-        // every bound in this schema. It is pinned by AiWorkoutValidator now,
-        // which refuses a response whose schema_version is not this one — see
-        // `AiWorkoutValidatorTest`. All the schema still says is that the field
-        // exists and is an integer.
-        val version = rootProperties().getValue("schema_version").jsonObject
-        assertEquals("integer", version.getValue("type").jsonPrimitive.content)
-        assertTrue("schema_version must be required", "schema_version" in requiredAtRoot())
+    /**
+     * The model is asked for the plan, and for nothing that restates the request.
+     *
+     * `schema_version` was a constant this app had just sent, echoed back;
+     * `day_index` and `order` restated array positions. All three could only
+     * confirm what was already known, or fail a whole week's generation because
+     * a model got one of them wrong. `tempo` was generated, validated,
+     * normalised, and read by nothing.
+     */
+    @Test
+    fun `the response schema asks only for what cannot be derived`() {
+        assertEquals(listOf("days", "rationale"), requiredAtRoot())
+
+        val encoded = AiWorkoutJsonSchema.value.toString()
+        listOf("schema_version", "day_index", "order", "tempo").forEach { retired ->
+            assertFalse(
+                "`$retired` is derivable or unused; asking for it only adds a way to fail",
+                encoded.contains(retired),
+            )
+        }
     }
 
     /**
@@ -127,19 +135,10 @@ class AiWorkoutJsonSchemaTest {
         )
     }
 
-
-
     private fun rootProperties() = AiWorkoutJsonSchema.value.properties()
 
     private fun JsonObject.properties() = getValue("properties").jsonObject
 
-    /**
-     * A nullable field carries its constraints alongside a type array.
-     *
-     * Was `anyOf[0]`. Gemini rejected that shape live with
-     * `400 INVALID_ARGUMENT`; its subset permits null only "by including null
-     * in the type array", so the bounds now sit on the field itself.
-     */
     /**
      * The schema stays inside the subset Gemini documents.
      *
@@ -163,7 +162,7 @@ class AiWorkoutJsonSchemaTest {
             .getValue("items").jsonObject
             .getValue("properties").jsonObject
 
-        listOf("repetitions", "duration_seconds", "weight_kg", "tempo").forEach { field ->
+        listOf("repetitions", "duration_seconds", "weight_kg").forEach { field ->
             val schema = exercise.getValue(field).jsonObject
             assertNull(
                 "$field must not use anyOf; Gemini rejects that shape",
@@ -190,9 +189,4 @@ class AiWorkoutJsonSchemaTest {
             encoded.contains("minLength"),
         )
     }
-
-
-    private fun JsonObject.int(name: String) = getValue(name).jsonPrimitive.content.toInt()
-
-    private fun JsonObject.double(name: String) = getValue(name).jsonPrimitive.content.toDouble()
 }

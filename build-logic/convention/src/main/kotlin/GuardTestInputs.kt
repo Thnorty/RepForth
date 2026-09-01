@@ -45,6 +45,14 @@ internal fun Project.configureGuardTestInputs() {
     declareRepoWideGuardInputs()
 
     tasks.withType<Test>().configureEach {
+        // `SchemaDumpGuardTest` documents `-Drepforth.regenerate=true` as the way
+        // to rewrite the file it guards. That flag reaches the Gradle daemon and
+        // stops there — the test runs in a forked JVM that never saw it — so the
+        // documented command silently did nothing but rerun the failing
+        // assertion. Forwarded here rather than in the test, which cannot reach
+        // across the fork to fetch it.
+        systemProperty("repforth.regenerate", providers.systemProperty("repforth.regenerate").getOrElse("false"))
+
         guardedDirs.forEach { path ->
             val dir = layout.projectDirectory.dir(path)
             if (dir.asFile.isDirectory) {

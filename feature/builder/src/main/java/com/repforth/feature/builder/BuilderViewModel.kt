@@ -391,11 +391,11 @@ class BuilderViewModel @Inject constructor(
                         .flatMap { it.exercises }
                         .map { ExerciseId(it.exerciseId) }
                     val names = exercises.summaries(allPlannedIds)
-                    val draftDays = outcome.response.days.map { day ->
+                    val draftDays = outcome.response.days.mapIndexed { dayIndex, day ->
                         DraftWeekDay(
-                            dayIndex = day.dayIndex,
+                            dayIndex = dayIndex,
                             title = day.title.ifBlank {
-                                dayTitles.getOrElse(day.dayIndex) { defaultName }
+                                dayTitles.getOrElse(dayIndex) { defaultName }
                             },
                             focusMuscles = day.focusMuscles.mapNotNull { slug ->
                                 Muscle.entries.find {
@@ -403,7 +403,7 @@ class BuilderViewModel @Inject constructor(
                                 }
                             },
                             exercises = day.exercises.toAiDrafts(names),
-                            isExpanded = (day.dayIndex == 0),
+                            isExpanded = (dayIndex == 0),
                         )
                     }
                     val resolvedName = _uiState.value.name.ifBlank { defaultName }

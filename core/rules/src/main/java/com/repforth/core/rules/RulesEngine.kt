@@ -56,6 +56,15 @@ class RulesEngine {
             return RejectionReason.EXCLUDED_MUSCLE
         }
 
+        // Matched against the name because the dataset has no vocabulary for
+        // movement patterns. Coarse on purpose: someone who wrote "overhead
+        // press" gets every exercise whose name contains it, which is what they
+        // meant, and someone who writes "press" gets a very short catalog and
+        // the "nothing matched" screen that explains why.
+        if (request.excludedMovements.any { candidate.name.contains(it, ignoreCase = true) }) {
+            return RejectionReason.EXCLUDED_MOVEMENT
+        }
+
         // An empty equipment set means "not stated", not "has nothing".
         val available = request.availableEquipment
         if (available.isNotEmpty() && candidate.equipment !in available) {

@@ -62,7 +62,7 @@ class ProviderGenerationTest {
         val generation = body.getValue("generationConfig").jsonObject
         assertEquals("application/json", generation.string("responseMimeType"))
         assertEquals(AiWorkoutJsonSchema.value, generation.getValue("responseJsonSchema"))
-        assertTrue(geminiPrompt(body).contains(AiWorkoutCodec.encode(workoutRequest)))
+        assertTrue(geminiPrompt(body).contains(workoutRequest.candidates.single().toCatalogRow()))
         assertEquals("exercise-a", success(result).days.single().exercises.single().exerciseId)
     }
 
@@ -199,13 +199,14 @@ class ProviderGenerationTest {
     }
 
     @Test
-    fun `retry feedback is encoded as typed JSON rather than interpolated text`() {
+    fun `retry feedback reaches the prompt as a located sentence`() {
         val prompt = workoutRequest.toGenerationPrompt(
             AiWorkoutRetryFeedback(
                 listOf(
                     AiWorkoutRetryIssue(
                         kind = AiWorkoutRetryIssueKind.CONTRACT,
                         code = "exercise_not_offered",
+                        explanation = "that exercise_id is not in the catalog",
                         dayIndex = 0,
                         exerciseId = "id-with-\"quote",
                     ),
@@ -213,11 +214,13 @@ class ProviderGenerationTest {
             ),
         )
 
-        assertTrue(prompt.contains("The previous answer failed validation"))
-        assertTrue(prompt.contains("one exact integer in repetitions"))
-        assertTrue(prompt.contains("\"kind\":\"contract\""))
-        assertTrue(prompt.contains("\"day_index\":0"))
-        assertTrue(prompt.contains("id-with-\\\"quote"))
+        assertTrue(prompt.contains("YOUR PREVIOUS ANSWER WAS REJECTED"))
+        assertTrue(prompt.contains("repetitions is one exact integer"))
+        assertTrue(
+            prompt.contains(
+                "- day 1, exercise id-with-\"quote: that exercise_id is not in the catalog",
+            ),
+        )
     }
 
     @Test
@@ -297,39 +300,33 @@ class ProviderGenerationTest {
 
     private companion object {
         val workoutRequest = AiWorkoutRequest(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             locale = "en",
             goal = "hypertrophy",
             experience = "beginner",
             days = 1,
             sessionDurationMinutes = 40,
-            maxExercisesPerDay = com.repforth.core.model.WorkoutLimits.maxExercisesPerDay,
             primaryMuscles = listOf("pectorals"),
             secondaryMuscles = listOf("triceps"),
-            excludedMuscles = emptyList(),
-            excludedExerciseIds = emptyList(),
             excludedMovements = emptyList(),
-            equipment = listOf("dumbbell"),
-            candidateExercises = listOf(
+            candidates = listOf(
                 AiExerciseCandidate(
                     id = "exercise-a",
+                    name = "dumbbell bench press",
                     target = "pectorals",
+                    secondaryMuscles = listOf("triceps"),
                     equipment = "dumbbell",
-                    targetType = AiTargetType.REPETITIONS,
+                    timed = false,
                 ),
             ),
         )
 
         val successResponse = AiWorkoutResponse(
-            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
             days = listOf(
                 AiPlannedDay(
-                    dayIndex = 0,
                     title = "Push",
                     exercises = listOf(
                         AiPlannedExercise(
                             exerciseId = "exercise-a",
-                            order = 0,
                             sets = 3,
                             repetitions = 10,
                             restSeconds = 60,
@@ -341,6 +338,6 @@ class ProviderGenerationTest {
         )
 
         const val validWorkoutJson =
-            """{"schema_version":3,"days":[{"day_index":0,"title":"Push","focus_muscles":[],"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":10,"duration_seconds":null,"weight_kg":null,"rest_seconds":60,"tempo":null}]}],"rationale":"Balanced volume"}"""
+            """{"days":[{"title":"Push","focus_muscles":[],"exercises":[{"exercise_id":"exercise-a","sets":3,"repetitions":10,"duration_seconds":null,"weight_kg":null,"rest_seconds":60}]}],"rationale":"Balanced volume"}"""
     }
 }

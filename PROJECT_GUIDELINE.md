@@ -357,39 +357,49 @@ flowchart TD
 1. Build a typed `WorkoutIntent` from explicit UI controls. Natural language may fill missing values, but it never overrides explicit selections.
 2. Filter candidates locally by requested primary/secondary muscles, exclusions, equipment, experience, and exercise availability.
 3. Apply hard rules before AI: excluded IDs/muscles, unavailable equipment, session-duration ceiling, no duplicate exercise IDs, and minimum candidate diversity.
-4. Send only a compact candidate catalog (IDs and needed metadata), workout intent, and local safety constraints to the provider.
+4. Send only a compact candidate catalog (IDs and needed metadata), workout intent, and local safety constraints to the provider. **Exercise names are needed metadata.** They were withheld until version 4 as if they were private, which they are not — they are public catalog data, and the IDs already sent identify them exactly. Withholding them made 1,265 of the 1,324 catalog exercises indistinguishable from some other exercise on the wire, so selection inside a muscle/equipment bucket was arbitrary and no instruction about warm-ups, cool-downs or exercise ordering could be acted on. Nothing that identifies the *user* is ever sent: no profile ID, no stored settings, no history.
 5. Require structured output matching a versioned JSON Schema.
 
-**Schema version 3 generates a training week rather than a single workout.** The response is `days: [ { day_index, title, focus_muscles, exercises } ]` plus one week-level `rationale`; the per-exercise object is unchanged from version 2. There is deliberately one contract rather than two: a single workout is a week of one day, so the schema, the prompt and the validator exist once. A one-day answer is still *stored* as an ordinary standalone plan rather than as a week wrapping one workout — the collapse to "a week of one" is a fact about the wire format, not about the plan library.
+**Schema version 3 generates a training week rather than a single workout.** The response is `days: [ { title, focus_muscles, exercises } ]` plus one week-level `rationale`. There is deliberately one contract rather than two: a single workout is a week of one day, so the schema, the prompt and the validator exist once. A one-day answer is still *stored* as an ordinary standalone plan rather than as a week wrapping one workout — the collapse to "a week of one" is a fact about the wire format, not about the plan library.
 
-Per-day validation is the version 2 validation, unchanged, applied to each day and including the session-length ceiling. Four rules are added at week level: the day count matches what was asked for, `day_index` is contiguous from zero, an assigned `day_of_week` is unique across the week, and **an exercise may repeat across days while remaining forbidden within one** — repeating a lift on two days is how programmes are written, not a violation.
-6. Validate exercise IDs, types, ranges, duration estimate, volume, order, and exclusions locally.
+**Schema version 4 asks the model for less and tells it more.** Four response fields were removed because none of them could carry information: `schema_version` was a constant the app had just sent being echoed back, `day_index` and `order` restated array positions, and `tempo` was generated, validated and read by nothing. Each was a way for a whole week's generation to fail on a fact the JSON structure could not get wrong. Array position is the order, and always was.
+
+The request lost three fields for the opposite reason — they were already true. `excluded_exercise_ids`, `excluded_muscles` and `equipment` name constraints step 3 has already applied, so repeating them asked the model to avoid exercises it could not see. `excluded_movements` stays, because it is the one exclusion the catalog filter could not express by itself; it is now also applied locally by matching the exercise name, which is coarse but real — until version 4 it was advice sent to the provider and checked by nothing on the way back.
+
+Both halves of that trade were measured. The catalog now travels as a delimited table rather than an array of JSON objects: over all 1,324 catalog exercises the old form was 112,110 characters carrying four fields each, the new one is 90,205 carrying six — around 5,500 tokens cheaper *and* strictly more informative, which is how names, secondary muscles and the repetition/timed marking could all be added without the request growing.
+
+Per-day validation is the version 2 validation, unchanged, applied to each day and including the session-length ceiling. Two rules are added at week level: the day count matches what was asked for, and **an exercise may repeat across days while remaining forbidden within one** — repeating a lift on two days is how programmes are written, not a violation.
+
+**The prompt states the duration formula, because the validator enforces it.** A day is rejected when `sets × (repetitions × secondsPerRepEstimate + rest_seconds)`, summed and counting the last set's rest, exceeds the session ceiling. The model was never told that formula and so was failing a check it had no way to pass, spending the single repair attempt on it.
+6. Validate exercise IDs, types, ranges, duration estimate, volume, and exclusions locally.
 7. Repair only safe mechanical issues locally; otherwise retry once with validation errors.
 8. If the provider is missing, unavailable, timed out, rate-limited, or still invalid, preserve the request and show an actionable error. Never silently substitute a locally generated plan.
 9. Show the plan as editable cards and require the user to start it explicitly.
 
 ### Request contract
 
-```json
-{
-  "schema_version": 2,
-  "locale": "en",
-  "goal": "hypertrophy",
-  "experience": "beginner",
-  "primary_muscles": ["chest"],
-  "secondary_muscles": ["triceps"],
-  "excluded_muscles": ["calves"],
-  "equipment": ["dumbbell", "body_weight"],
-  "duration_minutes": 40,
-  "candidate_exercises": [
-    {"id": "...", "target": "...", "equipment": "..."}
-  ]
-}
+The request is not a JSON document. It is one prompt of headed sections — brief, day shape, week shape, time budget, numeric limits — followed by the candidate catalog as a delimited table:
+
+```
+BRIEF
+- produce exactly 6 days, in order, in the days array
+- goal: hypertrophy
+- training experience: beginner
+- time available per day: 40 minutes
+- muscles to work: pectorals
+- never program these movement patterns, whatever the catalog offers: overhead press
+- write title and rationale in this language: en
+...
+CATALOG - the only exercises that exist (314 rows)
+id|name|target_muscle|secondary_muscles|equipment|R=reps,T=timed
+0025|barbell bench press|pectorals|delts,triceps|barbell|R
 ```
 
-All categorical values are the normalized language-neutral tokens produced by the importer (§6, step 4), never raw upstream display strings such as `body weight`. Only `locale` and free-text rationale are language-dependent.
+Rows are ordered by muscle, then name: a model choosing chest work should find every chest option in one contiguous run rather than scattered through a list ordered by upstream row number.
 
-The response contains only dataset exercise IDs, order, sets, one exact repetition target or duration, rest seconds, optional tempo, and short rationale. The builder and saved-plan model both edit and persist one repetition target, so the provider contract must not return a range that would be silently collapsed. Define numeric limits in code, not only in the prompt.
+All categorical values are the normalized language-neutral tokens produced by the importer (§6, step 4), never raw upstream display strings such as `body weight` — `name` is the exception, because upstream ships one English name per record and §13 governs text this project authors. Only `locale` and free-text rationale are language-dependent.
+
+The response contains only dataset exercise IDs, sets, one exact repetition target or duration, rest seconds, and short rationale. The builder and saved-plan model both edit and persist one repetition target, so the provider contract must not return a range that would be silently collapsed. Define numeric limits in code, not only in the prompt — the JSON Schema carries shape only, because Gemini rejects a schema carrying `minimum`, `maximum`, `minItems` or `maxItems` outright with `400 INVALID_ARGUMENT`.
 
 ### Local constraint and validation rules
 
