@@ -260,7 +260,11 @@ def main():
     validate_against_upstream(records, upstream_schema)
     check_invariants(records, root, vocabulary, expected_count)
 
-    room_schema = load(os.path.join(SCHEMA_DIR, "1.json"))
+    versions = [int(os.path.splitext(f)[0]) for f in os.listdir(SCHEMA_DIR) if f.endswith(".json") and os.path.splitext(f)[0].isdigit()]
+    if not versions:
+        fail("no exported Room schemas in %s" % SCHEMA_DIR)
+    latest_version = max(versions)
+    room_schema = load(os.path.join(SCHEMA_DIR, "%d.json" % latest_version))
     version, step_count = build_database(records, room_schema, DB_OUT)
     print("built %s (v%d, %d steps, %.1f MB)"
           % (os.path.relpath(DB_OUT, ROOT), version, step_count,

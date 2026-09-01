@@ -41,6 +41,15 @@ object Layout {
     val navBarHeight = 80.dp
     val fabSize = 56.dp
     val fabSizeLarge = 72.dp
+
+    /**
+     * Ceiling for a quoted machine payload inside a dialog.
+     *
+     * Enough to read an error response without the dialog's buttons being
+     * pushed off screen by something the app did not write. The block scrolls
+     * past this rather than growing.
+     */
+    val dialogCodeMaxHeight = 180.dp
 }
 
 /**

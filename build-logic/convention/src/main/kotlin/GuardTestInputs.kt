@@ -34,6 +34,12 @@ internal fun Project.configureGuardTestInputs() {
         // invisible to Gradle as the ones inside it, and being someone else's
         // file makes it likelier to change without this task rerunning.
         "../model/src/test/resources/dataset-vocabulary.json",
+        // SchemaDumpGuardTest in core:ai asserts that tools/gemini-schema.json
+        // is still the schema the app sends, because that file is what the
+        // Gemini probe scripts put in front of the live endpoint. Caught by
+        // this rule doing its job: corrupting the JSON left the task
+        // UP-TO-DATE and the build green.
+        "../../tools/gemini-schema.json",
     )
 
     declareRepoWideGuardInputs()
@@ -64,11 +70,11 @@ internal fun Project.configureGuardTestInputs() {
 /**
  * The one guard that reads the whole repository rather than one file.
  *
- * `CleartextGuardTest` in `:app` asserts that exactly one module declares an
- * HTTP client and exactly one file makes calls with it. That is what makes it
- * safe for the network security config to permit cleartext at all — the real
- * rule lives in `EndpointPolicy`, and it is only the rule if nothing can go
- * around it.
+ * `NetworkBoundaryTest` in `:app` asserts that only `core:ai` and `core:media`
+ * declare an HTTP client, and that only two files make calls with it. Since §8
+ * was amended that is a scope control rather than a cleartext one — it keeps
+ * "where does this app talk out, and why" answerable — but it still only means
+ * anything if nothing can go around it.
  *
  * Most of what it reads already invalidates this task through the compile
  * classpath: `:app` depends, directly or through a feature, on every module

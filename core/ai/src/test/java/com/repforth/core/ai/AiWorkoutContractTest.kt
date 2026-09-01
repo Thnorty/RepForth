@@ -11,6 +11,7 @@ import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.rules.GenerationRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -48,6 +49,9 @@ class AiWorkoutContractTest {
         assertEquals("tr", request.locale)
         assertEquals("hypertrophy", request.goal)
         assertEquals("beginner", request.experience)
+        assertEquals(3, request.days)
+        assertEquals(40, request.sessionDurationMinutes)
+        assertEquals(WorkoutLimits.maxExercisesPerDay, request.maxExercisesPerDay)
         assertEquals(listOf("pectorals"), request.primaryMuscles)
         assertEquals(listOf("triceps"), request.secondaryMuscles)
         assertEquals(listOf("calves"), request.excludedMuscles)
@@ -65,38 +69,32 @@ class AiWorkoutContractTest {
     @Test
     fun `valid structured response decodes`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":10,"rest_seconds":60}],"rationale":"Balanced volume"}""",
+            """{"schema_version":3,"days":[{"day_index":0,"title":"Push","exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":10,"rest_seconds":60}]}],"rationale":"Balanced volume"}""",
         )
 
         val response = (result as AiWorkoutDecodeResult.Ok).response
-        assertEquals("a", response.exercises.single().exerciseId)
-        assertEquals(10, response.exercises.single().repetitions)
+        assertEquals(1, response.days.size)
+        assertEquals("Push", response.days.single().title)
+        assertEquals("a", response.days.single().exercises.single().exerciseId)
+        assertEquals(10, response.days.single().exercises.single().repetitions)
     }
 
     @Test
     fun `structured response with weight_kg decodes`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":10,"weight_kg":25.0,"rest_seconds":60}],"rationale":"Balanced volume"}""",
+            """{"schema_version":3,"days":[{"day_index":0,"title":"Push","exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":10,"weight_kg":25.0,"rest_seconds":60}]}],"rationale":"Balanced volume"}""",
         )
 
         val response = (result as AiWorkoutDecodeResult.Ok).response
-        assertEquals("a", response.exercises.single().exerciseId)
-        assertEquals(25.0, response.exercises.single().weightKg ?: 0.0, 0.001)
-    }
-
-    @Test
-    fun `version two rejects the old repetition range shape`() {
-        val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":2,"exercises":[{"exercise_id":"a","order":0,"sets":3,"repetitions":{"minimum":8,"maximum":12},"rest_seconds":60}],"rationale":"Balanced volume"}""",
-        )
-
-        assertEquals(AiWorkoutDecodeResult.Malformed, result)
+        val exercise = response.days.single().exercises.single()
+        assertEquals("a", exercise.exerciseId)
+        assertEquals(25.0, exercise.weightKg ?: 0.0, 0.001)
     }
 
     @Test
     fun `unknown fields are rejected inside the versioned contract`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":2,"exercises":[],"rationale":"x","surprise":true}""",
+            """{"schema_version":3,"days":[],"rationale":"x","surprise":true}""",
         )
 
         assertEquals(AiWorkoutDecodeResult.Malformed, result)
@@ -105,7 +103,7 @@ class AiWorkoutContractTest {
     @Test
     fun `missing required fields are rejected rather than defaulted`() {
         val result = AiWorkoutCodec.decodeResponse(
-            """{"schema_version":2,"exercises":[]}""",
+            """{"schema_version":3,"days":[]}""",
         )
 
         assertEquals(AiWorkoutDecodeResult.Malformed, result)

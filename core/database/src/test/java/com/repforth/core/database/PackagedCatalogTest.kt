@@ -39,7 +39,7 @@ class PackagedCatalogTest {
         // table whose shape it does not know — so catching it here is the
         // difference between a failed build and a crash on a user's phone.
         val schema = Json.parseToJsonElement(
-            File("schemas/${RepForthDatabase::class.qualifiedName}/1.json").readText(),
+            File("schemas/${RepForthDatabase::class.qualifiedName}/${RepForthDatabase.VERSION}.json").readText(),
         ) as JsonObject
         val expected = schema.getValue("database").jsonObject
             .getValue("identityHash").jsonPrimitive.content

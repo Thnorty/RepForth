@@ -22,7 +22,7 @@ import org.junit.Test
 class UserDataSchemaTest {
 
     private val database: JsonObject by lazy {
-        val file = File("schemas/${RepForthDatabase::class.qualifiedName}/1.json")
+        val file = File("schemas/${RepForthDatabase::class.qualifiedName}/${RepForthDatabase.VERSION}.json")
         assertTrue("No exported schema at ${file.absolutePath}", file.exists())
         (Json.parseToJsonElement(file.readText()) as JsonObject).getValue("database").jsonObject
     }

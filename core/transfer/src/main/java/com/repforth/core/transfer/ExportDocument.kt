@@ -24,6 +24,16 @@ data class ExportDocument(
     val exportedAt: Long,
     val profile: ProfileDto? = null,
     val templates: List<TemplateDto> = emptyList(),
+    /**
+     * Weekly plans and the workouts inside them.
+     *
+     * Separate from [templates] rather than folded into it, because
+     * `TemplateRepository.observeAll()` deliberately returns only standalone
+     * workouts — a week's days are reached through the week. If a week's days
+     * were also listed in [templates] an import would create them twice: once
+     * loose, once inside the week.
+     */
+    val weeks: List<WeekDto> = emptyList(),
     val sessions: List<SessionDto> = emptyList(),
 ) {
     companion object {
@@ -35,8 +45,12 @@ data class ExportDocument(
          * Import accepts this version and below. Accepting a *newer* file would
          * mean reading fields whose meaning had not been decided when this code
          * was written.
+         *
+         * Version 2 added [weeks]. A version 1 file still imports and simply
+         * has none, which is correct: weekly plans did not exist when it was
+         * written.
          */
-        const val VERSION = 1
+        const val VERSION = 2
     }
 }
 
@@ -62,6 +76,33 @@ data class TemplateDto(
     val notes: String? = null,
     val source: String,
     val exercises: List<PlannedExerciseDto> = emptyList(),
+)
+
+/**
+ * A weekly plan, with its days inline.
+ *
+ * The days carry their whole workout rather than an id pointing at one, so a
+ * week is self-contained in the file. An id reference would let an export be
+ * written whose week names a workout the same file does not contain, and the
+ * import would then have to decide what to do about it.
+ */
+@Serializable
+data class WeekDto(
+    val id: String,
+    val name: String,
+    val notes: String? = null,
+    val source: String,
+    val active: Boolean = false,
+    val days: List<WeekDayDto> = emptyList(),
+)
+
+@Serializable
+data class WeekDayDto(
+    val position: Int,
+    val title: String,
+    /** ISO day number, Monday = 1. Null when the day is not pinned to a weekday. */
+    val dayOfWeek: Int? = null,
+    val workout: TemplateDto,
 )
 
 @Serializable
@@ -123,9 +164,12 @@ data class ImportPreview(
     val replacedTemplates: Int,
     val sessions: Int,
     val exportedAt: Long,
+    val newWeeks: Int = 0,
+    val replacedWeeks: Int = 0,
 ) {
     val isEmpty: Boolean
-        get() = !hasProfile && newTemplates == 0 && replacedTemplates == 0 && sessions == 0
+        get() = !hasProfile && newTemplates == 0 && replacedTemplates == 0 &&
+            newWeeks == 0 && replacedWeeks == 0 && sessions == 0
 }
 
 /** Why a file could not be read. Each one is something to tell the user. */

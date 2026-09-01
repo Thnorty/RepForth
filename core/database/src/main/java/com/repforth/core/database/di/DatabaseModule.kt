@@ -7,6 +7,7 @@ import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.dao.ProfileDao
 import com.repforth.core.database.dao.SessionDao
 import com.repforth.core.database.dao.TemplateDao
+import com.repforth.core.database.dao.WeekDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -40,6 +41,7 @@ object DatabaseModule {
             // (§16), and the asset carries Room's identity hash, so a database
             // built from different entities is refused rather than half-read.
             .createFromAsset(ASSET)
+            .addMigrations(RepForthDatabase.MIGRATION_1_2)
             .build()
 
     @Provides
@@ -50,6 +52,9 @@ object DatabaseModule {
 
     @Provides
     fun provideTemplateDao(database: RepForthDatabase): TemplateDao = database.templateDao()
+
+    @Provides
+    fun provideWeekDao(database: RepForthDatabase): WeekDao = database.weekDao()
 
     @Provides
     fun provideSessionDao(database: RepForthDatabase): SessionDao = database.sessionDao()

@@ -10,12 +10,15 @@ import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.TrainingGoal
+import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.UserProfile
+import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
 import com.repforth.core.workout.SetOutcome
+import java.time.DayOfWeek
 
 /*
  * Domain to file, and back.
@@ -91,6 +94,41 @@ internal fun TemplateDto.toDomain() = WorkoutTemplate(
                 restMs = dto.restMs,
             )
         },
+)
+
+internal fun TrainingWeek.toDto() = WeekDto(
+    id = id,
+    name = name,
+    notes = notes,
+    source = source.name,
+    active = active,
+    days = days.map { day ->
+        WeekDayDto(
+            position = day.position,
+            title = day.title,
+            dayOfWeek = day.dayOfWeek?.value,
+            workout = day.workout.toDto(),
+        )
+    },
+)
+
+internal fun WeekDto.toDomain() = TrainingWeek(
+    id = id,
+    name = name,
+    notes = notes,
+    source = enumOf<PlanSource>(source, "plan source"),
+    active = active,
+    // Same reasoning as the template exercises above: the domain requires
+    // contiguous positions in order and a file can say otherwise. Sorting fixes
+    // the order; a genuine gap is still refused, which is the honest outcome.
+    days = days.sortedBy { it.position }.map { dto ->
+        WeekDay(
+            position = dto.position,
+            title = dto.title,
+            dayOfWeek = dto.dayOfWeek?.let(DayOfWeek::of),
+            workout = dto.workout.toDomain(),
+        )
+    },
 )
 
 internal fun SessionSnapshot.toDto() = SessionDto(

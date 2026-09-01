@@ -58,6 +58,7 @@ import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.Language
+import com.repforth.core.model.WorkoutLimits
 
 /**
  * The manual workout builder (§3, §12).
@@ -76,6 +77,12 @@ fun BuilderRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val defaultCoachName = stringResource(R.string.coach_default_name)
+    // Resolved here rather than in the ViewModel, which has no resources. A day
+    // title reaches the saved plan, so an English fallback would be English in
+    // the data and not only on screen.
+    val dayTitles = (1..WorkoutLimits.days.last).map {
+        stringResource(R.string.coach_day_default_title, it)
+    }
     val language = Language.fromTag(LocalConfiguration.current.locales[0].language)
         ?: Language.ENGLISH
 
@@ -88,7 +95,8 @@ fun BuilderRoute(
         if (state.saved) onSaved()
     }
 
-    val isDirty = state.exercises.isNotEmpty() || state.name.isNotBlank()
+    val isDirty = state.exercises.isNotEmpty() || state.weekDays.isNotEmpty() || state.name.isNotBlank()
+    val defaultWeekName = stringResource(R.string.coach_week_default_name)
     if (!state.picking && !state.coaching) {
         BackHandler(enabled = !confirmingDiscard) {
             if (isDirty) {
@@ -100,27 +108,53 @@ fun BuilderRoute(
     }
 
     when {
-        state.picking -> ExercisePicker(
-            onPicked = { id, name, thumb -> viewModel.onExerciseAdded(id, name, thumb) },
-            onClose = viewModel::onPickerClose,
-            modifier = modifier,
-        )
+        state.picking -> {
+            // One picker either way; `pickingDayIndex` says which list it fills.
+            val pickingDay = state.pickingDayIndex
+            ExercisePicker(
+                onPicked = { id, name, thumb ->
+                    viewModel.onExerciseAdded(id, name, thumb, pickingDay)
+                },
+                onClose = viewModel::onPickerClose,
+                modifier = modifier,
+            )
+        }
 
         state.coaching -> CoachScreen(
             state = state,
             onMuscleToggled = viewModel::onCoachMuscleToggled,
             onRegionToggled = viewModel::onCoachRegionToggled,
-            onGenerate = { name -> viewModel.onGenerate(name, language) },
+            onGenerate = { name -> viewModel.onGenerate(name, dayTitles, language) },
+            onDaysChange = viewModel::onCoachDaysChange,
             onCancelGenerate = viewModel::onCancelGenerate,
             onDismissError = viewModel::onDismissCoachError,
             onClose = viewModel::onCoachClose,
             modifier = modifier,
         )
 
+        state.isWeeklyPlan -> WeekReviewScreen(
+            state = state,
+            onWeekNameChange = viewModel::onNameChange,
+            onDayTitleChange = viewModel::onDayTitleChange,
+            onToggleDayExpanded = viewModel::onToggleDayExpanded,
+            onAddExerciseToDay = { day -> viewModel.onPickerOpen(day) },
+            onRemoveExerciseFromDay = { day, i -> viewModel.onRemove(i, day) },
+            onMoveExerciseInDay = { day, from, to -> viewModel.onMove(from, to, day) },
+            onSetsChangeInDay = { day, i, v -> viewModel.onSetsChange(i, v, day) },
+            onRepsChangeInDay = { day, i, v -> viewModel.onRepsChange(i, v, day) },
+            onDurationChangeInDay = { day, i, v -> viewModel.onDurationChange(i, v, day) },
+            onRestChangeInDay = { day, i, v -> viewModel.onRestChange(i, v, day) },
+            onWeightChangeInDay = { day, i, v -> viewModel.onWeightChange(i, v, day) },
+            onTimedChangeInDay = { day, i, v -> viewModel.onTimedChange(i, v, day) },
+            onSaveWeek = { viewModel.onSaveWeek(defaultWeekName, dayTitles) },
+            onCoach = viewModel::onCoachOpen,
+            modifier = modifier,
+        )
+
         else -> BuilderScreen(
             state = state,
             onNameChange = viewModel::onNameChange,
-            onAddExercise = viewModel::onPickerOpen,
+            onAddExercise = { viewModel.onPickerOpen() },
             onCoach = viewModel::onCoachOpen,
             onRemove = viewModel::onRemove,
             onMove = viewModel::onMove,
@@ -259,10 +293,11 @@ internal fun BuilderScreen(
 }
 
 @Composable
-private fun CoachNoticeCard(
+internal fun CoachNoticeCard(
     notice: CoachNotice,
+    modifier: Modifier = Modifier,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(Space.s4),
             verticalArrangement = Arrangement.spacedBy(Space.s2),
@@ -335,7 +370,7 @@ private fun BuilderFooter(state: BuilderUiState, onSave: () -> Unit) {
 }
 
 @Composable
-private fun ExerciseCard(
+internal fun ExerciseCard(
     draft: DraftExercise,
     index: Int,
     total: Int,
@@ -374,37 +409,48 @@ private fun ExerciseCard(
                     )
                 }
 
-                IconButton(
-                    onClick = { onMove(index - 1) },
-                    enabled = index > 0,
-                    modifier = Modifier.size(Target.min),
+                // The three controls sit in their own row so the outer
+                // `spacedBy` no longer pads between them. Each button keeps its
+                // full 48dp touch target (§12); only the gaps go, which hands
+                // the name back the width they were taking. Exercise names in
+                // this catalog are long and Turkish is longer still, so the
+                // difference is a wrapped line rather than a nicety.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Space.s0),
                 ) {
-                    Icon(
-                        painter = RfIcons.MoveUp,
-                        contentDescription =
-                            stringResource(R.string.builder_move_up, draft.name),
-                        modifier = Modifier.size(Space.s5),
-                    )
-                }
-                IconButton(
-                    onClick = { onMove(index + 1) },
-                    enabled = index < total - 1,
-                    modifier = Modifier.size(Target.min),
-                ) {
-                    Icon(
-                        painter = RfIcons.MoveDown,
-                        contentDescription =
-                            stringResource(R.string.builder_move_down, draft.name),
-                        modifier = Modifier.size(Space.s5),
-                    )
-                }
-                IconButton(onClick = onRemove, modifier = Modifier.size(Target.min)) {
-                    Icon(
-                        painter = RfIcons.Delete,
-                        contentDescription =
-                            stringResource(R.string.builder_remove, draft.name),
-                        modifier = Modifier.size(Space.s5),
-                    )
+                    IconButton(
+                        onClick = { onMove(index - 1) },
+                        enabled = index > 0,
+                        modifier = Modifier.size(Target.min),
+                    ) {
+                        Icon(
+                            painter = RfIcons.MoveUp,
+                            contentDescription =
+                                stringResource(R.string.builder_move_up, draft.name),
+                            modifier = Modifier.size(Space.s5),
+                        )
+                    }
+                    IconButton(
+                        onClick = { onMove(index + 1) },
+                        enabled = index < total - 1,
+                        modifier = Modifier.size(Target.min),
+                    ) {
+                        Icon(
+                            painter = RfIcons.MoveDown,
+                            contentDescription =
+                                stringResource(R.string.builder_move_down, draft.name),
+                            modifier = Modifier.size(Space.s5),
+                        )
+                    }
+                    IconButton(onClick = onRemove, modifier = Modifier.size(Target.min)) {
+                        Icon(
+                            painter = RfIcons.Delete,
+                            contentDescription =
+                                stringResource(R.string.builder_remove, draft.name),
+                            modifier = Modifier.size(Space.s5),
+                        )
+                    }
                 }
             }
 

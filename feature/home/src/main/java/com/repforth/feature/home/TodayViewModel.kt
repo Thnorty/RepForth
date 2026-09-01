@@ -7,6 +7,7 @@ import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.WeekRepository
 import com.repforth.core.workout.ProgressSummary
 import com.repforth.core.workout.SessionSnapshot
 import com.repforth.core.workout.recommendNext
@@ -46,6 +47,7 @@ class TodayViewModel @Inject constructor(
     sessions: SessionRepository,
     templates: TemplateRepository,
     profiles: ProfileRepository,
+    weeks: WeekRepository,
     private val time: TimeSource,
     private val zone: ZoneId,
 ) : ViewModel() {
@@ -55,8 +57,9 @@ class TodayViewModel @Inject constructor(
         sessions.observeFinished(),
         templates.observeAll(),
         profiles.observeProfile(),
-    ) { active, history, plans, profile ->
-        val next = recommendNext(plans, history)
+        weeks.observeActive(),
+    ) { active, history, plans, profile, activeWeek ->
+        val next = recommendNext(plans, history, activeWeek)
         TodayUiState(
             active = active,
             next = next,

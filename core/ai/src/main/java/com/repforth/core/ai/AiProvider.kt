@@ -57,10 +57,33 @@ sealed interface ProviderTestResult {
     ) : ProviderTestResult
 }
 
+/**
+ * Long enough for a whole error payload, short enough not to be a denial of
+ * service on a dialog. An endpoint the app no longer vets could return
+ * megabytes; this is where that stops.
+ */
+const val PROVIDER_DETAIL_MAX_CHARS = 2_000
+
 sealed interface ProviderGenerationResult {
     data class Ok(val response: AiWorkoutResponse) : ProviderGenerationResult
 
-    /** [detail] is redacted diagnostic context, never the provider body. */
+    /**
+     * [detail] is short diagnostic context, shown to the user verbatim.
+     *
+     * This previously excluded the provider body on principle. That was
+     * reversed deliberately: when Gemini answered `503 UNAVAILABLE` with
+     * "spikes in demand are usually temporary", the app knew exactly what was
+     * wrong and showed a generic failure, and the real cause took a device, a
+     * temporary logging build and a round trip to find. The provider's own
+     * sentence is the most useful thing on the screen.
+     *
+     * Two constraints come with that. It is **bounded** — see
+     * [PROVIDER_DETAIL_MAX_CHARS] — and it is rendered as quoted foreign text,
+     * because since §8 stopped inspecting the address this string comes from
+     * whatever host the user typed and must never read as the app speaking.
+     * Credentials are not at risk here: the key travels in a request header,
+     * and this is a response body.
+     */
     data class Failed(
         val failure: ProviderFailure,
         val detail: String? = null,

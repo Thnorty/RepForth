@@ -34,7 +34,16 @@ data class GenerationRequest(
      */
     val equipmentOverride: Set<Equipment>? = null,
 
+    /**
+     * Number of workout days for this generation (1..7).
+     *
+     * Null means use the profile's [UserProfile.trainingDaysPerWeek].
+     */
+    val daysOverride: Int? = null,
 ) {
+    val days: Int
+        get() = daysOverride ?: profile.trainingDaysPerWeek
+
     val sessionLengthMs: Long
         get() = sessionLengthMsOverride ?: profile.sessionLengthMs
 

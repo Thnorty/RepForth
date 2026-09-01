@@ -66,7 +66,7 @@
     <string name="coach_failed_nothing">Koç bu kısıtlarla bir antrenman kuramadı.</string>
     <string name="coach_provider_rationale">Koç: %1$s</string>
     <string name="coach_error_timeout_title">Oluşturma zaman aşımına uğradı</string>
-    <string name="coach_error_timeout_body">Yapay zekâ Koçu zamanında yanıt vermedi. Seçimlerin hâlâ burada; tekrar deneyebilirsin.</string>
+    <string name="coach_error_timeout_body">Sağlayıcı %1$d saniye içinde hiçbir yanıt göndermedi, bu yüzden aşağıda gösterilecek bir şey yok. Seçimlerin hâlâ burada; tekrar deneyebilir ya da daha az gün isteyebilirsin — bu daha küçük bir iş olur.</string>
     <string name="coach_error_network_title">Bağlantı hatası</string>
     <string name="coach_error_network_body">Yapay zeka sağlayıcısına bağlanılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.</string>
     <string name="coach_error_auth_title">API anahtarı hatası</string>
@@ -83,4 +83,41 @@
     <string name="coach_error_failed_body">Yapay zeka koçu bir antrenman programı oluşturamadı. Tekrar denemek ister misiniz?</string>
     <string name="coach_error_retry">Tekrar dene</string>
     <string name="coach_error_dismiss">Kapat</string>
+
+    <string name="week_builder_title">Haftalık plan</string>
+    <string name="week_builder_save">Haftalık planı kaydet</string>
+    <string name="week_day_header">%1$d. Gün</string>
+    <string name="week_day_exercises_count">%1$d egzersiz</string>
+    <string name="week_day_add_exercise">Egzersiz ekle</string>
+    <string name="week_summary_days">Haftada %1$d gün</string>
+    <string name="week_summary_duration">Toplam ~%1$d dk</string>
+    <string name="week_day_title_placeholder">Gün başlığı</string>
+    <string name="coach_week_default_name">Haftalık program</string>
+    <string name="plans_weekly_section_title">Haftalık programlar</string>
+    <string name="plans_workouts_section_title">Antrenmanlar</string>
+    <string name="plans_active_badge">Aktif</string>
+    <string name="plans_set_active">Aktif yap</string>
+    <string name="plans_delete_week_title">"%1$s" silinsin mi?</string>
+    <plurals name="plans_delete_week_body">
+        <item quantity="one">İçindeki %1$d antrenman da silinir. Daha önce yaptığın antrenmanlar geçmişinde kalır.</item>
+        <item quantity="other">İçindeki %1$d antrenman da silinir. Daha önce yaptığın antrenmanlar geçmişinde kalır.</item>
+    </plurals>
+    <string name="plans_delete_week_confirm">Haftayı sil</string>
+    <string name="plans_delete_week_dismiss">Vazgeç</string>
+    <string name="coach_days_label">Kaç gün?</string>
+    <string name="coach_days_value">%1$d</string>
+    <plurals name="coach_days_summary">
+        <item quantity="one">Tek antrenman. Hafta olarak değil, tek başına kaydedilir.</item>
+        <item quantity="other">Antrenman gününe bir tane olmak üzere %1$d antrenmanlık bir hafta.</item>
+    </plurals>
+    <string name="coach_day_default_title">%1$d. gün</string>
+    <string name="coach_error_server_title">Yapay zekâ sağlayıcısı yoğun</string>
+    <string name="coach_error_server_body">Sağlayıcı geçici olarak aşırı yüklü olduğunu bildirdi ve otomatik yeniden denemeler de sonuç vermedi. Planında ya da anahtarında bir sorun yok — biraz bekleyip tekrar dene.</string>
+    <string name="coach_error_model_title">Model kullanılamıyor</string>
+    <string name="coach_error_model_body">Sağlayıcı seçtiğin modeli sunmuyor. Ayarlar\'dan değiştirip bağlantıyı test et.</string>
+    <string name="coach_error_endpoint_title">Sağlayıcı adresi yok</string>
+    <string name="coach_error_endpoint_body">Bu sağlayıcının kullanılabilmesi için bir adres gerekiyor. Ayarlar\'dan ekle.</string>
+    <string name="coach_error_detail_label">Sunucu yanıtı:</string>
+    <string name="coach_error_detail_copy">Kopyala</string>
+    <string name="coach_error_detail_copied">Kopyalandı</string>
 </resources>

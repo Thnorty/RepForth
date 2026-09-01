@@ -3,6 +3,7 @@ package com.repforth.core.ai
 import com.repforth.core.ai.http.ProviderHttp
 import com.repforth.core.ai.http.PROVIDER_JSON_MEDIA_TYPE
 import com.repforth.core.ai.http.failureForStatus
+import com.repforth.core.ai.http.generationTimeoutSeconds
 import com.repforth.core.ai.http.providerEndpoint
 import com.repforth.core.ai.http.toProviderFailure
 import com.repforth.core.model.ProviderConfig
@@ -132,15 +133,22 @@ internal class OpenAiCompatibleProvider(
 
         val reply = http.send(
             request = wireRequest,
-            timeoutSeconds = config.settings.requestTimeoutSeconds,
+            timeoutSeconds = generationTimeoutSeconds(
+                config.settings.requestTimeoutSeconds,
+                request.days,
+            ),
         ).getOrElse { cause ->
-            return ProviderGenerationResult.Failed(cause.toProviderFailure(), cause.message)
+            // No detail: nothing came back. A timeout or a DNS failure has no
+            // server response to show, and putting the exception's word
+            // ("timeout") under a heading that says "Server response" would be
+            // the app inventing a reply the server never sent.
+            return ProviderGenerationResult.Failed(cause.toProviderFailure(), null)
         }
 
         if (reply.code !in 200..299) {
             return ProviderGenerationResult.Failed(
                 failureForStatus(reply.code),
-                "HTTP ${reply.code}",
+                providerDetail(reply.body),
             )
         }
 
@@ -233,4 +241,9 @@ internal class OpenAiCompatibleProvider(
         val content: String? = null,
         val refusal: String? = null,
     )
+
+    /** The response body exactly as it arrived. See GeminiProvider.providerDetail. */
+    private fun providerDetail(body: String): String? =
+        body.trim().takeIf { it.isNotEmpty() }?.take(PROVIDER_DETAIL_MAX_CHARS)
+
 }

@@ -22,7 +22,7 @@ data class TemplateWithExercises(
 interface TemplateDao {
 
     @Transaction
-    @Query("SELECT * FROM workout_template ORDER BY updated_at DESC")
+    @Query("SELECT * FROM workout_template WHERE week_id IS NULL ORDER BY updated_at DESC")
     fun observeAll(): Flow<List<TemplateWithExercises>>
 
     @Transaction

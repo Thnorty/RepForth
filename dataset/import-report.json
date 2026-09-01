@@ -18,8 +18,8 @@
   "zh"
  ],
  "instructionSteps": 15420,
- "databaseVersion": 1,
- "databaseBytes": 2772992,
+ "databaseVersion": 2,
+ "databaseBytes": 2785280,
  "mediaFiles": 2648,
  "mediaBytes": 137616454,
  "normalisation": "whitespace collapsed in names and instruction steps; empty steps dropped; duplicate secondary muscles collapsed"

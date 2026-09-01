@@ -16,7 +16,9 @@ import com.repforth.core.model.PlanSource
 import com.repforth.core.model.ProviderId
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.TrainingGoal
+import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.UserProfile
+import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
@@ -44,6 +46,7 @@ class DataTransferTest {
 
     private lateinit var profiles: FakeProfiles
     private lateinit var templates: FakeTemplates
+    private lateinit var weeks: FakeWeeks
     private lateinit var sessions: FakeSessions
     private lateinit var preferences: UserPreferencesDataSource
     private lateinit var providers: ProviderRepository
@@ -54,13 +57,14 @@ class DataTransferTest {
     fun setUp() {
         profiles = FakeProfiles()
         templates = FakeTemplates()
+        weeks = FakeWeeks()
         sessions = FakeSessions()
         preferences = fakePreferences()
         val (repository, store) = fakeProviders()
         providers = repository
         secrets = store
         transfer = DefaultDataTransfer(
-            profiles, templates, sessions, preferences, providers, FakeTimeSource(),
+            profiles, templates, weeks, sessions, preferences, providers, FakeTimeSource(),
         )
     }
 
@@ -68,6 +72,18 @@ class DataTransferTest {
         profiles.save(sampleProfile())
         templates.save(sampleTemplate("plan-1", "Push day"))
         templates.save(sampleTemplate("plan-2", "Pull day"))
+        weeks.save(
+            TrainingWeek(
+                id = "week-1",
+                name = "Push Pull Split",
+                source = PlanSource.MANUAL,
+                active = true,
+                days = listOf(
+                    WeekDay(0, "Push", workout = sampleTemplate("plan-1", "Push day")),
+                    WeekDay(1, "Pull", workout = sampleTemplate("plan-2", "Pull day")),
+                ),
+            ),
+        )
         sessions.persist(sampleSession())
     }
 
@@ -87,9 +103,10 @@ class DataTransferTest {
 
         val restoredProfiles = FakeProfiles()
         val restoredTemplates = FakeTemplates()
+        val restoredWeeks = FakeWeeks()
         val restoredSessions = FakeSessions()
         val emptied = DefaultDataTransfer(
-            restoredProfiles, restoredTemplates, restoredSessions,
+            restoredProfiles, restoredTemplates, restoredWeeks, restoredSessions,
             fakePreferences(), fakeProviders().first, FakeTimeSource(),
         )
 
@@ -107,9 +124,58 @@ class DataTransferTest {
             restoredTemplates.stored.sortedBy { it.id },
         )
         assertEquals(
+            "A weekly plan and every day inside it must survive the file. " +
+                "This assertion is the whole reason the seed has a week in it; " +
+                "without it the export dropped weeks entirely and this test " +
+                "stayed green.",
+            weeks.stored.sortedBy { it.id },
+            restoredWeeks.stored.sortedBy { it.id },
+        )
+        assertEquals(
             sessions.stored.sortedBy { it.sessionId },
             restoredSessions.stored.sortedBy { it.sessionId },
         )
+    }
+
+    /**
+     * The days inside a week must not also arrive as standalone workouts.
+     *
+     * `TemplateRepository.observeAll()` filters out anything with a `week_id`,
+     * so a day travels in exactly one place in the file. If it ever travelled in
+     * both, importing would create the workout twice — once loose in Plans, once
+     * inside the week — and the user would have to delete one of them.
+     */
+    @Test
+    fun `a week's days are exported inside the week and nowhere else`() = runTest {
+        seed()
+        val document = (transfer.read(transfer.export()) as ImportOutcome.Ready).document
+
+        assertEquals(
+            "The week and its two days must be in the file",
+            listOf("Push", "Pull"),
+            document.weeks.single().days.map { it.title },
+        )
+        // FakeTemplates does not model the `week_id IS NULL` filter, so this
+        // asserts the shape of the document rather than the repository's query;
+        // RoomTemplateRepositoryTest covers the filter itself.
+        assertTrue(
+            "A day's workout must not appear in the standalone template list too",
+            document.weeks.flatMap { week -> week.days.map { it.workout.id } }
+                .none { dayId -> document.templates.count { it.id == dayId } > 1 },
+        )
+    }
+
+    @Test
+    fun `a version 1 file with no weeks still imports`() = runTest {
+        val v1 = """
+            {"format":"repforth.export","version":1,"exportedAt":1,
+             "templates":[{"id":"p1","name":"Legs","source":"MANUAL","exercises":[]}]}
+        """.trimIndent()
+
+        val outcome = transfer.read(v1)
+
+        assertTrue("A file written before weeks existed must still read", outcome is ImportOutcome.Ready)
+        assertEquals(0, (outcome as ImportOutcome.Ready).preview.newWeeks)
     }
 
     @Test
@@ -201,7 +267,7 @@ class DataTransferTest {
         profiles.save(sampleProfile())
 
         val other = DefaultDataTransfer(
-            FakeProfiles(), FakeTemplates(), FakeSessions(), fakePreferences(),
+            FakeProfiles(), FakeTemplates(), FakeWeeks(), FakeSessions(), fakePreferences(),
             fakeProviders().first, FakeTimeSource(),
         )
         other.import(
@@ -241,7 +307,7 @@ class DataTransferTest {
      * because someone cleared their history would be a bug, not a cleanup.
      */
     @Test
-    fun `deleting workout data clears user data and leaves preferences alone`() = runTest {
+    fun `deleting workout data leaves preferences alone`() = runTest {
         seed()
         preferences.setThemeMode(ThemeMode.DARK)
 
@@ -249,6 +315,7 @@ class DataTransferTest {
 
         assertEquals(null, profiles.stored)
         assertTrue(templates.stored.isEmpty())
+        assertTrue(weeks.stored.isEmpty())
         assertTrue(sessions.stored.isEmpty())
         assertEquals(
             "Preferences are not workout data",
@@ -266,6 +333,7 @@ class DataTransferTest {
 
         assertEquals(null, profiles.stored)
         assertTrue(templates.stored.isEmpty())
+        assertTrue(weeks.stored.isEmpty())
         assertTrue(sessions.stored.isEmpty())
         assertEquals(
             "Reset returns preferences to their defaults",

@@ -63,7 +63,7 @@ class ProviderGenerationTest {
         assertEquals("application/json", generation.string("responseMimeType"))
         assertEquals(AiWorkoutJsonSchema.value, generation.getValue("responseJsonSchema"))
         assertTrue(geminiPrompt(body).contains(AiWorkoutCodec.encode(workoutRequest)))
-        assertEquals("exercise-a", success(result).exercises.single().exerciseId)
+        assertEquals("exercise-a", success(result).days.single().exercises.single().exerciseId)
     }
 
     @Test
@@ -84,7 +84,7 @@ class ProviderGenerationTest {
         assertEquals(AI_WORKOUT_SCHEMA_NAME, schema.string("name"))
         assertTrue(schema.getValue("strict").jsonPrimitive.boolean)
         assertEquals(AiWorkoutJsonSchema.value, schema.getValue("schema"))
-        assertEquals("exercise-a", success(result).exercises.single().exerciseId)
+        assertEquals("exercise-a", success(result).days.single().exercises.single().exerciseId)
     }
 
     @Test
@@ -139,12 +139,17 @@ class ProviderGenerationTest {
         ) as ProviderGenerationResult.Failed
 
         assertEquals(ProviderFailure.AUTHENTICATION, result.failure)
-        assertEquals("HTTP 400", result.detail)
+        // The category still comes from `details.reason`; the detail is now the
+        // whole body, so the user can see the reason the app acted on.
+        assertEquals(
+            """{"error":{"details":[{"reason":"API_KEY_INVALID","extra":"ignored"}]}}""",
+            result.detail,
+        )
     }
 
     @Test
     fun `generation status failures keep the existing actionable categories`() = runTest {
-        server.enqueue(MockResponse.Builder().code(429).body("private quota body").build())
+        server.enqueue(MockResponse.Builder().code(429).body("a quota body").build())
 
         val result = openAi.generateWorkout(
             configFor(ProviderId.OPENAI_COMPATIBLE, "llama3.1"),
@@ -152,7 +157,15 @@ class ProviderGenerationTest {
         ) as ProviderGenerationResult.Failed
 
         assertEquals(ProviderFailure.QUOTA, result.failure)
-        assertEquals("HTTP 429", result.detail)
+        // **Reversed deliberately.** This used to assert `"HTTP 429"` against a
+        // body fixture named "private quota body", and the fixture's name was
+        // the point: §8 held that a provider body must never reach a diagnostic
+        // result. That rule cost a real diagnosis. Gemini answered 503 with
+        // "spikes in demand are usually temporary", the app showed a generic
+        // failure, and finding out why took a device, a temporary logging build
+        // and a round trip. The maintainer asked for the body verbatim; the
+        // body is now shown verbatim, bounded and quoted.
+        assertEquals("a quota body", result.detail)
     }
 
     @Test
@@ -193,6 +206,7 @@ class ProviderGenerationTest {
                     AiWorkoutRetryIssue(
                         kind = AiWorkoutRetryIssueKind.CONTRACT,
                         code = "exercise_not_offered",
+                        dayIndex = 0,
                         exerciseId = "id-with-\"quote",
                     ),
                 ),
@@ -202,18 +216,56 @@ class ProviderGenerationTest {
         assertTrue(prompt.contains("The previous answer failed validation"))
         assertTrue(prompt.contains("one exact integer in repetitions"))
         assertTrue(prompt.contains("\"kind\":\"contract\""))
+        assertTrue(prompt.contains("\"day_index\":0"))
         assertTrue(prompt.contains("id-with-\\\"quote"))
+    }
+
+    @Test
+    fun `an oversized provider body is truncated before it reaches the dialog`() = runTest {
+        server.enqueue(MockResponse.Builder().code(500).body("x".repeat(50_000)).build())
+
+        val result = openAi.generateWorkout(
+            configFor(ProviderId.OPENAI_COMPATIBLE, "llama3.1"),
+            workoutRequest,
+        ) as ProviderGenerationResult.Failed
+
+        assertEquals(
+            "Since §8 stopped inspecting the address, this body comes from " +
+                "whatever host the user typed. It must not be able to fill the " +
+                "dialog without limit.",
+            PROVIDER_DETAIL_MAX_CHARS,
+            result.detail?.length,
+        )
+    }
+
+    @Test
+    fun `a timeout carries no server response, because none arrived`() = runTest {
+        // Nothing enqueued: the server accepts and never answers.
+        val result = gemini.generateWorkout(
+            configFor(ProviderId.GEMINI, "gemini-3.5-flash", timeoutSeconds = 1),
+            workoutRequest,
+        ) as ProviderGenerationResult.Failed
+
+        assertEquals(ProviderFailure.TIMEOUT, result.failure)
+        assertEquals(
+            "A timeout has no body to show; labelling the exception's word " +
+                "\"timeout\" as a server response would invent a reply.",
+            null,
+            result.detail,
+        )
     }
 
     private fun configFor(
         provider: ProviderId,
         model: String,
         apiKey: String = "test-not-a-real-key",
+        timeoutSeconds: Int = ProviderSettings.Default.requestTimeoutSeconds,
     ) = ProviderConfig(
         settings = ProviderSettings.Default.copy(
             provider = provider,
             model = model,
             baseUrl = server.url("/v1").toString().trimEnd('/'),
+            requestTimeoutSeconds = timeoutSeconds,
         ),
         apiKey = apiKey,
     )
@@ -249,13 +301,15 @@ class ProviderGenerationTest {
             locale = "en",
             goal = "hypertrophy",
             experience = "beginner",
+            days = 1,
+            sessionDurationMinutes = 40,
+            maxExercisesPerDay = com.repforth.core.model.WorkoutLimits.maxExercisesPerDay,
             primaryMuscles = listOf("pectorals"),
             secondaryMuscles = listOf("triceps"),
             excludedMuscles = emptyList(),
             excludedExerciseIds = emptyList(),
             excludedMovements = emptyList(),
             equipment = listOf("dumbbell"),
-            durationMinutes = 40,
             candidateExercises = listOf(
                 AiExerciseCandidate(
                     id = "exercise-a",
@@ -268,19 +322,25 @@ class ProviderGenerationTest {
 
         val successResponse = AiWorkoutResponse(
             schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            exercises = listOf(
-                AiPlannedExercise(
-                    exerciseId = "exercise-a",
-                    order = 0,
-                    sets = 3,
-                    repetitions = 10,
-                    restSeconds = 60,
+            days = listOf(
+                AiPlannedDay(
+                    dayIndex = 0,
+                    title = "Push",
+                    exercises = listOf(
+                        AiPlannedExercise(
+                            exerciseId = "exercise-a",
+                            order = 0,
+                            sets = 3,
+                            repetitions = 10,
+                            restSeconds = 60,
+                        ),
+                    ),
                 ),
             ),
             rationale = "Balanced volume",
         )
 
         const val validWorkoutJson =
-            """{"schema_version":2,"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":10,"duration_seconds":null,"weight_kg":null,"rest_seconds":60,"tempo":null}],"rationale":"Balanced volume"}"""
+            """{"schema_version":3,"days":[{"day_index":0,"title":"Push","focus_muscles":[],"exercises":[{"exercise_id":"exercise-a","order":0,"sets":3,"repetitions":10,"duration_seconds":null,"weight_kg":null,"rest_seconds":60,"tempo":null}]}],"rationale":"Balanced volume"}"""
     }
 }

@@ -246,7 +246,8 @@ Room is the source of truth for structured app data. DataStore holds lightweight
 |---|---|
 | `exercise` | Imported normalized exercise metadata |
 | `exercise_instruction` | English/Turkish instructions and ordered steps |
-| `workout_template` | Saved manual or generated plans |
+| `training_week` | A weekly plan: an ordered container of workouts, one per training day |
+| `workout_template` | Saved manual or generated plans; optionally a day within a `training_week` |
 | `template_exercise` | Ordered exercises, targets, sets, reps/duration, rest |
 | `workout_session` | Start/end/pause state and summary |
 | `session_exercise` | Per-session ordered exercise state |
@@ -255,6 +256,8 @@ Room is the source of truth for structured app data. DataStore holds lightweight
 | `movement_exclusion` | Avoided exercise IDs, muscles, or movements |
 | `coach_conversation` | Optional local-only coach messages; user can disable/clear |
 | `generation_audit` | Constraints, provider/model, selected IDs, validation outcome; never API keys |
+
+A week contains workouts rather than replacing them: a day inside a week *is* a `workout_template`, carrying `week_id`, `week_position` and an optional `day_of_week`. That keeps the session engine, history, export and the watch protocol working on one shape. `week_id` is a foreign key with `ON DELETE CASCADE` — deleting a week deletes the workouts inside it, and the UI must say how many before it does. Sessions already performed survive, because `workout_session` has no foreign key to a template.
 
 Every mutable table uses a UUID primary key, `createdAt`, and `updatedAt`. Dataset exercises retain their upstream string IDs. Store weights internally in kilograms and convert only for display. Store durations in milliseconds and timestamps as UTC instants.
 
@@ -356,6 +359,10 @@ flowchart TD
 3. Apply hard rules before AI: excluded IDs/muscles, unavailable equipment, session-duration ceiling, no duplicate exercise IDs, and minimum candidate diversity.
 4. Send only a compact candidate catalog (IDs and needed metadata), workout intent, and local safety constraints to the provider.
 5. Require structured output matching a versioned JSON Schema.
+
+**Schema version 3 generates a training week rather than a single workout.** The response is `days: [ { day_index, title, focus_muscles, exercises } ]` plus one week-level `rationale`; the per-exercise object is unchanged from version 2. There is deliberately one contract rather than two: a single workout is a week of one day, so the schema, the prompt and the validator exist once. A one-day answer is still *stored* as an ordinary standalone plan rather than as a week wrapping one workout — the collapse to "a week of one" is a fact about the wire format, not about the plan library.
+
+Per-day validation is the version 2 validation, unchanged, applied to each day and including the session-length ceiling. Four rules are added at week level: the day count matches what was asked for, `day_index` is contiguous from zero, an assigned `day_of_week` is unique across the week, and **an exercise may repeat across days while remaining forbidden within one** — repeating a lift on two days is how programmes are written, not a violation.
 6. Validate exercise IDs, types, ranges, duration estimate, volume, order, and exclusions locally.
 7. Repair only safe mechanical issues locally; otherwise retry once with validation errors.
 8. If the provider is missing, unavailable, timed out, rate-limited, or still invalid, preserve the request and show an actionable error. Never silently substitute a locally generated plan.

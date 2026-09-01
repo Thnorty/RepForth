@@ -66,7 +66,7 @@
     <string name="coach_failed_nothing">Coach could not build a workout from these constraints.</string>
     <string name="coach_provider_rationale">Coach: %1$s</string>
     <string name="coach_error_timeout_title">Generation timed out</string>
-    <string name="coach_error_timeout_body">The AI Coach took too long to respond. Your selections are still here, so you can retry.</string>
+    <string name="coach_error_timeout_body">The provider sent no response within %1$d seconds, so there is nothing to show below. Your selections are still here, so you can retry — or ask for fewer days, which is a smaller job.</string>
     <string name="coach_error_network_title">Connection error</string>
     <string name="coach_error_network_body">Could not connect to the AI provider. Please check your internet connection and try again.</string>
     <string name="coach_error_auth_title">API key error</string>
@@ -83,4 +83,41 @@
     <string name="coach_error_failed_body">The AI coach could not generate a plan. Would you like to retry?</string>
     <string name="coach_error_retry">Retry</string>
     <string name="coach_error_dismiss">Dismiss</string>
+
+    <string name="week_builder_title">Weekly plan</string>
+    <string name="week_builder_save">Save weekly plan</string>
+    <string name="week_day_header">Day %1$d</string>
+    <string name="week_day_exercises_count">%1$d exercises</string>
+    <string name="week_day_add_exercise">Add exercise</string>
+    <string name="week_summary_days">%1$d days / week</string>
+    <string name="week_summary_duration">~%1$d min total</string>
+    <string name="week_day_title_placeholder">Day title</string>
+    <string name="coach_week_default_name">Weekly program</string>
+    <string name="plans_weekly_section_title">Weekly programs</string>
+    <string name="plans_workouts_section_title">Workouts</string>
+    <string name="plans_active_badge">Active</string>
+    <string name="plans_set_active">Set as active</string>
+    <string name="plans_delete_week_title">Delete "%1$s"?</string>
+    <plurals name="plans_delete_week_body">
+        <item quantity="one">This also deletes the %1$d workout inside it. Workouts you have already performed stay in your history.</item>
+        <item quantity="other">This also deletes the %1$d workouts inside it. Workouts you have already performed stay in your history.</item>
+    </plurals>
+    <string name="plans_delete_week_confirm">Delete week</string>
+    <string name="plans_delete_week_dismiss">Keep it</string>
+    <string name="coach_days_label">How many days?</string>
+    <string name="coach_days_value">%1$d</string>
+    <plurals name="coach_days_summary">
+        <item quantity="one">One workout. It is saved on its own, not as a week.</item>
+        <item quantity="other">A week of %1$d workouts, one per training day.</item>
+    </plurals>
+    <string name="coach_day_default_title">Day %1$d</string>
+    <string name="coach_error_server_title">The AI provider is busy</string>
+    <string name="coach_error_server_body">The provider reported that it is temporarily overloaded, and retrying on its own did not help. Nothing is wrong with your plan or your key — wait a moment and try again.</string>
+    <string name="coach_error_model_title">Model not available</string>
+    <string name="coach_error_model_body">The provider does not offer the model you selected. Change it in Settings and test the connection.</string>
+    <string name="coach_error_endpoint_title">No provider address</string>
+    <string name="coach_error_endpoint_body">This provider needs a base address before it can be used. Add one in Settings.</string>
+    <string name="coach_error_detail_label">Server response:</string>
+    <string name="coach_error_detail_copy">Copy</string>
+    <string name="coach_error_detail_copied">Copied</string>
 </resources>

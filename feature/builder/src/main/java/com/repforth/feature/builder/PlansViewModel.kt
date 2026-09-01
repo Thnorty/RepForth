@@ -2,8 +2,10 @@ package com.repforth.feature.builder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.WeekRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,9 +17,17 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class PlansViewModel @Inject constructor(
     private val templates: TemplateRepository,
+    private val weeks: WeekRepository,
 ) : ViewModel() {
 
     val plans: StateFlow<List<WorkoutTemplate>> = templates.observeAll()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
+            initialValue = emptyList(),
+        )
+
+    val weeklyPlans: StateFlow<List<TrainingWeek>> = weeks.observeAll()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
@@ -31,6 +41,14 @@ class PlansViewModel @Inject constructor(
      */
     fun onDelete(id: String) {
         viewModelScope.launch { templates.delete(id) }
+    }
+
+    fun onDeleteWeek(id: String) {
+        viewModelScope.launch { weeks.delete(id) }
+    }
+
+    fun onSetActiveWeek(id: String) {
+        viewModelScope.launch { weeks.setActive(id) }
     }
 
     private companion object {

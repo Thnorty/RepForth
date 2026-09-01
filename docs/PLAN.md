@@ -111,6 +111,8 @@ exist, and remain the only untested category.
 | **§8 amended** — the address rule removed entirely | `7ce01b1` |
 | **Phase 2** — validated AI workout contract and corrected CI trigger | `5bb27bc` |
 | **Phase 2** — structured provider generation over one shared schema | `ee9d19e` |
+| **Phase 2** — Make Coach generation AI-only and retryable | `a2c5775` |
+| **Weekly Plans** — Multi-day training week domain, Room v2, Contract v3, multi-day builder draft UI & Today/Plans integration | pending |
 | **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
 | **Phase 3** — image display and GIF playback in catalog, builder and session | pending |
 
@@ -119,14 +121,22 @@ Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore
 `core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
 `feature:onboarding`, `feature:session`, `feature:settings`.
-410 unit tests across 54 classes, plus fourteen instrumentation tests
-watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets`. Room schema v1 exported and
+439 unit tests across 61 classes, plus fourteen instrumentation tests
+watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets` — and
+five migration tests in `core:database` that have **never been run**, because no
+device has been attached since they were written. Room schema v2 exported and
 committed.
 
-Counted from the JUnit XML and de-duplicated across build variants. There are 50
-classes that contain tests and 51 Kotlin files under `src/test`; the extra file
-is `core:transfer`'s shared fakes. The distinction is recorded because a number
-nobody can reproduce is worse than no number.
+Counted from the JUnit XML and de-duplicated across build variants, by the class
+name each `TEST-*.xml` reports. Reproduce it with:
+
+```
+./gradlew test && python -c "import glob;from xml.etree import ElementTree as ET;s={ET.parse(f).getroot().get('name'):int(ET.parse(f).getroot().get('tests')) for f in glob.glob('**/build/test-results/**/TEST-*.xml',recursive=True)};print(len(s),sum(s.values()))"
+```
+
+The method is written down because the count was briefly stated three different
+ways in this file — 436, 427 and 428 — and none of them matched the suite. A
+number nobody can reproduce is worse than no number.
 
 ---
 
@@ -979,7 +989,80 @@ Exercise media rendering and background prefetching are integrated across all ex
   - Active workout `TargetPanel` renders prescribed target weight prominently alongside rep counts (with `Bodyweight` fallback), and set input fields offer placeholder text from the targets.
   - AI Coach prompt (`AiWorkoutSchema.toGenerationPrompt`) instructs structured three-phase workout programming: warm-up/activation first, core resistance sets, and stretching/cool-down finish.
   - AI Coach wire contract (`AiPlannedExercise`), JSON schema (`weight_kg`), validator, and builder mapping now support prescribing starting baseline weights based on user experience level and goal.
-- Verified as part of the current 413-test suite (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `SessionStatisticsTest`, `TodayViewModelTest`, `SettingsViewModelTest`, `ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`), plus `./gradlew assemblePlaceholderDebug` and `./gradlew lint`.
+- Verified as part of the 427-test suite (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `SessionStatisticsTest`, `TodayViewModelTest`, `SettingsViewModelTest`, `ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`, `TrainingWeekTest`, `RoomWeekRepositoryTest`, `RoomTemplateRepositoryTest`, `DataTransferTest`), plus `./gradlew assemblePlaceholderDebug` and `./gradlew lint`.
+
+### 4.1 — Weekly Plans: Domain and Persistence (Slice W1) — **done, migration unproven**
+
+Domain and persistence foundation for multi-day weekly plans (§1, §3, `docs/WEEKLY_PLANS.md`):
+- **Domain Layer (`core:model`)**:
+  - Added `TrainingWeek` and `WeekDay` enforcing non-blank titles, contiguity of day positions from zero, and unique assigned days of the week (`java.time.DayOfWeek`).
+  - Total estimated duration across all days computed automatically.
+- **Database Schema & Migration (`core:database`)**:
+  - `training_week` table (`TrainingWeekEntity`): `id`, `name`, `notes`, `source`, `active`, `created_at`, `updated_at`.
+  - `workout_template` table updated with `week_id` (foreign key to `training_week(id)` with `ON DELETE CASCADE`), `week_position` (0-based index), and `day_of_week`.
+  - Added `WeekDao` providing reactive observation (`observeAll`, `observeActive`), transactional week saving (`replaceWeek`), and single-active-week switching (`setActive`).
+  - Updated `TemplateDao.observeAll()` to filter `WHERE week_id IS NULL` so standalone template queries never double-list days belonging to a weekly plan.
+  - Bumped database version to `2` with additive `MIGRATION_1_2` registered in `DatabaseModule`. Prepackaged `repforth.db` asset updated to v2.
+- **Repository & Reset (`core:user-data`, `core:transfer`)**:
+  - Added `WeekRepository` interface and `RoomWeekRepository` implementation bound in `UserDataModule`.
+  - Wired `weeks.deleteAll()` into `DefaultDataTransfer.deleteWorkoutData()`, which `resetApp()` calls, so both paths clear weeks. `ResetCoverageTest` guards it.
+  - Weeks and the workouts inside them are exported and imported (`WeekDto`, `WeekDayDto`, export format version 2). This did **not** land with the rest of W1: `TemplateDao.observeAll()` had already been narrowed to `week_id IS NULL` while the export still read it, so for one commit a generated week was silently absent from the only backup this app has. A version 1 file still imports and simply has no weeks.
+- Verified by `./gradlew test`, `assemblePlaceholderDebug` and `lint` (`TrainingWeekTest`, `RoomWeekRepositoryTest`, `RoomTemplateRepositoryTest`, `DataTransferTest`, `SchemaExportTest`, `UserDataSchemaTest`, `PackagedCatalogTest`).
+- **`MigrationTest` (`core:database`, instrumentation) is written and compiles, and has not been run.** Five tests: that Room validates the migrated schema, that an existing plan and its exercises survive, that `training_week` arrives empty and usable, that deleting a week cascades to its days, and that a standalone workout is not collateral damage. Until a device runs them, the first migration this project has ever written is unproven — and it is the one thing standing between an app update and a user's only copy of their history.
+
+### 4.2 — Weekly Plans: Contract v3 & Multi-Day Validation (Slice W2) — **done**, no live provider has yet returned a week
+
+Wire contract, schema, prompt, retry feedback, and host validator upgraded to Schema Version 3 for weekly plans (§4, `docs/WEEKLY_PLANS.md`):
+- **Unified AI Wire Contract (`core:ai`)**:
+  - Bumped `AI_WORKOUT_SCHEMA_VERSION` to `3`.
+  - `AiWorkoutRequest`: added `days: Int`, `session_duration_minutes: Int`, `max_exercises_per_day: Int`.
+  - `AiWorkoutResponse`: returns `days: List<AiPlannedDay>` where each day specifies `day_index: Int`, `title: String`, `focus_muscles: List<String>`, and `exercises: List<AiPlannedExercise>`.
+  - `WorkoutLimits`: added `days = 1..7` and `maxExercisesPerDay = 8`.
+- **JSON Schema v3 & Prompt**:
+  - Updated `AiWorkoutJsonSchema` to generate structured multi-day definitions matching `WorkoutLimits`.
+  - Prompt instructs multi-day weekly programming, day-specific three-phase warm-up / core / stretch structure, target weight recommendations, and cross-day exercise repetition support.
+  - `AiWorkoutRetryIssue` gains `day_index: Int?` to localize validation error feedback to specific days for model self-correction.
+- **Host Validation (`AiWorkoutValidator`)**:
+  - Validates day count matches requested days, day indices are contiguous from 0, and non-empty titles.
+  - Validates per-day exercises (sets, reps/durations, rest, weight, offered candidates).
+  - Enforces duplicate exercise prohibition within the same day while allowing cross-day exercise repetition.
+  - Computes total estimated duration across the week and validates each day through `RulesEngine`.
+- Verified by `./gradlew test`, `assemblePlaceholderDebug` and `lint` (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `ProviderGenerationTest`, `AiWorkoutGeneratorTest`, `BuilderViewModelTest`).
+
+### 4.3 — Weekly Plans: Coach, review and Plans (Slice W3) — **not yet seen on a device**
+
+- **Coach asks how many days.** A row of seven chips seeded from the profile's
+  `trainingDaysPerWeek`, with a line underneath saying which of the two outcomes
+  the current choice produces. Without it the day count was the profile's and
+  nothing else, so a user who trains four days a week had no way to ask for one
+  workout — which contradicted a decision the maintainer had just taken.
+- **One day is a workout, not a week of one.** The wire contract still always
+  speaks in days, so there is one schema and one validator; the *storage* differs.
+  A single-day answer populates the standalone draft and saves through
+  `TemplateRepository`; two or more populate `weekDays` and save through
+  `WeekRepository`. The two lists are mutually exclusive, which also removed a
+  stale second copy of day one that had been living in `exercises`.
+- **Deleting a week asks first, and names the count.** The cascade is the chosen
+  behaviour; a one-tap icon that removes five workouts with no undo was not.
+- **Twenty-four handlers became twelve.** Every editing action took a nullable
+  `dayIndex` instead of existing twice, and `withExercises(dayIndex)` is the one
+  place that knows whether a standalone draft or a day of a week is being edited.
+- **Day titles and the default week name come from resources**, resolved in the
+  screen and passed in, as `onSave` already did for the plan name. They were
+  English literals in the ViewModel, and a day title is *saved*, so the English
+  reached the database rather than only the screen.
+- **A day keeps its template id across saves** (`DraftWeekDay.templateId`), and a
+  saved week keeps its own id in `BuilderUiState.weekId` rather than borrowing
+  `planId`. Both were silent: fresh template ids each save reset Today's "which
+  day have I not done yet", and reusing `planId` as a week id made every re-save
+  write a second week.
+- **A new week only becomes active when no week is active.** It used to force
+  itself active on every save, silently changing what Today offered.
+
+Still open in this slice: `TodayScreen` shows the recommended day as an ordinary
+plan card, with no indication that it belongs to a week or which day it is.
+`BuilderViewModel.load()` still only loads templates, so a saved week cannot be
+reopened for editing from Plans.
 
 ---
 
@@ -1006,6 +1089,11 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | User-installed CAs stay untrusted | A self-signed local server is the other way people ask for LAN support, and the worse one | `network_security_config.xml` |
 | The provider key is required only where the provider requires it | Ollama and LM Studio ignore it; demanding one meant typing a throwaway value past a check that protected nothing | `ProviderId.requiresKey` |
 | Only `core:ai` and `core:media` may declare an HTTP client | Keeps network access bounded strictly to AI generation and on-demand media downloads | `NetworkBoundaryTest.kt` |
+| A week contains templates rather than replacing them | Keeps the session engine, history, export, and Wear protocol on one shape | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
+| One contract, weeks always; a single workout is a week of one | Two contracts would drift within a phase, and Coach still generates single workouts | `WEEKLY_PLANS.md` §4.1 |
+| Deleting a week deletes its workouts | An orphan named "Day 3 — Pull" is litter; sessions performed from it still survive | `TemplateEntity.kt`, `WEEKLY_PLANS.md` |
+| Days are ordinal; weekdays are optional | The profile knows how many days, not which; inventing them is a guess presented as a plan | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
+| One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 
 Still open, and fine to leave open (§21): final application ID, accent colour,
 app icon, and the exact licence.
@@ -1018,6 +1106,18 @@ app icon, and the exact licence.
   that the body map's tap targets on phone screens feel small for consistent,
   accurate touch input. The artwork is sound, but needs an expanded presentation,
   dedicated zoom/full-screen sheet, or enlarged touch bounds in a follow-up iteration.
+- **The first Room migration has never been executed.** `MigrationTest` exists
+  and compiles; no device has been attached since. Until it runs, an app update
+  over an existing install is untested, and the failure mode is a launch crash
+  for everyone who already has the app. Run
+  `./gradlew :core:database:connectedAndroidTest` — and read the warning in
+  `AGENTS.md` first, because `connectedAndroidTest` uninstalls the app when it
+  finishes and uninstalling wipes exactly the data the migration protects.
+- **No live provider has returned a week.** Every multi-day test answers from
+  MockWebServer. Whether a real model — and particularly a small local one —
+  holds a strict seven-day schema is unmeasured, and it is the risk most likely
+  to change the design. `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its
+  trigger.
 - **Screenshot tests are still the untested category.** Unit tests and
   instrumentation both run; nothing yet asserts what a screen looks like, so
   every layout regression found so far was found by a person holding a phone.

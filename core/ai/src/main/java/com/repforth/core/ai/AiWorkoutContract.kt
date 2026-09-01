@@ -3,6 +3,7 @@ package com.repforth.core.ai
 import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.Language
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.rules.GenerationRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -10,7 +11,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-const val AI_WORKOUT_SCHEMA_VERSION = 2
+const val AI_WORKOUT_SCHEMA_VERSION = 3
 
 /**
  * The compact, language-neutral request sent to a provider (§8).
@@ -25,13 +26,15 @@ data class AiWorkoutRequest(
     val locale: String,
     val goal: String,
     val experience: String,
+    val days: Int,
+    @SerialName("session_duration_minutes") val sessionDurationMinutes: Int,
+    @SerialName("max_exercises_per_day") val maxExercisesPerDay: Int,
     @SerialName("primary_muscles") val primaryMuscles: List<String>,
     @SerialName("secondary_muscles") val secondaryMuscles: List<String>,
     @SerialName("excluded_muscles") val excludedMuscles: List<String>,
     @SerialName("excluded_exercise_ids") val excludedExerciseIds: List<String>,
     @SerialName("excluded_movements") val excludedMovements: List<String>,
     val equipment: List<String>,
-    @SerialName("duration_minutes") val durationMinutes: Int,
     @SerialName("candidate_exercises") val candidateExercises: List<AiExerciseCandidate>,
 ) {
     companion object {
@@ -47,6 +50,9 @@ data class AiWorkoutRequest(
                 locale = locale.tag,
                 goal = request.profile.goal.name.lowercase(),
                 experience = request.profile.experience.name.lowercase(),
+                days = request.days,
+                sessionDurationMinutes = (request.sessionLengthMs / 60_000L).toInt(),
+                maxExercisesPerDay = WorkoutLimits.maxExercisesPerDay,
                 primaryMuscles = primary,
                 secondaryMuscles = request.profile.preferredMuscles
                     .canonicalSlugs()
@@ -62,7 +68,6 @@ data class AiWorkoutRequest(
                     .sorted()
                     .toList(),
                 equipment = request.availableEquipment.map { it.slug }.distinct().sorted(),
-                durationMinutes = (request.sessionLengthMs / 60_000L).toInt(),
                 candidateExercises = eligibleCandidates
                     .sortedBy { it.id.value }
                     .map(AiExerciseCandidate::from),
@@ -101,8 +106,16 @@ enum class AiTargetType {
 @Serializable
 data class AiWorkoutResponse(
     @SerialName("schema_version") val schemaVersion: Int,
-    val exercises: List<AiPlannedExercise>,
+    val days: List<AiPlannedDay>,
     val rationale: String,
+)
+
+@Serializable
+data class AiPlannedDay(
+    @SerialName("day_index") val dayIndex: Int,
+    val title: String,
+    @SerialName("focus_muscles") val focusMuscles: List<String> = emptyList(),
+    val exercises: List<AiPlannedExercise>,
 )
 
 @Serializable

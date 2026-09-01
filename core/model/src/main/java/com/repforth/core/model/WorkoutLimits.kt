@@ -14,7 +14,16 @@ object WorkoutLimits {
     val restSeconds = 0..600
     val weightKg = 0.0..500.0
 
-    const val maxExercises = 10
+    /** How many training days one generated plan may cover. */
+    val days = 1..7
+
+    /**
+     * The most exercises one day may contain.
+     *
+     * This is the ceiling the JSON schema and the validator both derive from, so
+     * a provider cannot return a day the builder would then have to truncate.
+     */
+    const val maxExercisesPerDay = 8
 
     /** The conservative duration estimate used everywhere a rep has no measured tempo. */
     const val secondsPerRepEstimate = 3

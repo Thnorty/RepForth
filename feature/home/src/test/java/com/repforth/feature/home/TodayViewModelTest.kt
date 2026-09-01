@@ -32,6 +32,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+import com.repforth.core.model.TrainingWeek
+import com.repforth.core.model.WeekDay
+import com.repforth.core.userdata.WeekRepository
+
 /**
  * What Today decides to show.
  *
@@ -46,6 +50,7 @@ class TodayViewModelTest {
     private lateinit var sessions: FakeSessions
     private lateinit var templates: FakeTemplates
     private lateinit var profiles: FakeProfiles
+    private lateinit var weeks: FakeWeeks
 
     @Before
     fun setUp() {
@@ -53,6 +58,7 @@ class TodayViewModelTest {
         sessions = FakeSessions()
         templates = FakeTemplates()
         profiles = FakeProfiles()
+        weeks = FakeWeeks()
     }
 
     @After
@@ -61,7 +67,7 @@ class TodayViewModelTest {
     }
 
     private fun viewModel() = TodayViewModel(
-        sessions, templates, profiles, FakeTimeSource(), ZoneId.of("Europe/Istanbul"),
+        sessions, templates, profiles, weeks, FakeTimeSource(), ZoneId.of("Europe/Istanbul"),
     )
 
     private suspend fun state() = viewModel().uiState.first { !it.loading }
@@ -141,6 +147,25 @@ class TodayViewModelTest {
         ),
     )
 
+    @Test
+    fun `an active weekly plan takes priority for recommendation`() = runTest(dispatcher) {
+        val day0 = WeekDay(0, "Push", workout = plan("d0", "Push Day"))
+        val day1 = WeekDay(1, "Pull", workout = plan("d1", "Pull Day"))
+        val week = TrainingWeek(
+            id = "w1",
+            name = "PPL Week",
+            source = PlanSource.AI,
+            active = true,
+            days = listOf(day0, day1),
+        )
+        templates.emit(listOf(plan("standalone", "Standalone Plan")))
+        weeks.active.value = week
+
+        val state = state()
+
+        assertEquals("Push Day", state.next?.name)
+    }
+
     private fun session(
         id: String,
         templateId: String?,
@@ -165,6 +190,19 @@ class TodayViewModelTest {
         preferredMuscles = emptySet(),
         exclusions = emptySet(),
     )
+}
+
+private class FakeWeeks : WeekRepository {
+    val active = MutableStateFlow<TrainingWeek?>(null)
+    val all = MutableStateFlow<List<TrainingWeek>>(emptyList())
+
+    override fun observeAll(): Flow<List<TrainingWeek>> = all
+    override fun observeActive(): Flow<TrainingWeek?> = active
+    override suspend fun find(id: String): TrainingWeek? = all.value.firstOrNull { it.id == id }
+    override suspend fun save(week: TrainingWeek) = Unit
+    override suspend fun setActive(id: String) = Unit
+    override suspend fun delete(id: String) = Unit
+    override suspend fun deleteAll() = Unit
 }
 
 private class FakeSessions : SessionRepository {

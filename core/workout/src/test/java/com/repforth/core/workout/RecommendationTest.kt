@@ -117,4 +117,37 @@ class RecommendationTest {
         assertEquals("Alpha", recommendNext(plans, emptyList())?.name)
         assertEquals("Alpha", recommendNext(plans.reversed(), emptyList())?.name)
     }
+
+    @Test
+    fun `active week day in order is recommended when none performed`() {
+        val day0 = com.repforth.core.model.WeekDay(0, "Push", workout = plan("d0", "Push Day"))
+        val day1 = com.repforth.core.model.WeekDay(1, "Pull", workout = plan("d1", "Pull Day"))
+        val week = com.repforth.core.model.TrainingWeek(
+            id = "w1",
+            name = "PPL",
+            source = PlanSource.AI,
+            active = true,
+            days = listOf(day0, day1),
+        )
+
+        val recommended = recommendNext(emptyList(), emptyList(), activeWeek = week)
+        assertEquals("Push Day", recommended?.name)
+    }
+
+    @Test
+    fun `next unperformed day in active week is recommended`() {
+        val day0 = com.repforth.core.model.WeekDay(0, "Push", workout = plan("d0", "Push Day"))
+        val day1 = com.repforth.core.model.WeekDay(1, "Pull", workout = plan("d1", "Pull Day"))
+        val week = com.repforth.core.model.TrainingWeek(
+            id = "w1",
+            name = "PPL",
+            source = PlanSource.AI,
+            active = true,
+            days = listOf(day0, day1),
+        )
+        val history = listOf(session("d0", startedAt = 1000L))
+
+        val recommended = recommendNext(emptyList(), history, activeWeek = week)
+        assertEquals("Pull Day", recommended?.name)
+    }
 }

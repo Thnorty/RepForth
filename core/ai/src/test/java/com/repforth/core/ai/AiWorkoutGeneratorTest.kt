@@ -50,7 +50,7 @@ class AiWorkoutGeneratorTest {
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
 
         val outcome = harness.generator.generate(
-            request(),
+            request(days = 1),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
         ) as AiWorkoutGenerationOutcome.Provider
@@ -61,7 +61,8 @@ class AiWorkoutGeneratorTest {
             AiWorkoutRetryIssue(
                 AiWorkoutRetryIssueKind.CONTRACT,
                 "exercise_not_offered",
-                "not-offered",
+                dayIndex = 0,
+                exerciseId = "not-offered",
             ),
             provider.calls.last().retryFeedback!!.issues.single(),
         )
@@ -77,7 +78,7 @@ class AiWorkoutGeneratorTest {
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
 
         val outcome = harness.generator.generate(
-            request(),
+            request(days = 1),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
         ) as AiWorkoutGenerationOutcome.Provider
@@ -92,7 +93,7 @@ class AiWorkoutGeneratorTest {
         val provider = SequencedProvider(invalid, invalid)
         val harness = harness(provider)
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
-        val request = request()
+        val request = request(days = 1)
         val candidates = listOf(candidate("press", Muscle.PECTORALS))
 
         val outcome = harness.generator.generate(
@@ -115,7 +116,7 @@ class AiWorkoutGeneratorTest {
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
 
         val outcome = harness.generator.generate(
-            request(),
+            request(days = 1),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
         ) as AiWorkoutGenerationOutcome.Failure
@@ -127,13 +128,19 @@ class AiWorkoutGeneratorTest {
 
     @Test
     fun `actionable provider failures fail immediately without a billable retry`() = runTest {
-        ProviderFailure.entries.filterNot { it == ProviderFailure.FORMAT }.forEach { failure ->
+        // SERVER is excluded deliberately, and the exclusion is the point of
+        // the two tests below: a 5xx is not a billable retry, because the
+        // provider produced nothing to bill for. FORMAT is excluded because it
+        // is the repair case §8 allows.
+        ProviderFailure.entries
+            .filterNot { it == ProviderFailure.FORMAT || it == ProviderFailure.SERVER }
+            .forEach { failure ->
             val provider = SequencedProvider(ProviderGenerationResult.Failed(failure))
             val harness = harness(provider)
             harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
 
             val outcome = harness.generator.generate(
-                request(),
+                request(days = 1),
                 Language.ENGLISH,
                 listOf(candidate("press", Muscle.PECTORALS)),
             ) as AiWorkoutGenerationOutcome.Failure
@@ -151,7 +158,7 @@ class AiWorkoutGeneratorTest {
         val harness = harness(provider)
 
         val outcome = harness.generator.generate(
-            request(),
+            request(days = 1),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
         ) as AiWorkoutGenerationOutcome.Failure
@@ -167,7 +174,7 @@ class AiWorkoutGeneratorTest {
         harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
 
         val outcome = harness.generator.generate(
-            request(),
+            request(days = 1),
             Language.ENGLISH,
             listOf(candidate("press", Muscle.PECTORALS)),
         ) as AiWorkoutGenerationOutcome.Failure
@@ -182,7 +189,7 @@ class AiWorkoutGeneratorTest {
         val harness = harness(provider)
 
         val outcome = harness.generator.generate(
-            request(targetMuscles = setOf(Muscle.PECTORALS)),
+            request(days = 1, targetMuscles = setOf(Muscle.PECTORALS)),
             Language.ENGLISH,
             listOf(candidate("row", Muscle.LATS)),
         ) as AiWorkoutGenerationOutcome.Failure
@@ -207,13 +214,14 @@ class AiWorkoutGeneratorTest {
     }
 
     private fun request(
+        days: Int = 1,
         targetMuscles: Set<Muscle> = setOf(Muscle.PECTORALS),
     ) = GenerationRequest(
         profile = UserProfile(
             id = "private-profile",
             goal = TrainingGoal.HYPERTROPHY,
             experience = ExperienceLevel.INTERMEDIATE,
-            trainingDaysPerWeek = 3,
+            trainingDaysPerWeek = days,
             sessionLengthMs = 60 * 60_000L,
             availableEquipment = emptySet(),
             preferredMuscles = emptySet(),
@@ -235,13 +243,19 @@ class AiWorkoutGeneratorTest {
     private fun valid(id: String) = ProviderGenerationResult.Ok(
         AiWorkoutResponse(
             schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            exercises = listOf(
-                AiPlannedExercise(
-                    exerciseId = id,
-                    order = 0,
-                    sets = 3,
-                    repetitions = 10,
-                    restSeconds = 60,
+            days = listOf(
+                AiPlannedDay(
+                    dayIndex = 0,
+                    title = "Push",
+                    exercises = listOf(
+                        AiPlannedExercise(
+                            exerciseId = id,
+                            order = 0,
+                            sets = 3,
+                            repetitions = 10,
+                            restSeconds = 60,
+                        ),
+                    ),
                 ),
             ),
             rationale = "Balanced volume",
@@ -258,6 +272,67 @@ class AiWorkoutGeneratorTest {
         val request: AiWorkoutRequest,
         val retryFeedback: AiWorkoutRetryFeedback?,
     )
+
+    /**
+     * A demand spike must not end the generation.
+     *
+     * This is the failure a real device actually hit: Gemini answered
+     * `503 UNAVAILABLE` with "spikes in demand are usually temporary", the app
+     * gave up on the first one, and the user was told the coach could not build
+     * a plan — which pointed at their constraints rather than at Google.
+     */
+    @Test
+    fun `a transient server failure is retried and can still succeed`() = runTest {
+        val provider = SequencedProvider(
+            ProviderGenerationResult.Failed(ProviderFailure.SERVER),
+            valid("press"),
+        )
+        val harness = harness(provider)
+        harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
+
+        val outcome = harness.generator.generate(
+            request(days = 1),
+            Language.ENGLISH,
+            listOf(candidate("press", Muscle.PECTORALS)),
+        )
+
+        assertTrue(
+            "A 503 followed by a good answer must produce a plan, not a failure",
+            outcome is AiWorkoutGenerationOutcome.Provider,
+        )
+        assertEquals(2, provider.calls.size)
+        // The second call is the same request, not a repair: there was no
+        // output to correct, so sending repair feedback would describe a
+        // mistake the model never made.
+        assertEquals(null, provider.calls.last().retryFeedback)
+        assertEquals(1, (outcome as AiWorkoutGenerationOutcome.Provider).attempts)
+    }
+
+    @Test
+    fun `a provider that stays down gives up after the bounded attempts`() = runTest {
+        val provider = SequencedProvider(
+            ProviderGenerationResult.Failed(ProviderFailure.SERVER),
+            ProviderGenerationResult.Failed(ProviderFailure.SERVER),
+            ProviderGenerationResult.Failed(ProviderFailure.SERVER),
+        )
+        val harness = harness(provider)
+        harness.repository.setKey(ProviderId.GEMINI, "test-not-a-real-key")
+
+        val outcome = harness.generator.generate(
+            request(days = 1),
+            Language.ENGLISH,
+            listOf(candidate("press", Muscle.PECTORALS)),
+        ) as AiWorkoutGenerationOutcome.Failure
+
+        assertEquals(ProviderFailure.SERVER, outcome.providerFailure)
+        assertEquals(AiGenerationFailureReason.PROVIDER_FAILURE, outcome.reason)
+        assertEquals(
+            "Retrying must be bounded; an app that hammers an overloaded " +
+                "provider is part of the problem",
+            3,
+            provider.calls.size,
+        )
+    }
 
     private class SequencedProvider(
         vararg results: ProviderGenerationResult,

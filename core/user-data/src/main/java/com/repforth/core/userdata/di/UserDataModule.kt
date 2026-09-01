@@ -3,14 +3,16 @@ package com.repforth.core.userdata.di
 import com.repforth.core.common.time.SystemTimeSource
 import com.repforth.core.common.time.TimeSource
 import com.repforth.core.userdata.ProfileRepository
+import com.repforth.core.userdata.RoomProfileRepository
 import com.repforth.core.userdata.RoomSessionRepository
 import com.repforth.core.userdata.RoomTemplateRepository
+import com.repforth.core.userdata.RoomWeekRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
-import com.repforth.core.userdata.RoomProfileRepository
+import com.repforth.core.userdata.WeekRepository
 import dagger.Binds
-import dagger.Provides
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.time.ZoneId
@@ -27,6 +29,10 @@ internal interface UserDataModule {
     @Binds
     @Singleton
     fun bindTemplateRepository(impl: RoomTemplateRepository): TemplateRepository
+
+    @Binds
+    @Singleton
+    fun bindWeekRepository(impl: RoomWeekRepository): WeekRepository
 
     @Binds
     @Singleton

@@ -6,6 +6,7 @@ import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.WeekRepository
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -72,6 +73,7 @@ interface DataTransfer {
 internal class DefaultDataTransfer @Inject constructor(
     private val profiles: ProfileRepository,
     private val templates: TemplateRepository,
+    private val weeks: WeekRepository,
     private val sessions: SessionRepository,
     private val preferences: UserPreferencesDataSource,
     private val providers: ProviderRepository,
@@ -92,7 +94,10 @@ internal class DefaultDataTransfer @Inject constructor(
         ExportDocument(
             exportedAt = time.now(),
             profile = profiles.getProfile()?.toDto(),
+            // Standalone workouts only — `observeAll()` filters out any that
+            // belong to a week, and those travel inside their week below.
             templates = templates.observeAll().first().map { it.toDto() },
+            weeks = weeks.observeAll().first().map { it.toDto() },
             sessions = sessions.observeFinished().first().map { it.toDto() },
         ),
     )
@@ -122,6 +127,7 @@ internal class DefaultDataTransfer @Inject constructor(
         try {
             document.profile?.toDomain()
             document.templates.forEach { it.toDomain() }
+            document.weeks.forEach { it.toDomain() }
             document.sessions.forEach { it.toDomain() }
         } catch (e: Exception) {
             return ImportOutcome.Failed(
@@ -131,6 +137,8 @@ internal class DefaultDataTransfer @Inject constructor(
 
         val existingIds = templates.observeAll().first().map { it.id }.toSet()
         val incomingIds = document.templates.map { it.id }
+        val existingWeekIds = weeks.observeAll().first().map { it.id }.toSet()
+        val incomingWeekIds = document.weeks.map { it.id }
         return ImportOutcome.Ready(
             preview = ImportPreview(
                 hasProfile = document.profile != null,
@@ -139,6 +147,8 @@ internal class DefaultDataTransfer @Inject constructor(
                 replacedTemplates = incomingIds.count { it in existingIds },
                 sessions = document.sessions.size,
                 exportedAt = document.exportedAt,
+                newWeeks = incomingWeekIds.count { it !in existingWeekIds },
+                replacedWeeks = incomingWeekIds.count { it in existingWeekIds },
             ),
             document = document,
         )
@@ -147,12 +157,16 @@ internal class DefaultDataTransfer @Inject constructor(
     override suspend fun import(document: ExportDocument) {
         document.profile?.let { profiles.save(it.toDomain()) }
         document.templates.forEach { templates.save(it.toDomain()) }
+        // Saving a week writes its day templates too, so these must not also be
+        // saved through `templates`, and the export never puts them there.
+        document.weeks.forEach { weeks.save(it.toDomain()) }
         document.sessions.forEach { sessions.persist(it.toDomain()) }
     }
 
     override suspend fun deleteWorkoutData() {
         sessions.deleteAll()
         templates.deleteAll()
+        weeks.deleteAll()
         profiles.deleteAll()
     }
 

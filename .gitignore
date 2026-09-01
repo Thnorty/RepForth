@@ -30,3 +30,8 @@ _staging/
 # Python bytecode from the tools scripts.
 __pycache__/
 *.pyc
+
+# Local only: a device export contains the maintainer's own training data,
+# and the probe case file is scratch regenerated per investigation.
+/repforth-v1-backup.json
+tools/probe-cases.generated.ps1

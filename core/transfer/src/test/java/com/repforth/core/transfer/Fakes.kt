@@ -5,11 +5,13 @@ import com.repforth.core.datastore.ProviderSettingsDataSource
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.testing.FakePreferencesStore
 import com.repforth.core.testing.InMemorySecretStore
+import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.WeekRepository
 import com.repforth.core.workout.SessionSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,6 +65,46 @@ internal class FakeTemplates : TemplateRepository {
     override suspend fun deleteAll() {
         stored.clear()
         flow.value = emptyList()
+    }
+}
+
+internal class FakeWeeks : WeekRepository {
+    val stored = mutableListOf<TrainingWeek>()
+    private val flow = MutableStateFlow<List<TrainingWeek>>(emptyList())
+    private val activeFlow = MutableStateFlow<TrainingWeek?>(null)
+
+    override fun observeAll(): Flow<List<TrainingWeek>> = flow
+
+    override fun observeActive(): Flow<TrainingWeek?> = activeFlow
+
+    override suspend fun find(id: String): TrainingWeek? = stored.firstOrNull { it.id == id }
+
+    override suspend fun save(week: TrainingWeek) {
+        stored.removeAll { it.id == week.id }
+        if (week.active) {
+            stored.replaceAll { it.copy(active = false) }
+        }
+        stored += week
+        flow.value = stored.toList()
+        activeFlow.value = stored.firstOrNull { it.active }
+    }
+
+    override suspend fun setActive(id: String) {
+        stored.replaceAll { it.copy(active = it.id == id) }
+        flow.value = stored.toList()
+        activeFlow.value = stored.firstOrNull { it.active }
+    }
+
+    override suspend fun delete(id: String) {
+        stored.removeAll { it.id == id }
+        flow.value = stored.toList()
+        activeFlow.value = stored.firstOrNull { it.active }
+    }
+
+    override suspend fun deleteAll() {
+        stored.clear()
+        flow.value = emptyList()
+        activeFlow.value = null
     }
 }
 

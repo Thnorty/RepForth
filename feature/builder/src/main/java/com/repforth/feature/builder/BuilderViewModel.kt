@@ -3,6 +3,7 @@ package com.repforth.feature.builder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.ai.AiGenerationFailureReason
+import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
@@ -21,9 +22,12 @@ import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.model.toggleRegion
 import com.repforth.core.model.toggleSynonyms
 import com.repforth.core.model.BodyRegion
+import com.repforth.core.model.TrainingWeek
+import com.repforth.core.model.WeekDay
 import com.repforth.core.rules.GenerationRequest
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.WeekRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
@@ -31,6 +35,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -77,6 +82,39 @@ data class DraftExercise(
 }
 
 /**
+ * One day being edited in a weekly plan.
+ *
+ * [templateId] is generated once, when the day first appears, and kept for the
+ * life of the draft. It is not cosmetic: history records which template a
+ * session was performed from, and Today decides which day to offer next by
+ * matching those ids. Minting a fresh id on every save would silently reset
+ * "which day have I not done yet" each time the week was edited.
+ */
+data class DraftWeekDay(
+    val dayIndex: Int,
+    val title: String,
+    val templateId: String = UUID.randomUUID().toString(),
+    val focusMuscles: List<Muscle> = emptyList(),
+    val exercises: List<DraftExercise> = emptyList(),
+    val isExpanded: Boolean = true,
+) {
+    val estimatedMinutes: Int
+        get() = (exercises.sumOf { draft ->
+            PlannedExercise(
+                id = draft.id,
+                exerciseId = draft.exerciseId,
+                position = 0,
+                target = draft.target,
+                restMs = draft.restSeconds * 1000L,
+            ).estimatedDurationMs
+        } / MS_PER_MINUTE).toInt()
+
+    private companion object {
+        const val MS_PER_MINUTE = 60_000L
+    }
+}
+
+/**
  * Why Coach came back empty.
  *
  * A generated plan that fails silently is indistinguishable from one that is
@@ -99,6 +137,16 @@ data class CoachError(
     val titleRes: Int,
     val messageRes: Int,
     val canRetry: Boolean,
+    /**
+     * What the provider itself said, verbatim, or null.
+     *
+     * Shown under the app's own explanation rather than instead of it: the
+     * message says what to do, this says what happened. It is the provider's
+     * text, not ours, and the dialog presents it as a quotation for that reason.
+     */
+    val detail: String? = null,
+    /** Seconds waited, for the timeout message. Null for every other failure. */
+    val waitedSeconds: Int? = null,
 )
 
 /** The rationale from a locally validated provider answer. */
@@ -107,9 +155,19 @@ data class CoachNotice(val rationale: String)
 data class BuilderUiState(
     /** Null while building a new plan; set when editing a saved one. */
     val planId: String? = null,
+    /**
+     * The week being edited, once it has been written.
+     *
+     * Deliberately not [planId]: that one is a *template* id, and reusing it for
+     * a week made every re-save mint a new week and leave the previous one
+     * behind, so editing a week and saving it twice produced two weeks.
+     */
+    val weekId: String? = null,
     val name: String = "",
     val exercises: List<DraftExercise> = emptyList(),
+    val weekDays: List<DraftWeekDay> = emptyList(),
     val picking: Boolean = false,
+    val pickingDayIndex: Int? = null,
     val saving: Boolean = false,
     val saved: Boolean = false,
     /** How this plan first entered the builder; retained if the user edits it. */
@@ -120,6 +178,15 @@ data class BuilderUiState(
     val coaching: Boolean = false,
     /** Muscles asked for. Empty means "anything my profile allows". */
     val coachMuscles: Set<Muscle> = emptySet(),
+    /**
+     * How many days to ask for. Seeded from the profile's training days.
+     *
+     * One is a real answer, not a degenerate case: someone who wants a workout
+     * for this afternoon should not have to accept a whole week and delete six
+     * days of it. At one, the result lands as an ordinary standalone workout
+     * rather than as a week containing a single day.
+     */
+    val coachDays: Int = 1,
     val generating: Boolean = false,
     /** Why the last generation produced nothing, or null. */
     val coachFailure: CoachFailure? = null,
@@ -129,9 +196,13 @@ data class BuilderUiState(
     val coachNotice: CoachNotice? = null,
 ) {
     val isEditing: Boolean get() = planId != null
+    val isWeeklyPlan: Boolean get() = weekDays.isNotEmpty()
 
     /** §7: a plan needs a name and something to do. */
     val canSave: Boolean get() = name.isNotBlank() && exercises.isNotEmpty() && !saving
+    val canSaveWeek: Boolean get() = name.isNotBlank() && weekDays.isNotEmpty() && weekDays.all { it.exercises.isNotEmpty() } && !saving
+
+    val totalWeekMinutes: Int get() = weekDays.sumOf { it.estimatedMinutes }
 
     /**
      * Rest is known exactly and work is not, so this is an estimate and the
@@ -179,6 +250,7 @@ class BuilderViewModel @Inject constructor(
     private val exercises: ExerciseRepository,
     private val profiles: ProfileRepository,
     private val generator: AiWorkoutGenerationService,
+    private val weeks: WeekRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BuilderUiState())
@@ -186,8 +258,16 @@ class BuilderViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val minutes = profiles.getProfile()?.let { (it.sessionLengthMs / 60_000L).toInt() }
-            _uiState.value = _uiState.value.copy(sessionCeilingMinutes = minutes)
+            val profile = profiles.getProfile()
+            _uiState.value = _uiState.value.copy(
+                sessionCeilingMinutes = profile?.let { (it.sessionLengthMs / 60_000L).toInt() },
+                // Seeded, not fixed. Onboarding already asked how many days a
+                // week this person trains, so that is the right default; asking
+                // again would be asking them to repeat themselves. Overriding it
+                // for one generation is not a change to what they train.
+                coachDays = profile?.trainingDaysPerWeek?.coerceIn(WorkoutLimits.days)
+                    ?: _uiState.value.coachDays,
+            )
         }
     }
 
@@ -215,9 +295,11 @@ class BuilderViewModel @Inject constructor(
 
     fun onNameChange(name: String) = update { copy(name = name) }
 
-    fun onPickerOpen() = update { copy(picking = true) }
+    fun onPickerOpen(dayIndex: Int? = null) = update {
+        copy(picking = true, pickingDayIndex = dayIndex)
+    }
 
-    fun onPickerClose() = update { copy(picking = false) }
+    fun onPickerClose() = update { copy(picking = false, pickingDayIndex = null) }
 
     private var generationJob: Job? = null
 
@@ -253,6 +335,17 @@ class BuilderViewModel @Inject constructor(
         copy(coachMuscles = coachMuscles.toggleSynonyms(muscle), coachFailure = null, coachError = null)
     }
 
+    /**
+     * How many days the next generation should cover.
+     *
+     * Clamped rather than validated: the control cannot offer anything outside
+     * the range, so a value outside it is a programming error, and refusing to
+     * generate would be a worse answer than generating the nearest legal week.
+     */
+    fun onCoachDaysChange(days: Int) = update {
+        copy(coachDays = days.coerceIn(WorkoutLimits.days), coachFailure = null, coachError = null)
+    }
+
     fun onCoachRegionToggled(region: BodyRegion) = update {
         copy(coachMuscles = coachMuscles.toggleRegion(region), coachFailure = null, coachError = null)
     }
@@ -270,7 +363,7 @@ class BuilderViewModel @Inject constructor(
      * overwriting a name someone typed would be the generator taking a decision
      * that was not its to take.
      */
-    fun onGenerate(defaultName: String, locale: Language) {
+    fun onGenerate(defaultName: String, dayTitles: List<String>, locale: Language) {
         if (_uiState.value.generating) return
         generationJob?.cancel()
         generationJob = viewModelScope.launch {
@@ -285,22 +378,52 @@ class BuilderViewModel @Inject constructor(
             val request = GenerationRequest(
                 profile = profile,
                 targetMuscles = _uiState.value.coachMuscles,
+                daysOverride = _uiState.value.coachDays.coerceIn(WorkoutLimits.days),
             )
             val candidates = exercises.candidates()
-            val planName = _uiState.value.name.ifBlank { defaultName }
             when (val outcome = generator.generate(
                 request = request,
                 locale = locale,
                 candidates = candidates,
             )) {
                 is AiWorkoutGenerationOutcome.Provider -> {
-                    val ids = outcome.response.exercises.map { ExerciseId(it.exerciseId) }
-                    val names = exercises.summaries(ids)
+                    val allPlannedIds = outcome.response.days
+                        .flatMap { it.exercises }
+                        .map { ExerciseId(it.exerciseId) }
+                    val names = exercises.summaries(allPlannedIds)
+                    val draftDays = outcome.response.days.map { day ->
+                        DraftWeekDay(
+                            dayIndex = day.dayIndex,
+                            title = day.title.ifBlank {
+                                dayTitles.getOrElse(day.dayIndex) { defaultName }
+                            },
+                            focusMuscles = day.focusMuscles.mapNotNull { slug ->
+                                Muscle.entries.find {
+                                    it.slug == slug || it.name.equals(slug, ignoreCase = true)
+                                }
+                            },
+                            exercises = day.exercises.toAiDrafts(names),
+                            isExpanded = (day.dayIndex == 0),
+                        )
+                    }
+                    val resolvedName = _uiState.value.name.ifBlank { defaultName }
+
+                    // A single day is a workout, not a week of one. The contract
+                    // always speaks in days so there is only one schema and one
+                    // validator, but storing a one-day week would fill Plans with
+                    // week cards wrapping a single workout, and "start my week"
+                    // would mean the same thing as "start this workout".
+                    //
+                    // The two lists are mutually exclusive on purpose: whichever
+                    // one is populated is the one being edited, so there is never
+                    // a second, stale copy of day one sitting in `exercises`.
+                    val single = draftDays.singleOrNull()
                     update {
                         copy(
-                            name = planName,
+                            name = resolvedName,
                             source = PlanSource.AI,
-                            exercises = outcome.response.toDrafts(names),
+                            exercises = single?.exercises.orEmpty(),
+                            weekDays = if (single != null) emptyList() else draftDays,
                             generating = false,
                             coaching = false,
                             coachFailure = null,
@@ -322,24 +445,34 @@ class BuilderViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Adds an exercise to the workout being edited, or to one day of a week.
+     *
+     * [dayIndex] is what tells the two apart, and it is the only difference
+     * between them. Every editing operation below takes it the same way: null
+     * means the standalone draft, a value means that day of the week. Writing
+     * each operation twice — once for a plan and once for a day — is how this
+     * class briefly grew twenty-four handlers for twelve actions, and the two
+     * copies would have drifted the first time a rule changed.
+     */
     fun onExerciseAdded(
         id: ExerciseId,
         name: String,
         thumbnail: MediaRef = MediaRef.Unavailable,
+        dayIndex: Int? = null,
     ) = update {
-        copy(
-            exercises = exercises + DraftExercise(
-                id = UUID.randomUUID().toString(),
-                exerciseId = id,
-                name = name,
-                thumbnail = thumbnail,
-            ),
-            picking = false,
+        val added = DraftExercise(
+            id = UUID.randomUUID().toString(),
+            exerciseId = id,
+            name = name,
+            thumbnail = thumbnail,
         )
+        withExercises(dayIndex) { it + added }
+            .copy(picking = false, pickingDayIndex = null)
     }
 
-    fun onRemove(index: Int) = update {
-        if (index !in exercises.indices) this else copy(exercises = exercises.without(index))
+    fun onRemove(index: Int, dayIndex: Int? = null) = update {
+        withExercises(dayIndex) { if (index in it.indices) it.without(index) else it }
     }
 
     /**
@@ -350,36 +483,109 @@ class BuilderViewModel @Inject constructor(
      * scale. Buttons work for everyone; the gesture can be added on top later
      * without changing what it means to move a row.
      */
-    fun onMove(from: Int, to: Int) = update {
-        if (from !in exercises.indices || to !in exercises.indices || from == to) {
-            this
-        } else {
-            copy(exercises = exercises.moved(from, to))
+    fun onMove(from: Int, to: Int, dayIndex: Int? = null) = update {
+        withExercises(dayIndex) {
+            if (from in it.indices && to in it.indices && from != to) it.moved(from, to) else it
         }
     }
 
-    fun onSetsChange(index: Int, sets: Int) = edit(index) {
-        copy(sets = sets.coerceIn(SETS_RANGE))
-    }
+    fun onSetsChange(index: Int, sets: Int, dayIndex: Int? = null) =
+        editExercise(dayIndex, index) { copy(sets = sets.coerceIn(SETS_RANGE)) }
 
-    fun onRepsChange(index: Int, reps: Int) = edit(index) {
-        copy(reps = reps.coerceIn(REPS_RANGE))
-    }
+    fun onRepsChange(index: Int, reps: Int, dayIndex: Int? = null) =
+        editExercise(dayIndex, index) { copy(reps = reps.coerceIn(REPS_RANGE)) }
 
-    fun onDurationChange(index: Int, seconds: Int) = edit(index) {
-        copy(durationSeconds = seconds.coerceIn(DURATION_RANGE))
-    }
+    fun onDurationChange(index: Int, seconds: Int, dayIndex: Int? = null) =
+        editExercise(dayIndex, index) { copy(durationSeconds = seconds.coerceIn(DURATION_RANGE)) }
 
-    fun onRestChange(index: Int, seconds: Int) = edit(index) {
-        copy(restSeconds = seconds.coerceIn(REST_RANGE))
-    }
+    fun onRestChange(index: Int, seconds: Int, dayIndex: Int? = null) =
+        editExercise(dayIndex, index) { copy(restSeconds = seconds.coerceIn(REST_RANGE)) }
 
     /** Blank clears the weight, which is not the same as zero. */
-    fun onWeightChange(index: Int, weightKg: Double?) = edit(index) {
-        copy(weightKg = weightKg?.coerceAtLeast(0.0))
+    fun onWeightChange(index: Int, weightKg: Double?, dayIndex: Int? = null) =
+        editExercise(dayIndex, index) { copy(weightKg = weightKg?.coerceAtLeast(0.0)) }
+
+    fun onTimedChange(index: Int, timed: Boolean, dayIndex: Int? = null) =
+        editExercise(dayIndex, index) { copy(timed = timed) }
+
+    fun onToggleDayExpanded(dayIndex: Int) = update {
+        copy(
+            weekDays = weekDays.map { day ->
+                if (day.dayIndex == dayIndex) day.copy(isExpanded = !day.isExpanded) else day
+            },
+        )
     }
 
-    fun onTimedChange(index: Int, timed: Boolean) = edit(index) { copy(timed = timed) }
+    fun onDayTitleChange(dayIndex: Int, title: String) = update {
+        copy(
+            weekDays = weekDays.map { day ->
+                if (day.dayIndex == dayIndex) day.copy(title = title) else day
+            },
+        )
+    }
+
+    /**
+     * Writes the week and every workout inside it, in one transaction.
+     *
+     * [defaultName] and [dayTitles] arrive from the screen because they are
+     * translated strings and this class has no resources — the same reason
+     * `onSave` takes a name rather than inventing one. A hardcoded "Day 3" here
+     * would be English on a Turkish phone, and it would be English in the saved
+     * data rather than only on screen.
+     */
+    fun onSaveWeek(defaultName: String, dayTitles: List<String>) {
+        val state = _uiState.value
+        if (!state.canSaveWeek) return
+        _uiState.value = state.copy(saving = true)
+        viewModelScope.launch {
+            val weekId = state.weekId ?: UUID.randomUUID().toString()
+            val weekName = state.name.ifBlank { defaultName }.trim()
+            val weekDays = state.weekDays.mapIndexed { index, draftDay ->
+                val dayTitle = draftDay.title
+                    .ifBlank { dayTitles.getOrElse(index) { defaultName } }
+                    .trim()
+                val template = WorkoutTemplate(
+                    // The draft's id, not a new one. See DraftWeekDay.templateId.
+                    id = draftDay.templateId,
+                    name = dayTitle,
+                    source = state.source,
+                    exercises = draftDay.exercises.mapIndexed { exIndex, draftEx ->
+                        PlannedExercise(
+                            id = draftEx.id,
+                            exerciseId = draftEx.exerciseId,
+                            position = exIndex,
+                            target = draftEx.target,
+                            restMs = draftEx.restSeconds * 1000L,
+                        )
+                    },
+                )
+                WeekDay(
+                    position = index,
+                    title = dayTitle,
+                    workout = template,
+                )
+            }
+            // Becoming the active week is not automatic. A first week has
+            // nothing to displace and should obviously be the one Today offers;
+            // a second one silently replacing it would change what the app tells
+            // you to train today without asking. Plans has a "set active" action
+            // for that, which is where the decision belongs.
+            val isFirstWeek = weeks.observeActive().first() == null
+            val trainingWeek = TrainingWeek(
+                id = weekId,
+                name = weekName,
+                source = state.source,
+                active = isFirstWeek,
+                days = weekDays,
+            )
+            weeks.save(trainingWeek)
+            _uiState.value = _uiState.value.copy(
+                saving = false,
+                saved = true,
+                weekId = weekId,
+            )
+        }
+    }
 
     /**
      * Writes the plan, renumbering positions from zero.
@@ -415,12 +621,38 @@ class BuilderViewModel @Inject constructor(
         }
     }
 
-    private fun edit(index: Int, block: DraftExercise.() -> DraftExercise) = update {
-        if (index !in exercises.indices) {
-            this
-        } else {
-            copy(exercises = exercises.mapIndexed { i, e -> if (i == index) e.block() else e })
+    private fun editExercise(
+        dayIndex: Int?,
+        index: Int,
+        block: DraftExercise.() -> DraftExercise,
+    ) = update {
+        withExercises(dayIndex) { list ->
+            if (index !in list.indices) {
+                list
+            } else {
+                list.mapIndexed { i, e -> if (i == index) e.block() else e }
+            }
         }
+    }
+
+    /**
+     * Applies one change to whichever exercise list is being edited.
+     *
+     * The single place that knows a standalone draft and a day of a week hold
+     * the same kind of list. Everything above is a description of *what* to
+     * change; this is the only thing that knows *where*.
+     */
+    private fun BuilderUiState.withExercises(
+        dayIndex: Int?,
+        block: (List<DraftExercise>) -> List<DraftExercise>,
+    ): BuilderUiState = if (dayIndex == null) {
+        copy(exercises = block(exercises))
+    } else {
+        copy(
+            weekDays = weekDays.map { day ->
+                if (day.dayIndex == dayIndex) day.copy(exercises = block(day.exercises)) else day
+            },
+        )
     }
 
     private fun update(block: BuilderUiState.() -> BuilderUiState) {
@@ -475,9 +707,9 @@ private fun List<PlannedExercise>.toDrafts(
 }
 
 /** A validated provider answer, projected without changing any target value. */
-private fun AiWorkoutResponse.toDrafts(
+private fun List<AiPlannedExercise>.toAiDrafts(
     names: Map<ExerciseId, ExerciseSummary>,
-): List<DraftExercise> = exercises.map { planned ->
+): List<DraftExercise> = map { planned ->
     val exerciseId = ExerciseId(planned.exerciseId)
     DraftExercise(
         id = UUID.randomUUID().toString(),
@@ -509,11 +741,31 @@ private fun AiWorkoutGenerationOutcome.Failure.toCoachError(): CoachError = when
         messageRes = R.string.coach_error_no_candidates_body,
         canRetry = false,
     )
-    AiGenerationFailureReason.PROVIDER_FAILURE -> when (providerFailure) {
+    AiGenerationFailureReason.PROVIDER_FAILURE ->
+        providerError(providerFailure, detail, deadlineSeconds)
+    AiGenerationFailureReason.INVALID_RESPONSE -> CoachError(
+        titleRes = R.string.coach_error_failed_title,
+        messageRes = R.string.coach_error_failed_body,
+        canRetry = true,
+        detail = detail,
+    )
+}
+
+private fun providerError(
+    providerFailure: ProviderFailure?,
+    detail: String?,
+    deadlineSeconds: Int?,
+): CoachError =
+    when (providerFailure) {
+        // A timeout has no server response to show, because nothing came back.
+        // Saying how long it waited is the next most useful thing, and it is
+        // the question the old message left open — the deadline is not fixed,
+        // it grows with the number of days asked for.
         ProviderFailure.TIMEOUT -> CoachError(
             titleRes = R.string.coach_error_timeout_title,
             messageRes = R.string.coach_error_timeout_body,
             canRetry = true,
+            waitedSeconds = deadlineSeconds,
         )
         ProviderFailure.NETWORK -> CoachError(
             titleRes = R.string.coach_error_network_title,
@@ -530,18 +782,34 @@ private fun AiWorkoutGenerationOutcome.Failure.toCoachError(): CoachError = when
             messageRes = R.string.coach_error_quota_body,
             canRetry = true,
         )
+        // A provider outage is not a broken app, and saying so matters: this
+        // branch used to fall through to "could not generate a plan", which
+        // reads as a problem with the request. Gemini answering 503 during a
+        // demand spike is the single most likely failure here, and the honest
+        // message is that the provider is busy and the plan is fine.
+        ProviderFailure.SERVER -> CoachError(
+            titleRes = R.string.coach_error_server_title,
+            messageRes = R.string.coach_error_server_body,
+            canRetry = true,
+        )
+        ProviderFailure.MODEL_NOT_FOUND -> CoachError(
+            titleRes = R.string.coach_error_model_title,
+            messageRes = R.string.coach_error_model_body,
+            canRetry = false,
+        )
+        ProviderFailure.ENDPOINT_REFUSED -> CoachError(
+            titleRes = R.string.coach_error_endpoint_title,
+            messageRes = R.string.coach_error_endpoint_body,
+            canRetry = false,
+        )
+        // FORMAT and null remain the generic case: the provider answered with
+        // something unreadable, which is genuinely "something went wrong".
         else -> CoachError(
             titleRes = R.string.coach_error_failed_title,
             messageRes = R.string.coach_error_failed_body,
             canRetry = true,
         )
-    }
-    AiGenerationFailureReason.INVALID_RESPONSE -> CoachError(
-        titleRes = R.string.coach_error_failed_title,
-        messageRes = R.string.coach_error_failed_body,
-        canRetry = true,
-    )
-}
+    }.copy(detail = detail)
 
 private const val DEFAULT_DRAFT_REPS = 10
 private const val DEFAULT_DRAFT_DURATION_SECONDS = 30

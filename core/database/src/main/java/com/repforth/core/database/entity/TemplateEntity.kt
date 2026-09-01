@@ -16,7 +16,18 @@ import androidx.room.PrimaryKey
  * faithful to what was generated. Keeping the origin lets the app say where a
  * plan came from without implying its current contents are still that.
  */
-@Entity(tableName = "workout_template")
+@Entity(
+    tableName = "workout_template",
+    foreignKeys = [
+        ForeignKey(
+            entity = TrainingWeekEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["week_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("week_id")],
+)
 data class WorkoutTemplateEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
@@ -31,6 +42,18 @@ data class WorkoutTemplateEntity(
     /** `MANUAL`, `RULES` or `AI`. */
     @ColumnInfo(name = "source")
     val source: String,
+
+    /** Null for a standalone workout; references [TrainingWeekEntity.id] when part of a week. */
+    @ColumnInfo(name = "week_id")
+    val weekId: String? = null,
+
+    /** Zero-based position of this day within its week, or null when standalone. */
+    @ColumnInfo(name = "week_position")
+    val weekPosition: Int? = null,
+
+    /** 1..7 (ISO Monday = 1), or null when unassigned or standalone. */
+    @ColumnInfo(name = "day_of_week")
+    val dayOfWeek: Int? = null,
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long,

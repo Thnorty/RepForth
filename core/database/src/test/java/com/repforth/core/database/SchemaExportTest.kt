@@ -55,6 +55,7 @@ class SchemaExportTest {
                 "profile_equipment",
                 "profile_preferred_muscle",
                 "movement_exclusion",
+                "training_week",
                 "workout_template",
                 "template_exercise",
                 "workout_session",

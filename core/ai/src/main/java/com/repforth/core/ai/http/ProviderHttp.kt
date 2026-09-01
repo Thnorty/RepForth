@@ -1,6 +1,7 @@
 package com.repforth.core.ai.http
 
 import com.repforth.core.ai.ProviderFailure
+import com.repforth.core.model.ProviderSettings
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
@@ -116,6 +117,24 @@ internal fun Throwable.toProviderFailure(): ProviderFailure = when (this) {
     is UnknownHostException, is SSLException, is IOException -> ProviderFailure.NETWORK
     else -> ProviderFailure.NETWORK
 }
+
+/**
+ * The deadline for one generation, scaled by how much is being asked for.
+ *
+ * The configured timeout is a sensible budget for *one* workout, which is what
+ * it was chosen for when a request could only ever produce one. A seven-day
+ * week is roughly seven times the structured output, and a model that is still
+ * writing day five when the clock runs out is not a provider that failed — it
+ * is a deadline that never accounted for the request getting bigger.
+ *
+ * Linear in days for that reason, and clamped to [ProviderSettings.MAX_TIMEOUT_SECONDS]
+ * so this can never exceed a limit the user could set by hand. The user still
+ * controls the base value, and the generation card can still be cancelled.
+ */
+internal fun generationTimeoutSeconds(baseSeconds: Int, days: Int): Int =
+    (baseSeconds.toLong() * days.coerceAtLeast(1))
+        .coerceAtMost(ProviderSettings.MAX_TIMEOUT_SECONDS.toLong())
+        .toInt()
 
 /**
  * The HTTP status codes, mapped to what the user should do about them.

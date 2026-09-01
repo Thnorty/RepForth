@@ -7,6 +7,11 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +27,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,18 +42,27 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import com.repforth.core.designsystem.component.MuscleSelector
 import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
+import com.repforth.core.designsystem.theme.Radius
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Stroke
 import com.repforth.core.designsystem.theme.Target
@@ -54,6 +70,8 @@ import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.BodyView
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.WorkoutLimits
+import kotlinx.coroutines.delay
 
 /**
  * Coach's generation entry point (§3, §8).
@@ -75,6 +93,7 @@ internal fun CoachScreen(
     onMuscleToggled: (Muscle) -> Unit,
     onRegionToggled: (BodyRegion) -> Unit,
     onGenerate: (String) -> Unit,
+    onDaysChange: (Int) -> Unit,
     onCancelGenerate: () -> Unit,
     onDismissError: () -> Unit,
     onClose: () -> Unit,
@@ -141,6 +160,14 @@ internal fun CoachScreen(
                 )
             }
 
+            item(key = "days") {
+                CoachDaySelector(
+                    days = state.coachDays,
+                    enabled = !state.generating,
+                    onDaysChange = onDaysChange,
+                )
+            }
+
             item(key = "map") {
                 MuscleSelector(
                     selected = state.coachMuscles,
@@ -174,7 +201,18 @@ internal fun CoachScreen(
         AlertDialog(
             onDismissRequest = onDismissError,
             title = { Text(stringResource(error.titleRes)) },
-            text = { Text(stringResource(error.messageRes)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s3)) {
+                    Text(
+                        text = error.waitedSeconds
+                            ?.let { stringResource(error.messageRes, it) }
+                            ?: stringResource(error.messageRes),
+                    )
+                    error.detail?.let { detail ->
+                        ProviderResponseBlock(detail)
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -197,10 +235,22 @@ internal fun CoachScreen(
                     )
                 }
             },
-            dismissButton = if (error.canRetry) {
+            // Copy sits with the dialog's other actions rather than beside the
+            // block it copies. AlertDialog offers two button slots, so it
+            // shares this one with Dismiss; leftmost, because it is the least
+            // final thing here and neither closes the dialog.
+            dismissButton = if (error.canRetry || error.detail != null) {
                 {
-                    TextButton(onClick = onDismissError) {
-                        Text(stringResource(R.string.coach_error_dismiss))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Space.s1),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        error.detail?.let { detail -> CopyResponseButton(detail) }
+                        if (error.canRetry) {
+                            TextButton(onClick = onDismissError) {
+                                Text(stringResource(R.string.coach_error_dismiss))
+                            }
+                        }
                     }
                 }
             } else {
@@ -228,6 +278,162 @@ internal fun CoachScreen(
                     Text(stringResource(R.string.coach_cancel_dialog_dismiss))
                 }
             },
+        )
+    }
+}
+
+/**
+ * The server's reply, quoted verbatim.
+ *
+ * Selectable and copyable because this is the one thing on screen the user may
+ * need to take somewhere else — a provider's status page, a bug report, or a
+ * message to whoever runs their local model server. It is presented as a
+ * quotation throughout: the label sits outside the block so the block holds only
+ * the server's own bytes, and since §8 stopped inspecting the address this text
+ * comes from whatever host the user configured and must never read as the app
+ * speaking.
+ */
+@Composable
+private fun ProviderResponseBlock(
+    detail: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Space.s1),
+    ) {
+        Text(
+            text = stringResource(R.string.coach_error_detail_label),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        // Verbatim, monospace, scrollable both ways: JSON does not wrap
+        // sensibly, and a long payload must not push the dialog's buttons off
+        // screen. Selectable, because the user may need to take it elsewhere.
+        SelectionContainer {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = Layout.dialogCodeMaxHeight)
+                    .clip(RoundedCornerShape(Radius.card))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(Space.s3),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Puts the server's reply on the clipboard.
+ *
+ * Below API 33 the system shows no copy confirmation of its own, and this app
+ * supports 28 — so the label saying "Copied" is the only feedback some devices
+ * give, and it is announced politely for screen readers.
+ */
+@Composable
+private fun CopyResponseButton(detail: String) {
+    val clipboard = LocalClipboardManager.current
+    var copied by remember(detail) { mutableStateOf(false) }
+
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(COPIED_FEEDBACK_MS)
+            copied = false
+        }
+    }
+
+    TextButton(
+        onClick = {
+            clipboard.setText(AnnotatedString(detail))
+            copied = true
+        },
+        modifier = Modifier
+            .heightIn(min = Target.min)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text(
+            stringResource(
+                if (copied) {
+                    R.string.coach_error_detail_copied
+                } else {
+                    R.string.coach_error_detail_copy
+                },
+            ),
+        )
+    }
+}
+
+private const val COPIED_FEEDBACK_MS = 2_000L
+
+/**
+ * How many days to build.
+ *
+ * One is a first-class answer, not an edge case: it produces a single workout
+ * saved on its own, which is what someone asking for "a chest session today"
+ * means. The summary line under the control says which of the two will happen,
+ * because the difference only becomes visible after generating otherwise.
+ *
+ * A row of buttons rather than a slider: onboarding already shipped a slider
+ * whose sixth value could not be selected on a real phone, and seven discrete
+ * choices do not need a continuous control.
+ */
+@Composable
+private fun CoachDaySelector(
+    days: Int,
+    enabled: Boolean,
+    onDaysChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Space.s2),
+    ) {
+        Text(
+            text = stringResource(R.string.coach_days_label),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Space.s1),
+        ) {
+            WorkoutLimits.days.forEach { option ->
+                val selected = option == days
+                val label = stringResource(R.string.coach_days_value, option)
+                FilterChip(
+                    selected = selected,
+                    onClick = { onDaysChange(option) },
+                    enabled = enabled,
+                    label = {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = Target.min)
+                        .semantics { contentDescription = label },
+                )
+            }
+        }
+        Text(
+            text = pluralStringResource(R.plurals.coach_days_summary, days, days),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

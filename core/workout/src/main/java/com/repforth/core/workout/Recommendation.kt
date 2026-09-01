@@ -1,28 +1,36 @@
 package com.repforth.core.workout
 
+import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.WorkoutTemplate
 
 /**
  * Which saved plan to offer next (§12: Today shows the current or recommended
  * workout).
  *
- * The one you have left longest. Not the newest plan, and not the one you did
- * most recently — a plan you have never performed outranks everything, because
- * a plan someone built and never ran is the one most likely to be what they
- * meant to do next.
+ * When an active [activeWeek] is set, the sequence of days inside the week
+ * takes priority: the next unperformed day in the rotation (or the least
+ * recently performed day of the week) is recommended.
  *
- * Deliberately not a training-science decision. It does not know about push/pull
- * splits or muscle recovery, and pretending otherwise would be inventing
- * programming advice the rules engine has not been asked for. It answers a
- * simpler question honestly: of the plans you keep, which is the stalest?
- *
- * Pure, so the ordering is testable without a database and cannot depend on the
- * order rows came back in.
+ * Otherwise, falls back to the stalest standalone plan from [plans].
  */
 fun recommendNext(
     plans: List<WorkoutTemplate>,
     history: List<SessionSnapshot>,
+    activeWeek: TrainingWeek? = null,
 ): WorkoutTemplate? {
+    if (activeWeek != null && activeWeek.days.isNotEmpty()) {
+        val weekPlans = activeWeek.days.map { it.workout }
+        val lastPerformed = history
+            .filter { it.templateId != null }
+            .groupBy { it.templateId }
+            .mapValues { (_, sessions) -> sessions.maxOf { it.startedAt } }
+
+        return weekPlans.minWithOrNull(
+            compareBy<WorkoutTemplate> { lastPerformed[it.id] ?: Long.MIN_VALUE }
+                .thenBy { template -> activeWeek.days.indexOfFirst { it.workout.id == template.id } },
+        )
+    }
+
     if (plans.isEmpty()) return null
 
     val lastPerformed = history

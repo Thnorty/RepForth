@@ -3,6 +3,7 @@ package com.repforth.core.ai
 import com.repforth.core.ai.http.ProviderHttp
 import com.repforth.core.ai.http.PROVIDER_JSON_MEDIA_TYPE
 import com.repforth.core.ai.http.failureForStatus
+import com.repforth.core.ai.http.generationTimeoutSeconds
 import com.repforth.core.ai.http.providerEndpoint
 import com.repforth.core.ai.http.toProviderFailure
 import com.repforth.core.model.ProviderConfig
@@ -134,15 +135,22 @@ internal class GeminiProvider(
 
         val reply = http.send(
             request = wireRequest,
-            timeoutSeconds = config.settings.requestTimeoutSeconds,
+            timeoutSeconds = generationTimeoutSeconds(
+                config.settings.requestTimeoutSeconds,
+                request.days,
+            ),
         ).getOrElse { cause ->
-            return ProviderGenerationResult.Failed(cause.toProviderFailure(), cause.message)
+            // No detail: nothing came back. A timeout or a DNS failure has no
+            // server response to show, and putting the exception's word
+            // ("timeout") under a heading that says "Server response" would be
+            // the app inventing a reply the server never sent.
+            return ProviderGenerationResult.Failed(cause.toProviderFailure(), null)
         }
 
         if (reply.code !in 200..299) {
             return ProviderGenerationResult.Failed(
                 failureForGeneration(reply.code, reply.body),
-                "HTTP ${reply.code}",
+                providerDetail(reply.body),
             )
         }
 
@@ -165,11 +173,15 @@ internal class GeminiProvider(
             )
 
         return when (val decoded = AiWorkoutCodec.decodeResponse(structured)) {
-            is AiWorkoutDecodeResult.Ok -> ProviderGenerationResult.Ok(decoded.response)
-            AiWorkoutDecodeResult.Malformed -> ProviderGenerationResult.Failed(
-                ProviderFailure.FORMAT,
-                "Gemini returned a malformed structured workout",
-            )
+            is AiWorkoutDecodeResult.Ok -> {
+                ProviderGenerationResult.Ok(decoded.response)
+            }
+            AiWorkoutDecodeResult.Malformed -> {
+                ProviderGenerationResult.Failed(
+                    ProviderFailure.FORMAT,
+                    "Gemini returned a malformed structured workout",
+                )
+            }
         }
     }
 
@@ -188,6 +200,19 @@ internal class GeminiProvider(
      * body, and a body can be wrong on its own account. The model list has no
      * body and no parameters, so a 400 here can only be about the credential.
      */
+    /**
+     * The response body exactly as it arrived.
+     *
+     * Verbatim rather than summarised: the whole point of showing this is that
+     * the app's own categories were what hid the real problem, and any field
+     * this code chooses to extract is another guess about which part matters.
+     * Bounded only in length, and rendered as a quotation because since §8
+     * stopped inspecting the address this text comes from whatever host the
+     * user configured.
+     */
+    private fun providerDetail(body: String): String? =
+        body.trim().takeIf { it.isNotEmpty() }?.take(PROVIDER_DETAIL_MAX_CHARS)
+
     private fun failureFor(code: Int): ProviderFailure =
         if (code == 400) ProviderFailure.AUTHENTICATION else failureForStatus(code)
 
@@ -244,8 +269,22 @@ internal class GeminiProvider(
     @Serializable
     private data class GeminiErrorEnvelope(val error: GeminiError? = null)
 
+    /**
+     * One envelope serving both readers of a Gemini error.
+     *
+     * [details] is what tells an invalid key from a malformed request, since
+     * Gemini answers both with 400; [message] is the human sentence shown to
+     * the user. They were briefly two types with the same name in this file,
+     * which is the sort of duplicate that compiles right up until someone edits
+     * only one of them.
+     */
     @Serializable
-    private data class GeminiError(val details: List<GeminiErrorDetail> = emptyList())
+    private data class GeminiError(
+        val code: Int? = null,
+        val message: String? = null,
+        val status: String? = null,
+        val details: List<GeminiErrorDetail> = emptyList(),
+    )
 
     @Serializable
     private data class GeminiErrorDetail(val reason: String? = null)

@@ -13,6 +13,9 @@ import com.repforth.core.rules.Violation
 
 enum class AiWorkoutIssue {
     SCHEMA_VERSION,
+    DAY_COUNT_MISMATCH,
+    DAY_INDEX_ORDER,
+    DAY_TITLE_MISSING,
     EMPTY_PLAN,
     TOO_MANY_EXERCISES,
     ORDER,
@@ -30,6 +33,7 @@ enum class AiWorkoutIssue {
 
 data class AiWorkoutContractViolation(
     val issue: AiWorkoutIssue,
+    val dayIndex: Int? = null,
     val exerciseId: String? = null,
 )
 
@@ -42,13 +46,15 @@ enum class AiWorkoutRetryIssueKind {
 /**
  * Compact, typed feedback for the one repair attempt allowed by §8.
  *
- * It contains codes and exercise ids only. Rule details are deliberately left
- * out: they are local diagnostics, not provider instructions, and allowing an
- * arbitrary string through here would create a second prompt-input surface.
+ * It contains codes, day indices, and exercise ids only. Rule details are
+ * deliberately left out: they are local diagnostics, not provider instructions,
+ * and allowing an arbitrary string through here would create a second
+ * prompt-input surface.
  */
 data class AiWorkoutRetryIssue(
     val kind: AiWorkoutRetryIssueKind,
     val code: String,
+    val dayIndex: Int? = null,
     val exerciseId: String? = null,
 )
 
@@ -73,6 +79,7 @@ data class AiWorkoutRetryFeedback(
                             AiWorkoutRetryIssue(
                                 kind = AiWorkoutRetryIssueKind.CONTRACT,
                                 code = violation.issue.name.lowercase(),
+                                dayIndex = violation.dayIndex,
                                 exerciseId = violation.exerciseId,
                             ),
                         )
@@ -97,7 +104,7 @@ data class AiWorkoutValidationResult(
     val response: AiWorkoutResponse?,
     val contractViolations: List<AiWorkoutContractViolation>,
     val ruleViolations: List<Violation>,
-    /** The same deterministic estimate the builder shows. */
+    /** Total duration estimate across all days. */
     val estimatedDurationMs: Long?,
 ) {
     val isValid: Boolean
@@ -123,62 +130,115 @@ class AiWorkoutValidator(
         if (response.schemaVersion != AI_WORKOUT_SCHEMA_VERSION) {
             violations += AiWorkoutContractViolation(AiWorkoutIssue.SCHEMA_VERSION)
         }
-        if (response.exercises.isEmpty()) {
-            violations += AiWorkoutContractViolation(AiWorkoutIssue.EMPTY_PLAN)
-        }
-        if (response.exercises.size > WorkoutLimits.maxExercises) {
-            violations += AiWorkoutContractViolation(AiWorkoutIssue.TOO_MANY_EXERCISES)
-        }
         if (response.rationale.isBlank()) {
             violations += AiWorkoutContractViolation(AiWorkoutIssue.RATIONALE_MISSING)
         }
-
-        val expectedOrder = response.exercises.indices.toList()
-        if (response.exercises.map { it.order }.sorted() != expectedOrder) {
-            violations += AiWorkoutContractViolation(AiWorkoutIssue.ORDER)
+        if (response.days.size != request.days) {
+            violations += AiWorkoutContractViolation(AiWorkoutIssue.DAY_COUNT_MISMATCH)
         }
 
-        val seen = mutableSetOf<String>()
-        response.exercises.forEach { exercise ->
-            val id = exercise.exerciseId
-            val candidate = offered[id]
-            if (candidate == null) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.EXERCISE_NOT_OFFERED, id)
+        val expectedDayIndices = response.days.indices.toList()
+        if (response.days.map { it.dayIndex } != expectedDayIndices) {
+            violations += AiWorkoutContractViolation(AiWorkoutIssue.DAY_INDEX_ORDER)
+        }
+
+        response.days.forEach { day ->
+            val dayIdx = day.dayIndex
+            if (day.title.isBlank()) {
+                violations += AiWorkoutContractViolation(AiWorkoutIssue.DAY_TITLE_MISSING, dayIndex = dayIdx)
             }
-            if (!seen.add(id)) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.DUPLICATE_EXERCISE, id)
+            if (day.exercises.isEmpty()) {
+                violations += AiWorkoutContractViolation(AiWorkoutIssue.EMPTY_PLAN, dayIndex = dayIdx)
             }
-            if (exercise.sets !in WorkoutLimits.sets) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.SETS_OUT_OF_RANGE, id)
-            }
-            if (exercise.restSeconds !in WorkoutLimits.restSeconds) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.REST_OUT_OF_RANGE, id)
-            }
-            val weight = exercise.weightKg
-            if (weight != null && weight !in WorkoutLimits.weightKg) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.WEIGHT_OUT_OF_RANGE, id)
+            if (day.exercises.size > WorkoutLimits.maxExercisesPerDay) {
+                violations += AiWorkoutContractViolation(AiWorkoutIssue.TOO_MANY_EXERCISES, dayIndex = dayIdx)
             }
 
-            val repetitions = exercise.repetitions
-            val duration = exercise.durationSeconds
-            if ((repetitions == null) == (duration == null)) {
-                violations += AiWorkoutContractViolation(AiWorkoutIssue.TARGET_SHAPE, id)
-            } else if (repetitions != null) {
-                if (repetitions !in WorkoutLimits.reps) {
+            val expectedOrder = day.exercises.indices.toList()
+            if (day.exercises.map { it.order }.sorted() != expectedOrder) {
+                violations += AiWorkoutContractViolation(AiWorkoutIssue.ORDER, dayIndex = dayIdx)
+            }
+
+            // §4.5: An exercise may repeat across days, but MUST NOT repeat within the same day.
+            val seenInDay = mutableSetOf<String>()
+            day.exercises.forEach { exercise ->
+                val id = exercise.exerciseId
+                val candidate = offered[id]
+                if (candidate == null) {
                     violations += AiWorkoutContractViolation(
-                        AiWorkoutIssue.REPETITION_OUT_OF_RANGE,
-                        id,
+                        issue = AiWorkoutIssue.EXERCISE_NOT_OFFERED,
+                        dayIndex = dayIdx,
+                        exerciseId = id,
                     )
                 }
-                if (candidate?.isTimed == true) {
-                    violations += AiWorkoutContractViolation(AiWorkoutIssue.TARGET_TYPE_MISMATCH, id)
+                if (!seenInDay.add(id)) {
+                    violations += AiWorkoutContractViolation(
+                        issue = AiWorkoutIssue.DUPLICATE_EXERCISE,
+                        dayIndex = dayIdx,
+                        exerciseId = id,
+                    )
                 }
-            } else if (duration != null) {
-                if (duration !in WorkoutLimits.durationSeconds) {
-                    violations += AiWorkoutContractViolation(AiWorkoutIssue.DURATION_OUT_OF_RANGE, id)
+                if (exercise.sets !in WorkoutLimits.sets) {
+                    violations += AiWorkoutContractViolation(
+                        issue = AiWorkoutIssue.SETS_OUT_OF_RANGE,
+                        dayIndex = dayIdx,
+                        exerciseId = id,
+                    )
                 }
-                if (candidate?.isTimed == false) {
-                    violations += AiWorkoutContractViolation(AiWorkoutIssue.TARGET_TYPE_MISMATCH, id)
+                if (exercise.restSeconds !in WorkoutLimits.restSeconds) {
+                    violations += AiWorkoutContractViolation(
+                        issue = AiWorkoutIssue.REST_OUT_OF_RANGE,
+                        dayIndex = dayIdx,
+                        exerciseId = id,
+                    )
+                }
+                val weight = exercise.weightKg
+                if (weight != null && weight !in WorkoutLimits.weightKg) {
+                    violations += AiWorkoutContractViolation(
+                        issue = AiWorkoutIssue.WEIGHT_OUT_OF_RANGE,
+                        dayIndex = dayIdx,
+                        exerciseId = id,
+                    )
+                }
+
+                val repetitions = exercise.repetitions
+                val duration = exercise.durationSeconds
+                if ((repetitions == null) == (duration == null)) {
+                    violations += AiWorkoutContractViolation(
+                        issue = AiWorkoutIssue.TARGET_SHAPE,
+                        dayIndex = dayIdx,
+                        exerciseId = id,
+                    )
+                } else if (repetitions != null) {
+                    if (repetitions !in WorkoutLimits.reps) {
+                        violations += AiWorkoutContractViolation(
+                            issue = AiWorkoutIssue.REPETITION_OUT_OF_RANGE,
+                            dayIndex = dayIdx,
+                            exerciseId = id,
+                        )
+                    }
+                    if (candidate?.isTimed == true) {
+                        violations += AiWorkoutContractViolation(
+                            issue = AiWorkoutIssue.TARGET_TYPE_MISMATCH,
+                            dayIndex = dayIdx,
+                            exerciseId = id,
+                        )
+                    }
+                } else if (duration != null) {
+                    if (duration !in WorkoutLimits.durationSeconds) {
+                        violations += AiWorkoutContractViolation(
+                            issue = AiWorkoutIssue.DURATION_OUT_OF_RANGE,
+                            dayIndex = dayIdx,
+                            exerciseId = id,
+                        )
+                    }
+                    if (candidate?.isTimed == false) {
+                        violations += AiWorkoutContractViolation(
+                            issue = AiWorkoutIssue.TARGET_TYPE_MISMATCH,
+                            dayIndex = dayIdx,
+                            exerciseId = id,
+                        )
+                    }
                 }
             }
         }
@@ -195,22 +255,36 @@ class AiWorkoutValidator(
         // Sorting a complete, unique order is a safe mechanical repair (§8).
         // Whitespace around optional text is equally mechanical.
         val normalised = response.copy(
-            exercises = response.exercises
-                .sortedBy { it.order }
-                .map { it.copy(tempo = it.tempo?.trim()?.ifEmpty { null }) },
+            days = response.days
+                .sortedBy { it.dayIndex }
+                .map { day ->
+                    day.copy(
+                        title = day.title.trim(),
+                        exercises = day.exercises
+                            .sortedBy { it.order }
+                            .map { it.copy(tempo = it.tempo?.trim()?.ifEmpty { null }) },
+                    )
+                },
             rationale = response.rationale.trim(),
         )
-        val projection = normalised.toValidationPlan()
-        val ruleViolations = rules.validate(
-            plan = projection,
-            request = request,
-            catalog = offeredCandidates.associateBy { it.id },
-        )
+
+        val ruleViolations = mutableListOf<Violation>()
+        var totalEstimatedDurationMs = 0L
+        normalised.days.forEach { day ->
+            val dayPlan = day.toValidationPlan()
+            totalEstimatedDurationMs += dayPlan.estimatedDurationMs
+            ruleViolations += rules.validate(
+                plan = dayPlan,
+                request = request,
+                catalog = offeredCandidates.associateBy { it.id },
+            )
+        }
+
         return AiWorkoutValidationResult(
             response = normalised.takeIf { ruleViolations.isEmpty() },
             contractViolations = emptyList(),
             ruleViolations = ruleViolations,
-            estimatedDurationMs = projection.estimatedDurationMs,
+            estimatedDurationMs = totalEstimatedDurationMs,
         )
     }
 }
@@ -218,13 +292,13 @@ class AiWorkoutValidator(
 /**
  * A validation-only projection using the exact target the builder will display.
  */
-private fun AiWorkoutResponse.toValidationPlan() = WorkoutTemplate(
-    id = "ai-validation",
-    name = "AI validation",
+private fun AiPlannedDay.toValidationPlan() = WorkoutTemplate(
+    id = "ai-validation-day-$dayIndex",
+    name = title.ifBlank { "Day ${dayIndex + 1}" },
     source = PlanSource.AI,
     exercises = exercises.mapIndexed { index, exercise ->
         PlannedExercise(
-            id = "ai-validation-$index",
+            id = "ai-validation-day-$dayIndex-$index",
             exerciseId = ExerciseId(exercise.exerciseId),
             position = index,
             target = exercise.repetitions?.let { repetitions ->

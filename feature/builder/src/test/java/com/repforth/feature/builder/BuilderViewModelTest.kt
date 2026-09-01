@@ -2,6 +2,7 @@ package com.repforth.feature.builder
 
 import com.repforth.core.ai.AI_WORKOUT_SCHEMA_VERSION
 import com.repforth.core.ai.AiGenerationFailureReason
+import com.repforth.core.ai.AiPlannedDay
 import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
@@ -24,8 +25,10 @@ import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.model.TrainingWeek
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.WeekRepository
 import com.repforth.core.rules.GenerationRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -58,6 +61,7 @@ class BuilderViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var templates: RecordingTemplateRepository
+    private lateinit var weeks: RecordingWeekRepository
     private lateinit var catalog: FakeExercises
     private lateinit var profiles: FakeProfiles
     private lateinit var generator: FakeWorkoutGenerator
@@ -67,10 +71,11 @@ class BuilderViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         templates = RecordingTemplateRepository()
+        weeks = RecordingWeekRepository()
         catalog = FakeExercises()
         profiles = FakeProfiles()
         generator = FakeWorkoutGenerator()
-        viewModel = BuilderViewModel(templates, catalog, profiles, generator)
+        viewModel = BuilderViewModel(templates, catalog, profiles, generator, weeks)
     }
 
     @After
@@ -104,7 +109,7 @@ class BuilderViewModelTest {
             catalog.catalog = listOf(candidate("a", Muscle.PECTORALS), candidate("b", Muscle.LATS))
             viewModel.onCoachOpen()
 
-            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
             advanceUntilIdle()
 
             assertTrue("No local substitute is built", state.exercises.isEmpty())
@@ -122,26 +127,32 @@ class BuilderViewModelTest {
             )
             generator.response = AiWorkoutResponse(
                 schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-                exercises = listOf(
-                    AiPlannedExercise(
-                        exerciseId = "a",
-                        order = 0,
-                        sets = 4,
-                        repetitions = 12,
-                        restSeconds = 75,
-                    ),
-                    AiPlannedExercise(
-                        exerciseId = "b",
-                        order = 1,
-                        sets = 3,
-                        durationSeconds = 45,
-                        restSeconds = 30,
+                days = listOf(
+                    AiPlannedDay(
+                        dayIndex = 0,
+                        title = "Push",
+                        exercises = listOf(
+                            AiPlannedExercise(
+                                exerciseId = "a",
+                                order = 0,
+                                sets = 4,
+                                repetitions = 12,
+                                restSeconds = 75,
+                            ),
+                            AiPlannedExercise(
+                                exerciseId = "b",
+                                order = 1,
+                                sets = 3,
+                                durationSeconds = 45,
+                                restSeconds = 30,
+                            ),
+                        ),
                     ),
                 ),
                 rationale = "Dengeli hacim",
             )
 
-            viewModel.onGenerate("Koç planı", Language.TURKISH)
+            viewModel.onGenerate("Koç planı", DAY_TITLES, Language.TURKISH)
             advanceUntilIdle()
 
             assertEquals(Language.TURKISH, generator.locales.single())
@@ -166,7 +177,7 @@ class BuilderViewModelTest {
             generator.failure = ProviderFailure.NETWORK
             viewModel.onCoachMuscleToggled(Muscle.PECTORALS)
 
-            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
             advanceUntilIdle()
 
             val error = state.coachError
@@ -176,7 +187,7 @@ class BuilderViewModelTest {
             assertTrue("No local plan is generated on provider failure", state.exercises.isEmpty())
             assertEquals(Muscle.PECTORALS.synonyms, state.coachMuscles)
 
-            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
             advanceUntilIdle()
 
             assertEquals(2, generator.locales.size)
@@ -190,7 +201,7 @@ class BuilderViewModelTest {
             generator.failure = ProviderFailure.TIMEOUT
             viewModel.onCoachMuscleToggled(Muscle.PECTORALS)
 
-            viewModel.onGenerate("Coach plan", Language.ENGLISH)
+            viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
             advanceUntilIdle()
 
             val error = state.coachError
@@ -208,7 +219,7 @@ class BuilderViewModelTest {
     fun `generating saves nothing on its own`() = runTest(dispatcher) {
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
         advanceUntilIdle()
 
         assertTrue("Nothing was persisted", templates.saved.isEmpty())
@@ -218,13 +229,19 @@ class BuilderViewModelTest {
     fun `a name the user typed survives generation`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
             schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            exercises = listOf(
-                AiPlannedExercise(
-                    exerciseId = "a",
-                    order = 0,
-                    sets = 3,
-                    repetitions = 10,
-                    restSeconds = 60,
+            days = listOf(
+                AiPlannedDay(
+                    dayIndex = 0,
+                    title = "",
+                    exercises = listOf(
+                        AiPlannedExercise(
+                            exerciseId = "a",
+                            order = 0,
+                            sets = 3,
+                            repetitions = 10,
+                            restSeconds = 60,
+                        ),
+                    ),
                 ),
             ),
             rationale = "Rationale",
@@ -232,7 +249,7 @@ class BuilderViewModelTest {
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
         viewModel.onNameChange("Leg day")
 
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals("Leg day", state.name)
@@ -242,20 +259,26 @@ class BuilderViewModelTest {
     fun `an empty name takes the default`() = runTest(dispatcher) {
         generator.response = AiWorkoutResponse(
             schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
-            exercises = listOf(
-                AiPlannedExercise(
-                    exerciseId = "a",
-                    order = 0,
-                    sets = 3,
-                    repetitions = 10,
-                    restSeconds = 60,
+            days = listOf(
+                AiPlannedDay(
+                    dayIndex = 0,
+                    title = "",
+                    exercises = listOf(
+                        AiPlannedExercise(
+                            exerciseId = "a",
+                            order = 0,
+                            sets = 3,
+                            repetitions = 10,
+                            restSeconds = 60,
+                        ),
+                    ),
                 ),
             ),
             rationale = "Rationale",
         )
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals("Coach plan", state.name)
@@ -266,7 +289,7 @@ class BuilderViewModelTest {
         profiles.profile = null
         catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
 
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals(CoachFailure.NO_PROFILE, state.coachFailure)
@@ -278,7 +301,7 @@ class BuilderViewModelTest {
     fun `an empty catalog does not crash`() = runTest(dispatcher) {
         catalog.catalog = emptyList()
 
-        viewModel.onGenerate("Coach plan", Language.ENGLISH)
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals(R.string.coach_error_no_candidates_title, state.coachError?.titleRes)
@@ -510,9 +533,283 @@ class BuilderViewModelTest {
         addExercises(20)
         assertTrue("Twenty-one exercises should not", state.exceedsCeiling)
     }
+
+    @Test
+    fun `coach generation creates multi-day draft and enters week review`() = runTest(dispatcher) {
+        val day0 = AiPlannedDay(
+            dayIndex = 0,
+            title = "Upper Push",
+            exercises = listOf(
+                AiPlannedExercise("a", 0, sets = 3, repetitions = 10, restSeconds = 60),
+            ),
+        )
+        val day1 = AiPlannedDay(
+            dayIndex = 1,
+            title = "Lower & Core",
+            exercises = listOf(
+                AiPlannedExercise("b", 0, sets = 3, repetitions = 12, restSeconds = 60),
+            ),
+        )
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            days = listOf(day0, day1),
+            rationale = "Two-day split",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.QUADRICEPS),
+        )
+
+        viewModel.onGenerate("Weekly Program", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        assertTrue(state.isWeeklyPlan)
+        assertEquals(2, state.weekDays.size)
+        assertEquals("Upper Push", state.weekDays[0].title)
+        assertEquals("Lower & Core", state.weekDays[1].title)
+        assertEquals(1, state.weekDays[0].exercises.size)
+        assertEquals(1, state.weekDays[1].exercises.size)
+        assertTrue(state.weekDays[0].isExpanded)
+        assertFalse(state.weekDays[1].isExpanded)
+        assertEquals("Two-day split", state.coachNotice?.rationale)
+    }
+
+    @Test
+    fun `a multi-day answer is saved as a week`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            days = listOf(day(0, "Push", "a"), day(1, "Pull", "b")),
+            rationale = "Upper/lower",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.LATS),
+        )
+
+        viewModel.onCoachDaysChange(2)
+        viewModel.onGenerate("My Week", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        assertTrue(state.isWeeklyPlan)
+        assertTrue(state.canSaveWeek)
+        viewModel.onSaveWeek("My Week", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertTrue(state.saved)
+        assertEquals(1, weeks.saved.size)
+        assertEquals("My Week", weeks.saved.single().name)
+        assertEquals(2, weeks.saved.single().days.size)
+    }
+
+    /**
+     * One day is a workout, not a week of one.
+     *
+     * The wire contract always speaks in days so that there is a single schema
+     * and a single validator, but a one-day answer must not become a week card
+     * in Plans wrapping a single workout.
+     */
+    @Test
+    fun `a one-day answer is saved as a standalone workout, not a week`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            days = listOf(day(0, "Day 1", "a")),
+            rationale = "One-day full body",
+        )
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+
+        viewModel.onCoachDaysChange(1)
+        viewModel.onGenerate("Chest day", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        assertFalse("A single day must not open the week review", state.isWeeklyPlan)
+        assertTrue(state.weekDays.isEmpty())
+        assertEquals(1, state.exercises.size)
+        assertTrue(state.canSave)
+
+        viewModel.onSave()
+        advanceUntilIdle()
+
+        assertEquals("It belongs in the plan library, not the week library", 1, templates.saved.size)
+        assertTrue("No week may be written for a single workout", weeks.saved.isEmpty())
+    }
+
+    /**
+     * A second week does not silently take over what Today offers.
+     *
+     * The first week has nothing to displace, so it becomes active. A later one
+     * would otherwise change what the app tells you to train today without
+     * asking; Plans has an explicit "set active" action for that.
+     */
+    @Test
+    fun `a generated week only becomes active when no week is active yet`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            days = listOf(day(0, "Push", "a"), day(1, "Pull", "b")),
+            rationale = "Upper/lower",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.LATS),
+        )
+
+        viewModel.onCoachDaysChange(2)
+        viewModel.onGenerate("First", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+        viewModel.onSaveWeek("First", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertTrue("The first week has nothing to displace", weeks.saved.single().active)
+
+        weeks.activeWeek = weeks.saved.single()
+        viewModel.onGenerate("Second", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+        viewModel.onSaveWeek("Second", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertFalse(
+            "A later week must not displace the active one without being asked",
+            weeks.saved.last().active,
+        )
+    }
+
+    /**
+     * Re-saving a week keeps each day's template id.
+     *
+     * History records the template a session was performed from, and Today picks
+     * the next day by matching those ids. Minting fresh ids on every save would
+     * silently reset "which day have I not done yet".
+     */
+    @Test
+    fun `re-saving a week keeps the same template id for each day`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            days = listOf(day(0, "Push", "a"), day(1, "Pull", "b")),
+            rationale = "Upper/lower",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.LATS),
+        )
+
+        viewModel.onCoachDaysChange(2)
+        viewModel.onGenerate("My Week", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        viewModel.onSaveWeek("My Week", DAY_TITLES)
+        advanceUntilIdle()
+        val firstIds = weeks.saved.last().days.map { it.workout.id }
+
+        viewModel.onDayTitleChange(0, "Push A")
+        viewModel.onSaveWeek("My Week", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertEquals(
+            "Editing and re-saving must not renumber the days' template ids",
+            firstIds,
+            weeks.saved.last().days.map { it.workout.id },
+        )
+    }
+
+    @Test
+    fun `day operations manipulate targeted day independently`() = runTest(dispatcher) {
+        val day0 = AiPlannedDay(
+            dayIndex = 0,
+            title = "Day 1",
+            exercises = listOf(
+                AiPlannedExercise("a", 0, sets = 3, repetitions = 10, restSeconds = 60),
+                AiPlannedExercise("b", 1, sets = 3, repetitions = 10, restSeconds = 60),
+            ),
+        )
+        val day1 = AiPlannedDay(
+            dayIndex = 1,
+            title = "Day 2",
+            exercises = listOf(
+                AiPlannedExercise("c", 0, sets = 3, repetitions = 10, restSeconds = 60),
+            ),
+        )
+        generator.response = AiWorkoutResponse(
+            schemaVersion = AI_WORKOUT_SCHEMA_VERSION,
+            days = listOf(day0, day1),
+            rationale = "Split",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.LATS),
+            candidate("c", Muscle.QUADRICEPS),
+        )
+
+        viewModel.onGenerate("Split Program", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        // Toggle expansion
+        viewModel.onToggleDayExpanded(1)
+        assertTrue(state.weekDays[1].isExpanded)
+
+        // Change title
+        viewModel.onDayTitleChange(0, "Push Focus")
+        assertEquals("Push Focus", state.weekDays[0].title)
+
+        // Move exercise in day 0
+        viewModel.onMove(0, 1, 0)
+        assertEquals("b", state.weekDays[0].exercises[0].exerciseId.value)
+        assertEquals("a", state.weekDays[0].exercises[1].exerciseId.value)
+
+        // Remove exercise in day 0
+        viewModel.onRemove(0, 0)
+        assertEquals(1, state.weekDays[0].exercises.size)
+        assertEquals("a", state.weekDays[0].exercises[0].exerciseId.value)
+
+        // Day 1 unchanged
+        assertEquals(1, state.weekDays[1].exercises.size)
+        assertEquals("c", state.weekDays[1].exercises[0].exerciseId.value)
+    }
 }
 
 private const val FAKE_CEILING_MINUTES = 45
+
+private fun day(index: Int, title: String, vararg exerciseIds: String) = AiPlannedDay(
+    dayIndex = index,
+    title = title,
+    exercises = exerciseIds.mapIndexed { i, id ->
+        AiPlannedExercise(id, i, sets = 3, repetitions = 10, restSeconds = 60)
+    },
+)
+
+private class RecordingWeekRepository : WeekRepository {
+    val saved = mutableListOf<TrainingWeek>()
+    var activeId: String? = null
+    private val all = MutableStateFlow<List<TrainingWeek>>(emptyList())
+    private val active = MutableStateFlow<TrainingWeek?>(null)
+
+    override fun observeAll(): Flow<List<TrainingWeek>> = all
+    override fun observeActive(): Flow<TrainingWeek?> = active
+    override suspend fun find(id: String): TrainingWeek? = saved.firstOrNull { it.id == id }
+    override suspend fun save(week: TrainingWeek) {
+        saved.removeAll { it.id == week.id }
+        saved += week
+        all.value = saved.toList()
+    }
+    override suspend fun setActive(id: String) {
+        activeId = id
+        active.value = saved.firstOrNull { it.id == id }
+    }
+
+    /** Lets a test say "a week is already active" without going through save. */
+    var activeWeek: TrainingWeek?
+        get() = active.value
+        set(value) {
+            active.value = value
+        }
+    override suspend fun delete(id: String) {
+        saved.removeAll { it.id == id }
+        all.value = saved.toList()
+    }
+    override suspend fun deleteAll() {
+        saved.clear()
+        all.value = emptyList()
+        active.value = null
+    }
+}
 
 private class RecordingTemplateRepository : TemplateRepository {
     val saved = mutableListOf<WorkoutTemplate>()
@@ -614,3 +911,7 @@ private class FakeProfiles : ProfileRepository {
         )
     }
 }
+
+/** What the screen resolves from `coach_day_default_title` and hands in. */
+private val DAY_TITLES = (1..7).map { "Day $it" }
+
