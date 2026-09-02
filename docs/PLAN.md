@@ -47,8 +47,8 @@ could have caught because Gemini answers 400 where the shared mapping expected
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
 have caught any of the nine; three interact — type, tap, save — and the keyboard
-one is a direct regression guard for the fifth. Forty-two screenshot goldens now
-cover eight screens in both languages at both font scales (4.9, 4.10), and
+one is a direct regression guard for the fifth. Forty-six screenshot goldens now
+cover nine screens in both languages at both font scales (4.9, 4.10), and
 recording them found five more defects.
 
 ### Built so far
@@ -1517,6 +1517,9 @@ two English Session goldens red and left the Turkish pair alone.
 Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
 assemblePlaceholderDebug` run separately.
 
+Coach gained its own goldens afterwards, closing a gap the test's own comment
+had claimed was already closed.
+
 **Five defects have now been found by screenshot tests in two sittings**, on
 screens that unit tests, instrumentation tests and a person holding a phone had
 all passed. Every one was a layout that could not hold its own text, or a string
@@ -1529,18 +1532,22 @@ repo looks at.
 
 In the order they are worth doing, and why.
 
-1. **Nothing in 4.7 or 4.8 has been looked at on a screen** beyond the Coach
-   controls, and 4.9 covers only four screens of them: the Settings schedule dialog, the Turkish on nine new strings, and
-   200% font scale anywhere are all unverified. Costs minutes, and every defect
-   of this kind so far has been found exactly this way.
-2. **The AI settings screen has no goldens.** It is the last screen without
-   any, left out because its interesting states are a typed key and a
-   connection result rather than a layout under pressure. Worth adding when
-   something there changes.
-3. **Phase 3 is one slice in and Phase 4 has not started.** Weekly plans have
-   absorbed every session since 4.1 and were not on the phase list at all; the
-   guideline'''s Phase 3 is the polished phone and Phase 4 is the Wear remote,
-   which still has no hardware to test against.
+1. **Two surfaces still have no golden, and both are dialogs.** The Settings
+   schedule dialog and the equipment dialog are opened by state held inside
+   `SettingsScreen`, so a screenshot test cannot reach them without hoisting
+   that state — which is a change to the screen for the sake of the test, and
+   worth thinking about rather than doing reflexively. The AI provider screen
+   has none either; it was left out because its interesting states are a typed
+   key and a connection result rather than a layout under pressure.
+2. **Phase 3 is one slice in and Phase 4 has not started.** Weekly plans have
+   absorbed every session since 4.1 and were never on the phase list at all.
+   The guideline's Phase 3 is the polished phone and Phase 4 is the Wear
+   remote, which still has no hardware to test against. Either weeks become a
+   numbered phase or the status table stops claiming Phase 3 is where this is.
+3. **CI does not enforce anything.** Branch protection is a repository setting,
+   so nothing stops a push that fails `test`, `lint` or the 46 goldens. That
+   matters more now than it did: a screenshot suite nobody is required to pass
+   is a screenshot suite that goes stale.
 
 ---
 
@@ -1597,8 +1604,10 @@ app icon, and the exact licence.
   suite. Whether a **small local model** holds a strict seven-day schema remains
   unmeasured, and stays the risk most likely to change the design;
   `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its trigger.
-- **Screenshot tests cover every screen but AI settings.** 42 goldens across
-  eight screens, both languages, both font scales. A layout regression in the
+- **Screenshot tests cover every screen but AI settings, and no dialog.** 46
+  goldens across nine screens, both languages, both font scales; the Settings
+  schedule and equipment dialogs open from state held inside the screen, so
+  nothing renders them. A layout regression in the
   AI provider screen is still something only a person holding a phone would
   notice.
 - **A golden agrees with whatever it was last shown.** Re-recording is one flag

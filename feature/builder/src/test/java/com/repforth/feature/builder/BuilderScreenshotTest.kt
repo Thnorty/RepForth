@@ -70,6 +70,19 @@ class BuilderScreenshotTest {
     fun week_review_large_text() =
         capture("week-review-en-2x", fontScale = 2f) { WeekReviewContent() }
 
+    @Test
+    fun coach_english() = capture("coach-en") { CoachContent() }
+
+    @Test
+    fun coach_turkish() = capture("coach-tr", locale = TURKISH) { CoachContent() }
+
+    @Test
+    fun coach_large_text() = capture("coach-en-2x", fontScale = 2f) { CoachContent() }
+
+    @Test
+    fun coach_turkish_large_text() =
+        capture("coach-tr-2x", locale = TURKISH, fontScale = 2f) { CoachContent() }
+
     private fun capture(
         name: String,
         locale: String? = null,
@@ -98,6 +111,24 @@ class BuilderScreenshotTest {
             onEditWeek = {},
             onStartPlan = {},
             onDelete = {},
+        )
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun CoachContent() {
+        CoachScreen(
+            state = COACH,
+            onMuscleToggled = {},
+            onRegionToggled = {},
+            onGenerate = {},
+            onDaysChange = {},
+            onGoalChange = {},
+            onExperienceChange = {},
+            onSessionMinutesChange = {},
+            onSaveDefaults = {},
+            onCancelGenerate = {},
+            onDismissError = {},
+            onClose = {},
         )
     }
 
@@ -174,6 +205,33 @@ class BuilderScreenshotTest {
             timed = false,
         )
 
+        val PROFILE = UserProfile(
+            id = "screenshot",
+            goal = TrainingGoal.GENERAL_FITNESS,
+            experience = ExperienceLevel.ADVANCED,
+            trainingDaysPerWeek = 3,
+            sessionLengthMs = 45 * 60_000L,
+            availableEquipment = setOf(Equipment.BARBELL),
+            preferredMuscles = emptySet(),
+            exclusions = emptySet(),
+        )
+
+        /**
+         * Coach with its shape controls showing, and one of them changed.
+         *
+         * A changed value is the interesting state: it is the only one where
+         * "Save as default" is enabled, and an enabled button is what the
+         * picture is for.
+         */
+        val COACH = BuilderUiState(
+            coaching = true,
+            coachDays = 6,
+            coachGoal = TrainingGoal.ENDURANCE,
+            coachExperience = ExperienceLevel.ADVANCED,
+            coachSessionMinutes = 60,
+            savedProfile = PROFILE,
+        )
+
         val WEEK_DRAFT = BuilderUiState(
             name = "Weekly program",
             source = PlanSource.AI,
@@ -192,16 +250,7 @@ class BuilderScreenshotTest {
                     isExpanded = false,
                 ),
             ),
-            savedProfile = UserProfile(
-                id = "screenshot",
-                goal = TrainingGoal.GENERAL_FITNESS,
-                experience = ExperienceLevel.ADVANCED,
-                trainingDaysPerWeek = 3,
-                sessionLengthMs = 45 * 60_000L,
-                availableEquipment = setOf(Equipment.BARBELL),
-                preferredMuscles = emptySet(),
-                exclusions = emptySet(),
-            ),
+            savedProfile = PROFILE,
         )
     }
 }
