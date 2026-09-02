@@ -26,4 +26,5 @@
         <item quantity="other">%1$d of %2$d days</item>
     </plurals>
     <string name="today_streak">%1$d week streak</string>
+    <string name="today_next_week_day">%1$s · Day %2$d of %3$d</string>
 </resources>

@@ -166,6 +166,75 @@ class TodayViewModelTest {
         assertEquals("Push Day", state.next?.name)
     }
 
+    /**
+     * The recommendation has to say it is a day of a week.
+     *
+     * Today rendered it as an ordinary plan card with nothing naming the week or
+     * the position, on the screen whose whole purpose is following one.
+     */
+    @Test
+    fun `a day of the active week says which week and which day`() = runTest(dispatcher) {
+        weeks.active.value = TrainingWeek(
+            id = "w1",
+            name = "PPL Week",
+            source = PlanSource.AI,
+            active = true,
+            days = listOf(
+                WeekDay(0, "Push", workout = plan("d0", "Push Day")),
+                WeekDay(1, "Pull", workout = plan("d1", "Pull Day")),
+                WeekDay(2, "Legs", workout = plan("d2", "Leg Day")),
+            ),
+        )
+
+        val state = state()
+
+        assertEquals("PPL Week", state.activeWeekName)
+        assertEquals(0, state.nextWeekDayPosition)
+        assertEquals(3, state.activeWeekDayCount)
+    }
+
+    /** A standalone plan is not a day of anything, and must not be labelled one. */
+    @Test
+    fun `a standalone recommendation carries no week label`() = runTest(dispatcher) {
+        templates.emit(listOf(plan("standalone", "Standalone Plan")))
+
+        val state = state()
+
+        assertEquals("Standalone Plan", state.next?.name)
+        assertNull(state.activeWeekName)
+        assertNull(state.nextWeekDayPosition)
+    }
+
+    /**
+     * The week card counted against the profile whatever week was running.
+     *
+     * A seven-day week read "0 of 3 days" — a target with nothing to do with the
+     * week being followed.
+     */
+    @Test
+    fun `the week card counts against the active week, not the profile`() =
+        runTest(dispatcher) {
+            profiles.profile.value = profile(daysPerWeek = 3)
+            weeks.active.value = TrainingWeek(
+                id = "w1",
+                name = "Seven",
+                source = PlanSource.AI,
+                active = true,
+                days = (0 until 7).map { WeekDay(it, "Day $it", workout = plan("d$it", "Day $it")) },
+            )
+
+            assertEquals(7, state().weeklyTarget)
+        }
+
+    /** With no week running, the profile is still the answer. */
+    @Test
+    fun `the week card falls back to the profile when no week is active`() =
+        runTest(dispatcher) {
+            profiles.profile.value = profile(daysPerWeek = 4)
+
+            assertEquals(4, state().weeklyTarget)
+        }
+
     private fun session(
         id: String,
         templateId: String?,

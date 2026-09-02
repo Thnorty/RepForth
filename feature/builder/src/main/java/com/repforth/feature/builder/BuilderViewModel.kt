@@ -382,6 +382,50 @@ class BuilderViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Reopens a saved week, as the same editable days Coach produced.
+     *
+     * The builder could load a template and nothing else, so a week could be
+     * generated, saved, and then never edited again — and once Plans made a
+     * week's *day* rows tappable, the app answered half the question: day three
+     * could be edited while the week it belonged to could not be renamed,
+     * reordered, or given another day.
+     *
+     * Names are resolved in one query across every day rather than one per day,
+     * for the same reason [load] does it: a seven-day week is seven round trips
+     * otherwise, to answer one question about a few dozen ids.
+     */
+    fun loadWeek(weekId: String) {
+        if (_uiState.value.weekId == weekId) return
+        viewModelScope.launch {
+            val week = weeks.find(weekId) ?: return@launch
+            val names = exercises.summaries(
+                week.days.flatMap { day -> day.workout.exercises.map { it.exerciseId } },
+            )
+            _uiState.value = _uiState.value.copy(
+                weekId = week.id,
+                // Not `planId`: that is a template id, and letting a week's id
+                // sit in it is what made every re-save mint a second week.
+                planId = null,
+                name = week.name,
+                source = week.source,
+                exercises = emptyList(),
+                weekDays = week.days.map { day ->
+                    DraftWeekDay(
+                        dayIndex = day.position,
+                        title = day.title,
+                        // Carried, not regenerated. A fresh id per load would
+                        // detach every day from the workout history recorded
+                        // against it, which is how Today knows what is done.
+                        templateId = day.workout.id,
+                        exercises = day.workout.exercises.toDrafts(names),
+                        isExpanded = day.position == 0,
+                    )
+                },
+            )
+        }
+    }
+
     fun onNameChange(name: String) = update { copy(name = name) }
 
     fun onPickerOpen(dayIndex: Int? = null) = update {

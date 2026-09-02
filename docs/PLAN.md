@@ -1387,27 +1387,66 @@ wiring was watched failing. The maintainer has seen the Coach screen; the
 Settings schedule dialog, the Turkish on the new strings, and 200% font scale
 have not been looked at.
 
+### 4.8 — A week can be reopened, and Today says it is following one — **built, not installed**
+
+The two gaps the previous section listed as next, closed together because they
+are the same feature finishing itself.
+
+**A saved week reopens for editing.** `BuilderViewModel.load()` handled
+templates and nothing else, so a week could be generated, saved, and never
+edited again. 4.5 made that worse rather than better: making a week's *day* rows
+tappable meant the app answered half the question — day three could be edited
+while the week it belonged to could not be renamed, reordered or given another
+day. `loadWeek(weekId)` fills `weekDays` the same way Coach does, and Plans
+grew an edit control on the week card, because tapping the header has to go on
+meaning "expand".
+
+`Destination.Builder` took a second argument rather than gaining a sibling: the
+builder already renders a week as days of the identical cards, so a separate
+destination would be a second route to one screen.
+
+Two things it is careful about, both of which have bitten this code before. The
+day's saved template id is **carried, not regenerated** — a fresh id per load
+would detach every day from the workout history recorded against it, which is
+how Today knows what has been done. And the week's id does not go in `planId`,
+which is a template id; letting them share is what made every re-save mint a
+second week back in 4.3.
+
+**Today says which week and which day.** It rendered a week's day as an ordinary
+plan card with nothing naming the week or the position — on the screen whose
+entire purpose is following one. The card now reads "PPL Week · Day 1 of 7"
+under the workout name, and only when the recommendation actually came out of
+the active week: an active week with no days, or a standalone plan recommended
+alongside one, must not be labelled as a day of it.
+
+**And the week card counts against the right number.** It compared this week's
+completed days to `profile.trainingDaysPerWeek` whatever week was running, so
+the maintainer's seven-day week read **"0 of 3 days"** — a target with nothing
+to do with the week being followed. `TodayUiState.weeklyTarget` is the active
+week's own length when there is one, and the profile's standing answer
+otherwise.
+
+Guards proven by breaking them: the template id carry-forward (one red) and the
+weekly target (one red).
+
+Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
+assemblePlaceholderDebug` run separately, then installed and launched on the
+S23 — alive, empty crash buffer. Nothing here has been looked at on a screen.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **A saved week cannot be reopened for editing.** `BuilderViewModel.load()`
-   only loads templates. Since 4.5 made a week's *day* rows tappable, the app
-   now answers half the question: day three can be edited, the week itself
-   cannot be renamed, reordered, or given another day. The half-answer is worse
-   than the old silence, and it is the newest gap.
-2. **`TodayScreen` does not know it is showing a week.** It renders the
-   recommended day as an ordinary plan card, with nothing saying which week it
-   belongs to or which day of it. For a feature whose point is "follow this
-   week", that is the payoff missing. It also still counts against
-   `profile.trainingDaysPerWeek` rather than the active week's length, so a
-   seven-day week reads "0 of 3 days".
-3. **Screenshot tests.** Every layout bug this project has found was found by a
+1. **Screenshot tests.** Every layout bug this project has found was found by a
    person holding a phone, including all five in 4.5 and 4.6. That is a pattern
-   now rather than an anecdote, and it is the highest-leverage item here — but
-   it is a different kind of work and should not start mid-feature.
+   now rather than an anecdote, and with 4.7 and 4.8 landed there is no feature
+   half-finished to interrupt. It is the highest-leverage item left.
+2. **Nothing in 4.7 or 4.8 has been looked at on a screen** beyond the Coach
+   controls. The Settings schedule
+   dialog, the Turkish on nine new strings, and 200% font scale are all
+   unverified.
 
 ---
 

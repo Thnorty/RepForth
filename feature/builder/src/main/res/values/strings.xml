@@ -42,6 +42,7 @@
         <item quantity="other">%1$d exercises · about %2$d min</item>
     </plurals>
     <string name="plans_start_short">Start</string>
+    <string name="plans_edit_week">Edit %1$s</string>
     <string name="plans_delete">Delete %1$s</string>
     <string name="coach_open">Build one for me</string>
     <string name="coach_title">What do you want to work?</string>

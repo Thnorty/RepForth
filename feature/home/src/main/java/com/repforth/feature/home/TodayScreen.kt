@@ -157,6 +157,25 @@ private fun NextCard(state: TodayUiState, onStart: () -> Unit) {
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(text = next.name, style = MaterialTheme.typography.headlineSmall)
+            // Says which week this belongs to and where in it. Without it a
+            // generated week's day is indistinguishable from any other saved
+            // plan, on the screen that exists to follow the week.
+            state.activeWeekName?.let { weekName ->
+                val position = state.nextWeekDayPosition
+                val total = state.activeWeekDayCount
+                if (position != null && total != null) {
+                    Text(
+                        text = stringResource(
+                            R.string.today_next_week_day,
+                            weekName,
+                            position + 1,
+                            total,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
             Text(
                 text = pluralStringResource(
                     R.plurals.today_plan_summary,
@@ -247,7 +266,8 @@ private fun WeekCard(state: TodayUiState) {
                 horizontalArrangement = Arrangement.spacedBy(Space.s8),
             ) {
                 Column {
-                    val count = if (state.trainingDaysPerWeek != null) {
+                    val target = state.weeklyTarget
+                    val count = if (target != null) {
                         state.progress.daysThisWeek
                     } else {
                         state.progress.workoutsThisWeek
@@ -260,15 +280,15 @@ private fun WeekCard(state: TodayUiState) {
                         // Against the goal from onboarding when there is one:
                         // "2 of 4 days" answers a question that "2 done" does
                         // not.
-                        text = state.trainingDaysPerWeek?.let { target ->
+                        text = target?.let {
                             // The target governs the quantity, not the count
                             // done: "1 of 1 day" is the reachable case, since
                             // onboarding offers one day a week.
                             pluralStringResource(
                                 R.plurals.today_week_of_target,
-                                target,
+                                it,
                                 state.progress.daysThisWeek,
-                                target,
+                                it,
                             )
                         } ?: stringResource(
                             R.string.today_week_count,

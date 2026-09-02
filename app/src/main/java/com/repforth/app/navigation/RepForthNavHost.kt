@@ -48,6 +48,9 @@ fun RepForthNavHost(
             PlansRoute(
                 onNewWorkout = { navController.navigate(Destination.Builder()) },
                 onEditPlan = { planId -> navController.navigate(Destination.Builder(planId)) },
+                onEditWeek = { weekId ->
+                    navController.navigate(Destination.Builder(weekId = weekId))
+                },
                 onStartPlan = { planId -> navController.navigate(Destination.Session(planId)) },
             )
         }
@@ -62,6 +65,7 @@ fun RepForthNavHost(
             val route = entry.toRoute<Destination.Builder>()
             BuilderRoute(
                 planId = route.planId,
+                weekId = route.weekId,
                 // Saving returns to wherever the builder was opened from, which
                 // is Plans today and Today tomorrow. popBackStack rather than a
                 // navigate keeps that true without this knowing either.

@@ -29,8 +29,10 @@ import com.repforth.core.model.LocalizedInstructions
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
+import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
+import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.model.TrainingWeek
 import com.repforth.core.userdata.ProfileRepository
@@ -116,6 +118,101 @@ class BuilderViewModelTest {
             secondaryMuscles = emptySet(),
             equipment = equipment,
         )
+
+    // ---- Reopening a saved week ----
+
+    /**
+     * A week could be generated, saved, and then never edited again.
+     *
+     * `load` handled templates only, so the builder had no way back into a week
+     * — and once Plans made a week's *day* rows tappable, the app answered half
+     * the question: day three could be edited while the week it belonged to
+     * could not be renamed, reordered or given another day.
+     */
+    @Test
+    fun `a saved week reopens as its days`() = runTest(dispatcher) {
+        val week = TrainingWeek(
+            id = "w1",
+            name = "PPL Week",
+            source = PlanSource.AI,
+            active = false,
+            days = listOf(
+                WeekDay(0, "Push", workout = savedTemplate("d0", "Push", "a")),
+                WeekDay(1, "Pull", workout = savedTemplate("d1", "Pull", "b")),
+            ),
+        )
+        weeks.save(week)
+
+        viewModel.loadWeek("w1")
+        advanceUntilIdle()
+
+        assertEquals("w1", state.weekId)
+        assertEquals("PPL Week", state.name)
+        assertEquals(PlanSource.AI, state.source)
+        assertEquals(listOf("Push", "Pull"), state.weekDays.map { it.title })
+        assertEquals(listOf(0, 1), state.weekDays.map { it.dayIndex })
+        assertEquals("a", state.weekDays[0].exercises.single().exerciseId.value)
+        assertTrue("A reopened week is the week being edited", state.isWeeklyPlan)
+    }
+
+    /**
+     * The day keeps the template id it was saved under.
+     *
+     * A fresh id per load would detach every day from the workout history
+     * recorded against it, which is how Today knows what has been done — and
+     * saving afterwards would leave the old rows orphaned.
+     */
+    @Test
+    fun `reopening a week keeps each day's template id`() = runTest(dispatcher) {
+        weeks.save(
+            TrainingWeek(
+                id = "w1",
+                name = "Week",
+                source = PlanSource.AI,
+                active = false,
+                days = listOf(WeekDay(0, "Push", workout = savedTemplate("day-0", "Push", "a"))),
+            ),
+        )
+
+        viewModel.loadWeek("w1")
+        advanceUntilIdle()
+
+        assertEquals("day-0", state.weekDays.single().templateId)
+    }
+
+    /** A week id is not a plan id; letting them share made every re-save mint a week. */
+    @Test
+    fun `reopening a week does not put its id in planId`() = runTest(dispatcher) {
+        weeks.save(
+            TrainingWeek(
+                id = "w1",
+                name = "Week",
+                source = PlanSource.AI,
+                active = false,
+                days = listOf(WeekDay(0, "Push", workout = savedTemplate("d0", "Push", "a"))),
+            ),
+        )
+
+        viewModel.loadWeek("w1")
+        advanceUntilIdle()
+
+        assertNull(state.planId)
+    }
+
+    private fun savedTemplate(id: String, name: String, exerciseId: String) = WorkoutTemplate(
+        id = id,
+        name = name,
+        source = PlanSource.AI,
+        exercises = listOf(
+            PlannedExercise(
+                id = "$id-0",
+                exerciseId = ExerciseId(exerciseId),
+                position = 0,
+                target = ExerciseTarget.Reps(sets = 3, reps = 10),
+                restMs = 60_000L,
+            ),
+        ),
+    )
 
     // ---- Coach's plan shape: seeded from the profile, overridable for one plan ----
 

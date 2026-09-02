@@ -26,4 +26,5 @@
         <item quantity="other">%2$d günden %1$d.</item>
     </plurals>
     <string name="today_streak">%1$d haftalık seri</string>
+    <string name="today_next_week_day">%1$s · %2$d/%3$d. gün</string>
 </resources>

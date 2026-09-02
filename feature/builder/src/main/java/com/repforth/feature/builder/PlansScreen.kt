@@ -53,6 +53,7 @@ import com.repforth.core.model.WorkoutTemplate
 fun PlansRoute(
     onNewWorkout: () -> Unit,
     onEditPlan: (String) -> Unit,
+    onEditWeek: (String) -> Unit,
     onStartPlan: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlansViewModel = hiltViewModel(),
@@ -65,6 +66,7 @@ fun PlansRoute(
         weeklyPlans = weeklyPlans,
         onNewWorkout = onNewWorkout,
         onEditPlan = onEditPlan,
+        onEditWeek = onEditWeek,
         onStartPlan = onStartPlan,
         onDelete = viewModel::onDelete,
         onDeleteWeek = viewModel::onDeleteWeek,
@@ -79,6 +81,7 @@ internal fun PlansScreen(
     weeklyPlans: List<TrainingWeek> = emptyList(),
     onNewWorkout: () -> Unit,
     onEditPlan: (String) -> Unit,
+    onEditWeek: (String) -> Unit = {},
     onStartPlan: (String) -> Unit,
     onDelete: (String) -> Unit,
     onDeleteWeek: (String) -> Unit = {},
@@ -139,6 +142,7 @@ internal fun PlansScreen(
                         week = week,
                         onStartDay = onStartPlan,
                         onEditDay = onEditPlan,
+                        onEditWeek = { onEditWeek(week.id) },
                         onDelete = { weekPendingDeletion = week.id },
                         onSetActive = { onSetActiveWeek(week.id) },
                     )
@@ -223,6 +227,7 @@ private fun WeeklyPlanCard(
     week: TrainingWeek,
     onStartDay: (String) -> Unit,
     onEditDay: (String) -> Unit,
+    onEditWeek: () -> Unit,
     onDelete: () -> Unit,
     onSetActive: () -> Unit,
     modifier: Modifier = Modifier,
@@ -273,6 +278,20 @@ private fun WeeklyPlanCard(
                     Icon(
                         painter = if (expanded) RfIcons.Collapse else RfIcons.Expand,
                         contentDescription = null,
+                    )
+                }
+
+                // The week itself is editable, not only its days. Tapping the
+                // header has to keep meaning "expand", so this needs a control
+                // of its own — without one, a week could be generated and saved
+                // and then never renamed or reordered again.
+                IconButton(
+                    onClick = onEditWeek,
+                    modifier = Modifier.heightIn(min = Target.min),
+                ) {
+                    Icon(
+                        painter = RfIcons.Edit,
+                        contentDescription = stringResource(R.string.plans_edit_week, week.name),
                     )
                 }
 

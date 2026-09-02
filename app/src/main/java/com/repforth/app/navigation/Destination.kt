@@ -50,8 +50,16 @@ sealed interface Destination {
      * an argument rather than two destinations because the screen is the same
      * either way — §12 requires a generated or saved plan to be editable in the
      * same cards a new one is built from.
+     *
+     * [weekId] is the same argument for a saved week, and for the same reason:
+     * the builder already renders a week as days of the identical cards, so a
+     * second destination would be a second route to one screen. At most one of
+     * the two is ever set.
      */
-    @Serializable data class Builder(val planId: String? = null) : Destination
+    @Serializable data class Builder(
+        val planId: String? = null,
+        val weekId: String? = null,
+    ) : Destination
 
     /**
      * The running workout (§10). Not a tab either: it is a mode the app is in,

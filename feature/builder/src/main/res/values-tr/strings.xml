@@ -42,6 +42,7 @@
         <item quantity="other">%1$d egzersiz · yaklaşık %2$d dk</item>
     </plurals>
     <string name="plans_start_short">Başlat</string>
+    <string name="plans_edit_week">%1$s haftasını düzenle</string>
     <string name="plans_delete">%1$s antrenmanını sil</string>
     <string name="coach_open">Benim için oluştur</string>
     <string name="coach_title">Neyi çalışmak istiyorsun?</string>

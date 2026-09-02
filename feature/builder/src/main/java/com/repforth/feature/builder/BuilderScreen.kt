@@ -76,6 +76,7 @@ fun BuilderRoute(
     onSaved: () -> Unit,
     modifier: Modifier = Modifier,
     planId: String? = null,
+    weekId: String? = null,
     onExit: () -> Unit = onSaved,
     viewModel: BuilderViewModel = hiltViewModel(),
 ) {
@@ -94,6 +95,9 @@ fun BuilderRoute(
 
     LaunchedEffect(planId) {
         if (planId != null) viewModel.load(planId)
+    }
+    LaunchedEffect(weekId) {
+        if (weekId != null) viewModel.loadWeek(weekId)
     }
     LaunchedEffect(state.saved) {
         if (state.saved) onSaved()
