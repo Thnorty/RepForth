@@ -1273,6 +1273,79 @@ detachment fix (save an edit to one day of a week, confirm the week still has
 all its days) and the fill floor (generate seven days at forty-five minutes and
 see whether the days are now full).
 
+### 4.6 — Settings, reviewed — **fixed and installed; two verified on screen**
+
+Two reported by the maintainer, three more found by reading the screen around
+them.
+
+**It opened already scrolled.** The profile section was five keyed items inside
+`state.profile?.let`, and the profile arrives one frame after the screen does —
+so five items were *prepended* to a keyed `LazyColumn` that had already drawn.
+Keys then did exactly what they are for: they kept the item that was on screen
+("Appearance") at the top, which put the whole Profile section above the
+viewport. It read as a scroll-position bug and was a list-diffing one. Now one
+item that is present from the first frame and changes height instead.
+
+**Pills broke onto two lines inside themselves.** `ChoiceRow` was a
+`SingleChoiceSegmentedButtonRow` filling the width, which divides it equally
+between the options: four goals on a phone is about 80dp each, and
+"Hypertrophy", "General fitness" and "More than 3 years" all wrapped. Equal
+fixed shares of a fixed width is the one layout that cannot respond to its text
+growing — Turkish is longer again, and at 200% font scale it cannot be made to
+work at all. Now chips in a `FlowRow`: each is as wide as its own label and the
+row wraps. Both fixes were seen working on a Galaxy S23.
+
+**The import dialog never mentioned weeks.** `ImportPreview` has counted
+`newWeeks` and `replacedWeeks` since export format 2, and `isEmpty` accounts for
+them, but the dialog listed only profile, plans and sessions — so a file
+carrying five weeks was described as though it carried none, on the one screen
+whose whole job is saying what is about to be overwritten. The same shape as the
+export bug in 4.1: the data layer knew about weeks and the surface did not.
+
+**The media cache cap was written in three places.** `MediaCacheManager` holds
+`DEFAULT_MAX_CACHE_BYTES`, and "250 MB cap" was typed into the English string
+and again into the Turkish one. Changing the constant would have left two
+translations quietly lying. Both numbers are parameters now, and the unit stays
+in the resource where a translator can reach it.
+
+**`InfoRow` could not survive its own text.** Two unconstrained `Text`s in a
+`SpaceBetween` row have nowhere to go when they stop fitting; at 200% font scale
+"Schedule" and "3 days / week · 45 min" run past each other. Both halves are
+weighted now. Not yet seen on a device at 200%.
+
+**Found and not fixed: the schedule cannot be changed after onboarding.**
+`trainingDaysPerWeek` and `sessionLengthMs` are written by `feature:onboarding`
+and by nothing else; Settings renders them as a read-only `InfoRow`. Goal,
+experience and equipment are all editable there — the schedule is the one that
+is not, and it is the most consequential of the four: `sessionLengthMs` is the
+entire time budget the coach programmes against (4.5). Someone whose training
+time changes has to reset the app, which wipes their history. It needs a control
+that does not exist yet rather than a fix, so it is left as a decision.
+
+---
+
+## Next
+
+In the order they are worth doing, and why.
+
+1. **A saved week cannot be reopened for editing.** `BuilderViewModel.load()`
+   only loads templates. Since 4.5 made a week's *day* rows tappable, the app
+   now answers half the question: day three can be edited, the week itself
+   cannot be renamed, reordered, or given another day. The half-answer is worse
+   than the old silence, and it is the newest gap.
+2. **`TodayScreen` does not know it is showing a week.** It renders the
+   recommended day as an ordinary plan card, with nothing saying which week it
+   belongs to or which day of it. For a feature whose point is "follow this
+   week", that is the payoff missing. It also still counts against
+   `profile.trainingDaysPerWeek` rather than the active week's length, so a
+   seven-day week reads "0 of 3 days".
+3. **An editable schedule in Settings**, per 4.6 above — blocked on a decision
+   about the control, not on the work.
+4. **Screenshot tests.** Every layout bug this project has found was found by a
+   person holding a phone, including all five in 4.5 and 4.6. That is a pattern
+   now rather than an anecdote, and it is the highest-leverage item here — but
+   it is a different kind of work and should not start mid-feature.
+
 ---
 
 ## Decisions already made

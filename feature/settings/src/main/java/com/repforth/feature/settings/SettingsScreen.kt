@@ -35,11 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.media.cache.MediaCacheManager
 import com.repforth.core.exercisedata.detailRes
 import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.model.Equipment
@@ -139,45 +141,60 @@ internal fun SettingsScreen(
         contentPadding = PaddingValues(horizontal = Layout.gutterPhone, vertical = Space.s3),
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
-        state.profile?.let { profile ->
-            item(key = "profile") { SectionLabel(stringResource(R.string.settings_profile)) }
+        // One item, present from the first frame, whether or not the profile has
+        // loaded yet.
+        //
+        // These were five keyed items inside `state.profile?.let`, and the
+        // profile arrives one frame after the screen does — so five items were
+        // *prepended* to a keyed LazyColumn that had already drawn. That is the
+        // one case where keys work against you: the list faithfully kept the
+        // item that was on screen ("Appearance") at the top, which put the whole
+        // Profile section above the viewport. Settings opened already scrolled,
+        // every time, and looked like a scroll-position bug rather than a
+        // list-diffing one.
+        //
+        // Nothing is prepended now — the item's height changes instead, which a
+        // list anchored at the top does not care about.
+        item(key = "profile-section") {
+            state.profile?.let { profile ->
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+                    SectionLabel(stringResource(R.string.settings_profile))
 
-            item(key = "goal") {
-                ChoiceRow(
-                    label = stringResource(R.string.settings_profile_goal),
-                    options = TrainingGoal.entries,
-                    selected = profile.goal,
-                    labelOf = { stringResource(it.labelRes) },
-                    onSelected = onGoalChange,
-                )
-            }
+                    ChoiceRow(
+                        label = stringResource(R.string.settings_profile_goal),
+                        options = TrainingGoal.entries,
+                        selected = profile.goal,
+                        labelOf = { stringResource(it.labelRes) },
+                        onSelected = onGoalChange,
+                    )
 
-            item(key = "experience") {
-                ChoiceRow(
-                    label = stringResource(R.string.settings_profile_experience),
-                    options = ExperienceLevel.entries,
-                    selected = profile.experience,
-                    labelOf = { stringResource(it.labelRes) },
-                    onSelected = onExperienceChange,
-                )
-            }
+                    ChoiceRow(
+                        label = stringResource(R.string.settings_profile_experience),
+                        options = ExperienceLevel.entries,
+                        selected = profile.experience,
+                        labelOf = { stringResource(it.labelRes) },
+                        onSelected = onExperienceChange,
+                    )
 
-            item(key = "equipment") {
-                ActionRow(
-                    label = stringResource(R.string.settings_profile_equipment),
-                    detail = stringResource(R.string.settings_profile_equipment_sub, profile.availableEquipment.size),
-                    enabled = !state.busy,
-                    onClick = { editingEquipment = true },
-                )
-            }
+                    ActionRow(
+                        label = stringResource(R.string.settings_profile_equipment),
+                        detail = stringResource(
+                            R.string.settings_profile_equipment_sub,
+                            profile.availableEquipment.size,
+                        ),
+                        enabled = !state.busy,
+                        onClick = { editingEquipment = true },
+                    )
 
-            item(key = "schedule") {
-                val days = profile.trainingDaysPerWeek
-                val minutes = (profile.sessionLengthMs / 60_000L).toInt()
-                InfoRow(
-                    label = stringResource(R.string.settings_profile_schedule),
-                    detail = stringResource(R.string.settings_profile_schedule_sub, days, minutes),
-                )
+                    InfoRow(
+                        label = stringResource(R.string.settings_profile_schedule),
+                        detail = stringResource(
+                            R.string.settings_profile_schedule_sub,
+                            profile.trainingDaysPerWeek,
+                            (profile.sessionLengthMs / 60_000L).toInt(),
+                        ),
+                    )
+                }
             }
         }
 
@@ -280,10 +297,16 @@ internal fun SettingsScreen(
         }
 
         item(key = "clear-media-cache") {
-            val cacheMb = "%.1f MB".format(state.cacheSizeBytes / (1024f * 1024f))
+            // Both numbers are parameters now. The cap used to be typed into the
+            // sentence -- "(250 MB cap)" -- in English and again in Turkish,
+            // while the real ceiling lives in `MediaCacheManager`. Changing the
+            // constant would have left two translations quietly lying about it.
+            // The unit stays in the resource, where a translator can reach it.
+            val usedMb = state.cacheSizeBytes / BYTES_PER_MB.toFloat()
+            val capMb = (MediaCacheManager.DEFAULT_MAX_CACHE_BYTES / BYTES_PER_MB).toInt()
             ActionRow(
                 label = stringResource(R.string.settings_clear_media_cache),
-                detail = stringResource(R.string.settings_clear_media_cache_sub, cacheMb),
+                detail = stringResource(R.string.settings_clear_media_cache_sub, usedMb, capMb),
                 enabled = !state.busy,
                 onClick = { confirmingClearMediaCache = true },
             )
@@ -456,6 +479,28 @@ private fun ImportDialog(pending: PendingImport, onConfirm: () -> Unit, onDismis
                         ),
                     )
                 }
+                // `ImportPreview` has counted weeks since export format 2 and
+                // this dialog never showed them, so a file carrying five weeks
+                // was described as though it carried none — on the one screen
+                // whose whole job is saying what is about to be overwritten.
+                if (preview.newWeeks > 0) {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.settings_import_new_weeks,
+                            preview.newWeeks,
+                            preview.newWeeks,
+                        ),
+                    )
+                }
+                if (preview.replacedWeeks > 0) {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.settings_import_replaced_weeks,
+                            preview.replacedWeeks,
+                            preview.replacedWeeks,
+                        ),
+                    )
+                }
                 if (preview.sessions > 0) {
                     Text(
                         pluralStringResource(
@@ -512,13 +557,25 @@ private fun InfoRow(label: String, detail: String) {
             .heightIn(min = Target.min)
             .padding(vertical = Space.s2),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(Space.s3),
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        // Both halves are weighted rather than pushed apart by SpaceBetween.
+        // Two unconstrained Texts in a SpaceBetween row have nowhere to go when
+        // they stop fitting: at 200% font scale "Schedule" and "3 days / week ·
+        // 45 min" simply run past each other and off the screen. Weights let
+        // them wrap instead, which is what `AGENTS.md` asks of every row that
+        // holds text.
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
         Text(
             text = detail,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f),
         )
     }
 }
@@ -632,3 +689,6 @@ private fun EquipmentDialog(
 }
 
 private const val MIME_JSON = "application/json"
+
+/** One megabyte, for turning a byte count into the unit the screen prints. */
+private const val BYTES_PER_MB = 1024L * 1024L

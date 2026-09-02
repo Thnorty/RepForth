@@ -40,7 +40,7 @@
     <string name="settings_media_wifi_only">Download on Wi-Fi only</string>
     <string name="settings_media_wifi_only_sub">Prevent cellular data usage when caching exercise visuals.</string>
     <string name="settings_clear_media_cache">Clear media cache</string>
-    <string name="settings_clear_media_cache_sub">%1$s used (250 MB cap).</string>
+    <string name="settings_clear_media_cache_sub">%1$.1f MB used (%2$d MB cap).</string>
     <string name="settings_clear_media_cache_title">Clear media cache?</string>
     <string name="settings_clear_media_cache_body">Downloaded exercise images and animations will be deleted. They will be downloaded again when needed.</string>
     <string name="settings_clear_media_cache_confirm">Clear cache</string>
@@ -70,6 +70,14 @@
     <plurals name="settings_import_replaced_plans">
         <item quantity="one">%1$d plan replaced</item>
         <item quantity="other">%1$d plans replaced</item>
+    </plurals>
+    <plurals name="settings_import_new_weeks">
+        <item quantity="one">%1$d new week</item>
+        <item quantity="other">%1$d new weeks</item>
+    </plurals>
+    <plurals name="settings_import_replaced_weeks">
+        <item quantity="one">%1$d week replaced</item>
+        <item quantity="other">%1$d weeks replaced</item>
     </plurals>
     <plurals name="settings_import_sessions">
         <item quantity="one">%1$d workout</item>
