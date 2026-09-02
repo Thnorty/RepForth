@@ -46,5 +46,9 @@ gradlePlugin {
             id = "repforth.android.room"
             implementationClass = "AndroidRoomConventionPlugin"
         }
+        register("androidScreenshot") {
+            id = "repforth.android.screenshot"
+            implementationClass = "AndroidScreenshotConventionPlugin"
+        }
     }
 }

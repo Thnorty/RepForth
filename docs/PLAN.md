@@ -47,8 +47,9 @@ could have caught because Gemini answers 400 where the shared mapping expected
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
 have caught any of the nine; three interact — type, tap, save — and the keyboard
-one is a direct regression guard for the fifth. Screenshot tests still do not
-exist, and remain the only untested category.
+one is a direct regression guard for the fifth. Seventeen screenshot goldens now
+cover four screens in both languages at both font scales (4.9), which found two
+more defects in the recording of them.
 
 ### Built so far
 
@@ -1433,20 +1434,71 @@ Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
 assemblePlaceholderDebug` run separately, then installed and launched on the
 S23 — alive, empty crash buffer. Nothing here has been looked at on a screen.
 
+### 4.9 — Screenshot tests — **17 goldens, and two defects found recording them**
+
+The only untested category, and the one this project's whole defect history
+argues for: nine bugs found on a device and by nothing else, five of them in the
+last two sections, and most of them a layout that could not hold its own text.
+Unit tests asserted the state was right — it was — and passed throughout.
+
+Roborazzi through Robolectric, so the matrix `AGENTS.md` asks for runs on the
+JVM as part of `./gradlew test`: **English and Turkish, 1x and 2x font scale**,
+across Settings, Today, Plans and the week review. Seventeen goldens, about
+1.8 MB, committed beside the screens they are of.
+
+**Two real defects surfaced while recording, which is the argument in
+miniature.**
+
+The first was in the harness and worth keeping anyway: a screen rendered outside
+the app's `Scaffold` draws its dark-theme text onto a white window, so the first
+Settings golden was pale green on pale grey. `RepForthPreviewHost` supplies the
+ground the `Scaffold` normally does — public and in `main`, because `@Preview`
+needs the same thing and a preview that lies about contrast is the same failure
+by another route.
+
+The second was in the app. `weekDayLabel` stripped a redundant "Day 1:" only
+when it matched the *current* locale's header — but a title is written by the
+model when the week is generated and kept, while the header is rendered in
+whatever language the app is in now. Generate in English, read in Turkish, and
+Plans showed **"1. Gün · Day 1: Chest and triceps"**: the exact double prefix
+4.5 was supposed to have fixed, surviving a unit test that only ever compared a
+title with its own language's header. It now strips a day number in either
+language, and only when the number is that day's own.
+
+**Three things about the setup are load-bearing**, each found by it going wrong:
+
+- Every test states its own locale *and* font scale, including the defaults.
+  Robolectric carries qualifiers across test methods in one JVM, so tests that
+  set only what they changed passed alone and failed in suite order.
+- They are excluded from the release unit tests. The host activity arrives via
+  `debugImplementation`, so the release copy failed with no launcher activity —
+  and a rendered composable does not differ by variant, so running them twice
+  bought nothing.
+- The goldens are declared as a task input. They are read through `java.io.File`,
+  so without that, deleting every golden and re-running reported UP-TO-DATE and
+  wrote nothing — the same blind spot `configureGuardTestInputs` exists for, in
+  a new place.
+
+Guard proven by breaking it: lengthening one English string turned both English
+Settings goldens red and correctly left the Turkish pair alone.
+
+Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
+assemblePlaceholderDebug` run separately.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **Screenshot tests.** Every layout bug this project has found was found by a
-   person holding a phone, including all five in 4.5 and 4.6. That is a pattern
-   now rather than an anecdote, and with 4.7 and 4.8 landed there is no feature
-   half-finished to interrupt. It is the highest-leverage item left.
-2. **Nothing in 4.7 or 4.8 has been looked at on a screen** beyond the Coach
-   controls: the Settings schedule dialog, the Turkish on nine new strings, and
+1. **Nothing in 4.7 or 4.8 has been looked at on a screen** beyond the Coach
+   controls, and 4.9 covers only four screens of them: the Settings schedule dialog, the Turkish on nine new strings, and
    200% font scale anywhere are all unverified. Costs minutes, and every defect
    of this kind so far has been found exactly this way.
+2. **More screens under 4.9.** Session, Exercises, Progress, onboarding and the
+   AI settings screen have no goldens. Settings, Today, Plans and week review
+   were picked because every recent defect was in one of them; the rest are
+   cheap to add now that the plumbing exists.
 3. **Phase 3 is one slice in and Phase 4 has not started.** Weekly plans have
    absorbed every session since 4.1 and were not on the phase list at all; the
    guideline'''s Phase 3 is the polished phone and Phase 4 is the Wear remote,
@@ -1507,9 +1559,14 @@ app icon, and the exact licence.
   suite. Whether a **small local model** holds a strict seven-day schema remains
   unmeasured, and stays the risk most likely to change the design;
   `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its trigger.
-- **Screenshot tests are still the untested category.** Unit tests and
-  instrumentation both run; nothing yet asserts what a screen looks like, so
-  every layout regression found so far was found by a person holding a phone.
+- **Screenshot tests cover four screens, not all of them.** 4.9 renders
+  Settings, Today, Plans and the week review in both languages at both font
+  scales; Session, Exercises, Progress, onboarding and AI settings have no
+  goldens, so a layout regression in those is still something only a person
+  holding a phone would notice.
+- **A golden agrees with whatever it was last shown.** Re-recording is one flag
+  away, and a re-record that nobody looked at turns the guard into a rubber
+  stamp. Read the diff before committing a changed image.
 - **Two devices, and they disagree.** A Galaxy S23 (API 34) runs the
   instrumentation suite; the Xiaomi (API 30) hangs on it, because MIUI refuses
   an activity start from instrumentation and the permission that would allow it

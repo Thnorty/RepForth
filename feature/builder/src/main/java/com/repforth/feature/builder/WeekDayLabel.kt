@@ -22,27 +22,43 @@ import androidx.compose.ui.res.stringResource
  *   always been character-for-character what `week_day_header` renders beside
  *   it. `WeekDay.title` may not be blank, so the fallback has to say something;
  *   this makes saying the same thing twice harmless.
- *
- * Case-insensitive because Turkish uses `1. Gün` as the header and `1. gün` as
- * the fallback title, which are the same words and were still not equal.
  */
 @Composable
 internal fun weekDayLabel(position: Int, title: String): String =
-    weekDayLabel(stringResource(R.string.week_day_header, position + 1), title)
+    weekDayLabel(position + 1, stringResource(R.string.week_day_header, position + 1), title)
 
 /**
  * The pure half, so the behaviour above can be tested without a device.
  *
- * [header] is the already-resolved "Day 3" / "3. Gün".
+ * [header] is the already-resolved "Day 3" / "3. Gün", and [dayNumber] is the
+ * number inside it.
  */
-internal fun weekDayLabel(header: String, title: String): String {
+internal fun weekDayLabel(dayNumber: Int, header: String, title: String): String {
     val trimmed = title.trim()
-    val body = if (trimmed.startsWithDayNumber(header)) {
-        trimmed.drop(header.length).trimStart(*TITLE_SEPARATORS)
-    } else {
-        trimmed
-    }
+    val body = trimmed.withoutDayPrefix(dayNumber, header)
     return if (body.isEmpty()) header else "$header · $body"
+}
+
+/**
+ * The title with its own leading day number removed, if it had one.
+ *
+ * Two passes, because a stored title and the header beside it are not always in
+ * the same language. The title is written by the model at generation time and
+ * kept; the header is rendered in whatever language the app is in *now*. Switch
+ * to Turkish after generating in English and an exact match finds nothing, so
+ * "1. Gün · Day 1: Chest" is what the screen showed — found by
+ * `BuilderScreenshotTest` on its first run, having survived a unit test that
+ * only ever compared a title to its own language's header.
+ */
+private fun String.withoutDayPrefix(dayNumber: Int, header: String): String {
+    if (startsWithHeader(header)) {
+        return drop(header.length).trimStart(*TITLE_SEPARATORS)
+    }
+    val match = DAY_PREFIX.find(this) ?: return this
+    // Only this day's own number. "Day 10 recap" is not day one, and neither is
+    // a title that happens to mention another day.
+    val found = match.groupValues.drop(1).firstOrNull { it.isNotEmpty() }?.toIntOrNull()
+    return if (found == dayNumber) drop(match.value.length).trimStart(*TITLE_SEPARATORS) else this
 }
 
 /**
@@ -52,9 +68,23 @@ internal fun weekDayLabel(header: String, title: String): String {
  * The separator check is the whole point: "Day 10 recap" starts with "Day 1"
  * and is not day one. Watched failing on exactly that.
  */
-private fun String.startsWithDayNumber(header: String): Boolean =
+private fun String.startsWithHeader(header: String): Boolean =
     startsWith(header, ignoreCase = true) &&
         (length == header.length || this[header.length] in TITLE_SEPARATORS)
+
+/**
+ * A leading day number in either language this app ships.
+ *
+ * Mirrors `week_day_header` in `values` and `values-tr`, which is a duplicate
+ * and is why `WeekDayLabelTest` checks both forms. It stays a pattern rather
+ * than the two resolved strings because the header can only be resolved in the
+ * *current* locale, and the whole point here is the title that is in the other
+ * one.
+ */
+private val DAY_PREFIX = Regex(
+    """^\s*(?:day\s*(\d+)|(\d+)\s*\.?\s*gün)""",
+    RegexOption.IGNORE_CASE,
+)
 
 /**
  * What a model puts between "Day 1" and the focus.

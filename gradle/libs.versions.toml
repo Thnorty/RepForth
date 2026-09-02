@@ -50,6 +50,12 @@ junit = "4.13.2"
 androidxTestJunit = "1.2.1"
 androidxTestRunner = "1.6.2"
 espresso = "3.6.1"
+# Screenshot tests. Roborazzi renders Compose on the JVM through Robolectric, so
+# the whole matrix -- English and Turkish, 1x and 2x font scale -- runs in
+# `./gradlew test` with no device attached. Robolectric is pinned below the
+# compileSdk deliberately; see `RepForthScreenshotTest`.
+robolectric = "4.14.1"
+roborazzi = "1.42.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -110,6 +116,12 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
 
+# Screenshot tests, on the JVM.
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
+roborazzi-junit-rule = { group = "io.github.takahirom.roborazzi", name = "roborazzi-junit-rule", version.ref = "roborazzi" }
+
 # Consumed by build-logic so the convention plugins can configure AGP/Kotlin.
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
 kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -136,3 +148,4 @@ repforth-android-library = { id = "repforth.android.library" }
 repforth-android-compose = { id = "repforth.android.compose" }
 repforth-android-hilt = { id = "repforth.android.hilt" }
 repforth-android-room = { id = "repforth.android.room" }
+repforth-android-screenshot = { id = "repforth.android.screenshot" }

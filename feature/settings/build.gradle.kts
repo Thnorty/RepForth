@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.repforth.android.library)
     alias(libs.plugins.repforth.android.compose)
     alias(libs.plugins.repforth.android.hilt)
+    alias(libs.plugins.repforth.android.screenshot)
 }
 
 android {
