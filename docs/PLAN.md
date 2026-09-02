@@ -116,7 +116,7 @@ recording them found five more defects.
 | **Phase 2** — Make Coach generation AI-only and retryable | `a2c5775` |
 | **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
 | **Phase 3** — image display and GIF playback in catalog, builder and session | `22383c9` |
-| **Phase 3** — the accessibility pass, and a guard lint could not be | `f4f7a76` |
+| **Phase 3** — the accessibility pass, and a guard lint could not be | [#2][pr2] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -127,6 +127,13 @@ recording them found five more defects.
 | **Phase 6** — screenshot tests, and the two defects they found | `d9fcd8e` |
 | **Phase 6** — the remaining screens, and three more defects | `e1188bf`, `1c809f9` |
 | **Phase 6** — CI enforced, and goldens that survive the runner | `cc5cec7`, `4654808` |
+
+[pr2]: https://github.com/Thnorty/RepForth/pull/2
+
+Rows above this one name a commit because they were pushed straight to
+`master`. From 4.11 onward `master` only accepts squash merges, whose hash is
+not knowable while the change is being written — so newer rows name the pull
+request instead.
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:media`, `core:model`, `core:rules`,
