@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1 Media Downloader & Disk Cache done |
+| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display done |
 | 4 — Wear remote | §19 | Not started |
 | 5 — Release hardening | §19 | Not started |
 
@@ -47,8 +47,8 @@ could have caught because Gemini answers 400 where the shared mapping expected
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
 have caught any of the nine; three interact — type, tap, save — and the keyboard
-one is a direct regression guard for the fifth. Forty-six screenshot goldens now
-cover nine screens in both languages at both font scales (4.9, 4.10), and
+one is a direct regression guard for the fifth. Fifty screenshot goldens now
+cover ten screens in both languages at both font scales (4.9, 4.10, 4.11), and
 recording them found five more defects.
 
 ### Built so far
@@ -115,7 +115,7 @@ recording them found five more defects.
 | **Phase 2** — Make Coach generation AI-only and retryable | `a2c5775` |
 | **Weekly Plans** — Multi-day training week domain, Room v2, Contract v3, multi-day builder draft UI & Today/Plans integration | pending |
 | **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
-| **Phase 3** — image display and GIF playback in catalog, builder and session | pending |
+| **Phase 3** — image display and GIF playback in catalog, builder and session | `22383c9` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:media`, `core:model`, `core:rules`,
