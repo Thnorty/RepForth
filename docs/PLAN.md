@@ -1444,9 +1444,13 @@ In the order they are worth doing, and why.
    now rather than an anecdote, and with 4.7 and 4.8 landed there is no feature
    half-finished to interrupt. It is the highest-leverage item left.
 2. **Nothing in 4.7 or 4.8 has been looked at on a screen** beyond the Coach
-   controls. The Settings schedule
-   dialog, the Turkish on nine new strings, and 200% font scale are all
-   unverified.
+   controls: the Settings schedule dialog, the Turkish on nine new strings, and
+   200% font scale anywhere are all unverified. Costs minutes, and every defect
+   of this kind so far has been found exactly this way.
+3. **Phase 3 is one slice in and Phase 4 has not started.** Weekly plans have
+   absorbed every session since 4.1 and were not on the phase list at all; the
+   guideline'''s Phase 3 is the polished phone and Phase 4 is the Wear remote,
+   which still has no hardware to test against.
 
 ---
 
