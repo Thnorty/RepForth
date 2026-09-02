@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.core.designsystem.component.expandCollapseLabel
+import com.repforth.core.designsystem.component.expandableHeader
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -242,6 +244,7 @@ private fun WeeklyPlanCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .expandableHeader(expanded)
                     .clickable { expanded = !expanded },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -277,7 +280,7 @@ private fun WeeklyPlanCard(
                 ) {
                     Icon(
                         painter = if (expanded) RfIcons.Collapse else RfIcons.Expand,
-                        contentDescription = null,
+                        contentDescription = expandCollapseLabel(expanded),
                     )
                 }
 

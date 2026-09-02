@@ -11,4 +11,14 @@
     <string name="rf_body_map_hint">Tap the body to choose muscles.</string>
     <string name="rf_selected_muscles">Selected</string>
     <string name="rf_remove_muscle">Remove %1$s</string>
+    <!--
+        Accessibility wording shared by every screen. A screen reader is the
+        only thing that reads these, so they never appear in a screenshot and
+        no golden can catch one going missing.
+    -->
+    <string name="rf_expand">Expand</string>
+    <string name="rf_collapse">Collapse</string>
+    <string name="rf_expanded">Expanded</string>
+    <string name="rf_collapsed">Collapsed</string>
+    <string name="rf_ok">OK</string>
 </resources>

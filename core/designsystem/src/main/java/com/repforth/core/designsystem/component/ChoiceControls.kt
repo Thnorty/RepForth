@@ -63,7 +63,11 @@ fun <T> RfChoiceChips(
                     onClick = { onSelected(option) },
                     enabled = enabled,
                     label = { Text(labelOf(option)) },
-                    modifier = Modifier.heightIn(min = Target.icon),
+                    // Target.min, not Target.icon: this is a thing a
+                    // finger has to land on, and 40dp is under the
+                    // stated minimum. Material chips are 32dp and get
+                    // no automatic touch expansion.
+                    modifier = Modifier.heightIn(min = Target.min),
                 )
             }
         }

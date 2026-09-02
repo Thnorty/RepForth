@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,16 +37,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.R as DsR
 import com.repforth.core.designsystem.component.RfValueSlider
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
-import com.repforth.core.media.cache.MediaCacheManager
 import com.repforth.core.exercisedata.detailRes
 import com.repforth.core.exercisedata.labelRes
+import com.repforth.core.media.cache.MediaCacheManager
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
@@ -567,7 +570,7 @@ private fun MessageDialog(message: SettingsMessage, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         text = { Text(text) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(DsR.string.rf_ok)) } },
     )
 }
 
@@ -705,18 +708,21 @@ private fun EquipmentDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = Target.min)
-                            .clickable {
-                                draft = if (checked) draft - eq else draft + eq
-                            },
+                            .toggleable(
+                                value = checked,
+                                role = Role.Checkbox,
+                                onValueChange = { isChecked ->
+                                    draft = if (isChecked) draft + eq else draft - eq
+                                },
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(Space.s3),
                     ) {
-                        Checkbox(
-                            checked = checked,
-                            onCheckedChange = { isChecked ->
-                                draft = if (isChecked) draft + eq else draft - eq
-                            },
-                        )
+                        // Null: the row owns the click. A checkbox with its own
+                        // handler is a second focus stop announcing the same
+                        // control, and the row's toggleable already carries the
+                        // role and the state.
+                        Checkbox(checked = checked, onCheckedChange = null)
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = stringResource(eq.labelRes), style = MaterialTheme.typography.bodyLarge)
                             Text(
@@ -745,18 +751,17 @@ private fun EquipmentDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = Target.min)
-                                .clickable {
-                                    draft = if (checked) draft - eq else draft + eq
-                                },
+                                .toggleable(
+                                    value = checked,
+                                    role = Role.Checkbox,
+                                    onValueChange = { isChecked ->
+                                        draft = if (isChecked) draft + eq else draft - eq
+                                    },
+                                ),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(Space.s3),
                         ) {
-                            Checkbox(
-                                checked = checked,
-                                onCheckedChange = { isChecked ->
-                                    draft = if (isChecked) draft + eq else draft - eq
-                                },
-                            )
+                            Checkbox(checked = checked, onCheckedChange = null)
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = stringResource(eq.labelRes), style = MaterialTheme.typography.bodyLarge)
                                 Text(

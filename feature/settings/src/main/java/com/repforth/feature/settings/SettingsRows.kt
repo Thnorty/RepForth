@@ -1,13 +1,13 @@
 package com.repforth.feature.settings
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -115,7 +115,9 @@ internal fun ActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Target.min)
-            .clickable(enabled = enabled, onClick = onClick)
+            // Role, or TalkBack announces the label and the explanation with
+            // no hint that either of them does anything.
+            .clickable(enabled = enabled, onClick = onClick, role = Role.Button)
             .padding(vertical = Space.s3),
         verticalArrangement = Arrangement.spacedBy(Space.s1),
     ) {

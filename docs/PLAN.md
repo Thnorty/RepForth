@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display done |
+| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display, 3.3 accessibility done. Motion, progress visuals and baseline profiles remain |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | Not started. No hardware to test against |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
@@ -116,6 +116,7 @@ recording them found five more defects.
 | **Phase 2** — Make Coach generation AI-only and retryable | `a2c5775` |
 | **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
 | **Phase 3** — image display and GIF playback in catalog, builder and session | `22383c9` |
+| **Phase 3** — the accessibility pass, and a guard lint could not be | `f4f7a76` |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -1002,6 +1003,63 @@ Exercise media rendering and background prefetching are integrated across all ex
   - AI Coach wire contract (`AiPlannedExercise`), JSON schema (`weight_kg`), validator, and builder mapping now support prescribing starting baseline weights based on user experience level and goal.
 - Verified as part of the 427-test suite (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `SessionStatisticsTest`, `TodayViewModelTest`, `SettingsViewModelTest`, `ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`, `TrainingWeekTest`, `RoomWeekRepositoryTest`, `RoomTemplateRepositoryTest`, `DataTransferTest`), plus `./gradlew assemblePlaceholderDebug` and `./gradlew lint`.
 
+### 3.3 — The accessibility pass — **done; nine defects, and a guard that can see them**
+
+§20 requires English and Turkish to pass accessibility checks. Nothing had ever
+run one, and the reason it looked fine is the interesting part.
+
+**`./gradlew lint` reports zero accessibility issues across the whole repo, and
+always would have.** Lint's `ContentDescription`, `TouchTargetSizeCheck` and
+`ClickableViewAccessibility` read XML layouts and `View` subclasses; this app is
+entirely Compose. A guard that appears to run and cannot see the thing it names
+is the exact failure shape this repo already has a rule about, and it had been
+sitting in CI passing since Phase 0.
+
+So the check was built where it can look: `assertScreenIsAccessible` walks the
+merged semantics tree — what an accessibility service actually reads — asserting
+that every clickable node announces something, has a 48dp touch target, and that
+anything carrying state declares a `Role` or a `stateDescription`. 29 tests
+across seven feature modules, in both languages, on the JVM beside the goldens.
+
+A `gemini-3.8-flash-high` sweep found ten defects and every one was checked
+against the file and line before anything was changed; the guard then found
+three more that no audit had reached, and disagreed with itself twice before it
+was right:
+
+- **Two expand/collapse chevrons had no name** (Plans, week review), so a screen
+  reader offered an unnamed button. Invisible to a golden — the picture is
+  identical either way.
+- **Two `Text("OK")` literals** in dialogs, which is a localisation defect as
+  much as an accessibility one: the Turkish build said "OK" too.
+- **The equipment rows were a clickable row wrapping a checkbox that also
+  handled clicks** — two focus stops for one control, neither naming the other,
+  and no role on either. `SwitchRow`'s comment had warned about this exact shape
+  a phase earlier.
+- **Coach's muscle chips were 32dp.** Compose does expand a chip's touch bounds
+  to 48dp; a `LazyRow` sized to its tallest 32dp child clips the expansion back
+  off. Identical chips in a `FlowRow` were fine, which is why this needed
+  measuring rather than reading.
+- **`RfChoiceChips` asked for `Target.icon`** — 40dp, the icon token — where
+  `Target.min` is the 48dp touch-target token that exists for it.
+- **Onboarding's "Show 18 more" was 40dp**, a Material text button with no
+  taller sibling to stop its parent clipping the expansion.
+- **The set counter changes with nobody touching the screen** — `RestElapsed`
+  fires off a clock tick and advances it — and was a plain `Text`, so it was
+  never announced. Now a polite live region.
+
+**The check was wrong twice before it was right, and both are recorded in the
+source.** Reading `touchBoundsInRoot` alone failed a 48dp Settings row at 40dp
+because it sat at the bottom edge of a scrolling list; reading `size` alone
+would have failed every Material `IconButton`. It takes the larger of the two.
+
+All three checks have been watched failing on the thing each one watches, and
+the first two attempts at that proved nothing — the breaks landed in an
+`InputChip` that only renders once a muscle is selected, and in the equipment
+dialog, which no test reaches. A guard proven against unreachable code is not
+proven.
+
+---
+
 ## Phase 4 — Weekly plans
 
 A plan became a week of training days rather than a single workout. This was
@@ -1598,12 +1656,15 @@ In the order they are worth doing, and why.
    worth thinking about rather than doing reflexively. The AI provider screen
    has none either; it was left out because its interesting states are a typed
    key and a connection result rather than a layout under pressure.
-2. **Phase 3 is still the unfinished one.** 3.1 and 3.2 landed and the rest of
-   it did not: the final motion system, the accessibility pass, progress
-   visuals and baseline profiles. It is the only phase below 6 that is open,
-   and the accessibility pass is the part with a deadline attached to it —
-   §20 requires English and Turkish to pass accessibility checks, and nothing
-   has run one.
+
+   **3.3 raised the price of this.** The equipment dialog is not merely
+   unphotographed, it is unreachable by the accessibility checks too — a
+   deliberate break of its `Role.Checkbox` was not caught, because no test can
+   open it. Hoisting that state now buys two guards rather than one.
+2. **Phase 3's remainder: motion, progress visuals, baseline profiles.** The
+   accessibility pass is done (3.3); these three are what is left of the phase.
+   None has a §20 clause behind it, which is why they now sit below the item
+   above.
 3. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the

@@ -27,4 +27,13 @@ dependencies {
     // fixture, so it goes no further than test classpaths -- and like JUnit
     // above, it must never reach androidTest.
     api(libs.roborazzi)
+
+    // The Compose stack normally has one door, `core:designsystem`, and no
+    // module re-declares the BOM. This module cannot use that door:
+    // `core:designsystem` depends on this one for its own tests, so depending
+    // back on it is a cycle. The BOM is declared here for that reason and no
+    // other -- `AccessibilityChecks` needs the semantics test APIs, and those
+    // take their version from it.
+    api(platform(libs.androidx.compose.bom))
+    api(libs.androidx.compose.ui.test.junit4)
 }

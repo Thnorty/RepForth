@@ -61,6 +61,9 @@ class AndroidScreenshotConventionPlugin : Plugin<Project> {
                 // slowest tests in the suite.
                 if (name.contains("Release")) {
                     exclude("**/*ScreenshotTest*")
+                    // The accessibility tests host a screen the same way and
+                    // fail the same way without it.
+                    exclude("**/*AccessibilityTest*")
                 }
 
                 // The goldens are read through `java.io.File` at runtime, so

@@ -186,7 +186,14 @@ internal fun OnboardingScreen(
                     // them have a single exercise each, so they do not deserve
                     // equal billing with dumbbells — but someone who owns a
                     // sled should still be able to say so.
-                    TextButton(onClick = { moreEquipment = !moreEquipment }) {
+                    // A Material text button is 40dp. It normally still takes
+                    // a 48dp touch area, but that expansion is clipped by a
+                    // wrap-content parent, and this one has no taller sibling
+                    // to be measured against.
+                    TextButton(
+                        onClick = { moreEquipment = !moreEquipment },
+                        modifier = Modifier.heightIn(min = Target.min),
+                    ) {
                         Text(
                             stringResource(
                                 if (moreEquipment) {
