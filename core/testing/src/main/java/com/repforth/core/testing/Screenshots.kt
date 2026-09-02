@@ -64,23 +64,33 @@ fun screenshotPath(name: String): String = "src/test/screenshots/$name.png"
  *
  * Not exact, and the tolerance is measured rather than guessed. The goldens are
  * recorded on a maintainer's Windows machine and verified on an Ubuntu CI
- * runner, and the two do not rasterise text identically. Comparing every CI
- * render against its golden gave: **at most 0.069% of pixels different, by at
- * most 4 of 255** — antialiasing along the edges of glyphs, invisible in the
- * side-by-side and confirmed by an empty diff panel.
+ * runner, and the two do not rasterise text identically. Comparing all 31 CI
+ * renders against their goldens gave: **at most 0.069% of pixels different, by
+ * at most 4 of 255** — antialiasing along the edges of glyphs, invisible in the
+ * side-by-side, and confirmed by an empty diff panel.
  *
- * A per-pixel distance tolerance is the right tool for that, and a
- * changed-pixel count is not: a wrapped line or a shifted row moves whole
- * percentages of the image, so counting pixels would need a threshold loose
- * enough to hide a small but real text change. `maxDistance` ignores a
- * difference no one can see at any scale, while a single pixel that actually
- * changes colour still fails.
+ * The decision is stated as a [RoborazziOptions.CompareOptions.resultValidator]
+ * because that is what actually decides. `SimpleImageComparator`'s `maxDistance`
+ * alone did not: set to 0.02 of full range — above the worst 4/255 observed —
+ * every golden still failed on CI, because the default validator has the last
+ * word regardless of what the comparator tolerated. The comparator is kept
+ * because it can only narrow what reaches the validator.
  *
- * 0.02 of full range is 5 of 255 — just past the worst observed, and far below
- * anything a human would notice.
+ * **The margins, both ways.** 0.1% is 1.45x the worst noise measured, and a
+ * real change is far larger: one word of a label at this device size is roughly
+ * 0.25% of the image, and a wrapped line or a shifted row moves whole percent.
+ * So this sits between the two — but not by much on the lower side, and a
+ * platform whose text rendering drifts further would need this re-measured
+ * rather than nudged.
  */
 val SCREENSHOT_COMPARISON: RoborazziOptions = RoborazziOptions(
     compareOptions = RoborazziOptions.CompareOptions(
         imageComparator = SimpleImageComparator(maxDistance = 0.02f),
+        resultValidator = { result ->
+            result.pixelDifferences.toFloat() / result.pixelCount < MAX_CHANGED_FRACTION
+        },
     ),
 )
+
+/** See [SCREENSHOT_COMPARISON]. Measured worst case is 0.00069. */
+private const val MAX_CHANGED_FRACTION = 0.001f
