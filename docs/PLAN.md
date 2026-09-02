@@ -1526,6 +1526,40 @@ all passed. Every one was a layout that could not hold its own text, or a string
 that was not in the language around it — the two categories nothing else in this
 repo looks at.
 
+### 4.11 — CI is enforced, and the goldens survive the runner — **done**
+
+`master` is protected: `Validate Gradle wrapper` and `Build and test` are
+required, the branch must be up to date, force pushes and deletions are off,
+and **admins are not exempt**. Direct pushes to `master` are no longer possible
+by anyone; work goes through a pull request whose checks passed on the exact
+commit being merged. No review is required, so a solo change is still one
+command to merge.
+
+**Turning it on exposed that CI had been failing for two pushes, and protection
+went on before that was checked** — for about half an hour `master` was gated by
+a check that could not pass. The order was wrong and is worth recording as
+such: verify the gate is green, then close it.
+
+**Every golden failed on the Ubuntu runner**, and the cause was worth the
+detour. The side-by-side showed reference and render looking identical with an
+empty diff panel, so all 31 CI renders were compared against their goldens
+numerically: **at most 0.069% of pixels different, by at most 4 of 255**.
+Antialiasing along glyph edges, nothing more.
+
+Two fixes missed before the third worked, and the misses are the useful part:
+
+- `roborazzi.compare.changeThreshold` as a system property does nothing here.
+  Roborazzi reads it through its Gradle plugin, which this repo does not apply.
+- `SimpleImageComparator(maxDistance = 0.02f)` — comfortably above the worst
+  4/255 — also did nothing, because `CompareOptions.resultValidator` has the
+  last word regardless of what the comparator tolerated.
+
+The tolerance is now stated as the validator: at most 0.1% of pixels may
+differ. That is 1.45x the measured noise, against roughly 0.25% for a one-word
+label change and whole percent for a wrapped line. The lower margin is thin and
+the comment says so — a platform whose text rendering drifts further needs this
+re-measured rather than nudged.
+
 ---
 
 ## Next
@@ -1544,10 +1578,10 @@ In the order they are worth doing, and why.
    The guideline's Phase 3 is the polished phone and Phase 4 is the Wear
    remote, which still has no hardware to test against. Either weeks become a
    numbered phase or the status table stops claiming Phase 3 is where this is.
-3. **CI does not enforce anything.** Branch protection is a repository setting,
-   so nothing stops a push that fails `test`, `lint` or the 46 goldens. That
-   matters more now than it did: a screenshot suite nobody is required to pass
-   is a screenshot suite that goes stale.
+3. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+   of measured noise. It holds for Windows and this Ubuntu runner; a third
+   platform, a Robolectric bump or a font change could close the gap, and the
+   answer then is to re-measure rather than raise the number.
 
 ---
 
@@ -1639,7 +1673,9 @@ app icon, and the exact licence.
 - **KSP is pinned to the Kotlin version.** Bumping `kotlin` without bumping
   `ksp` in the same commit fails the build in a way whose message does not
   mention the real cause.
-- **Nothing enforces CI yet.** Branch protection is a repository setting, so
+- **CI is enforced as of 4.11.** `master` requires both checks and exempts
+  nobody. What follows was written before that and is kept for the reasoning:
+  branch protection is a repository setting, so
   until a maintainer turns it on, a red build reports the failure but does not
   prevent the merge.
 - **Phase 2 introduces secrets.** Key handling must land with its own tests and
