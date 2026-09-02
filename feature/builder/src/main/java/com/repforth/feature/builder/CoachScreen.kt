@@ -1,17 +1,13 @@
 package com.repforth.feature.builder
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +20,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,22 +50,25 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import com.repforth.core.designsystem.component.MuscleSelector
+import com.repforth.core.designsystem.component.RfChoiceChips
 import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.component.RfValueSlider
-import com.repforth.core.designsystem.component.RfChoiceChips
+import com.repforth.core.designsystem.theme.Dur
+import com.repforth.core.designsystem.theme.Ease
 import com.repforth.core.designsystem.theme.Layout
+import com.repforth.core.designsystem.theme.LocalReducedMotion
+import com.repforth.core.designsystem.theme.MotionScale
 import com.repforth.core.designsystem.theme.Radius
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Stroke
@@ -73,9 +76,9 @@ import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.BodyView
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
-import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.WorkoutLimits
 import kotlinx.coroutines.delay
 
@@ -470,6 +473,43 @@ private fun CoachDaySelector(
  * Animated action button that provides pulsing glow and breathing motion
  * while generation is underway, transitioning text to indicate active progress.
  */
+/**
+ * The scale and aura opacity of the generate button while it is working.
+ *
+ * Reduced motion takes the pulse away entirely rather than shortening it. An
+ * infinite repeat is the one spec a zero duration cannot express — it would
+ * repeat instantly, forever — so this is the case that has to branch rather
+ * than ask [rfTween] for a shorter tween. The aura is still drawn, held at the
+ * midpoint of the pulse, so the button still says "working" without moving.
+ */
+@Composable
+private fun coachGlow(): Pair<Float, Float> {
+    if (LocalReducedMotion.current) return 1f to 0.5f
+
+    val transition = rememberInfiniteTransition(label = "coach_glow")
+    val scale by transition.animateFloat(
+        initialValue = 1f,
+        // A fraction of the pop token: a full 1.06 on a full-width button reads
+        // as the layout shifting rather than the button breathing.
+        targetValue = 1f + (MotionScale.pop - 1f) * 0.4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = Dur.xlong * 2, easing = Ease.standard),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "glow_scale",
+    )
+    val alpha by transition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.75f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = Dur.xlong * 2, easing = Ease.standard),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "glow_alpha",
+    )
+    return scale to alpha
+}
+
 @Composable
 private fun CoachGenerateButton(
     generating: Boolean,
@@ -477,27 +517,7 @@ private fun CoachGenerateButton(
     modifier: Modifier = Modifier,
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val infiniteTransition = rememberInfiniteTransition(label = "coach_glow")
-
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.025f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "glow_scale",
-    )
-
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "glow_alpha",
-    )
+    val (glowScale, glowAlpha) = coachGlow()
 
     Box(
         modifier = modifier

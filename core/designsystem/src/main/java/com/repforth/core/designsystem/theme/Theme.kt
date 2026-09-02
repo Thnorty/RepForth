@@ -122,12 +122,20 @@ private val LightColors = lightColorScheme(
 @Composable
 fun RepForthTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    reducedMotion: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) DarkColors else LightColors
     val extended = if (darkTheme) DarkRepForthColors else LightRepForthColors
 
-    CompositionLocalProvider(LocalRepForthColors provides extended) {
+    CompositionLocalProvider(
+        LocalRepForthColors provides extended,
+        // Motion belongs to the theme for the same reason the colours do: it is
+        // a display decision, it reaches every screen, and providing it here is
+        // what lets `rfTween` honour the setting without a single screen
+        // knowing the preference exists.
+        LocalReducedMotion provides reducedMotion,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = RepForthTypography,

@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display, 3.3 accessibility done. Motion, progress visuals and baseline profiles remain |
+| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display, 3.3 accessibility, 3.4 motion tokens done. Motion *applied*, progress visuals and baseline profiles remain |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | Not started. No hardware to test against |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
@@ -117,6 +117,7 @@ recording them found five more defects.
 | **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
 | **Phase 3** — image display and GIF playback in catalog, builder and session | `22383c9` |
 | **Phase 3** — the accessibility pass, and a guard lint could not be | [#2][pr2] |
+| **Phase 3** — motion tokens, and a reduced-motion switch that works | [#3][pr3] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -129,6 +130,7 @@ recording them found five more defects.
 | **Phase 6** — CI enforced, and goldens that survive the runner | `cc5cec7`, `4654808` |
 
 [pr2]: https://github.com/Thnorty/RepForth/pull/2
+[pr3]: https://github.com/Thnorty/RepForth/pull/3
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1067,6 +1069,44 @@ proven.
 
 ---
 
+### 3.4 — The motion system — **done; the setting now controls something**
+
+§19 asks for a "final motion system". There wasn't a first one. A grep for every
+Compose animation API across all 131 source files returns **one file**:
+`CoachScreen`, whose generate button pulses. Everything else in the app is
+instant.
+
+More to the point, **the reduced-motion switch controlled nothing that moved.**
+It had exactly one effect — swapping an animated GIF for a thumbnail — while the
+only actual animation in the app ignored it entirely. A user who turned it on
+got the same pulsing button.
+
+`Motion.kt` ports the token set that was already sitting in
+`design-system/tokens/motion.css`: six durations, five easings, three travel
+distances, two scales, and the product rules the CSS carries as a comment —
+shared-axis for plan to detail, spring for set completion, rotation only for an
+active timer ring, and **no large motion while a set is in progress**, which is
+a rule about someone holding a barbell rather than a matter of taste.
+
+`RepForthTheme` provides `LocalReducedMotion`, following `LocalUnitSystem`: a
+display decision that reaches every screen and that no ViewModel has another
+reason to carry. `rfTween` and `rfTravel` read it, so honouring the setting is
+the default and ignoring it takes effort.
+
+**Two guards, both watched failing.** `MotionTokenTest` rejects a literal
+`durationMillis` outside the design system, and requires any file using
+`rememberInfiniteTransition` to read `LocalReducedMotion` — because `tween(0)`
+inside an `infiniteRepeatable` repeats instantly and forever rather than not
+animating, so that case has to branch. Breaking the first one also proved the
+guard-input declaration: editing a *feature* file correctly invalidated `:app`'s
+test task, which is the blind spot that has caught this repo twice before.
+
+What is not done: the shared-axis navigation transitions and the set-completion
+spring the CSS names. The tokens and the switch exist for them now; nothing
+reads them yet beyond the one button.
+
+---
+
 ## Phase 4 — Weekly plans
 
 A plan became a week of training days rather than a single workout. This was
@@ -1668,11 +1708,20 @@ In the order they are worth doing, and why.
    unphotographed, it is unreachable by the accessibility checks too — a
    deliberate break of its `Role.Checkbox` was not caught, because no test can
    open it. Hoisting that state now buys two guards rather than one.
-2. **Phase 3's remainder: motion, progress visuals, baseline profiles.** The
-   accessibility pass is done (3.3); these three are what is left of the phase.
-   None has a §20 clause behind it, which is why they now sit below the item
-   above.
-3. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+2. **Progress computes three figures it never draws.** `daysThisWeek` and
+   `totalSets` are calculated in `SessionStatistics.kt` — the first with a
+   distinct-calendar-day pass over the week — and no composable in
+   `feature/history` reads either. `WorkoutSummary.exerciseCount` is the same
+   story per row. `ProgressSummary.topMuscles` is a fourth, though that one is
+   documented as empty until the catalog is joined. That is most of "progress
+   visuals" already sitting in memory with nothing drawing it.
+3. **Motion exists as tokens and is applied to one button.** 3.4 built the
+   scale and the reduced-motion switch; the shared-axis plan-to-detail
+   transition and the set-completion spring the design system names are still
+   unwritten.
+4. **Baseline profiles have not been started**, and are the last named item in
+   §19's Phase 3.
+5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
