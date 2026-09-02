@@ -7,7 +7,7 @@
     <string name="builder_name_placeholder">İtiş günü</string>
     <string name="builder_add_exercise">Egzersiz ekle</string>
     <string name="builder_save">Antrenmanı kaydet</string>
-    <string name="builder_empty">Henüz egzersiz yok. Başlamak için bir tane ekle.</string>
+    <string name="builder_empty">Henüz egzersiz yok. Senin için oluşturulsun ya da kendin ekle.</string>
     <string name="builder_name_required">Antrenmana bir ad ver.</string>
 
     <string name="builder_sets">Set</string>

@@ -7,7 +7,7 @@
     <string name="builder_name_placeholder">Push day</string>
     <string name="builder_add_exercise">Add exercise</string>
     <string name="builder_save">Save workout</string>
-    <string name="builder_empty">No exercises yet. Add one to get started.</string>
+    <string name="builder_empty">No exercises yet. Have one built for you, or add them yourself.</string>
     <string name="builder_name_required">Give the workout a name.</string>
 
     <string name="builder_sets">Sets</string>

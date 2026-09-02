@@ -70,6 +70,21 @@ class BuilderScreenshotTest {
     fun week_review_large_text() =
         capture("week-review-en-2x", fontScale = 2f) { WeekReviewContent() }
 
+    /** The empty builder, which is where someone decides how to start. */
+    @Test
+    fun builder_empty_english() = capture("builder-empty-en") { BuilderContent(EMPTY) }
+
+    @Test
+    fun builder_empty_turkish() =
+        capture("builder-empty-tr", locale = TURKISH) { BuilderContent(EMPTY) }
+
+    @Test
+    fun builder_empty_large_text() =
+        capture("builder-empty-en-2x", fontScale = 2f) { BuilderContent(EMPTY) }
+
+    @Test
+    fun builder_with_rows() = capture("builder-rows-en") { BuilderContent(WITH_ROWS) }
+
     @Test
     fun coach_english() = capture("coach-en") { CoachContent() }
 
@@ -111,6 +126,26 @@ class BuilderScreenshotTest {
             onEditWeek = {},
             onStartPlan = {},
             onDelete = {},
+        )
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun BuilderContent(state: BuilderUiState) {
+        BuilderScreen(
+            state = state,
+            onNameChange = {},
+            onAddExercise = {},
+            onOpenExerciseDetail = {},
+            onCoach = {},
+            onRemove = {},
+            onMove = { _, _ -> },
+            onSetsChange = { _, _ -> },
+            onRepsChange = { _, _ -> },
+            onDurationChange = { _, _ -> },
+            onRestChange = { _, _ -> },
+            onWeightChange = { _, _ -> },
+            onTimedChange = { _, _ -> },
+            onSave = {},
         )
     }
 
@@ -230,6 +265,21 @@ class BuilderScreenshotTest {
             coachExperience = ExperienceLevel.ADVANCED,
             coachSessionMinutes = 60,
             savedProfile = PROFILE,
+        )
+
+        /**
+         * A new plan with nothing in it.
+         *
+         * The state that decides what someone does next, and the reason Coach
+         * sits above "Add exercise" as a filled button rather than beside it as
+         * an equal.
+         */
+        val EMPTY = BuilderUiState(sessionCeilingMinutes = 45)
+
+        val WITH_ROWS = BuilderUiState(
+            name = "Push day",
+            sessionCeilingMinutes = 45,
+            exercises = listOf(LONG_EXERCISE, LONG_EXERCISE.copy(id = "row-9")),
         )
 
         val WEEK_DRAFT = BuilderUiState(

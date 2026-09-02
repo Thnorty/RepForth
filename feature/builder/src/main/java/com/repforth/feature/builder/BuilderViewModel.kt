@@ -125,6 +125,40 @@ data class DraftWeekDay(
 private const val MS_PER_MINUTE = 60_000L
 
 /**
+ * The part of a draft that counts as a change.
+ *
+ * A plain value, so "is this the same plan I opened" is one equality check
+ * rather than a hand-written comparison that forgets a field.
+ */
+data class BuilderContent(
+    val name: String,
+    val exercises: List<ExerciseContent>,
+    val weekDays: List<DayContent>,
+)
+
+data class DayContent(val title: String, val exercises: List<ExerciseContent>)
+
+data class ExerciseContent(
+    val exerciseId: ExerciseId,
+    val sets: Int,
+    val reps: Int,
+    val durationSeconds: Int,
+    val weightKg: Double?,
+    val restSeconds: Int,
+    val timed: Boolean,
+)
+
+private fun DraftExercise.contentKey() = ExerciseContent(
+    exerciseId = exerciseId,
+    sets = sets,
+    reps = reps,
+    durationSeconds = durationSeconds,
+    weightKg = weightKg,
+    restSeconds = restSeconds,
+    timed = timed,
+)
+
+/**
  * Why Coach came back empty.
  *
  * A generated plan that fails silently is indistinguishable from one that is
@@ -224,6 +258,15 @@ data class BuilderUiState(
     /** Provider rationale for successfully generated workout. */
     val coachNotice: CoachNotice? = null,
     /**
+     * What was loaded or last written, for telling "changed" from "has content".
+     *
+     * Null for a plan that has never been saved — including one Coach just
+     * generated, which is unsaved work and *should* warn before it is thrown
+     * away. Set when a saved plan or week is opened, and again after a
+     * successful save.
+     */
+    val savedContent: BuilderContent? = null,
+    /**
      * The exercise whose detail sheet is open, or null.
      *
      * The full [Exercise] rather than the draft row, because the sheet shows
@@ -250,6 +293,35 @@ data class BuilderUiState(
                 coachSessionMinutes != (profile.sessionLengthMs / MS_PER_MINUTE).toInt() ||
                 coachDays != profile.trainingDaysPerWeek
         }
+
+    /**
+     * The editable content, with everything that is not content left out.
+     *
+     * Ids are excluded because they are minted per row and would make a
+     * reopened plan differ from itself. `isExpanded` is excluded because
+     * collapsing a day is looking, not editing — and a back press after
+     * expanding one should not be met with a question about discarding work.
+     */
+    val editableContent: BuilderContent
+        get() = BuilderContent(
+            name = name.trim(),
+            exercises = exercises.map { it.contentKey() },
+            weekDays = weekDays.map { day ->
+                DayContent(day.title.trim(), day.exercises.map { it.contentKey() })
+            },
+        )
+
+    /**
+     * Whether leaving now would lose something.
+     *
+     * This was `exercises.isNotEmpty() || weekDays.isNotEmpty() || name.isNotBlank()`,
+     * which is "has content" and not "has changes" — so opening a saved week
+     * just to look at it and pressing back asked whether to discard a workout
+     * that had not been touched. Reported from a device, on exactly that path.
+     */
+    val isDirty: Boolean
+        get() = savedContent?.let { it != editableContent }
+            ?: (exercises.isNotEmpty() || weekDays.isNotEmpty() || name.isNotBlank())
 
     val isEditing: Boolean get() = planId != null
     val isWeeklyPlan: Boolean get() = weekDays.isNotEmpty()
@@ -379,6 +451,7 @@ class BuilderViewModel @Inject constructor(
                 source = template.source,
                 exercises = template.exercises.toDrafts(names),
             )
+            update { copy(savedContent = editableContent) }
         }
     }
 
@@ -423,6 +496,7 @@ class BuilderViewModel @Inject constructor(
                     )
                 },
             )
+            update { copy(savedContent = editableContent) }
         }
     }
 
@@ -779,6 +853,8 @@ class BuilderViewModel @Inject constructor(
                 saved = true,
                 weekId = weekId,
             )
+            // What is on screen is now what is stored, so leaving loses nothing.
+            update { copy(savedContent = editableContent) }
         }
     }
 
@@ -813,6 +889,7 @@ class BuilderViewModel @Inject constructor(
                 ),
             )
             _uiState.value = _uiState.value.copy(saving = false, saved = true)
+            update { copy(savedContent = editableContent) }
         }
     }
 

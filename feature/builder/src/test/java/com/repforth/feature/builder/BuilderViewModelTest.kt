@@ -119,6 +119,113 @@ class BuilderViewModelTest {
             equipment = equipment,
         )
 
+    // ---- "Discard workout?" means changed, not merely populated ----
+
+    /**
+     * Opening a saved week to look at it and pressing back asked whether to
+     * discard the workout.
+     *
+     * The check was `exercises.isNotEmpty() || weekDays.isNotEmpty() ||
+     * name.isNotBlank()`, which is "has content" — true of everything the
+     * builder ever shows, including a plan loaded a moment ago and untouched.
+     * Reported from a device, on both the week and the day paths.
+     */
+    @Test
+    fun `a week just opened is not dirty`() = runTest(dispatcher) {
+        weeks.save(savedWeek())
+
+        viewModel.loadWeek("w1")
+        advanceUntilIdle()
+
+        assertFalse("Nothing has been changed", state.isDirty)
+    }
+
+    @Test
+    fun `a plan just opened is not dirty`() = runTest(dispatcher) {
+        templates.save(savedTemplate("t1", "Push", "a"))
+
+        viewModel.load("t1")
+        advanceUntilIdle()
+
+        assertFalse(state.isDirty)
+    }
+
+    /** Looking is not editing: a day accordion opens and closes freely. */
+    @Test
+    fun `expanding a day is not a change`() = runTest(dispatcher) {
+        weeks.save(savedWeek())
+        viewModel.loadWeek("w1")
+        advanceUntilIdle()
+
+        viewModel.onToggleDayExpanded(1)
+        viewModel.onToggleDayExpanded(0)
+
+        assertFalse("Collapsing a day is not editing it", state.isDirty)
+    }
+
+    @Test
+    fun `editing a loaded week is dirty`() = runTest(dispatcher) {
+        weeks.save(savedWeek())
+        viewModel.loadWeek("w1")
+        advanceUntilIdle()
+
+        viewModel.onDayTitleChange(0, "Chest day")
+
+        assertTrue(state.isDirty)
+    }
+
+    @Test
+    fun `changing a number on a loaded plan is dirty`() = runTest(dispatcher) {
+        templates.save(savedTemplate("t1", "Push", "a"))
+        viewModel.load("t1")
+        advanceUntilIdle()
+
+        viewModel.onSetsChange(0, 5)
+
+        assertTrue(state.isDirty)
+    }
+
+    /** A generated week has never been saved, so leaving it does lose something. */
+    @Test
+    fun `a freshly generated week is dirty`() = runTest(dispatcher) {
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+        generator.response = AiWorkoutResponse(
+            days = listOf(day("Push", "a"), day("Pull", "a")),
+            rationale = "Split",
+        )
+
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        assertTrue("Nothing has written this down yet", state.isDirty)
+    }
+
+    /** And saving it settles the question. */
+    @Test
+    fun `saving makes it clean again`() = runTest(dispatcher) {
+        templates.save(savedTemplate("t1", "Push", "a"))
+        viewModel.load("t1")
+        advanceUntilIdle()
+        viewModel.onSetsChange(0, 5)
+        assertTrue(state.isDirty)
+
+        viewModel.onSave()
+        advanceUntilIdle()
+
+        assertFalse(state.isDirty)
+    }
+
+    private fun savedWeek() = TrainingWeek(
+        id = "w1",
+        name = "PPL Week",
+        source = PlanSource.AI,
+        active = false,
+        days = listOf(
+            WeekDay(0, "Push", workout = savedTemplate("d0", "Push", "a")),
+            WeekDay(1, "Pull", workout = savedTemplate("d1", "Pull", "b")),
+        ),
+    )
+
     // ---- Reopening a saved week ----
 
     /**

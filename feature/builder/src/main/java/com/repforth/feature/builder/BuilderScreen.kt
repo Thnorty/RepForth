@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -103,11 +105,10 @@ fun BuilderRoute(
         if (state.saved) onSaved()
     }
 
-    val isDirty = state.exercises.isNotEmpty() || state.weekDays.isNotEmpty() || state.name.isNotBlank()
     val defaultWeekName = stringResource(R.string.coach_week_default_name)
     if (!state.picking && !state.coaching) {
         BackHandler(enabled = !confirmingDiscard) {
-            if (isDirty) {
+            if (state.isDirty) {
                 confirmingDiscard = true
             } else {
                 onExit()
@@ -298,6 +299,28 @@ internal fun BuilderScreen(
                 )
             }
 
+            // Coach first, and filled. It was an OutlinedButton below "Add
+            // exercise" — identical in weight to it and second in order — which
+            // is the wrong billing for the thing this app is mostly for. It
+            // carries the same sparkle as the button that does the generating,
+            // so the two read as one idea.
+            item(key = "coach") {
+                Button(
+                    onClick = onCoach,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Target.min),
+                ) {
+                    Icon(
+                        painter = RfIcons.Generate,
+                        contentDescription = null,
+                        modifier = Modifier.size(Space.s5),
+                    )
+                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(stringResource(R.string.coach_open))
+                }
+            }
+
             item(key = "add") {
                 OutlinedButton(
                     onClick = onAddExercise,
@@ -306,17 +329,6 @@ internal fun BuilderScreen(
                         .heightIn(min = Target.min),
                 ) {
                     Text(stringResource(R.string.builder_add_exercise))
-                }
-            }
-
-            item(key = "coach") {
-                OutlinedButton(
-                    onClick = onCoach,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = Target.min),
-                ) {
-                    Text(stringResource(R.string.coach_open))
                 }
             }
         }
