@@ -79,16 +79,6 @@ class AndroidScreenshotConventionPlugin : Plugin<Project> {
                 // Recording is opt-in per run: `-Proborazzi.record=true` rewrites
                 // every golden, and a build that did that by default would make
                 // the guard agree with whatever it was just shown.
-                // A hair of tolerance, for one reason: the goldens are recorded
-                // on a maintainer's Windows machine and verified on an Ubuntu
-                // CI runner, and text rasterisation is not bit-identical
-                // across platforms. 0.1% of pixels is far below what any
-                // layout change costs -- a wrapped line, a shifted row or a
-                // missing gap moves whole percent -- and far above sub-pixel
-                // antialiasing noise. Zero would mean a suite that only ever
-                // passes on the machine that recorded it.
-                systemProperty("roborazzi.compare.changeThreshold", "0.001")
-
                 systemProperty(
                     "roborazzi.test.record",
                     providers.gradleProperty("roborazzi.record").getOrElse("false"),

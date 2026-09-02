@@ -21,4 +21,10 @@ dependencies {
     // and pulling that into an APK fails dexing. The instrumentation tests keep
     // their own fixtures for exactly this reason.
     api(project(":core:secrets"))
+
+    // `api` so the shared RoborazziOptions below is usable by the modules that
+    // consume it. Roborazzi is a test library and this module is a test
+    // fixture, so it goes no further than test classpaths -- and like JUnit
+    // above, it must never reach androidTest.
+    api(libs.roborazzi)
 }

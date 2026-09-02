@@ -9,6 +9,7 @@ import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.testing.ENGLISH
+import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.TURKISH
@@ -99,7 +100,7 @@ class OnboardingScreenshotTest {
             }
         }
 
-        compose.onRoot().captureRoboImage(screenshotPath(name))
+        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
 
     private fun goal() = OnboardingUiState(

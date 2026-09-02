@@ -1,5 +1,8 @@
 package com.repforth.core.testing
 
+import com.github.takahirom.roborazzi.RoborazziOptions
+import com.dropbox.differ.SimpleImageComparator
+
 /*
  * The settings every screenshot test shares.
  *
@@ -55,3 +58,29 @@ const val TURKISH = "tr-rTR"
  * goldens with it.
  */
 fun screenshotPath(name: String): String = "src/test/screenshots/$name.png"
+
+/**
+ * How close a render has to be to its golden.
+ *
+ * Not exact, and the tolerance is measured rather than guessed. The goldens are
+ * recorded on a maintainer's Windows machine and verified on an Ubuntu CI
+ * runner, and the two do not rasterise text identically. Comparing every CI
+ * render against its golden gave: **at most 0.069% of pixels different, by at
+ * most 4 of 255** — antialiasing along the edges of glyphs, invisible in the
+ * side-by-side and confirmed by an empty diff panel.
+ *
+ * A per-pixel distance tolerance is the right tool for that, and a
+ * changed-pixel count is not: a wrapped line or a shifted row moves whole
+ * percentages of the image, so counting pixels would need a threshold loose
+ * enough to hide a small but real text change. `maxDistance` ignores a
+ * difference no one can see at any scale, while a single pixel that actually
+ * changes colour still fails.
+ *
+ * 0.02 of full range is 5 of 255 — just past the worst observed, and far below
+ * anything a human would notice.
+ */
+val SCREENSHOT_COMPARISON: RoborazziOptions = RoborazziOptions(
+    compareOptions = RoborazziOptions.CompareOptions(
+        imageComparator = SimpleImageComparator(maxDistance = 0.02f),
+    ),
+)

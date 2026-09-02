@@ -13,6 +13,7 @@ import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
 import com.repforth.core.testing.ENGLISH
+import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.TURKISH
@@ -96,7 +97,7 @@ class SessionScreenshotTest {
             }
         }
 
-        compose.onRoot().captureRoboImage(screenshotPath(name))
+        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
 
     private fun active(phase: SessionPhase = SessionPhase.ACTIVE) = SessionUiState(

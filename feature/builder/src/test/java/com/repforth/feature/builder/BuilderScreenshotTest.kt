@@ -18,6 +18,7 @@ import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.testing.ENGLISH
+import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.TURKISH
@@ -113,7 +114,7 @@ class BuilderScreenshotTest {
         RuntimeEnvironment.setFontScale(fontScale)
 
         compose.setContent { RepForthPreviewHost { content() } }
-        compose.onRoot().captureRoboImage(screenshotPath(name))
+        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
 
     @androidx.compose.runtime.Composable

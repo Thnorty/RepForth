@@ -13,6 +13,7 @@ import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
 import com.repforth.core.testing.ENGLISH
+import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.TURKISH
@@ -85,7 +86,7 @@ class ExercisesScreenshotTest {
             }
         }
 
-        compose.onRoot().captureRoboImage(screenshotPath(name))
+        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
 
     private companion object {

@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.repforth.core.designsystem.theme.RepForthPreviewHost
 import com.repforth.core.testing.ENGLISH
+import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.TURKISH
@@ -62,7 +63,7 @@ class HistoryScreenshotTest {
         RuntimeEnvironment.setFontScale(fontScale)
 
         compose.setContent { RepForthPreviewHost { HistoryScreen(state = state) } }
-        compose.onRoot().captureRoboImage(screenshotPath(name))
+        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
 
     private companion object {
