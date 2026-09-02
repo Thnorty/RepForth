@@ -23,9 +23,10 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1 Media Downloader & Disk Cache done |
-| 4 — Wear remote | §19 | Not started |
-| 5 — Release hardening | §19 | Not started |
+| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display done |
+| 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
+| 5 — Wear remote | §19 | Not started. No hardware to test against |
+| 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
 and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
@@ -47,8 +48,8 @@ could have caught because Gemini answers 400 where the shared mapping expected
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
 have caught any of the nine; three interact — type, tap, save — and the keyboard
-one is a direct regression guard for the fifth. Forty-six screenshot goldens now
-cover nine screens in both languages at both font scales (4.9, 4.10), and
+one is a direct regression guard for the fifth. Fifty screenshot goldens now
+cover ten screens in both languages at both font scales (6.1, 6.2, 6.3), and
 recording them found five more defects.
 
 ### Built so far
@@ -113,9 +114,18 @@ recording them found five more defects.
 | **Phase 2** — validated AI workout contract and corrected CI trigger | `5bb27bc` |
 | **Phase 2** — structured provider generation over one shared schema | `ee9d19e` |
 | **Phase 2** — Make Coach generation AI-only and retryable | `a2c5775` |
-| **Weekly Plans** — Multi-day training week domain, Room v2, Contract v3, multi-day builder draft UI & Today/Plans integration | pending |
 | **Phase 3** — on-demand media downloader and bounded cache | `eda895a` |
-| **Phase 3** — image display and GIF playback in catalog, builder and session | pending |
+| **Phase 3** — image display and GIF playback in catalog, builder and session | `22383c9` |
+| **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
+| **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
+| **Phase 4** — a week's day stops being saved out of its week | `163de35` |
+| **Phase 4** — five fixes in Settings, two of them layout bugs on a phone | `0250825` |
+| **Phase 4** — an editable schedule, and Coach showing what it builds | `fca0200` |
+| **Phase 4** — a saved week reopens, and Today follows one | `1a91425` |
+| **Phase 4** — discard asked only on a real change; Coach led with | `2e1abc1` |
+| **Phase 6** — screenshot tests, and the two defects they found | `d9fcd8e` |
+| **Phase 6** — the remaining screens, and three more defects | `e1188bf`, `1c809f9` |
+| **Phase 6** — CI enforced, and goldens that survive the runner | `cc5cec7`, `4654808` |
 
 Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
 `core:designsystem`, `core:exercise-data`, `core:media`, `core:model`, `core:rules`,
@@ -992,6 +1002,13 @@ Exercise media rendering and background prefetching are integrated across all ex
   - AI Coach wire contract (`AiPlannedExercise`), JSON schema (`weight_kg`), validator, and builder mapping now support prescribing starting baseline weights based on user experience level and goal.
 - Verified as part of the 427-test suite (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `SessionStatisticsTest`, `TodayViewModelTest`, `SettingsViewModelTest`, `ExercisesViewModelTest`, `SessionViewModelTest`, `PickerViewModelTest`, `MediaStringParityTest`, `TrainingWeekTest`, `RoomWeekRepositoryTest`, `RoomTemplateRepositoryTest`, `DataTransferTest`), plus `./gradlew assemblePlaceholderDebug` and `./gradlew lint`.
 
+## Phase 4 — Weekly plans
+
+A plan became a week of training days rather than a single workout. This was
+built before §19 listed it; the guideline now does, and §20 requires it, so v1
+cannot be declared done without a week that fills its budget and survives being
+reopened.
+
 ### 4.1 — Weekly Plans: Domain and Persistence (Slice W1) — **done, migration proven on a device**
 
 Domain and persistence foundation for multi-day weekly plans (§1, §3, `docs/WEEKLY_PLANS.md`):
@@ -1030,7 +1047,7 @@ Wire contract, schema, prompt, retry feedback, and host validator upgraded to Sc
   - Computes total estimated duration across the week and validates each day through `RulesEngine`.
 - Verified by `./gradlew test`, `assemblePlaceholderDebug` and `lint` (`AiWorkoutContractTest`, `AiWorkoutJsonSchemaTest`, `AiWorkoutValidatorTest`, `ProviderGenerationTest`, `AiWorkoutGeneratorTest`, `BuilderViewModelTest`).
 
-### 4.3 — Weekly Plans: Coach, review and Plans (Slice W3) — **not yet seen on a device**
+### 4.3 — Weekly Plans: Coach, review and Plans (Slice W3) — **used on a Galaxy S23; two defects found there, fixed in 4.5 and 4.8**
 
 - **Coach asks how many days.** A row of seven chips seeded from the profile's
   `trainingDaysPerWeek`, with a line underneath saying which of the two outcomes
@@ -1157,7 +1174,7 @@ never been sent at all — the same stale-artifact failure `SchemaDumpGuardTest`
 exists to prevent for the dump, in the one file that had no guard. The probe now
 warns when the staged cases are older than `tools/gemini-schema.json`.
 
-### 4.5 — What the first real week exposed — **built and installed, not yet eyeballed**
+### 4.5 — What the first real week exposed — **installed; the session start/end was confirmed on screen**
 
 Two bugs reported by the maintainer on the Galaxy S23, on the first week a live
 provider ever returned. Neither is about the AI; both are places the week path
@@ -1323,7 +1340,7 @@ entire time budget the coach programmes against (4.5). Someone whose training
 time changes has to reset the app, which wipes their history. It needs a control
 that does not exist yet rather than a fix, so it is left as a decision.
 
-### 4.7 — The schedule became editable, and Coach shows what it is building — **built, not yet eyeballed**
+### 4.7 — The schedule became editable, and Coach shows what it is building — **installed and reviewed on screen**
 
 **Settings can change the schedule.** `trainingDaysPerWeek` and `sessionLengthMs`
 were written by `feature:onboarding` and by nothing else, so the only way to say
@@ -1388,7 +1405,7 @@ wiring was watched failing. The maintainer has seen the Coach screen; the
 Settings schedule dialog, the Turkish on the new strings, and 200% font scale
 have not been looked at.
 
-### 4.8 — A week can be reopened, and Today says it is following one — **built, not installed**
+### 4.8 — A week can be reopened, and Today says it is following one — **installed; not yet confirmed on screen**
 
 The two gaps the previous section listed as next, closed together because they
 are the same feature finishing itself.
@@ -1434,7 +1451,15 @@ Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
 assemblePlaceholderDebug` run separately, then installed and launched on the
 S23 — alive, empty crash buffer. Nothing here has been looked at on a screen.
 
-### 4.9 — Screenshot tests — **17 goldens, and two defects found recording them**
+## Phase 6 — Release hardening, started early
+
+Out of order on purpose. Goldens and enforced CI were the cheapest way to stop
+the phases above regressing while they were still moving, and every one of these
+slices found defects in work that was already considered finished. The rest of
+the phase — Play Store packaging, the media permission review, beta feedback —
+has not started.
+
+### 6.1 — Screenshot tests — **17 goldens, and two defects found recording them**
 
 The only untested category, and the one this project's whole defect history
 argues for: nine bugs found on a device and by nothing else, five of them in the
@@ -1485,9 +1510,9 @@ Settings goldens red and correctly left the Turkish pair alone.
 Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
 assemblePlaceholderDebug` run separately.
 
-### 4.10 — Screenshots for the rest of the screens — **42 goldens, three more defects**
+### 6.2 — Screenshots for the rest of the screens — **42 goldens, three more defects**
 
-4.9 covered the four screens every recent defect had been in. This covers the
+6.1 covered the four screens every recent defect had been in. This covers the
 rest: Session, Progress, Exercises and onboarding, same matrix. **42 goldens,
 3.9 MB**, and the first render of each screen found something.
 
@@ -1526,7 +1551,7 @@ all passed. Every one was a layout that could not hold its own text, or a string
 that was not in the language around it — the two categories nothing else in this
 repo looks at.
 
-### 4.11 — CI is enforced, and the goldens survive the runner — **done**
+### 6.3 — CI is enforced, and the goldens survive the runner — **done**
 
 `master` is protected: `Validate Gradle wrapper` and `Build and test` are
 required, the branch must be up to date, force pushes and deletions are off,
@@ -1573,11 +1598,12 @@ In the order they are worth doing, and why.
    worth thinking about rather than doing reflexively. The AI provider screen
    has none either; it was left out because its interesting states are a typed
    key and a connection result rather than a layout under pressure.
-2. **Phase 3 is one slice in and Phase 4 has not started.** Weekly plans have
-   absorbed every session since 4.1 and were never on the phase list at all.
-   The guideline's Phase 3 is the polished phone and Phase 4 is the Wear
-   remote, which still has no hardware to test against. Either weeks become a
-   numbered phase or the status table stops claiming Phase 3 is where this is.
+2. **Phase 3 is still the unfinished one.** 3.1 and 3.2 landed and the rest of
+   it did not: the final motion system, the accessibility pass, progress
+   visuals and baseline profiles. It is the only phase below 6 that is open,
+   and the accessibility pass is the part with a deadline attached to it —
+   §20 requires English and Turkish to pass accessibility checks, and nothing
+   has run one.
 3. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
@@ -1605,6 +1631,8 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Guard tests declare their files as task inputs | Otherwise the task is UP-TO-DATE and passes on the exact change it guards | `GuardTestInputs.kt` |
 | The app does not inspect the provider address | Every rule that could be written refused the local model server it existed for; the cost — a key readable over `http://` — is accepted and stated | Guideline §8, amended |
 | Gemini's endpoint is fixed in the adapter | A stored address must not be able to redirect a Gemini key, and it is the only address protection left | `GeminiProvider.kt` |
+| Weekly plans are a phase in the guideline, not a footnote | The feature was shipped before it was specified, so §20 could have declared v1 done without it; Wear moved 4→5 and hardening 5→6 to keep delivery order | Guideline §19, §20 |
+| Release hardening starts early and out of order | Goldens and enforced CI stop finished phases regressing while later ones move; every slice of it found a defect in work already called done | Phase 6, below |
 | User-installed CAs stay untrusted | A self-signed local server is the other way people ask for LAN support, and the worse one | `network_security_config.xml` |
 | The provider key is required only where the provider requires it | Ollama and LM Studio ignore it; demanding one meant typing a throwaway value past a check that protected nothing | `ProviderId.requiresKey` |
 | Only `core:ai` and `core:media` may declare an HTTP client | Keeps network access bounded strictly to AI generation and on-demand media downloads | `NetworkBoundaryTest.kt` |
@@ -1651,7 +1679,7 @@ app icon, and the exact licence.
   instrumentation suite; the Xiaomi (API 30) hangs on it, because MIUI refuses
   an activity start from instrumentation and the permission that would allow it
   cannot be set over adb. Paired-watch tests still have no hardware at all, so
-  Phase 4 remains unverifiable here.
+  Phase 5 remains unverifiable here.
 - **Cleartext is permitted and nothing narrows it (2.3d, §8 amended).** There is
   no address policy any more: a base URL typed as `http://` is sent as `http://`,
   to any host, and the API key rides in a header in clear text. That is the
@@ -1673,7 +1701,7 @@ app icon, and the exact licence.
 - **KSP is pinned to the Kotlin version.** Bumping `kotlin` without bumping
   `ksp` in the same commit fails the build in a way whose message does not
   mention the real cause.
-- **CI is enforced as of 4.11.** `master` requires both checks and exempts
+- **CI is enforced as of 6.3.** `master` requires both checks and exempts
   nobody. What follows was written before that and is kept for the reasoning:
   branch protection is a repository setting, so
   until a maintainer turns it on, a red build reports the failure but does not
