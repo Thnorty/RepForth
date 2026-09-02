@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -115,21 +116,29 @@ private fun ProgressPanel(progress: ProgressSummary) {
             modifier = Modifier.padding(Space.s4),
             verticalArrangement = Arrangement.spacedBy(Space.s4),
         ) {
+            // Weighted and spaced, not pushed apart. Three unconstrained
+            // columns in a SpaceBetween row have nowhere to go once their
+            // labels grow: at 200% font scale in Turkish they ran together as
+            // "AntrenmanBu haftaHaftalık seri", with no gap at all. Found by
+            // the first screenshot ever taken of this screen.
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(Space.s3),
             ) {
                 Figure(
                     value = progress.workouts.toString(),
                     label = stringResource(R.string.progress_workouts),
+                    modifier = Modifier.weight(1f),
                 )
                 Figure(
                     value = progress.workoutsThisWeek.toString(),
                     label = stringResource(R.string.progress_this_week),
+                    modifier = Modifier.weight(1f),
                 )
                 Figure(
                     value = progress.streakWeeks.toString(),
                     label = stringResource(R.string.progress_streak),
+                    modifier = Modifier.weight(1f),
                 )
             }
             Figure(
@@ -147,8 +156,8 @@ private fun ProgressPanel(progress: ProgressSummary) {
  * outranks the number it describes, and this screen is entirely numbers.
  */
 @Composable
-private fun Figure(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.Start) {
+private fun Figure(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.Start) {
         Text(text = value, style = RepForthNumeric.md)
         Text(
             text = label,
@@ -235,13 +244,25 @@ private fun stringResourceOf(workout: WorkoutSummary): String = pluralStringReso
 private fun formatVolume(kg: Double): String {
     val units = LocalUnitSystem.current
     val (value, symbol) = units.formatVolume(kg)
-    return NumberFormat.getNumberInstance(Locale.getDefault())
+    return NumberFormat.getNumberInstance(LocalConfiguration.current.locales[0])
         .format(value.toDouble()) + " " + symbol
 }
 
+/**
+ * The date, in the language the rest of the screen is in.
+ *
+ * `ofLocalizedDate` alone formats in `Locale.getDefault()` — the JVM's, which
+ * is not necessarily the one this composition is rendering in. This app lets
+ * the user choose a language independently of the system, and the first Turkish
+ * screenshot of this screen came out with "Jan 1, 2026" sitting above "18 set ·
+ * 45 dk". Reading the locale from the configuration is what every other
+ * localised value here already does.
+ */
 @Composable
 private fun formatDate(epochMillis: Long): String {
-    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+    val formatter = DateTimeFormatter
+        .ofLocalizedDate(FormatStyle.MEDIUM)
+        .withLocale(LocalConfiguration.current.locales[0])
     return Instant.ofEpochMilli(epochMillis)
         .atZone(ZoneId.systemDefault())
         .format(formatter)

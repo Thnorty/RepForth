@@ -47,9 +47,9 @@ could have caught because Gemini answers 400 where the shared mapping expected
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
 have caught any of the nine; three interact — type, tap, save — and the keyboard
-one is a direct regression guard for the fifth. Seventeen screenshot goldens now
-cover four screens in both languages at both font scales (4.9), which found two
-more defects in the recording of them.
+one is a direct regression guard for the fifth. Forty-two screenshot goldens now
+cover eight screens in both languages at both font scales (4.9, 4.10), and
+recording them found five more defects.
 
 ### Built so far
 
@@ -1485,6 +1485,44 @@ Settings goldens red and correctly left the Turkish pair alone.
 Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
 assemblePlaceholderDebug` run separately.
 
+### 4.10 — Screenshots for the rest of the screens — **42 goldens, three more defects**
+
+4.9 covered the four screens every recent defect had been in. This covers the
+rest: Session, Progress, Exercises and onboarding, same matrix. **42 goldens,
+3.9 MB**, and the first render of each screen found something.
+
+**Progress ran three labels together.** `ProgressPanel` put three unweighted
+`Figure` columns in a `SpaceBetween` row, so at 200% font scale in Turkish the
+labels butted straight into each other: `AntrenmanBu haftaHaftalık seri`, no gap
+anywhere. Exactly the shape of the `InfoRow` bug in 4.6, in a screen nobody had
+thought to look at. Weighted and spaced now.
+
+**Progress printed English dates in a Turkish UI.** `formatDate` used
+`DateTimeFormatter.ofLocalizedDate` with no locale, which formats in
+`Locale.getDefault()` — the JVM's, not the one the composition is rendering in,
+and this app lets the user pick a language independently of the system. The
+Turkish golden read "Jan 1, 2026" above "18 set · 45 dk". It reads the
+configuration locale now, as the rest of the screen already did; the volume
+figure had the same bug in `NumberFormat` and is fixed with it.
+
+**Session showed the target weight twice.** The label under the big number
+appended "· 60 kg" while the line directly below it said "60 kg" in the accent
+colour — the same field, rendered twice, one line apart. The accent line stays,
+because it is the prominent one and it is what says "Bodyweight" when there is
+no load.
+
+Guard proven again on the new modules: lengthening one English string turned the
+two English Session goldens red and left the Turkish pair alone.
+
+Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
+assemblePlaceholderDebug` run separately.
+
+**Five defects have now been found by screenshot tests in two sittings**, on
+screens that unit tests, instrumentation tests and a person holding a phone had
+all passed. Every one was a layout that could not hold its own text, or a string
+that was not in the language around it — the two categories nothing else in this
+repo looks at.
+
 ---
 
 ## Next
@@ -1495,10 +1533,10 @@ In the order they are worth doing, and why.
    controls, and 4.9 covers only four screens of them: the Settings schedule dialog, the Turkish on nine new strings, and
    200% font scale anywhere are all unverified. Costs minutes, and every defect
    of this kind so far has been found exactly this way.
-2. **More screens under 4.9.** Session, Exercises, Progress, onboarding and the
-   AI settings screen have no goldens. Settings, Today, Plans and week review
-   were picked because every recent defect was in one of them; the rest are
-   cheap to add now that the plumbing exists.
+2. **The AI settings screen has no goldens.** It is the last screen without
+   any, left out because its interesting states are a typed key and a
+   connection result rather than a layout under pressure. Worth adding when
+   something there changes.
 3. **Phase 3 is one slice in and Phase 4 has not started.** Weekly plans have
    absorbed every session since 4.1 and were not on the phase list at all; the
    guideline'''s Phase 3 is the polished phone and Phase 4 is the Wear remote,
@@ -1559,11 +1597,10 @@ app icon, and the exact licence.
   suite. Whether a **small local model** holds a strict seven-day schema remains
   unmeasured, and stays the risk most likely to change the design;
   `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its trigger.
-- **Screenshot tests cover four screens, not all of them.** 4.9 renders
-  Settings, Today, Plans and the week review in both languages at both font
-  scales; Session, Exercises, Progress, onboarding and AI settings have no
-  goldens, so a layout regression in those is still something only a person
-  holding a phone would notice.
+- **Screenshot tests cover every screen but AI settings.** 42 goldens across
+  eight screens, both languages, both font scales. A layout regression in the
+  AI provider screen is still something only a person holding a phone would
+  notice.
 - **A golden agrees with whatever it was last shown.** Re-recording is one flag
   away, and a re-record that nobody looked at turns the guard into a rubber
   stamp. Read the diff before committing a changed image.

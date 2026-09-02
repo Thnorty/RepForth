@@ -364,13 +364,15 @@ private fun TargetPanel(state: SessionUiState) {
                 style = RepForthNumeric.xl,
             )
             Text(
+                // The unit of the big number above, and nothing else. This line
+                // also appended "· 60 kg" while the line directly below it said
+                // "60 kg" in the accent colour — the same value, from the same
+                // field, twice. Seen in the first screenshot ever taken of this
+                // screen; the accent line is the one that stays, because it is
+                // the prominent one and it is what says "Bodyweight" when there
+                // is no load.
                 text = when (target) {
-                    is ExerciseTarget.Reps -> {
-                        val weightPart = target.weightKg?.takeIf { it > 0.0 }?.let { weight ->
-                            " · ${units.formatWeight(weight)} ${units.symbol}"
-                        } ?: ""
-                        "${stringResource(R.string.session_reps)}$weightPart"
-                    }
+                    is ExerciseTarget.Reps -> stringResource(R.string.session_reps)
                     is ExerciseTarget.Duration -> stringResource(R.string.session_seconds)
                 },
                 style = MaterialTheme.typography.labelLarge,
