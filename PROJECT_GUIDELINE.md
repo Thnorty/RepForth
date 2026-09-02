@@ -772,13 +772,24 @@ Avoid putting licensed media or user keys into public CI artifacts. Release sign
 - On-demand media downloading, hash verification, and the bounded cache built on the Phase 0 manifest.
 - Final motion system, accessibility pass, bilingual polish, progress visuals, baseline profiles.
 
-### Phase 4 — Connected Wear remote
+### Phase 4 — Weekly plans
+
+- A plan is a week of training days, not a single workout: schema, persistence, and a migration from standalone plans that preserves them.
+- The AI contract generates a whole week against one time budget and one recovery shape, and the validator rejects a week that ignores either.
+- Coach, plan review, Plans and Today all speak in weeks, and a week can be reopened and edited after it is generated.
+
+This phase was built before it was written down. It is recorded here because
+weeks became the primary way a plan is created, which §20 must therefore
+require.
+
+### Phase 5 — Connected Wear remote
 
 - Shared protocol, phone service bridge, watch UI, commands, haptics, ongoing activity, disconnection handling, and paired-device tests.
 
-### Phase 5 — Release hardening
+### Phase 6 — Release hardening
 
 - Media permission/build flavor review, privacy/security documentation, migration tests, Play Store packaging, screenshots, and beta feedback.
+- Screenshot goldens and enforced CI belong here, and started early: they were the cheapest way to keep the phases above from regressing while they were still moving.
 
 ## 20. Definition of done for v1
 
@@ -789,6 +800,8 @@ Version 1 is ready when:
 - Gemini and a documented OpenAI-compatible test endpoint both produce validated plans using user-owned keys.
 - Provider failure never corrupts or blocks local workouts.
 - No generated plan can reference an unknown exercise ID.
+- A generated week fills the requested session length across the days the user asked for, and a day may be shorter only by the coach's choice rather than by running out of budget.
+- A week survives being saved, reopened, and edited without losing its days or its schedule.
 - English and Turkish flows pass UI, localization, and accessibility checks.
 - Media downloads are version-pinned, integrity-checked, bounded, clearable, and optional.
 - The phone restores an interrupted active session correctly.

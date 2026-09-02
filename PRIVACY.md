@@ -51,7 +51,7 @@ configure a provider and supply your own key, then and only then:
 pinned GitHub commit when first shown, and cached on the device. The default
 `placeholder` flavour performs no network I/O at all. See [`NOTICE.md`](NOTICE.md).
 
-**Phase 4 — the watch.** Phone and watch exchange workout state directly over the
+**Phase 5 — the watch.** Phone and watch exchange workout state directly over the
 Wear Data Layer. That traffic stays between your paired devices.
 
 ## Android Auto Backup
