@@ -103,6 +103,10 @@ jobs:
           path: |
             **/build/reports/
             **/build/test-results/
+            # Roborazzi writes a side-by-side comparison per failed golden.
+            # Without it a screenshot failure says only "is changed", which is
+            # the one thing already obvious.
+            **/build/outputs/roborazzi/
           retention-days: 7
 
       # The APK is not published. §18 keeps build outputs out of public CI
