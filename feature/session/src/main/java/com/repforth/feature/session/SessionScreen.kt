@@ -2,10 +2,9 @@ package com.repforth.feature.session
 
 import android.Manifest
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,34 +26,35 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.repforth.core.designsystem.theme.LocalUnitSystem
-import com.repforth.core.designsystem.theme.formatWeight
-import com.repforth.core.designsystem.theme.symbol
-import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.designsystem.theme.Layout
+import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.designsystem.theme.formatWeight
+import com.repforth.core.designsystem.theme.symbol
+import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.ExerciseTarget
+import kotlinx.coroutines.delay
 
 /**
  * The running workout (§3, §10).
@@ -263,6 +263,12 @@ private fun SessionHeader(state: SessionUiState) {
             text = stringResource(R.string.session_set_of, state.setNumber, state.setTotal),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // This number changes with no one touching the screen: when the
+            // rest timer runs out, `RestElapsed` advances the set and the
+            // counter moves on its own. Polite, not assertive -- it should be
+            // read at the next pause rather than cutting off whatever the user
+            // is already listening to.
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }

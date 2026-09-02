@@ -7,4 +7,10 @@
     <string name="rf_body_map_hint">Kasları seçmek için vücuda dokun.</string>
     <string name="rf_selected_muscles">Seçilenler</string>
     <string name="rf_remove_muscle">%1$s seçimini kaldır</string>
+    <!-- Ekran okuyucunun okuduğu ortak ifadeler. -->
+    <string name="rf_expand">Genişlet</string>
+    <string name="rf_collapse">Daralt</string>
+    <string name="rf_expanded">Genişletildi</string>
+    <string name="rf_collapsed">Daraltıldı</string>
+    <string name="rf_ok">Tamam</string>
 </resources>

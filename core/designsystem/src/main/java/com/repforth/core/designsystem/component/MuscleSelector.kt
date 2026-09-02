@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
@@ -23,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import com.repforth.core.designsystem.R
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
+import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.BodyView
 import com.repforth.core.model.Muscle
@@ -127,6 +129,11 @@ fun MuscleSelector(
                         onClick = { onMuscleToggled(muscle) },
                         enabled = enabled,
                         label = { Text(label) },
+                        // A Material chip is 32dp tall and Compose does not
+                        // expand its touch target the way it does for a
+                        // checkbox or an icon button, so the minimum has to be
+                        // asked for.
+                        modifier = Modifier.heightIn(min = Target.min),
                         trailingIcon = {
                             Icon(
                                 painter = RfIcons.Close,
@@ -149,6 +156,7 @@ fun MuscleSelector(
                     onClick = { onMuscleToggled(muscle) },
                     enabled = enabled,
                     label = { Text(labelOf(muscle)) },
+                    modifier = Modifier.heightIn(min = Target.min),
                 )
             }
         }

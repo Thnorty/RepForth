@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.core.designsystem.component.expandCollapseLabel
+import com.repforth.core.designsystem.component.expandableHeader
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -163,6 +165,7 @@ private fun DayAccordionCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .expandableHeader(day.isExpanded)
                     .clickable(onClick = onToggleExpanded)
                     .padding(vertical = Space.s1),
                 verticalAlignment = Alignment.CenterVertically,
@@ -188,7 +191,7 @@ private fun DayAccordionCard(
                 ) {
                     Icon(
                         painter = if (day.isExpanded) RfIcons.Collapse else RfIcons.Expand,
-                        contentDescription = null,
+                        contentDescription = expandCollapseLabel(day.isExpanded),
                     )
                 }
             }
