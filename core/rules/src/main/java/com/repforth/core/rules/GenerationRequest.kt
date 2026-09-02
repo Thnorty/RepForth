@@ -3,7 +3,9 @@ package com.repforth.core.rules
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseId
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 
 /**
@@ -41,9 +43,29 @@ data class GenerationRequest(
      * Null means use the profile's [UserProfile.trainingDaysPerWeek].
      */
     val daysOverride: Int? = null,
+
+    /**
+     * What to train for, if not what the profile says.
+     *
+     * The same reasoning as the overrides above, applied to the two fields that
+     * did not have one: someone training for strength who wants a single
+     * endurance week is not telling the app they have changed their mind about
+     * training. Coach can now ask; saving the answer to the profile is a
+     * separate, deliberate act.
+     */
+    val goalOverride: TrainingGoal? = null,
+
+    /** Experience for this generation, if not the profile's. */
+    val experienceOverride: ExperienceLevel? = null,
 ) {
     val days: Int
         get() = daysOverride ?: profile.trainingDaysPerWeek
+
+    val goal: TrainingGoal
+        get() = goalOverride ?: profile.goal
+
+    val experience: ExperienceLevel
+        get() = experienceOverride ?: profile.experience
 
     val sessionLengthMs: Long
         get() = sessionLengthMsOverride ?: profile.sessionLengthMs

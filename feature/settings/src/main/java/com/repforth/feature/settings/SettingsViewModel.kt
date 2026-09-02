@@ -11,6 +11,7 @@ import com.repforth.core.model.Language
 import com.repforth.core.model.ThemeMode
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UnitSystem
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.model.UserPreferences
 import com.repforth.core.model.UserProfile
 import com.repforth.core.userdata.ProfileRepository
@@ -107,6 +108,29 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val current = profileRepository.getProfile() ?: return@launch
             profileRepository.save(current.copy(experience = experience))
+        }
+    }
+
+    /**
+     * How often and how long this person trains.
+     *
+     * Written only by onboarding until now, and shown in Settings as a read-only
+     * row — so someone whose training time changed had to reset the app and lose
+     * their history to say so. It is the most consequential field of the four in
+     * this section, because `sessionLengthMs` is the entire budget Coach
+     * programmes a day against.
+     */
+    fun onScheduleChange(daysPerWeek: Int, sessionMinutes: Int) {
+        viewModelScope.launch {
+            val current = profileRepository.getProfile() ?: return@launch
+            profileRepository.save(
+                current.copy(
+                    trainingDaysPerWeek = daysPerWeek.coerceIn(WorkoutLimits.days),
+                    sessionLengthMs = sessionMinutes
+                        .coerceIn(WorkoutLimits.sessionMinutes)
+                        .toLong() * 60_000L,
+                ),
+            )
         }
     }
 

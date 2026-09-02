@@ -121,4 +121,12 @@
     <string name="coach_error_detail_label">Sunucu yanıtı:</string>
     <string name="coach_error_detail_copy">Kopyala</string>
     <string name="coach_error_detail_copied">Kopyalandı</string>
+    <string name="coach_goal">Odak</string>
+    <string name="coach_experience">Deneyim</string>
+    <string name="coach_session_length">Günlük süre</string>
+    <plurals name="coach_session_length_value">
+        <item quantity="one">%1$d dakika</item>
+        <item quantity="other">%1$d dakika</item>
+    </plurals>
+    <string name="coach_save_defaults">Varsayılan yap</string>
 </resources>

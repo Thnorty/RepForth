@@ -14,6 +14,7 @@ import com.repforth.core.model.toggleRegion
 import com.repforth.core.model.toggleSynonyms
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.userdata.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
@@ -123,9 +124,12 @@ data class OnboardingUiState(
         const val DEFAULT_DAYS = 3
         const val DEFAULT_SESSION_MINUTES = 45
 
-        /** §3: a session is between a quarter of an hour and two hours. */
-        val SESSION_MINUTES_RANGE = 15..120
-        val DAYS_RANGE = 1..7
+        // §3's ranges live in WorkoutLimits, beside the rest of a plan's
+        // numeric shape. They were declared here when onboarding was the only
+        // screen that asked; Settings edits them now and Coach overrides them,
+        // so a copy owned by the screen that asks first would be two copies.
+        val SESSION_MINUTES_RANGE = WorkoutLimits.sessionMinutes
+        val DAYS_RANGE = WorkoutLimits.days
     }
 }
 

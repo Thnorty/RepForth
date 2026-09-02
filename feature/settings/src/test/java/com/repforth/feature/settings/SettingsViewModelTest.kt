@@ -8,6 +8,7 @@ import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.ThemeMode
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.testing.FakePreferencesStore
 import com.repforth.core.transfer.DataTransfer
 import com.repforth.core.transfer.ExportDocument
@@ -108,6 +109,46 @@ class SettingsViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(newEquipment, state().profile?.availableEquipment)
     }
+
+    /**
+     * The schedule was written by onboarding and by nothing else.
+     *
+     * Settings showed it as a read-only row, so someone whose training time
+     * changed had to reset the app and lose their history to say so — and
+     * `sessionLengthMs` is the entire budget Coach programmes a day against.
+     */
+    @Test
+    fun `the schedule can be changed after onboarding`() = runTest(dispatcher) {
+        activate()
+        assertEquals(4, state().profile?.trainingDaysPerWeek)
+        assertEquals(45 * 60_000L, state().profile?.sessionLengthMs)
+
+        viewModel.onScheduleChange(daysPerWeek = 6, sessionMinutes = 75)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(6, state().profile?.trainingDaysPerWeek)
+        assertEquals(75 * 60_000L, state().profile?.sessionLengthMs)
+    }
+
+    /**
+     * The control cannot offer an illegal value, so one arriving is a
+     * programming error — and refusing to save would be a worse answer than
+     * saving the nearest legal thing.
+     */
+    @Test
+    fun `a schedule outside the allowed range is clamped rather than refused`() =
+        runTest(dispatcher) {
+            activate()
+
+            viewModel.onScheduleChange(daysPerWeek = 99, sessionMinutes = 5)
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(WorkoutLimits.days.last, state().profile?.trainingDaysPerWeek)
+            assertEquals(
+                WorkoutLimits.sessionMinutes.first * 60_000L,
+                state().profile?.sessionLengthMs,
+            )
+        }
 
     @Test
     fun `preferences reflect changes from the view model`() = runTest(dispatcher) {

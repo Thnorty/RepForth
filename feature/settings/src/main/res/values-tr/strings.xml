@@ -13,6 +13,19 @@
     <string name="settings_profile_schedule">Program</string>
     <string name="settings_profile_schedule_sub">Haftada %1$d gün · %2$d dk</string>
 
+    <string name="settings_profile_schedule_dialog_title">Antrenman programı</string>
+    <string name="settings_profile_schedule_days">Haftada kaç gün</string>
+    <string name="settings_profile_schedule_length">Antrenman süresi</string>
+    <plurals name="settings_profile_schedule_days_value">
+        <item quantity="one">%1$d gün</item>
+        <item quantity="other">%1$d gün</item>
+    </plurals>
+    <plurals name="settings_profile_schedule_length_value">
+        <item quantity="one">%1$d dakika</item>
+        <item quantity="other">%1$d dakika</item>
+    </plurals>
+    <string name="settings_profile_schedule_note">Koç bir günü burada belirlediğin süreye göre planlar. Bunu değiştirmeden tek bir plan için farklı bir süre de kullanabilirsin.</string>
+
     <string name="settings_appearance">Görünüm</string>
     <string name="settings_theme">Tema</string>
     <string name="settings_theme_system">Sistem</string>

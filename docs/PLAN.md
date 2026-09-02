@@ -1322,6 +1322,71 @@ entire time budget the coach programmes against (4.5). Someone whose training
 time changes has to reset the app, which wipes their history. It needs a control
 that does not exist yet rather than a fix, so it is left as a decision.
 
+### 4.7 — The schedule became editable, and Coach shows what it is building — **built, not yet eyeballed**
+
+**Settings can change the schedule.** `trainingDaysPerWeek` and `sessionLengthMs`
+were written by `feature:onboarding` and by nothing else, so the only way to say
+"I train four days now, not three" was to reset the app and lose the history.
+The read-only row is an `ActionRow` opening a dialog of two sliders. It holds a
+draft and applies on Save, like the equipment dialog beside it: every other
+control on that screen writes as you touch it because every other control is
+reversible at a glance, and dragging a slider would otherwise write the profile
+a hundred times on the way to 45 minutes.
+
+**Coach shows the plan's shape, and can override it.** It asked exactly one
+question — which muscles — on the reasoning that the profile already knew the
+goal, the experience and the session length. Right about the asking, wrong about
+the showing: those three shape every generated week and none of them were on the
+screen doing the generating, so a week built for 45 minutes and one built for 90
+looked identical until the plan arrived. All three are now seeded from the
+profile and changeable for one plan, with **Save as default** as the separate
+act that makes a change stick — wanting one endurance week is not announcing
+that you have stopped training for strength. The button is disabled while Coach
+agrees with the profile, because a button that writes what is already stored
+looks broken in the way that makes people press it twice.
+
+`GenerationRequest` grew `goalOverride` and `experienceOverride` to match the
+three overrides it already had, and `AiWorkoutRequest` now reads goal and
+experience from the request rather than reaching past it into the profile.
+
+**Experience reads as a level.** "Under a year", "1 to 3 years" and "More than 3
+years" were the definition rather than the name: three times the width of the
+word they stand for, and they made the reader do arithmetic to find which end
+was which. They are Beginner / Intermediate / Advanced now, with the spans moved
+to `ExperienceLevel.detailRes` where onboarding still shows them at the moment
+the question is asked.
+
+**Three things stopped being written twice**, which is what made the above
+tractable:
+
+- `RfChoiceChips` and `RfValueSlider` moved into `core:designsystem`. Settings,
+  Coach and onboarding all wanted both; the chip row had already been written
+  twice by 4.6.
+- `WorkoutLimits` owns the session range and step. `DAYS_RANGE = 1..7` in
+  onboarding had been a duplicate of `WorkoutLimits.days` all along.
+- `MS_PER_MINUTE` came out of a private companion the ViewModel could not see.
+
+**`ValueSliderConversionTest` moved with the slider it guards**, from
+`feature:onboarding` to `core:designsystem`. It records a real device bug — day
+six of seven was unreachable because the conversion truncated — and a guard left
+behind while its code moves is worse than no guard, because it goes on passing.
+It also gained a case the old one could not have: the shared helper snaps to
+legal stops, where the version it replaced rounded straight to an integer and
+would answer "48 minutes" to a slider whose stops are multiples of five. That
+never showed, because Compose snapped before calling back — the helper was only
+correct because of its caller.
+
+"Save as default" is an `OutlinedButton` with a save icon rather than the
+`TextButton` it started as, which read as a link. Outlined and not full width on
+purpose: full width is the shape "Build it" has at the bottom of the same
+screen, and there is one primary action here.
+
+Verified by `./gradlew test`, `./gradlew lint` and `./gradlew
+assemblePlaceholderDebug` run separately, and installed on the S23. The override
+wiring was watched failing. The maintainer has seen the Coach screen; the
+Settings schedule dialog, the Turkish on the new strings, and 200% font scale
+have not been looked at.
+
 ---
 
 ## Next
@@ -1339,9 +1404,7 @@ In the order they are worth doing, and why.
    week", that is the payoff missing. It also still counts against
    `profile.trainingDaysPerWeek` rather than the active week's length, so a
    seven-day week reads "0 of 3 days".
-3. **An editable schedule in Settings**, per 4.6 above — blocked on a decision
-   about the control, not on the work.
-4. **Screenshot tests.** Every layout bug this project has found was found by a
+3. **Screenshot tests.** Every layout bug this project has found was found by a
    person holding a phone, including all five in 4.5 and 4.6. That is a pattern
    now rather than an anecdote, and it is the highest-leverage item here — but
    it is a different kind of work and should not start mid-feature.

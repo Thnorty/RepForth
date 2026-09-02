@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -31,6 +32,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -61,6 +63,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import com.repforth.core.designsystem.component.MuscleSelector
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.core.designsystem.component.RfValueSlider
+import com.repforth.core.designsystem.component.RfChoiceChips
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Radius
 import com.repforth.core.designsystem.theme.Space
@@ -70,6 +74,8 @@ import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.BodyView
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.TrainingGoal
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.WorkoutLimits
 import kotlinx.coroutines.delay
 
@@ -82,10 +88,18 @@ import kotlinx.coroutines.delay
  * editable rows. Nothing is saved on the way through. A generated plan is a
  * starting point, and the user gets the last word on every number in it.
  *
- * Deliberately one question. The profile already knows the goal, the experience,
- * the session length and the equipment; asking again here would be asking
- * someone to repeat themselves, and disagreeing with what they said in
- * onboarding is worse than not asking at all.
+ * It used to ask exactly one question — which muscles — on the reasoning that
+ * the profile already knew the goal, the experience and the session length, and
+ * asking again would be asking someone to repeat themselves. That was right
+ * about the asking and wrong about the showing: those three shape every week it
+ * generates, and none of them were on the screen doing the generating, so a week
+ * built for 45 minutes and a week built for 90 looked identical until the plan
+ * arrived.
+ *
+ * They are shown seeded from the profile and changeable for this plan only.
+ * "Save as default" is the separate, deliberate act that makes a change stick,
+ * because wanting one endurance week is not announcing that you have stopped
+ * training for strength.
  */
 @Composable
 internal fun CoachScreen(
@@ -94,6 +108,10 @@ internal fun CoachScreen(
     onRegionToggled: (BodyRegion) -> Unit,
     onGenerate: (String) -> Unit,
     onDaysChange: (Int) -> Unit,
+    onGoalChange: (TrainingGoal) -> Unit,
+    onExperienceChange: (ExperienceLevel) -> Unit,
+    onSessionMinutesChange: (Int) -> Unit,
+    onSaveDefaults: () -> Unit,
     onCancelGenerate: () -> Unit,
     onDismissError: () -> Unit,
     onClose: () -> Unit,
@@ -165,6 +183,16 @@ internal fun CoachScreen(
                     days = state.coachDays,
                     enabled = !state.generating,
                     onDaysChange = onDaysChange,
+                )
+            }
+
+            item(key = "shape") {
+                CoachPlanShape(
+                    state = state,
+                    onGoalChange = onGoalChange,
+                    onExperienceChange = onExperienceChange,
+                    onSessionMinutesChange = onSessionMinutesChange,
+                    onSaveDefaults = onSaveDefaults,
                 )
             }
 
@@ -560,3 +588,90 @@ private val CoachFailure.messageRes: Int
         CoachFailure.NOTHING -> R.string.coach_failed_nothing
     }
 
+/**
+ * What this generation is being built for: focus, experience, and a day's length.
+ *
+ * Each is seeded from the profile and each is an override until saved. The
+ * button is disabled while they agree with the profile, because a button that
+ * writes the values already stored looks broken in exactly the way that makes
+ * people press it twice.
+ */
+@Composable
+private fun CoachPlanShape(
+    state: BuilderUiState,
+    onGoalChange: (TrainingGoal) -> Unit,
+    onExperienceChange: (ExperienceLevel) -> Unit,
+    onSessionMinutesChange: (Int) -> Unit,
+    onSaveDefaults: () -> Unit,
+) {
+    val goal = state.coachGoal
+    val experience = state.coachExperience
+    val minutes = state.coachSessionMinutes
+    // Everything here comes from the profile, so there is nothing to show until
+    // it has loaded. A moment of nothing beats a moment of wrong defaults that
+    // then jump.
+    if (goal == null || experience == null || minutes == null) return
+
+    val enabled = !state.generating
+
+    Column(verticalArrangement = Arrangement.spacedBy(Space.s4)) {
+        RfChoiceChips(
+            options = TrainingGoal.entries,
+            selected = goal,
+            labelOf = { stringResource(it.labelRes) },
+            onSelected = onGoalChange,
+            label = stringResource(R.string.coach_goal),
+            enabled = enabled,
+        )
+
+        RfChoiceChips(
+            options = ExperienceLevel.entries,
+            selected = experience,
+            labelOf = { stringResource(it.labelRes) },
+            onSelected = onExperienceChange,
+            label = stringResource(R.string.coach_experience),
+            enabled = enabled,
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+            Text(
+                text = stringResource(R.string.coach_session_length),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            RfValueSlider(
+                value = minutes,
+                range = WorkoutLimits.sessionMinutes,
+                step = WorkoutLimits.sessionMinutesStep,
+                label = pluralStringResource(
+                    R.plurals.coach_session_length_value,
+                    minutes,
+                    minutes,
+                ),
+                onValueChange = onSessionMinutesChange,
+                enabled = enabled,
+            )
+        }
+
+        // Outlined and end-aligned, which is what this module already uses for a
+        // secondary action. A TextButton read as a link rather than a control —
+        // and this one writes to the profile, so it should not look like the
+        // least consequential thing in the section. Not full width, because that
+        // is the shape of "Build it" waiting at the bottom of the screen and
+        // there is only one primary action here.
+        OutlinedButton(
+            onClick = onSaveDefaults,
+            enabled = enabled && state.coachDiffersFromProfile && !state.savingCoachDefaults,
+            modifier = Modifier
+                .align(Alignment.End)
+                .heightIn(min = Target.min),
+        ) {
+            Icon(
+                painter = RfIcons.Save,
+                contentDescription = null,
+                modifier = Modifier.size(Space.s5),
+            )
+            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+            Text(stringResource(R.string.coach_save_defaults))
+        }
+    }
+}

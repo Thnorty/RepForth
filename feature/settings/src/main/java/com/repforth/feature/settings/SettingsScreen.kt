@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.component.RfValueSlider
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -50,6 +52,7 @@ import com.repforth.core.model.Language
 import com.repforth.core.model.ThemeMode
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UnitSystem
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.transfer.ImportFailure
 
 /**
@@ -83,6 +86,7 @@ fun SettingsRoute(
         state = state,
         onGoalChange = viewModel::onGoalChange,
         onExperienceChange = viewModel::onExperienceChange,
+        onScheduleChange = viewModel::onScheduleChange,
         onEquipmentChange = viewModel::onEquipmentChange,
         onThemeChange = viewModel::onThemeChange,
         onLanguageChange = viewModel::onLanguageChange,
@@ -112,6 +116,7 @@ internal fun SettingsScreen(
     state: SettingsUiState,
     onGoalChange: (TrainingGoal) -> Unit,
     onExperienceChange: (ExperienceLevel) -> Unit,
+    onScheduleChange: (Int, Int) -> Unit,
     onEquipmentChange: (Set<Equipment>) -> Unit,
     onThemeChange: (ThemeMode) -> Unit,
     onLanguageChange: (Language?) -> Unit,
@@ -135,6 +140,7 @@ internal fun SettingsScreen(
     var confirmingReset by rememberSaveable { mutableStateOf(false) }
     var confirmingClearMediaCache by rememberSaveable { mutableStateOf(false) }
     var editingEquipment by rememberSaveable { mutableStateOf(false) }
+    var editingSchedule by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -186,13 +192,15 @@ internal fun SettingsScreen(
                         onClick = { editingEquipment = true },
                     )
 
-                    InfoRow(
+                    ActionRow(
                         label = stringResource(R.string.settings_profile_schedule),
                         detail = stringResource(
                             R.string.settings_profile_schedule_sub,
                             profile.trainingDaysPerWeek,
                             (profile.sessionLengthMs / 60_000L).toInt(),
                         ),
+                        enabled = !state.busy,
+                        onClick = { editingSchedule = true },
                     )
                 }
             }
@@ -369,6 +377,20 @@ internal fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Space.s6, bottom = Space.s4),
+            )
+        }
+    }
+
+    if (editingSchedule) {
+        state.profile?.let { profile ->
+            ScheduleDialog(
+                daysPerWeek = profile.trainingDaysPerWeek,
+                sessionMinutes = (profile.sessionLengthMs / 60_000L).toInt(),
+                onSave = { days, minutes ->
+                    editingSchedule = false
+                    onScheduleChange(days, minutes)
+                },
+                onDismiss = { editingSchedule = false },
             )
         }
     }
@@ -578,6 +600,84 @@ private fun InfoRow(label: String, detail: String) {
             modifier = Modifier.weight(1f),
         )
     }
+}
+
+@Composable
+private fun ScheduleDialog(
+    daysPerWeek: Int,
+    sessionMinutes: Int,
+    onSave: (Int, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Held as a draft and applied on Save, like the equipment dialog beside it.
+    // Every other control on this screen writes as you touch it because every
+    // other control is reversible at a glance; dragging a slider is not, and
+    // committing on each pixel would write the profile a hundred times crossing
+    // 45 minutes.
+    var days by remember { mutableIntStateOf(daysPerWeek) }
+    var minutes by remember { mutableIntStateOf(sessionMinutes) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_profile_schedule_dialog_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Space.s5),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
+                    Text(
+                        text = stringResource(R.string.settings_profile_schedule_days),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    RfValueSlider(
+                        value = days,
+                        range = WorkoutLimits.days,
+                        label = pluralStringResource(
+                            R.plurals.settings_profile_schedule_days_value,
+                            days,
+                            days,
+                        ),
+                        onValueChange = { days = it },
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
+                    Text(
+                        text = stringResource(R.string.settings_profile_schedule_length),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    RfValueSlider(
+                        value = minutes,
+                        range = WorkoutLimits.sessionMinutes,
+                        step = WorkoutLimits.sessionMinutesStep,
+                        label = pluralStringResource(
+                            R.plurals.settings_profile_schedule_length_value,
+                            minutes,
+                            minutes,
+                        ),
+                        onValueChange = { minutes = it },
+                    )
+                }
+
+                Text(
+                    text = stringResource(R.string.settings_profile_schedule_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(days, minutes) }) {
+                Text(stringResource(R.string.settings_profile_equipment_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
+    )
 }
 
 @Composable

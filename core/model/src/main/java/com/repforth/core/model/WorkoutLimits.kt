@@ -18,6 +18,19 @@ object WorkoutLimits {
     val days = 1..7
 
     /**
+     * How long one session may be asked to run, in minutes.
+     *
+     * Here rather than in onboarding, which is where it used to live and is only
+     * the first screen that asks. Settings edits it afterwards and Coach
+     * overrides it for one generation, so a range owned by the screen that asks
+     * first would have been copied twice.
+     */
+    val sessionMinutes = 15..120
+
+    /** What a control moves session length in. Nobody means 47 minutes. */
+    const val sessionMinutesStep = 5
+
+    /**
      * The most exercises one day may contain.
      *
      * This is the ceiling the JSON schema and the validator both derive from, so

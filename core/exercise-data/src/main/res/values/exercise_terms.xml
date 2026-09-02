@@ -142,7 +142,10 @@
     <string name="goal_general_fitness_detail">A balanced mix. A good default.</string>
 
     <!-- Experience Level -->
-    <string name="experience_beginner">Under a year</string>
-    <string name="experience_intermediate">1 to 3 years</string>
-    <string name="experience_advanced">More than 3 years</string>
+    <string name="experience_beginner">Beginner</string>
+    <string name="experience_intermediate">Intermediate</string>
+    <string name="experience_advanced">Advanced</string>
+    <string name="experience_beginner_detail">Under a year of training.</string>
+    <string name="experience_intermediate_detail">One to three years.</string>
+    <string name="experience_advanced_detail">More than three years.</string>
 </resources>

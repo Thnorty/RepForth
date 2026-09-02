@@ -114,8 +114,11 @@ data class AiWorkoutRequest(
             val primary = request.targetMuscles.canonicalSlugs()
             return AiWorkoutRequest(
                 locale = locale.tag,
-                goal = request.profile.goal.name.lowercase(),
-                experience = request.profile.experience.name.lowercase(),
+                // From the request, not the profile: Coach may override either
+                // for one generation without that being a change to who the
+                // user is.
+                goal = request.goal.name.lowercase(),
+                experience = request.experience.name.lowercase(),
                 days = request.days,
                 sessionDurationMinutes = (request.sessionLengthMs / 60_000L).toInt(),
                 primaryMuscles = primary,

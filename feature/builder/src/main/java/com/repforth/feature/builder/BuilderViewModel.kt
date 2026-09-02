@@ -14,6 +14,7 @@ import com.repforth.core.model.Exercise
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
@@ -25,6 +26,8 @@ import com.repforth.core.model.toggleRegion
 import com.repforth.core.model.toggleSynonyms
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.TrainingWeek
+import com.repforth.core.model.UserProfile
+import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.WeekDay
 import com.repforth.core.rules.GenerationRequest
 import com.repforth.core.userdata.ProfileRepository
@@ -111,10 +114,15 @@ data class DraftWeekDay(
             ).estimatedDurationMs
         } / MS_PER_MINUTE).toInt()
 
-    private companion object {
-        const val MS_PER_MINUTE = 60_000L
-    }
 }
+
+/**
+ * Milliseconds in a minute.
+ *
+ * File-level rather than inside [DraftWeekDay]: the ViewModel converts the same
+ * unit when it seeds Coach from the profile and when it writes one back.
+ */
+private const val MS_PER_MINUTE = 60_000L
 
 /**
  * Why Coach came back empty.
@@ -189,6 +197,25 @@ data class BuilderUiState(
      * rather than as a week containing a single day.
      */
     val coachDays: Int = 1,
+    /**
+     * What this generation trains for, how experienced the trainee is, and how
+     * long a day may run — seeded from the profile, changeable for one plan.
+     *
+     * Coach used to ask exactly one question, on the reasoning that the profile
+     * already knew the rest and asking again would be asking someone to repeat
+     * themselves. True of the *asking*; not true of the *showing*. Three numbers
+     * shaped every generated week and none of them were on the screen that
+     * generated it, so a week built for 45 minutes and a week built for 90
+     * looked identical right up until the plan appeared.
+     *
+     * Null until the profile loads, which is also what disables the controls.
+     */
+    val coachGoal: TrainingGoal? = null,
+    val coachExperience: ExperienceLevel? = null,
+    val coachSessionMinutes: Int? = null,
+    /** The profile as it stands, to tell an override from agreement. */
+    val savedProfile: UserProfile? = null,
+    val savingCoachDefaults: Boolean = false,
     val generating: Boolean = false,
     /** Why the last generation produced nothing, or null. */
     val coachFailure: CoachFailure? = null,
@@ -209,6 +236,21 @@ data class BuilderUiState(
     val reducedMotion: Boolean = false,
     val language: Language? = null,
 ) {
+    /**
+     * Whether Coach is set to something the profile does not say.
+     *
+     * What "Save as default" is for, and what disables it: a button that writes
+     * the values already stored would look like it did nothing, because it did.
+     */
+    val coachDiffersFromProfile: Boolean
+        get() {
+            val profile = savedProfile ?: return false
+            return coachGoal != profile.goal ||
+                coachExperience != profile.experience ||
+                coachSessionMinutes != (profile.sessionLengthMs / MS_PER_MINUTE).toInt() ||
+                coachDays != profile.trainingDaysPerWeek
+        }
+
     val isEditing: Boolean get() = planId != null
     val isWeeklyPlan: Boolean get() = weekDays.isNotEmpty()
 
@@ -275,6 +317,10 @@ class BuilderViewModel @Inject constructor(
         viewModelScope.launch {
             val profile = profiles.getProfile()
             _uiState.value = _uiState.value.copy(
+                savedProfile = profile,
+                coachGoal = profile?.goal,
+                coachExperience = profile?.experience,
+                coachSessionMinutes = profile?.let { (it.sessionLengthMs / 60_000L).toInt() },
                 sessionCeilingMinutes = profile?.let { (it.sessionLengthMs / 60_000L).toInt() },
                 // Seeded, not fixed. Onboarding already asked how many days a
                 // week this person trains, so that is the right default; asking
@@ -389,6 +435,57 @@ class BuilderViewModel @Inject constructor(
         copy(coachDays = days.coerceIn(WorkoutLimits.days), coachFailure = null, coachError = null)
     }
 
+    fun onCoachGoalChange(goal: TrainingGoal) = update {
+        copy(coachGoal = goal, coachFailure = null, coachError = null)
+    }
+
+    fun onCoachExperienceChange(level: ExperienceLevel) = update {
+        copy(coachExperience = level, coachFailure = null, coachError = null)
+    }
+
+    fun onCoachSessionMinutesChange(minutes: Int) = update {
+        copy(
+            coachSessionMinutes = minutes.coerceIn(WorkoutLimits.sessionMinutes),
+            coachFailure = null,
+            coachError = null,
+        )
+    }
+
+    /**
+     * Writes what Coach is currently set to back to the profile.
+     *
+     * The counterpart to the overrides: changing a value for one plan must not
+     * change who the user is, so saying "and keep this" has to be a separate
+     * act. It writes all four together because they are one answer to one
+     * question — how this person trains — and saving three of them would leave
+     * the profile in a state the user never chose.
+     */
+    fun onSaveCoachDefaults() {
+        val state = _uiState.value
+        val profile = state.savedProfile ?: return
+        if (!state.coachDiffersFromProfile || state.savingCoachDefaults) return
+
+        viewModelScope.launch {
+            update { copy(savingCoachDefaults = true) }
+            val updated = profile.copy(
+                goal = state.coachGoal ?: profile.goal,
+                experience = state.coachExperience ?: profile.experience,
+                trainingDaysPerWeek = state.coachDays.coerceIn(WorkoutLimits.days),
+                sessionLengthMs = (state.coachSessionMinutes ?: WorkoutLimits.sessionMinutes.last)
+                    .coerceIn(WorkoutLimits.sessionMinutes)
+                    .toLong() * MS_PER_MINUTE,
+            )
+            profiles.save(updated)
+            update {
+                copy(
+                    savedProfile = updated,
+                    savingCoachDefaults = false,
+                    sessionCeilingMinutes = (updated.sessionLengthMs / MS_PER_MINUTE).toInt(),
+                )
+            }
+        }
+    }
+
     fun onCoachRegionToggled(region: BodyRegion) = update {
         copy(coachMuscles = coachMuscles.toggleRegion(region), coachFailure = null, coachError = null)
     }
@@ -418,10 +515,21 @@ class BuilderViewModel @Inject constructor(
                 return@launch
             }
 
+            val current = _uiState.value
             val request = GenerationRequest(
                 profile = profile,
-                targetMuscles = _uiState.value.coachMuscles,
-                daysOverride = _uiState.value.coachDays.coerceIn(WorkoutLimits.days),
+                targetMuscles = current.coachMuscles,
+                daysOverride = current.coachDays.coerceIn(WorkoutLimits.days),
+                // Null where Coach agrees with the profile, so an unchanged
+                // Coach produces exactly the request it produced before.
+                goalOverride = current.coachGoal.takeIf { it != profile.goal },
+                experienceOverride = current.coachExperience
+                    .takeIf { it != profile.experience },
+                sessionLengthMsOverride = current.coachSessionMinutes
+                    ?.coerceIn(WorkoutLimits.sessionMinutes)
+                    ?.toLong()
+                    ?.times(MS_PER_MINUTE)
+                    ?.takeIf { it != profile.sessionLengthMs },
             )
             val candidates = exercises.candidates()
             when (val outcome = generator.generate(

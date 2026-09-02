@@ -13,6 +13,19 @@
     <string name="settings_profile_schedule">Schedule</string>
     <string name="settings_profile_schedule_sub">%1$d days / week · %2$d min</string>
 
+    <string name="settings_profile_schedule_dialog_title">Training schedule</string>
+    <string name="settings_profile_schedule_days">Days a week</string>
+    <string name="settings_profile_schedule_length">Time per session</string>
+    <plurals name="settings_profile_schedule_days_value">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="settings_profile_schedule_length_value">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="settings_profile_schedule_note">Coach plans a day to fit the time you set here. You can use a different length for one plan without changing this.</string>
+
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_system">System</string>

@@ -4,14 +4,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -22,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import com.repforth.core.designsystem.component.RfChoiceChips
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 
@@ -43,22 +41,7 @@ internal fun SectionLabel(text: String) {
     )
 }
 
-/**
- * One choice from a few, as chips that wrap.
- *
- * Was a [SingleChoiceSegmentedButtonRow] filling the width, which divides it
- * equally between the options — four goals on a phone leaves about 80dp each,
- * and "Hypertrophy", "General fitness" and "More than 3 years" all broke onto a
- * second line inside their pill. Turkish is longer again, and at 200% font scale
- * a segmented row of four cannot be made to work at all: equal fixed shares of a
- * fixed width is the one layout that cannot respond to its text growing, which
- * is what `AGENTS.md` forbids.
- *
- * Chips in a [FlowRow] have the opposite property — each is as wide as its own
- * label and the row wraps when it runs out — so the same control works for two
- * short options and for four long ones, in either language, at any font scale.
- */
-@OptIn(ExperimentalLayoutApi::class)
+/** The screen's own label above the shared chip control. */
 @Composable
 internal fun <T> ChoiceRow(
     label: String,
@@ -67,23 +50,13 @@ internal fun <T> ChoiceRow(
     labelOf: @Composable (T) -> String,
     onSelected: (T) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Space.s2),
-            verticalArrangement = Arrangement.spacedBy(Space.s2),
-        ) {
-            options.forEach { option ->
-                FilterChip(
-                    selected = option == selected,
-                    onClick = { onSelected(option) },
-                    label = { Text(labelOf(option)) },
-                    modifier = Modifier.heightIn(min = Target.icon),
-                )
-            }
-        }
-    }
+    RfChoiceChips(
+        options = options,
+        selected = selected,
+        labelOf = labelOf,
+        onSelected = onSelected,
+        label = label,
+    )
 }
 
 /**

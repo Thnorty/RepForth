@@ -15,6 +15,7 @@ import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.allMuscles
 import com.repforth.core.model.synonyms
@@ -28,6 +29,7 @@ import com.repforth.core.model.LocalizedInstructions
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
+import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.model.TrainingWeek
@@ -114,6 +116,93 @@ class BuilderViewModelTest {
             secondaryMuscles = emptySet(),
             equipment = equipment,
         )
+
+    // ---- Coach's plan shape: seeded from the profile, overridable for one plan ----
+
+    @Test
+    fun `coach is seeded from the profile`() = runTest(dispatcher) {
+        advanceUntilIdle()
+
+        assertEquals(TrainingGoal.STRENGTH, state.coachGoal)
+        assertEquals(ExperienceLevel.INTERMEDIATE, state.coachExperience)
+        assertEquals(FAKE_CEILING_MINUTES.toInt(), state.coachSessionMinutes)
+        assertEquals(3, state.coachDays)
+        assertFalse("Nothing has been changed yet", state.coachDiffersFromProfile)
+    }
+
+    /**
+     * Changing Coach must not change the profile, and must change the request.
+     *
+     * The three fields shape every generated week and none of them were on the
+     * screen before; the point of putting them there is that they can differ
+     * from the standing profile for one plan.
+     */
+    @Test
+    fun `coach overrides reach the generation request without touching the profile`() =
+        runTest(dispatcher) {
+            catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+            advanceUntilIdle()
+
+            viewModel.onCoachGoalChange(TrainingGoal.ENDURANCE)
+            viewModel.onCoachExperienceChange(ExperienceLevel.BEGINNER)
+            viewModel.onCoachSessionMinutesChange(90)
+            viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
+            advanceUntilIdle()
+
+            val request = generator.requests.single()
+            assertEquals(TrainingGoal.ENDURANCE, request.goal)
+            assertEquals(ExperienceLevel.BEGINNER, request.experience)
+            assertEquals(90 * 60_000L, request.sessionLengthMs)
+
+            assertTrue("The profile is a standing fact, not this plan", profiles.saved.isEmpty())
+            assertEquals(TrainingGoal.STRENGTH, profiles.profile?.goal)
+        }
+
+    /** An untouched Coach sends the profile's own values, and no overrides. */
+    @Test
+    fun `coach left alone asks for exactly what the profile says`() = runTest(dispatcher) {
+        catalog.catalog = listOf(candidate("a", Muscle.PECTORALS))
+        advanceUntilIdle()
+
+        viewModel.onGenerate("Coach plan", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+
+        val request = generator.requests.single()
+        assertNull(request.goalOverride)
+        assertNull(request.experienceOverride)
+        assertNull(request.sessionLengthMsOverride)
+        assertEquals(TrainingGoal.STRENGTH, request.goal)
+    }
+
+    @Test
+    fun `save as default writes every part of the shape at once`() = runTest(dispatcher) {
+        advanceUntilIdle()
+        viewModel.onCoachGoalChange(TrainingGoal.ENDURANCE)
+        viewModel.onCoachExperienceChange(ExperienceLevel.ADVANCED)
+        viewModel.onCoachSessionMinutesChange(75)
+        viewModel.onCoachDaysChange(5)
+
+        viewModel.onSaveCoachDefaults()
+        advanceUntilIdle()
+
+        val saved = profiles.saved.single()
+        assertEquals(TrainingGoal.ENDURANCE, saved.goal)
+        assertEquals(ExperienceLevel.ADVANCED, saved.experience)
+        assertEquals(5, saved.trainingDaysPerWeek)
+        assertEquals(75 * 60_000L, saved.sessionLengthMs)
+        assertFalse("Coach now agrees with the profile", state.coachDiffersFromProfile)
+    }
+
+    /** A button that writes what is already stored looks broken. */
+    @Test
+    fun `save as default does nothing when nothing differs`() = runTest(dispatcher) {
+        advanceUntilIdle()
+
+        viewModel.onSaveCoachDefaults()
+        advanceUntilIdle()
+
+        assertTrue(profiles.saved.isEmpty())
+    }
 
     @Test
     fun `missing provider configuration leaves the builder unchanged and explains setup`() =
@@ -935,6 +1024,7 @@ private class FakeWorkoutGenerator : AiWorkoutGenerationService {
     var response: AiWorkoutResponse? = null
     var failure: ProviderFailure? = null
     val locales = mutableListOf<Language>()
+    val requests = mutableListOf<GenerationRequest>()
 
     override suspend fun generate(
         request: GenerationRequest,
@@ -942,6 +1032,7 @@ private class FakeWorkoutGenerator : AiWorkoutGenerationService {
         candidates: List<ExerciseCandidate>,
     ): AiWorkoutGenerationOutcome {
         locales += locale
+        requests += request
         response?.let { return AiWorkoutGenerationOutcome.Provider(it, attempts = 1) }
         return AiWorkoutGenerationOutcome.Failure(
             reason = if (failure == null) {
@@ -967,7 +1058,12 @@ private class FakeProfiles : ProfileRepository {
 
     override suspend fun getProfile(): UserProfile? = profile
 
-    override suspend fun save(profile: UserProfile) = Unit
+    val saved = mutableListOf<UserProfile>()
+
+    override suspend fun save(profile: UserProfile) {
+        saved += profile
+        this.profile = profile
+    }
 
     override suspend fun deleteAll() = Unit
 

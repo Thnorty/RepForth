@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Radius
+import com.repforth.core.designsystem.component.RfValueSlider
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Stroke
 import com.repforth.core.designsystem.theme.Target
@@ -68,6 +69,7 @@ import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
+import com.repforth.core.model.WorkoutLimits
 import kotlin.math.roundToInt
 
 /**
@@ -220,7 +222,7 @@ internal fun OnboardingScreen(
                     )
                 }
 
-                OnboardingStep.DAYS -> ValueSlider(
+                OnboardingStep.DAYS -> RfValueSlider(
                     value = state.trainingDaysPerWeek,
                     range = OnboardingUiState.DAYS_RANGE,
                     label = pluralStringResource(
@@ -231,10 +233,10 @@ internal fun OnboardingScreen(
                     onValueChange = onDaysChanged,
                 )
 
-                OnboardingStep.LENGTH -> ValueSlider(
+                OnboardingStep.LENGTH -> RfValueSlider(
                     value = state.sessionLengthMinutes,
                     range = OnboardingUiState.SESSION_MINUTES_RANGE,
-                    step = SESSION_STEP_MINUTES,
+                    step = WorkoutLimits.sessionMinutesStep,
                     label = pluralStringResource(
                         R.plurals.onboarding_length_value,
                         state.sessionLengthMinutes,
@@ -650,33 +652,6 @@ private fun <T> ChipChoice(
  * off the track position.
  */
 @Composable
-private fun ValueSlider(
-    value: Int,
-    range: IntRange,
-    label: String,
-    onValueChange: (Int) -> Unit,
-    step: Int = 1,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-        )
-        Slider(
-            value = value.toFloat(),
-            onValueChange = { onValueChange(it.toStepValue()) },
-            valueRange = range.first.toFloat()..range.last.toFloat(),
-            // One less than the number of stops: Slider counts the gaps between
-            // them, not the stops themselves.
-            steps = ((range.last - range.first) / step) - 1,
-            modifier = Modifier.heightIn(min = Target.min),
-        )
-    }
-}
-
-@Composable
 private fun Hint(text: String) {
     Text(
         text = text,
@@ -739,9 +714,6 @@ private fun SegmentedProgress(completed: Int, total: Int, label: String) {
  * `ValueSliderConversionTest` exercises this exact function, and changing it
  * back fails a test rather than needing a device to notice.
  */
-internal fun Float.toStepValue(): Int = roundToInt()
-
-private const val SESSION_STEP_MINUTES = 5
 
 /** Enough to read as secondary without dropping below contrast on either card colour. */
 private const val DETAIL_ALPHA = 0.75f
