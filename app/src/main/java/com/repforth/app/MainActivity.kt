@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
 
             RepForthTheme(
                 darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme()),
+                reducedMotion = preferences.reducedMotion,
             ) {
                 // The language and the unit system are display decisions that
                 // reach almost every screen, so they are provided here rather

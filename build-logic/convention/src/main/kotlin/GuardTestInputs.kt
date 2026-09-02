@@ -106,5 +106,22 @@ private fun Project.declareRepoWideGuardInputs() {
         )
             .withPropertyName("guardedFiles-module-build-files")
             .withPathSensitivity(PathSensitivity.RELATIVE)
+
+        // `MotionTokenTest` reads every module's Kotlin sources, for the same
+        // reason and with the same gap: most of them reach this task through
+        // the compile classpath, but a module `:app` does not depend on could
+        // add an unswitchable animation and nothing would rerun. Sources are
+        // usually the case that needs no declaring; read across a module
+        // boundary through `java.io.File`, they are exactly the case that does.
+        inputs.files(
+            rootProject.layout.projectDirectory.asFileTree.matching {
+                include("**/src/main/**/*.kt")
+                exclude("**/build/**")
+                exclude("**/.gradle/**")
+                exclude("design-system/**")
+            },
+        )
+            .withPropertyName("guardedFiles-module-sources")
+            .withPathSensitivity(PathSensitivity.RELATIVE)
     }
 }
