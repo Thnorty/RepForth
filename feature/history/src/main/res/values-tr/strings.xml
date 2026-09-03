@@ -22,4 +22,8 @@
     </plurals>
     <string name="progress_duration">%1$d dk</string>
     <string name="progress_abandoned">Erken bitirildi</string>
+    <string name="progress_total_sets">Set</string>
+    <string name="progress_week_days">Bu haftaki antrenman günleri</string>
+    <string name="progress_week_days_value">%1$d / %2$d</string>
+    <string name="progress_week_days_description">Bu hafta %2$d günün %1$d gününde antrenman yapıldı.</string>
 </resources>

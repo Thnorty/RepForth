@@ -66,6 +66,9 @@ class HistoryAccessibilityTest {
                 )
             },
             mostPerformed = listOf("barbell bench press", "barbell decline wide-grip press"),
+            // Three of four, so the bar shows both states rather than a full or
+            // empty row that proves nothing about the unfilled segment.
+            weeklyTarget = 4,
             loading = false,
         )
     }

@@ -25,11 +25,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.component.RfSegmentedBar
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
-import com.repforth.core.designsystem.theme.formatVolume
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
+import com.repforth.core.designsystem.theme.formatVolume
 import com.repforth.core.workout.ProgressSummary
 import com.repforth.core.workout.WorkoutSummary
 import java.text.NumberFormat
@@ -84,7 +85,7 @@ internal fun HistoryScreen(state: HistoryUiState, modifier: Modifier = Modifier)
         contentPadding = PaddingValues(horizontal = Layout.gutterPhone, vertical = Space.s3),
         verticalArrangement = Arrangement.spacedBy(Space.s3),
     ) {
-        item(key = "summary") { ProgressPanel(state.progress) }
+        item(key = "summary") { ProgressPanel(state.progress, state.weeklyTarget) }
 
         if (state.mostPerformed.isNotEmpty()) {
             item(key = "most") {
@@ -110,7 +111,7 @@ internal fun HistoryScreen(state: HistoryUiState, modifier: Modifier = Modifier)
 }
 
 @Composable
-private fun ProgressPanel(progress: ProgressSummary) {
+private fun ProgressPanel(progress: ProgressSummary, weeklyTarget: Int?) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(Space.s4),
@@ -141,10 +142,43 @@ private fun ProgressPanel(progress: ProgressSummary) {
                     modifier = Modifier.weight(1f),
                 )
             }
-            Figure(
-                value = formatVolume(progress.totalVolumeKg),
-                label = stringResource(R.string.progress_volume),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Space.s3),
+            ) {
+                Figure(
+                    value = formatVolume(progress.totalVolumeKg),
+                    label = stringResource(R.string.progress_volume),
+                    modifier = Modifier.weight(1f),
+                )
+                // Computed in SessionStatistics since the Progress tab shipped
+                // and drawn by nothing until now.
+                Figure(
+                    value = progress.totalSets.toString(),
+                    label = stringResource(R.string.progress_total_sets),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            // Only with a profile to measure against. "3 days" alone is a fact
+            // without a question; "3 of 4" is the answer to the one §3 asked.
+            if (weeklyTarget != null && weeklyTarget > 0) {
+                RfSegmentedBar(
+                    label = stringResource(R.string.progress_week_days),
+                    value = stringResource(
+                        R.string.progress_week_days_value,
+                        progress.daysThisWeek,
+                        weeklyTarget,
+                    ),
+                    filled = progress.daysThisWeek,
+                    total = weeklyTarget,
+                    contentDescription = stringResource(
+                        R.string.progress_week_days_description,
+                        progress.daysThisWeek,
+                        weeklyTarget,
+                    ),
+                )
+            }
         }
     }
 }
