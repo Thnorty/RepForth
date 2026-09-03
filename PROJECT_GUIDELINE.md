@@ -547,10 +547,12 @@ data class WearCommand(
 )
 
 @Serializable
-enum class WearAction { CompleteSet, Pause, Resume, SkipRest, SkipExercise, NextExercise }
+enum class WearAction { CompleteSet, SkipSet, Pause, Resume, SkipRest, NextExercise }
 ```
 
 The command set is forward-only in MVP, which is why the state snapshot carries no `canGoPrevious` flag.
+
+`SkipSet` replaces an earlier `SkipExercise`, which was a mistake in this document rather than a design. `NextExercise` already means "leave this exercise, abandoning the sets left on it" — the phone engine has exactly one command for that — so the two were one action under two names, and the pair between them left no way for the watch to skip a *single set*, which the phone has always been able to do. The corrected set is one watch action per phone command, with nothing duplicated and nothing unreachable.
 
 Every watch command includes the last observed revision. The phone applies it, persists the result, and publishes a newer snapshot. If the revision is stale, the phone returns the current snapshot rather than guessing.
 

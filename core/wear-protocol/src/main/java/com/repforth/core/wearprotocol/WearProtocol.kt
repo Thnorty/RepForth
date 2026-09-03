@@ -106,9 +106,33 @@ data class WearWorkoutState(
     val nextExerciseName: String?,
 )
 
-/** What the watch may ask for. Forward-only in MVP (§11). */
+/**
+ * What the watch may ask for. Forward-only in MVP (§11).
+ *
+ * One member per phone command, with nothing duplicated and nothing
+ * unreachable. §11 originally listed `SkipExercise` alongside `NextExercise`;
+ * they were one action under two names — the engine has a single command for
+ * "leave this exercise, abandoning the sets left on it" — and having spent a
+ * member on the duplicate, the set had no way to skip a single *set*, which the
+ * phone has always been able to do. §11 has been corrected to match.
+ */
 @Serializable
-enum class WearAction { CompleteSet, Pause, Resume, SkipRest, SkipExercise, NextExercise }
+enum class WearAction {
+    /** Record the set as performed, to its target. */
+    CompleteSet,
+
+    /** Record the set as skipped. Still a row in the history, not an absence. */
+    SkipSet,
+
+    Pause,
+    Resume,
+
+    /** End the rest early. */
+    SkipRest,
+
+    /** Leave this exercise, abandoning whatever sets remain on it. */
+    NextExercise,
+}
 
 /**
  * A request travelling the other way, over `MessageClient` (§11).

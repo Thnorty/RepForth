@@ -122,6 +122,7 @@ recording them found five more defects.
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
 | **Phase 3** — the rest ring, and goldens for the state that had one | [#7][pr7] |
+| **Phase 5** — §11's duplicated watch action corrected | [#10][pr10] |
 | **Phase 5** — the phone bridge: projection, command mapping, transport | [#9][pr9] |
 | **Phase 5** — the shared wear protocol and its admission rule | [#8][pr8] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
@@ -143,6 +144,7 @@ recording them found five more defects.
 [pr7]: https://github.com/Thnorty/RepForth/pull/7
 [pr8]: https://github.com/Thnorty/RepForth/pull/8
 [pr9]: https://github.com/Thnorty/RepForth/pull/9
+[pr10]: https://github.com/Thnorty/RepForth/pull/10
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1945,12 +1947,13 @@ lifted**, and that is not a loss: `recordSet` falls back to the target, so a set
 completed from the wrist records "did what was planned", which is what pressing
 the button meant.
 
-**A finding about §11's own action list.** `WearAction` names both
-`SkipExercise` and `NextExercise`, and the engine has one command for "leave
-this exercise" — so two of the six actions do the same thing. The cost is at the
-other end: there is **no watch action for skipping a single set**, which the
-phone can do. Mapped as specified rather than quietly corrected, and asserted in
-a test so the redundancy is recorded rather than discovered.
+**§11's action list was wrong, and has been corrected (5.2a).** It named both
+`SkipExercise` and `NextExercise`, which are one action under two names — the
+engine has a single command for "leave this exercise, abandoning the sets left
+on it". Having spent a member of a versioned wire enum on the duplicate, the set
+then had no way to skip a single *set*, which the phone has always been able to
+do. `SkipSet` replaces `SkipExercise`; the guideline was amended in the same
+change, as a closed decision requires.
 
 **The transport is written and has never run.** `WearBridge` publishes to
 `/workout/active` over `DataClient` — a data item rather than a message because
@@ -1972,6 +1975,29 @@ and mapping are covered by 20 unit tests, and that the failure modes are logged
 rather than thrown. What cannot be said is that a byte has crossed between two
 devices.
 
+### 5.2a — The action set corrected — **done**
+
+§11 listed six watch actions and two of them were the same action:
+`SkipExercise` and `NextExercise` both mean "leave this exercise", and the
+engine has one command for it. 5.2 mapped them as written and recorded the
+problem rather than solving it, which was the wrong call — the guideline is a
+specification, and a specification with a known error in it is worth correcting
+while there is still exactly one implementation.
+
+The duplicate cost a member of a versioned wire enum, and the shortage showed up
+at the other end: **nothing let a watch skip a single set**, although the phone
+has always been able to. `SkipSet` replaces `SkipExercise`, the mapping is now
+one action to one command and total in both directions, and §11 was amended in
+the same change — the repo's own rule for reopening a closed decision.
+
+`WEAR_PROTOCOL_VERSION` stays at 1. A version bump exists to protect a peer that
+already speaks the old format, and there is none: the watch module does not
+exist yet, so nothing has ever encoded a `SkipExercise`.
+
+A test now asserts that **no two actions produce the same command**. That is the
+assertion which would have caught this in the first place, and it was watched
+failing by pointing `SkipSet` back at `NextExercise`.
+
 ---
 
 ## Next
@@ -1982,11 +2008,7 @@ In the order they are worth doing, and why.
    command mapping are unit-tested; `WearBridge` and `WearCommandService` have
    only been compiled. A watch and a phone are available to test against, so
    this is a question of building 5.3 and then watching it, not of hardware.
-2. **§11's action list has a redundant pair and a gap.** `SkipExercise` and
-   `NextExercise` both mean "leave this exercise", and nothing lets a watch skip
-   a single set although the phone can. Worth deciding before the protocol has a
-   second implementation to keep in step.
-3. **Two surfaces still have no golden, and both are dialogs.** The Settings
+2. **Two surfaces still have no golden, and both are dialogs.** The Settings
    schedule dialog and the equipment dialog are opened by state held inside
    `SettingsScreen`, so a screenshot test cannot reach them without hoisting
    that state — which is a change to the screen for the sake of the test, and
@@ -1998,18 +2020,18 @@ In the order they are worth doing, and why.
    unphotographed, it is unreachable by the accessibility checks too — a
    deliberate break of its `Role.Checkbox` was not caught, because no test can
    open it. Hoisting that state now buys two guards rather than one.
-4. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
+3. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
    per history row, and `ProgressSummary.topMuscles`, which is never populated
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-5. **Two modules configure their own instrumentation runner.**
+4. **Two modules configure their own instrumentation runner.**
    `core/database` and `core/secrets` set `testInstrumentationRunner` in their
    build files; `AndroidApplicationConventionPlugin` sets it for application
    modules, and toolchain configuration belongs in build-logic. Found by an
    audit during 3.7, verified, and not fixed there because it had nothing to do
    with baseline profiles.
-6. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
