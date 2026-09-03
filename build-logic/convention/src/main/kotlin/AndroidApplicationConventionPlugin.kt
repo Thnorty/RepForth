@@ -26,16 +26,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             // that follows — an injected field that is simply never set.
             defaultConfig.testInstrumentationRunner = "com.repforth.app.RepForthTestRunner"
 
-            flavorDimensions += "media"
-            productFlavors {
-                create("placeholder") {
-                    dimension = "media"
-                    isDefault = true
-                }
-                create("licensed") {
-                    dimension = "media"
-                }
-            }
+            configureMediaFlavours(this)
         }
     }
 }

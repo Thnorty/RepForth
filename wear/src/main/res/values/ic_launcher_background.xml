@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        The launcher background. Equal to Tone.N6 (surface-app, dark), the same
+        colour the window is painted before Compose starts — so the icon, the
+        splash and the first frame are one continuous surface.
+    -->
+    <color name="ic_launcher_background">#101408</color>
+</resources>

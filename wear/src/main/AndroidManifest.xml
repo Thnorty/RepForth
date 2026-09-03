@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        §11: the watch is a remote for a workout the phone is running, so it is
+        declared non-standalone. That is not a formality — it tells Play the app
+        must not be offered to a watch whose phone does not have the companion,
+        and it is the honest description of an app that has no workout engine,
+        no catalog and no history of its own.
+    -->
+    <uses-feature android:name="android.hardware.type.watch" />
+
+    <application
+        android:name=".RepForthWearApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/wear_app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="false" />
+
+        <activity
+            android:name=".WearMainActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Receives the workout snapshot the phone publishes to
+            /workout/active. Exported because the sender is Play Services
+            delivering on the phone's behalf, not this app; the filter narrows
+            it to Data Layer changes under that path.
+        -->
+        <service
+            android:name=".WearStateListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/workout" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest>

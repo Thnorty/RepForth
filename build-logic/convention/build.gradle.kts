@@ -51,6 +51,10 @@ gradlePlugin {
             id = "repforth.android.screenshot"
             implementationClass = "AndroidScreenshotConventionPlugin"
         }
+        register("wearApplication") {
+            id = "repforth.wear.application"
+            implementationClass = "WearApplicationConventionPlugin"
+        }
         register("baselineProfileConsumer") {
             id = "repforth.baselineprofile.consumer"
             implementationClass = "BaselineProfileConsumerConventionPlugin"
