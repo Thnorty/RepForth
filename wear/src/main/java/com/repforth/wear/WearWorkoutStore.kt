@@ -2,6 +2,7 @@ package com.repforth.wear
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataItem
 import com.google.android.gms.wearable.Wearable
@@ -42,6 +43,7 @@ class WearWorkoutStore @Inject constructor(
     private val dataClient: DataClient by lazy { Wearable.getDataClient(context) }
     private val messageClient by lazy { Wearable.getMessageClient(context) }
     private val nodeClient by lazy { Wearable.getNodeClient(context) }
+    private val capabilityClient by lazy { Wearable.getCapabilityClient(context) }
 
     private val _state = MutableStateFlow<WearWorkoutState?>(null)
 
@@ -84,19 +86,34 @@ class WearWorkoutStore @Inject constructor(
     }
 
     /**
-     * Whether a node with the phone app on it can be seen right now.
+     * Whether a phone running RepForth can be reached right now.
      *
-     * Connected nodes rather than paired ones: §11's disconnected screen is
-     * about whether a command would arrive, not about whether a phone exists
-     * somewhere.
+     * **Not `NodeClient.connectedNodes`.** That was the first implementation
+     * and it is wrong in a way that looks right: with Bluetooth off, and the
+     * system's own `WearableService` reporting `0 connected out of 1`, it kept
+     * returning one node. It reports what this device knows about, not what it
+     * can talk to, so the disconnected screen was unreachable and every control
+     * stayed live on a watch that could not send anything.
+     *
+     * A capability filtered by [CapabilityClient.FILTER_REACHABLE] asks the
+     * real question, and confirms the peer is a phone with this app on it
+     * rather than merely a paired device.
      */
     suspend fun checkReachability() {
-        _phoneReachable.value = try {
-            nodeClient.connectedNodes.await().isNotEmpty()
+        val reachable = try {
+            val capability = capabilityClient
+                .getCapability(PHONE_CAPABILITY, CapabilityClient.FILTER_REACHABLE)
+                .await()
+            Log.d(TAG, "Reachability check: ${capability.nodes.size} reachable node(s)")
+            capability.nodes.isNotEmpty()
         } catch (e: Exception) {
             Log.w(TAG, "Could not determine whether the phone is reachable", e)
             false
         }
+        if (reachable != _phoneReachable.value) {
+            Log.i(TAG, "Phone reachable changed to $reachable")
+        }
+        _phoneReachable.value = reachable
     }
 
     /**
@@ -161,5 +178,8 @@ class WearWorkoutStore @Inject constructor(
         /** §11 names these paths, and the phone bridge uses the same two. */
         const val PATH = "/workout/active"
         const val COMMAND_PATH = "/workout/command"
+
+        /** Declared by the phone in `res/values/wear.xml`. */
+        const val PHONE_CAPABILITY = "repforth_phone"
     }
 }

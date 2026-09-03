@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    §11: what the watch looks for when it asks whether a phone is reachable.
+
+    A declared capability rather than a bare node lookup, because
+    `NodeClient.connectedNodes` answers a different question than it appears to.
+    With Bluetooth switched off and the system reporting `0 connected out of 1`,
+    it still returned one node — it reports the nodes this device knows about,
+    not the ones it can currently talk to. A capability filtered by
+    `FILTER_REACHABLE` answers the question actually being asked, and answers a
+    second one for free: that the peer is a phone with RepForth on it, rather
+    than any watch-adjacent device that happens to be paired.
+-->
+<resources>
+    <string-array name="android_wear_capabilities">
+        <item>repforth_phone</item>
+    </string-array>
+</resources>
