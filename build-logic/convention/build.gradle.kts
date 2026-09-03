@@ -22,6 +22,7 @@ dependencies {
     compileOnly(libs.ksp.gradlePlugin)
     compileOnly(libs.room.gradlePlugin)
     compileOnly(libs.hilt.gradlePlugin)
+    compileOnly(libs.baselineprofile.gradlePlugin)
 }
 
 gradlePlugin {
@@ -49,6 +50,14 @@ gradlePlugin {
         register("androidScreenshot") {
             id = "repforth.android.screenshot"
             implementationClass = "AndroidScreenshotConventionPlugin"
+        }
+        register("baselineProfileConsumer") {
+            id = "repforth.baselineprofile.consumer"
+            implementationClass = "BaselineProfileConsumerConventionPlugin"
+        }
+        register("baselineProfileProducer") {
+            id = "repforth.baselineprofile.producer"
+            implementationClass = "BaselineProfileProducerConventionPlugin"
         }
     }
 }

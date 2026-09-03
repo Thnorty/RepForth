@@ -22,7 +22,15 @@ import org.gradle.kotlin.dsl.withType
  * test runtime classpath and invalidates the task on its own.
  */
 internal fun Project.configureGuardTestInputs() {
-    val guardedDirs = listOf("src/main/res", "src/main/assets", "schemas")
+    val guardedDirs = listOf(
+        "src/main/res",
+        "src/main/assets",
+        "schemas",
+        // BaselineProfileGuardTest reads the committed profile through
+        // java.io.File. It is generated into a variant source set rather than
+        // src/main, so none of the entries above cover it.
+        "src/placeholderRelease/generated/baselineProfiles",
+    )
 
     // Whole directories cover most guards, but the manifest is a single file and
     // its parent holds the entire source tree; declaring that as an input would

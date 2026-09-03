@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1-3.6 done: media, accessibility, motion tokens, progress visuals, applied motion. **Baseline profiles are the last item** |
+| 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | Not started. No hardware to test against |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
@@ -120,6 +120,7 @@ recording them found five more defects.
 | **Phase 3** — motion tokens, and a reduced-motion switch that works | [#3][pr3] |
 | **Phase 3** — progress draws the figures it already computed | [#4][pr4] |
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
+| **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -135,6 +136,7 @@ recording them found five more defects.
 [pr3]: https://github.com/Thnorty/RepForth/pull/3
 [pr4]: https://github.com/Thnorty/RepForth/pull/4
 [pr5]: https://github.com/Thnorty/RepForth/pull/5
+[pr6]: https://github.com/Thnorty/RepForth/pull/6
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1193,6 +1195,56 @@ the "prove a guard fails" rule in one incident.
 
 ---
 
+### 3.7 — Baseline profiles — **done; Phase 3 is complete**
+
+The last named item in §19's Phase 3, and the only one that changes nothing
+visible. A baseline profile lists the classes and methods worth compiling ahead
+of time; Android applies it at install, so the first launch runs compiled code
+instead of interpreting it and then noticing.
+
+**12,004 rules, 694 of them RepForth's own** — the rest Compose, coroutines,
+lifecycle, Room and DataStore, which is what a Compose cold start actually
+touches.
+
+**The journey stops at the first frame, deliberately.** Every iteration runs
+against a freshly installed app, and a freshly installed RepForth opens
+onboarding — the one screen a user sees exactly once. Driving through it would
+spend the profile on seven questions nobody revisits, while the code that
+matters has already run: the `Application`, the Hilt graph, the first DataStore
+read, Compose starting, the theme resolving, the nav host composing.
+
+**Generation is pinned to a managed emulator, and that is a safety decision.**
+It installs and uninstalls the app repeatedly, and uninstalling takes the user's
+plans and history with it — the hazard `AGENTS.md` already records for
+`connectedAndroidTest`. `useConnectedDevices = false` is what stops a
+plugged-in phone being wiped by a command that does not look destructive.
+
+Two failures on the way, both worth keeping:
+
+- **Running it beside `./gradlew test` broke the build** on
+  `Could not delete …compileReleaseKotlin/caches-jvm`. Two Gradle builds, one
+  build directory. Nothing to do with the emulator, which is what the error
+  looked like at first glance.
+- **The first working run reported BUILD SUCCESSFUL and produced nothing.** The
+  producer module had no `testInstrumentationRunner`, so no test was
+  discovered, so no rules were recorded. The only symptom was a warning about
+  no rules generated, buried in several hundred lines of output, and an empty
+  directory.
+
+That second one is why `BaselineProfileGuardTest` exists. It asserts the file
+is present, has over 2,000 rules, and contains rules for `com/repforth` — the
+sharp one, because **a profile recorded against the wrong app is still eleven
+thousand lines of Compose and framework and looks perfectly healthy by size.**
+Watched failing both ways: emptied, and with every `com/repforth` line stripped
+while 11,311 rules remained.
+
+An audit of the convention plugins found two `testInstrumentationRunner`
+declarations sitting in module build files — `core/database` and
+`core/secrets` — where the rule says toolchain configuration belongs in
+build-logic. Verified, pre-existing, and left alone.
+
+---
+
 ## Phase 4 — Weekly plans
 
 A plan became a week of training days rather than a single workout. This was
@@ -1799,8 +1851,12 @@ In the order they are worth doing, and why.
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-3. **Baseline profiles have not been started**, and are the last named item in
-   §19's Phase 3.
+3. **Two modules configure their own instrumentation runner.**
+   `core/database` and `core/secrets` set `testInstrumentationRunner` in their
+   build files; `AndroidApplicationConventionPlugin` sets it for application
+   modules, and toolchain configuration belongs in build-logic. Found by an
+   audit during 3.7, verified, and not fixed there because it had nothing to do
+   with baseline profiles.
 4. **There is no timer ring.** `.rf-ring` exists in the design system and the
    motion rules reserve continuous rotation for it, but `RestPanel` renders the
    countdown as a number and nothing else. Adding one is a visual decision, not
