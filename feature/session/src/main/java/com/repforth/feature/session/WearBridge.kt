@@ -66,6 +66,11 @@ class WearBridge @Inject constructor(
 
         try {
             dataClient.putDataItem(request).await()
+            // Logged on success, not only on failure. "No error in the log" is
+            // not evidence that a snapshot crossed -- it is equally consistent
+            // with the publish never being attempted, which is exactly the
+            // ambiguity this hit during the first hardware test.
+            Log.d(TAG, "Published revision ${state.revision}, phase ${state.phase}")
         } catch (e: Exception) {
             // Never fatal. §15 keeps the phone workout working whatever the
             // watch is doing, and a failure here means one device is out of

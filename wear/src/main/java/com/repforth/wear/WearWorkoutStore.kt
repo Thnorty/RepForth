@@ -66,7 +66,9 @@ class WearWorkoutStore @Inject constructor(
         // A data item with no payload is one the phone deleted; the workout is
         // over and the terminal snapshot was already delivered before it went.
         val payload = item.data ?: return
-        _state.value = decode(payload)
+        val decoded = decode(payload)
+        Log.d(TAG, "Received revision ${decoded?.revision}, phase ${decoded?.phase}")
+        _state.value = decoded
     }
 
     /** Read whatever is already there, for a screen opening cold. */
@@ -131,6 +133,7 @@ class WearWorkoutStore @Inject constructor(
             nodes.forEach { node ->
                 messageClient.sendMessage(node.id, COMMAND_PATH, payload).await()
             }
+            Log.d(TAG, "Sent $action at revision ${command.expectedRevision} to ${nodes.size} node(s)")
             true
         } catch (e: Exception) {
             // Not shown to the user. The phone either applied it and will
