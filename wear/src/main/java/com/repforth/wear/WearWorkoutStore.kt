@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataItem
+import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.repforth.core.wearprotocol.WEAR_PROTOCOL_VERSION
 import com.repforth.core.wearprotocol.WearAction
@@ -95,17 +96,31 @@ class WearWorkoutStore @Inject constructor(
      * can talk to, so the disconnected screen was unreachable and every control
      * stayed live on a watch that could not send anything.
      *
-     * A capability filtered by [CapabilityClient.FILTER_REACHABLE] asks the
-     * real question, and confirms the peer is a phone with this app on it
-     * rather than merely a paired device.
+     * A capability filtered by [CapabilityClient.FILTER_REACHABLE] confirms the
+     * peer is a phone with this app on it — but **it is still not enough on its
+     * own**. With the phone's radios all switched off, and the watch's own
+     * `WearableService` reporting `0 connected out of 1`, both that call and
+     * `connectedNodes` kept returning one node: Google keeps an entry for the
+     * peer so it can route over the cloud when both devices are online.
+     *
+     * [Node.isNearby] is the field that separates the two. It is true only for
+     * a node reachable directly — Bluetooth, or Wi-Fi on the same network —
+     * and false when the only path left is a cloud round trip. A workout remote
+     * wants the direct link: §11's disconnected screen is about whether pressing
+     * "complete" will do anything in the next second, not about whether a
+     * message could eventually be delivered.
      */
     suspend fun checkReachability() {
         val reachable = try {
             val capability = capabilityClient
                 .getCapability(PHONE_CAPABILITY, CapabilityClient.FILTER_REACHABLE)
                 .await()
-            Log.d(TAG, "Reachability check: ${capability.nodes.size} reachable node(s)")
-            capability.nodes.isNotEmpty()
+            val nearby = capability.nodes.filter { it.isNearby }
+            Log.d(
+                TAG,
+                "Reachability check: ${capability.nodes.size} node(s), ${nearby.size} nearby",
+            )
+            nearby.isNotEmpty()
         } catch (e: Exception) {
             Log.w(TAG, "Could not determine whether the phone is reachable", e)
             false
