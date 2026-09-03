@@ -46,6 +46,7 @@ class WearCommandService : WearableListenerService() {
         if (event.path != WearBridge.COMMAND_PATH) return
 
         val command = decode(event) ?: return
+        Log.i(TAG, "Received ${command.action} expecting revision ${command.expectedRevision}")
         scope.launch { apply(command) }
     }
 
@@ -79,7 +80,9 @@ class WearCommandService : WearableListenerService() {
             }
 
             WearAdmission.Apply -> {
+                Log.i(TAG, "Applying ${command.action} at revision ${command.expectedRevision}")
                 val updated = controller.dispatch(command.toSessionCommand())
+                Log.i(TAG, "Applied ${command.action}; revision is now ${updated?.revision}")
                 // Republish either way. The engine may also have refused it --
                 // for a duplicate id, or a phase that does not allow it -- and
                 // the watch learns that the same way it learns everything else.
