@@ -1,6 +1,7 @@
 package com.repforth.feature.session
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
@@ -51,7 +52,9 @@ class WearBridge @Inject constructor(
      * absence.
      */
     suspend fun publish(snapshot: SessionSnapshot?, names: Map<String, String>) {
-        val state = snapshot?.toWearState(names) ?: return
+        // Stamped at publish, not at composition: the watch measures the rest
+        // against this, so it has to be the clock reading that goes on the wire.
+        val state = snapshot?.toWearState(names, SystemClock.elapsedRealtime()) ?: return
         publish(state)
     }
 

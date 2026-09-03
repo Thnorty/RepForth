@@ -95,14 +95,31 @@ data class WearWorkoutState(
     val totalSets: Int,
     val targetReps: Int?,
     /**
-     * When the current rest ends, on the phone's `elapsedRealtime` clock.
+     * When the current rest ends, on **the phone's** `elapsedRealtime` clock.
      *
-     * A deadline rather than a remaining duration, because the two devices do
-     * not tick together and a duration would be stale the moment it was sent.
-     * The watch subtracts its own clock and is wrong by the transfer latency
-     * once, instead of drifting.
+     * A deadline rather than a remaining duration, so the countdown does not
+     * need a message per second and keeps running while out of range.
+     *
+     * **It is meaningless on its own.** `elapsedRealtime` counts from each
+     * device's own boot, so the phone's number and the watch's number share no
+     * origin — subtracting one from the other yields the difference in how long
+     * the two devices have been switched on. That is not a subtle error: on the
+     * first hardware test it made a 60-second rest display as **591092**,
+     * because the phone had been up 595515 seconds and the watch 4465.
+     *
+     * [publishedAtElapsedRealtimeMs] is what makes it usable. See [restRemainingMs].
      */
     val deadlineElapsedRealtimeMs: Long?,
+
+    /**
+     * The phone's `elapsedRealtime` at the moment this snapshot was published.
+     *
+     * The reference point for [deadlineElapsedRealtimeMs]. Both are on the
+     * phone's clock, so their *difference* is a duration, and a duration means
+     * the same thing on both devices. The watch never compares a phone
+     * timestamp with one of its own.
+     */
+    val publishedAtElapsedRealtimeMs: Long = 0L,
     val nextExerciseName: String?,
 )
 
@@ -155,3 +172,22 @@ data class WearCommand(
     val sentAtElapsedRealtimeMs: Long,
     val action: WearAction,
 )
+
+/**
+ * How much rest is left, from a snapshot and nothing else.
+ *
+ * The subtraction is between two of the **phone's** timestamps, which is the
+ * whole point: the result is a duration, and a duration is portable. Doing it
+ * the obvious way instead — the phone's deadline minus the watch's clock —
+ * silently returns the difference in the two devices' uptimes, which on real
+ * hardware was almost seven days.
+ *
+ * The answer is correct at the instant the snapshot was published and ages by
+ * however long it took to arrive: about a quarter of a second over Bluetooth.
+ * A watch that then counts down locally is wrong once, by that latency, rather
+ * than drifting.
+ */
+fun WearWorkoutState.restRemainingMs(): Long? {
+    val deadline = deadlineElapsedRealtimeMs ?: return null
+    return (deadline - publishedAtElapsedRealtimeMs).coerceAtLeast(0L)
+}

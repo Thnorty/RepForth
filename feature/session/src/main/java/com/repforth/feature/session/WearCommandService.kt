@@ -1,5 +1,6 @@
 package com.repforth.feature.session
 
+import android.os.SystemClock
 import android.util.Log
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
@@ -62,7 +63,7 @@ class WearCommandService : WearableListenerService() {
 
     private suspend fun apply(command: WearCommand) {
         val names = names()
-        val current = controller.state.value?.toWearState(names)
+        val current = controller.state.value?.toWearState(names, SystemClock.elapsedRealtime())
 
         if (current == null) {
             // Nothing is running, so there is nothing to be stale about and

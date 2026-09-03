@@ -21,7 +21,10 @@ import com.repforth.core.workout.SessionSnapshot
  * exercise ids, and names live in the catalog, which the watch does not have
  * either. Resolving here is what lets the watch show a name at all.
  */
-fun SessionSnapshot.toWearState(names: Map<String, String>): WearWorkoutState? {
+fun SessionSnapshot.toWearState(
+    names: Map<String, String>,
+    nowElapsedRealtimeMs: Long,
+): WearWorkoutState? {
     val phase = phase.toWearPhase() ?: return null
     val current = currentExercise ?: return null
     val id = current.exerciseId.value
@@ -37,12 +40,12 @@ fun SessionSnapshot.toWearState(names: Map<String, String>): WearWorkoutState? {
         setNumber = currentSetIndex + 1,
         totalSets = current.target.sets,
         targetReps = (current.target as? ExerciseTarget.Reps)?.reps,
-        // The monotonic deadline, passed through unchanged. §11 sends a deadline
-        // rather than a remaining duration because the two devices do not tick
-        // together: a duration is already wrong when it arrives, while a
-        // deadline is wrong once, by the transfer latency, and then stops
-        // drifting.
+        // The deadline and the clock it is measured against, together. Either
+        // alone is useless to the watch: `elapsedRealtime` counts from each
+        // device's own boot, so only the difference between two of the phone's
+        // own timestamps means anything on the other side.
         deadlineElapsedRealtimeMs = restEndsAtElapsed,
+        publishedAtElapsedRealtimeMs = nowElapsedRealtimeMs,
         nextExerciseName = nextExerciseName(names),
     )
 }
