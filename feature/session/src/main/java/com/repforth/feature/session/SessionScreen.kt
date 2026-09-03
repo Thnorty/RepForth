@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.component.RfProgressRing
+import com.repforth.core.designsystem.component.RingTone
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
@@ -294,23 +296,39 @@ private fun RestPanel(state: SessionUiState) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Space.s4),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        val countdown = @Composable {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = seconds.toString(),
+                    style = RepForthNumeric.xl,
+                    // Announced as it changes, but not every second: §12 forbids
+                    // narrating each tick. Polite means the reader finishes what it is
+                    // saying first, which in practice collapses a run of ticks into one.
+                    modifier = Modifier.semantics {
+                        liveRegion = LiveRegionMode.Polite
+                        contentDescription = "$label $seconds"
+                    },
+                )
+            }
+        }
+
+        // The ring only appears when there is a rest length to measure against.
+        // Without one it would be a full circle that never moves, which says
+        // less than the number alone and costs a lot more room.
+        val fraction = state.restFraction
+        if (fraction != null) {
+            RfProgressRing(
+                progress = fraction,
+                tone = RingTone.Rest,
+                content = countdown,
             )
-            Text(
-                text = seconds.toString(),
-                style = RepForthNumeric.xl,
-                // Announced as it changes, but not every second: §12 forbids
-                // narrating each tick. Polite means the reader finishes what it is
-                // saying first, which in practice collapses a run of ticks into one.
-                modifier = Modifier.semantics {
-                    liveRegion = LiveRegionMode.Polite
-                    contentDescription = "$label $seconds"
-                },
-            )
+        } else {
+            countdown()
         }
 
         state.nextUpPreview?.let { next ->

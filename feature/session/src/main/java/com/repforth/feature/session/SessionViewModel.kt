@@ -87,6 +87,25 @@ data class SessionUiState(
     val exerciseTotal: Int get() = snapshot?.exercises?.size ?: 0
 
     val target: ExerciseTarget? get() = snapshot?.currentExercise?.target
+    /**
+     * How long this rest was supposed to be, so the countdown can be drawn as a
+     * fraction rather than only as a number.
+     */
+    val restTotalMs: Long? get() = snapshot?.currentExercise?.restMs?.takeIf { it > 0L }
+
+    /**
+     * Rest remaining as a fraction of the whole, counting down from 1.
+     *
+     * Null when there is no rest in progress or the plan asked for none — a
+     * ring with nothing to measure is a circle, and a circle drawn for its own
+     * sake is exactly the decorative motion §12 rules out on this screen.
+     */
+    val restFraction: Float? get() {
+        val total = restTotalMs ?: return null
+        val remaining = restRemainingMs ?: return null
+        return (remaining.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+    }
+
     val isResting: Boolean get() = phase == SessionPhase.RESTING
     val isPaused: Boolean get() = phase == SessionPhase.PAUSED
     val isCompleting: Boolean get() = phase == SessionPhase.COMPLETING

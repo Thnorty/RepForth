@@ -87,6 +87,10 @@ class SessionAccessibilityTest {
             startedAt = JANUARY_2026,
         ),
         summaries = SUMMARIES,
+        // Half the 90s rest left, so the ring golden shows a partly-swept arc.
+        // A full or empty ring would prove nothing about where the sweep starts
+        // or which way it goes.
+        restRemainingMs = if (phase == SessionPhase.RESTING) 45_000L else null,
         loading = false,
     )
 

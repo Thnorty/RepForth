@@ -62,7 +62,40 @@ class SessionScreenshotTest {
     @Test
     fun session_resting() = capture(
         "session-resting-en",
-        active(phase = SessionPhase.RESTING).copy(restRemainingMs = 48_000L),
+        // 48 of the planned 90 seconds left, so the ring is caught mid-sweep:
+        // a full or empty ring would prove nothing about where it starts or
+        // which way it goes.
+        resting(),
+    )
+
+    /**
+     * The ring is a fixed number of dp around text that is not.
+     *
+     * That is the whole risk of drawing one: at 200% the countdown numeral and
+     * its label have to stay inside a circle that did not grow with them, and
+     * Turkish's "Dinlenme" is twice the length of "Rest". Neither case had a
+     * golden before the ring existed.
+     */
+    @Test
+    fun session_resting_turkish() = capture(
+        "session-resting-tr",
+        resting(),
+        locale = TURKISH,
+    )
+
+    @Test
+    fun session_resting_large_text() = capture(
+        "session-resting-en-2x",
+        resting(),
+        fontScale = 2f,
+    )
+
+    @Test
+    fun session_resting_turkish_large_text() = capture(
+        "session-resting-tr-2x",
+        resting(),
+        locale = TURKISH,
+        fontScale = 2f,
     )
 
     @Test
@@ -99,6 +132,10 @@ class SessionScreenshotTest {
 
         compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
+
+    /** 48 of the planned 90 seconds left, so the ring is caught mid-sweep. */
+    private fun resting() =
+        active(phase = SessionPhase.RESTING).copy(restRemainingMs = 48_000L)
 
     private fun active(phase: SessionPhase = SessionPhase.ACTIVE) = SessionUiState(
         snapshot = SessionSnapshot(
