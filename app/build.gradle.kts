@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.repforth.android.compose)
     alias(libs.plugins.repforth.android.hilt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.repforth.baselineprofile.consumer)
 }
 
 android {
@@ -24,6 +25,8 @@ android {
 }
 
 dependencies {
+    baselineProfile(project(":baselineprofile"))
+
     // core:designsystem exposes the Compose stack via `api`, so nothing here
     // re-declares compose-ui / material3 / the BOM.
     implementation(project(":core:designsystem"))
