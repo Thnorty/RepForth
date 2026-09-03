@@ -45,4 +45,8 @@
     <string name="session_channel_name">Active workout</string>
     <string name="session_channel_description">Shows the current set and rest timer while a workout is running.</string>
     <string name="session_next_up">Next: %1$s</string>
+    <string name="session_conflict_title">A workout is already running</string>
+    <string name="session_conflict_message">Finish or discard it before starting another one. Anything already recorded is kept either way.</string>
+    <string name="session_conflict_keep">Go back to it</string>
+    <string name="session_conflict_discard">Discard and start</string>
 </resources>

@@ -68,6 +68,8 @@ class SessionAccessibilityTest {
                     onResume = {},
                     onFinish = {},
                     onAbandon = {},
+                    onKeepRunningSession = {},
+                    onDiscardRunningAndStart = {},
                 )
             }
         }
