@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display, 3.3 accessibility, 3.4 motion tokens, 3.5 progress visuals done. Applied motion and baseline profiles remain |
+| 3 — Polished phone | §19 | **In progress.** 3.1-3.6 done: media, accessibility, motion tokens, progress visuals, applied motion. **Baseline profiles are the last item** |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | Not started. No hardware to test against |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
@@ -119,6 +119,7 @@ recording them found five more defects.
 | **Phase 3** — the accessibility pass, and a guard lint could not be | [#2][pr2] |
 | **Phase 3** — motion tokens, and a reduced-motion switch that works | [#3][pr3] |
 | **Phase 3** — progress draws the figures it already computed | [#4][pr4] |
+| **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -133,6 +134,7 @@ recording them found five more defects.
 [pr2]: https://github.com/Thnorty/RepForth/pull/2
 [pr3]: https://github.com/Thnorty/RepForth/pull/3
 [pr4]: https://github.com/Thnorty/RepForth/pull/4
+[pr5]: https://github.com/Thnorty/RepForth/pull/5
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1147,6 +1149,50 @@ Two things worth keeping:
 
 ---
 
+### 3.6 — Motion applied — **done; two of the four rules were already constraints**
+
+3.4 built the tokens and the switch. This spends them.
+
+**Shared axis, and the distinction that matters.** The design system says
+"shared-axis for plan to detail", and the trap is applying it everywhere. A
+bottom-bar move between Progress and Plans has no direction — Progress is not to
+the right of Plans in any sense a user could point at — so sliding one in from
+the right invents a spatial relationship that does not exist. Peer moves fade
+through; pushes get the axis, and the pop reverses it so back undoes the push
+rather than reading as another step forward.
+
+The decision cannot live on a destination, because Plans leaving is a fade when
+the user tapped a tab and a slide when they opened the builder. Only the pair of
+endpoints knows, so it is set once on the `NavHost` and branches on whether both
+ends are in `TopLevelDestination`.
+
+**Settings is a push, not a peer.** It is reached from the top bar and is not
+one of the four tabs — every edge to it comes from `RepForthApp`, over whichever
+tab was showing.
+
+**Spring for set completion.** `rfPopOnChange` returns a scale that pops once
+when its key changes, and the set counter uses it. Two details are load-bearing:
+it does not fire on first composition, because a pop is a reaction to a change
+and a screen that pops everything on open is announcing nothing; and it returns
+a flat 1f under reduced motion rather than a fast animation, because it is a
+sequence of two tweens and zeroing their durations would still run the sequence.
+
+**The other two rules are constraints, and were already met.** "Continuous
+rotation only for an active timer ring" — there is no ring; `RestPanel` is a
+number, deliberately. "No large motion while a set is in progress" — the pop is
+1.06 and is the largest thing that moves there.
+
+**A third guard, and it shipped with a hole for ten minutes.** `MotionTokenTest`
+now also rejects a bare `tween(` in a file that never reads
+`LocalReducedMotion`, because `tween(Dur.medium)` uses the token, passes the
+first rule, and still cannot be switched off. The first regex was
+`tween\s*\(` — watched failing to catch `tween<Float>(`, which is how the API
+is written whenever the type cannot be inferred. It caught nothing until the
+type argument was made optional in the pattern. That is the entire argument for
+the "prove a guard fails" rule in one incident.
+
+---
+
 ## Phase 4 — Weekly plans
 
 A plan became a week of training days rather than a single workout. This was
@@ -1753,12 +1799,12 @@ In the order they are worth doing, and why.
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-3. **Motion exists as tokens and is applied to two things.** 3.4 built the
-   scale and the reduced-motion switch; the shared-axis plan-to-detail
-   transition and the set-completion spring the design system names are still
-   unwritten.
-4. **Baseline profiles have not been started**, and are the last named item in
+3. **Baseline profiles have not been started**, and are the last named item in
    §19's Phase 3.
+4. **There is no timer ring.** `.rf-ring` exists in the design system and the
+   motion rules reserve continuous rotation for it, but `RestPanel` renders the
+   countdown as a number and nothing else. Adding one is a visual decision, not
+   a motion one, which is why 3.6 did not quietly make it.
 5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the

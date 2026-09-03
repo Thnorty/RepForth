@@ -1,13 +1,22 @@
 package com.repforth.app.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.repforth.app.R
 import androidx.navigation.toRoute
+import com.repforth.app.R
+import com.repforth.core.designsystem.theme.rfFadeThroughEnter
+import com.repforth.core.designsystem.theme.rfFadeThroughExit
+import com.repforth.core.designsystem.theme.rfPopEnter
+import com.repforth.core.designsystem.theme.rfPopExit
+import com.repforth.core.designsystem.theme.rfPushEnter
+import com.repforth.core.designsystem.theme.rfPushExit
 import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
@@ -30,10 +39,29 @@ fun RepForthNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
 ) {
+    // Resolved here, not inside the lambdas: a NavHost transition lambda is not
+    // a composable scope, and these read `LocalReducedMotion` through `rfTween`.
+    // Composition is the right place to read it anyway -- it is a static local,
+    // so changing the setting recomposes this and rebuilds them.
+    val pushEnter = rfPushEnter()
+    val pushExit = rfPushExit()
+    val popEnter = rfPopEnter()
+    val popExit = rfPopExit()
+    val fadeEnter = rfFadeThroughEnter()
+    val fadeExit = rfFadeThroughExit()
+
     NavHost(
         navController = navController,
         startDestination = Destination.Today,
         modifier = modifier,
+        // Set once for the whole graph rather than per destination, because the
+        // choice is not a property of the screen being opened -- Plans leaving
+        // is a fade when the user tapped another tab and a slide when they
+        // opened the builder, and only the pair of endpoints knows which.
+        enterTransition = { if (isPeerMove()) fadeEnter else pushEnter },
+        exitTransition = { if (isPeerMove()) fadeExit else pushExit },
+        popEnterTransition = { if (isPeerMove()) fadeEnter else popEnter },
+        popExitTransition = { if (isPeerMove()) fadeExit else popExit },
     ) {
         composable<Destination.Today> {
             TodayRoute(
@@ -88,6 +116,27 @@ fun RepForthNavHost(
         }
     }
 }
+
+/**
+ * Whether this move is between two bottom-bar tabs.
+ *
+ * Progress is not to the right of Plans in any sense a user could point at, so
+ * sliding one in from the right would invent a spatial relationship that does
+ * not exist; those fade through instead. Everything else — a tab opening the
+ * builder, the session, or settings — has a direction and a way back, and gets
+ * the shared axis.
+ *
+ * Settings is deliberately not in this set. It is reached from the top bar
+ * rather than the bottom one, so it is a push over whichever tab was showing,
+ * and back returns to that tab.
+ */
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isPeerMove(): Boolean =
+    initialState.isTopLevel() && targetState.isTopLevel()
+
+private fun NavBackStackEntry.isTopLevel(): Boolean =
+    TopLevelDestination.entries.any { top ->
+        destination.hasRoute(top.route::class)
+    }
 
 /**
  * Switches tabs the way a bottom bar is expected to behave.

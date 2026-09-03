@@ -78,6 +78,40 @@ class MotionTokenTest {
         )
     }
 
+    /**
+     * A raw `tween` is either routed through `rfTween` or justified in place.
+     *
+     * The duration rule above is not enough on its own: `tween(Dur.medium)`
+     * uses the token, passes it, and still cannot be switched off, because the
+     * collapse happens in `rfTween` rather than in the number.
+     *
+     * The exemption is deliberate and is the `CoachScreen` case — an
+     * `infiniteRepeatable` cannot take a zero duration, so a file that branches
+     * on `LocalReducedMotion` itself has already answered the question this
+     * guard asks.
+     */
+    @Test
+    fun `a raw tween is routed through rfTween or justified`() {
+        val offenders = kotlinSources()
+            .filterNot { it.invariantPath().startsWith("core/designsystem/") }
+            .filter { file ->
+                val text = file.readText()
+                RAW_TWEEN.containsMatchIn(text) &&
+                    "LocalReducedMotion" !in text
+            }
+            .map { it.invariantPath() }
+            .sorted()
+
+        assertEquals(
+            "These build an animation spec with a bare tween and never consult " +
+                "the reduced-motion setting. Use rfTween, or read " +
+                "LocalReducedMotion and say why a plain tween is right:\n" +
+                offenders.joinToString("\n"),
+            emptyList<String>(),
+            offenders,
+        )
+    }
+
     private fun kotlinSources(): List<File> =
         root.walkTopDown()
             .onEnter { it.name !in IGNORED_DIRS }
@@ -99,5 +133,17 @@ class MotionTokenTest {
          * suppressed rather than fixed.
          */
         val LITERAL_DURATION = Regex("""durationMillis\s*=\s*\d""")
+
+        /**
+         * `tween(` but not `rfTween(`. The negative lookbehind is what stops
+         * every correct call site being reported as a violation of itself.
+         *
+         * The optional type argument is not decoration: the first version of
+         * this read `tween\s*\(` and was watched failing to catch
+         * `tween<Float>(`, which is how the API is written whenever the target
+         * type cannot be inferred. A guard with a hole that shape passes
+         * exactly the call sites most likely to be wrong.
+         */
+        val RAW_TWEEN = Regex("""(?<![A-Za-z])tween\s*(?:<[^>]*>)?\s*\(""")
     }
 }
