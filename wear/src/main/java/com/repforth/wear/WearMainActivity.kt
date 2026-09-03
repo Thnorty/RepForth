@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,6 +15,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.AppScaffold
 import dagger.hilt.android.AndroidEntryPoint
+import com.repforth.core.wearprotocol.WearWorkoutState
+import com.repforth.core.wearprotocol.restRemainingMs
 import kotlinx.coroutines.delay
 
 /**
@@ -60,7 +62,7 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Rest -> state.workout?.let { workout ->
                     RestScreen(
                         state = workout,
-                        remainingSeconds = rememberRestSeconds(workout.deadlineElapsedRealtimeMs),
+                        remainingSeconds = rememberRestSeconds(workout),
                         enabled = state.controlsEnabled,
                         onAction = viewModel::onAction,
                     )
@@ -75,39 +77,47 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
 }
 
 /**
- * The rest countdown, ticked locally against the phone's deadline.
+ * The rest countdown, ticked on the watch's own clock.
  *
- * §11 sends a deadline rather than a remaining duration precisely so this can
- * happen: the watch subtracts its own `elapsedRealtime` and is wrong once, by
- * the transfer latency, instead of drifting further apart every second. It also
- * means the countdown keeps moving with no traffic at all — the phone does not
- * send a message per second, and a watch out of range still counts down
- * correctly to a deadline it already has.
+ * The phone sends a deadline and the clock reading it was taken against, both
+ * on the phone's `elapsedRealtime`. Subtracting those two gives a **duration**,
+ * which is the only thing that means the same on both devices, and the watch
+ * then counts that duration down against its own clock.
  *
- * Both devices measure `elapsedRealtime` from their own boot, so this is not
- * the same clock. It is close enough for a rest timer and wrong by a constant,
- * which is the trade §11 chose; the phone remains the authority, and its next
- * snapshot corrects anything that matters.
+ * **The obvious version of this is badly wrong.** Comparing the phone's
+ * deadline directly with the watch's `elapsedRealtime` returns the difference
+ * in how long the two devices have been switched on. On the first hardware
+ * test that displayed a 60-second rest as **591092** — the phone had been up
+ * 595515 seconds and the watch 4465 — and the kdoc here previously called it
+ * "wrong by a constant" and "close enough for a rest timer". It was neither.
+ *
+ * What remains is the transfer latency, about a quarter of a second, applied
+ * once at arrival rather than accumulating. The phone stays the authority and
+ * its next snapshot resets the count.
  */
 @Composable
-private fun rememberRestSeconds(deadlineElapsedRealtimeMs: Long?): Int? {
-    if (deadlineElapsedRealtimeMs == null) return null
+private fun rememberRestSeconds(state: WearWorkoutState): Int? {
+    val remainingAtPublish = state.restRemainingMs() ?: return null
 
-    var remaining by remember(deadlineElapsedRealtimeMs) {
-        mutableStateOf(secondsUntil(deadlineElapsedRealtimeMs))
+    // Anchored to the snapshot: a new revision restarts the countdown from
+    // whatever the phone last said, rather than continuing an old one.
+    val localDeadline = remember(state.revision, remainingAtPublish) {
+        SystemClock.elapsedRealtime() + remainingAtPublish
     }
 
-    LaunchedEffect(deadlineElapsedRealtimeMs) {
+    var remaining by remember(localDeadline) { mutableIntStateOf(secondsUntil(localDeadline)) }
+
+    LaunchedEffect(localDeadline) {
         while (remaining > 0) {
             delay(TICK_MS)
-            remaining = secondsUntil(deadlineElapsedRealtimeMs)
+            remaining = secondsUntil(localDeadline)
         }
     }
 
     return remaining
 }
 
-private fun secondsUntil(deadline: Long): Int =
-    ((deadline - SystemClock.elapsedRealtime()).coerceAtLeast(0L) / 1000L).toInt()
+private fun secondsUntil(localDeadlineMs: Long): Int =
+    ((localDeadlineMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L) / 1000L).toInt()
 
 private const val TICK_MS = 250L
