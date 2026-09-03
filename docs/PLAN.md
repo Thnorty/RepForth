@@ -25,7 +25,7 @@ which decisions are closed so they are not reopened.
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
-| 5 — Wear remote | §19 | **In progress.** 5.1 shared protocol done, on the JVM. Transport and watch UI still need hardware or a paired emulator |
+| 5 — Wear remote | §19 | **In progress.** 5.1 protocol and 5.2 phone bridge built. The bridge's transport has never run — 5.3, the watch module, is what would exercise it |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
@@ -122,6 +122,7 @@ recording them found five more defects.
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
 | **Phase 3** — the rest ring, and goldens for the state that had one | [#7][pr7] |
+| **Phase 5** — the phone bridge: projection, command mapping, transport | [#9][pr9] |
 | **Phase 5** — the shared wear protocol and its admission rule | [#8][pr8] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
@@ -141,6 +142,7 @@ recording them found five more defects.
 [pr6]: https://github.com/Thnorty/RepForth/pull/6
 [pr7]: https://github.com/Thnorty/RepForth/pull/7
 [pr8]: https://github.com/Thnorty/RepForth/pull/8
+[pr9]: https://github.com/Thnorty/RepForth/pull/9
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1920,13 +1922,71 @@ Still to come: 5.2 the phone-side bridge and the `SessionSnapshot` projection,
 5.3 the watch UI, and the disconnected read-only behaviour that is §20's other
 clause.
 
+### 5.2 — The phone bridge — **built; the transport half is unverified**
+
+Two pieces: a projection that needs no device and is fully tested, and a
+transport that cannot be tested without two.
+
+**`core:wear-sync` is the tested half.** `toWearState` is a projection, not a
+copy — the phone's snapshot carries every recorded set, fifty command ids, two
+clocks' worth of rest bookkeeping and the whole exercise list, while a wrist
+needs one exercise, one number and a deadline. Sending the snapshot itself would
+push a workout's entire history through the Data Layer several times a minute
+and hand the watch fields §11 explicitly says it must not keep.
+
+Names are resolved here because the snapshot has none: it stores ids, and the
+catalog lives on the phone. An id that will not resolve is shown as the id — a
+blank line on a watch mid-set is worse than a number.
+
+`toSessionCommand` is a translation, not an adapter around a mismatch: the
+engine was built for this, and `SessionCommand`'s own documentation says it is
+"something a user — or a watch — asks". **A watch never supplies what was
+lifted**, and that is not a loss: `recordSet` falls back to the target, so a set
+completed from the wrist records "did what was planned", which is what pressing
+the button meant.
+
+**A finding about §11's own action list.** `WearAction` names both
+`SkipExercise` and `NextExercise`, and the engine has one command for "leave
+this exercise" — so two of the six actions do the same thing. The cost is at the
+other end: there is **no watch action for skipping a single set**, which the
+phone can do. Mapped as specified rather than quietly corrected, and asserted in
+a test so the redundancy is recorded rather than discovered.
+
+**The transport is written and has never run.** `WearBridge` publishes to
+`/workout/active` over `DataClient` — a data item rather than a message because
+the Data Layer keeps the last value, so a watch that was out of range gets the
+current snapshot on reconnect instead of nothing until the next set. It
+publishes from `WorkoutService`, whose lifetime is already exactly the life of a
+workout, rather than from a second collector with its own lifetime to get wrong.
+A publish failure is logged and swallowed: §15 keeps the phone workout working
+whatever the watch is doing.
+
+`WearCommandService` is a `WearableListenerService`, so the phone answers with
+its screen off. **Every command passes through `admit` before reaching the
+engine**, and a refusal republishes the current snapshot rather than reporting
+an error.
+
+**Nothing has exercised any of this**, because nothing sends to it yet — the
+watch module is 5.3. What can be said is that it assembles, that the projection
+and mapping are covered by 20 unit tests, and that the failure modes are logged
+rather than thrown. What cannot be said is that a byte has crossed between two
+devices.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **Two surfaces still have no golden, and both are dialogs.** The Settings
+1. **The wear transport has never carried a byte.** 5.2's projection and
+   command mapping are unit-tested; `WearBridge` and `WearCommandService` have
+   only been compiled. A watch and a phone are available to test against, so
+   this is a question of building 5.3 and then watching it, not of hardware.
+2. **§11's action list has a redundant pair and a gap.** `SkipExercise` and
+   `NextExercise` both mean "leave this exercise", and nothing lets a watch skip
+   a single set although the phone can. Worth deciding before the protocol has a
+   second implementation to keep in step.
+3. **Two surfaces still have no golden, and both are dialogs.** The Settings
    schedule dialog and the equipment dialog are opened by state held inside
    `SettingsScreen`, so a screenshot test cannot reach them without hoisting
    that state — which is a change to the screen for the sake of the test, and
@@ -1938,18 +1998,18 @@ In the order they are worth doing, and why.
    unphotographed, it is unreachable by the accessibility checks too — a
    deliberate break of its `Role.Checkbox` was not caught, because no test can
    open it. Hoisting that state now buys two guards rather than one.
-2. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
+4. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
    per history row, and `ProgressSummary.topMuscles`, which is never populated
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-3. **Two modules configure their own instrumentation runner.**
+5. **Two modules configure their own instrumentation runner.**
    `core/database` and `core/secrets` set `testInstrumentationRunner` in their
    build files; `AndroidApplicationConventionPlugin` sets it for application
    modules, and toolchain configuration belongs in build-logic. Found by an
    audit during 3.7, verified, and not fixed there because it had nothing to do
    with baseline profiles.
-4. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+6. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
