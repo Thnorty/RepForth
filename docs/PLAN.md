@@ -25,7 +25,7 @@ which decisions are closed so they are not reopened.
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
-| 5 — Wear remote | §19 | **In progress.** 5.1 protocol and 5.2 phone bridge built. The bridge's transport has never run — 5.3, the watch module, is what would exercise it |
+| 5 — Wear remote | §19 | **In progress.** 5.1 protocol, 5.2 phone bridge, 5.3 watch app built. Phone half installed and running; the watch APK is not yet installed, so no Data Layer traffic has been observed |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
@@ -122,6 +122,7 @@ recording them found five more defects.
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
 | **Phase 3** — the rest ring, and goldens for the state that had one | [#7][pr7] |
+| **Phase 5** — the watch app: five screens, listener, command sender | [#11][pr11] |
 | **Phase 5** — §11's duplicated watch action corrected | [#10][pr10] |
 | **Phase 5** — the phone bridge: projection, command mapping, transport | [#9][pr9] |
 | **Phase 5** — the shared wear protocol and its admission rule | [#8][pr8] |
@@ -145,6 +146,7 @@ recording them found five more defects.
 [pr8]: https://github.com/Thnorty/RepForth/pull/8
 [pr9]: https://github.com/Thnorty/RepForth/pull/9
 [pr10]: https://github.com/Thnorty/RepForth/pull/10
+[pr11]: https://github.com/Thnorty/RepForth/pull/11
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1998,16 +2000,59 @@ A test now asserts that **no two actions produce the same command**. That is the
 assertion which would have caught this in the first place, and it was watched
 failing by pointing `SkipSet` back at `NextExercise`.
 
+### 5.3 — The watch app — **built and on the phone; the watch half is uninstalled**
+
+A `:wear` application module with §11's five screens, the Data Layer listener,
+and the command sender. It depends on **`core:wear-protocol` and nothing else**
+of this repo — no `core:user-data`, no `core:ai`, no `core:secrets` — which is
+§11's requirement that the watch hold no history, no AI client and no key,
+expressed as a dependency list rather than a promise.
+
+**No navigation graph, because there is nowhere to navigate.** Which of the five
+screens shows is a function of the last snapshot and whether the phone can be
+heard. A user cannot browse to the rest screen; they arrive there because a set
+was completed on a device they may not be holding.
+
+**Disconnected outranks everything, including a current snapshot.** §11 allows
+the last state to stay visible while disconnected and requires every modifying
+action to be disabled, so the exercise name survives and every button goes. A
+screen full of live-looking buttons that do nothing is worse than one that says
+why.
+
+**The rest countdown ticks locally against the phone's deadline.** That is what
+§11's `deadlineElapsedRealtimeMs` is for: the watch subtracts its own clock and
+is wrong once, by the transfer latency, instead of drifting a second at a time —
+and the countdown keeps running with no traffic, including out of range. The two
+devices measure `elapsedRealtime` from their own boots, so this is close enough
+for a rest timer and wrong by a constant; the phone stays the authority and its
+next snapshot corrects anything that matters.
+
+`WearApplicationConventionPlugin` exists for one reason worth having: §4 puts
+the watch baseline at API 30 against the phone's 28. It keeps the same `media`
+flavour dimension, which is what puts the watch into CI — the build step
+assembles `placeholderDebug`, and a module with no flavours would quietly not be
+built by it. The flavour definition moved to a shared `configureMediaFlavours`
+rather than being copied.
+
+**What has actually been verified: the phone half.** Both APKs build, the whole
+suite and lint pass, and the phone app installs and runs on the Xiaomi (API 30,
+the only test of the `minSdk 28` path) with an empty crash buffer. **The watch
+APK has not been installed** — the watch dropped off wireless adb mid-session
+and Wear OS randomises that port, so it needs reconnecting by hand. Nothing has
+yet crossed the Data Layer, and 5.2's transport remains unexercised.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **The wear transport has never carried a byte.** 5.2's projection and
-   command mapping are unit-tested; `WearBridge` and `WearCommandService` have
-   only been compiled. A watch and a phone are available to test against, so
-   this is a question of building 5.3 and then watching it, not of hardware.
+1. **The wear transport has never carried a byte.** Both halves are now
+   written and both build; nothing has been seen to cross. The watch APK needs
+   installing, which needs the watch back on adb — it drops off when the screen
+   sleeps and Wear OS randomises the port, so the number has to be read off the
+   watch each time. Until that happens, §20's two watch clauses are supported by
+   unit tests and nothing else.
 2. **Two surfaces still have no golden, and both are dialogs.** The Settings
    schedule dialog and the equipment dialog are opened by state held inside
    `SettingsScreen`, so a screenshot test cannot reach them without hoisting

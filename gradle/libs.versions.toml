@@ -19,6 +19,10 @@ ksp = "2.1.20-2.0.1"
 # §11: the Wear Data Layer. `play-services-wearable` is the only Google
 # dependency in this app and is unavoidable -- DataClient and MessageClient
 # have no AndroidX equivalent.
+# §11: Wear OS UI. Material 3 for Wear is its own artifact line, versioned
+# apart from the phone's Compose BOM.
+# Material 3 for Wear and the Wear foundation ship on one version line.
+wearCompose = "1.6.2"
 playServicesWearable = "18.2.0"
 benchmark = "1.3.4"
 profileinstaller = "1.4.1"
@@ -128,6 +132,8 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 # Baseline profiles. `benchmark-macro-junit4` drives a real app on a real
 # device to record the profile; `profileinstaller` is what makes the recorded
 # profile do anything on a user's phone.
+androidx-wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }
+androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
 # Turns the Data Layer's Task API into suspend functions, so the bridge
 # reads like the rest of the codebase instead of like callbacks.
@@ -173,5 +179,6 @@ repforth-android-compose = { id = "repforth.android.compose" }
 repforth-android-hilt = { id = "repforth.android.hilt" }
 repforth-android-room = { id = "repforth.android.room" }
 repforth-android-screenshot = { id = "repforth.android.screenshot" }
+repforth-wear-application = { id = "repforth.wear.application" }
 repforth-baselineprofile-consumer = { id = "repforth.baselineprofile.consumer" }
 repforth-baselineprofile-producer = { id = "repforth.baselineprofile.producer" }

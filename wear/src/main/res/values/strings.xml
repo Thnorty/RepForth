@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The watch's own strings. Short on purpose: §11 asks for glanceability, and
+    a wrist has room for about three words before it wraps.
+-->
+<resources>
+    <string name="wear_app_name">RepForth</string>
+
+    <string name="wear_disconnected_title">Phone not connected</string>
+    <string name="wear_disconnected_detail">Controls are unavailable until it is back.</string>
+
+    <string name="wear_no_workout_title">No workout</string>
+    <string name="wear_no_workout_detail">Start one on your phone.</string>
+
+    <string name="wear_set_of">%1$d / %2$d</string>
+    <string name="wear_target_reps">%1$d reps</string>
+    <string name="wear_complete_set">Complete</string>
+    <string name="wear_skip_set">Skip</string>
+    <string name="wear_pause">Pause</string>
+    <string name="wear_resume">Resume</string>
+
+    <string name="wear_resting">Rest</string>
+    <string name="wear_skip_rest">Skip rest</string>
+    <string name="wear_next_up">Next: %1$s</string>
+
+    <string name="wear_workout_finished">Workout finished</string>
+    <string name="wear_workout_ended">Workout ended</string>
+    <string name="wear_summary_on_phone">The summary is on your phone.</string>
+</resources>
