@@ -121,6 +121,7 @@ recording them found five more defects.
 | **Phase 3** — progress draws the figures it already computed | [#4][pr4] |
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
+| **Phase 3** — the rest ring, and goldens for the state that had one | [#7][pr7] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -137,6 +138,7 @@ recording them found five more defects.
 [pr4]: https://github.com/Thnorty/RepForth/pull/4
 [pr5]: https://github.com/Thnorty/RepForth/pull/5
 [pr6]: https://github.com/Thnorty/RepForth/pull/6
+[pr7]: https://github.com/Thnorty/RepForth/pull/7
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1245,6 +1247,45 @@ build-logic. Verified, pre-existing, and left alone.
 
 ---
 
+### 3.8 — The rest ring — **done; the last unused design-system component**
+
+`.rf-ring` had existed in the design system since the beginning and nothing
+drew it, while the motion rules reserved continuous rotation specifically for
+"an active timer ring" that did not exist. `RestPanel` rendered the countdown
+as a bare number.
+
+Ported from `design-system/components/feedback/ProgressRing.jsx`, whose
+geometry is parametric and is kept that way:
+
+    stroke = max(6, size * 0.06)        radius = (size - stroke) / 2
+
+so the ring is the same object at any diameter rather than a different one with
+a hand-picked stroke. It starts at twelve o'clock because the CSS rotates the
+whole `svg` by -90°, and a countdown starting at three o'clock is a clock
+nobody has seen. Rest uses the `--rest` variant, which is tertiary — amber, not
+the lime accent, so the resting screen does not look like the working one.
+
+The sweep goes through `rfTween`, so it is the one continuous motion the design
+system permits and it still collapses under reduced motion.
+
+**The ring only appears when there is a rest length to measure against.** With
+no `restMs` it would be a full circle that never moves, which says less than the
+number alone and costs far more room — and a circle drawn for its own sake is
+the decorative motion §12 rules out on this screen.
+
+**The resting state had exactly one golden, English at 1x.** A fixed-dp ring
+around text that scales is precisely the case that breaks, so Turkish and 200%
+were added rather than assumed: three new goldens, and all four hold —
+"Dinlenme" and the numeral both sit inside the circle at 2x.
+
+One fixture confusion worth recording: `active()` was given a rest remaining
+value while the resting test already overrode it with `.copy()`, so the golden
+rendered 48 seconds where the new code said 45. Nothing was wrong with the
+ring; there were simply two sources for one number, and the redundant one was
+removed.
+
+---
+
 ## Phase 4 — Weekly plans
 
 A plan became a week of training days rather than a single workout. This was
@@ -1857,11 +1898,7 @@ In the order they are worth doing, and why.
    modules, and toolchain configuration belongs in build-logic. Found by an
    audit during 3.7, verified, and not fixed there because it had nothing to do
    with baseline profiles.
-4. **There is no timer ring.** `.rf-ring` exists in the design system and the
-   motion rules reserve continuous rotation for it, but `RestPanel` renders the
-   countdown as a number and nothing else. Adding one is a visual decision, not
-   a motion one, which is why 3.6 did not quietly make it.
-5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+4. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
