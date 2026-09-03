@@ -25,7 +25,7 @@ which decisions are closed so they are not reopened.
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
-| 5 — Wear remote | §19 | **In progress.** 5.1 protocol, 5.2 phone bridge, 5.3 watch app built. Phone half installed and running; the watch APK is not yet installed, so no Data Layer traffic has been observed |
+| 5 — Wear remote | §19 | **In progress.** 5.1–5.4: protocol, bridge, watch app, and the transport watched working on a Galaxy S23 and a Galaxy Watch Ultra. §20's stale-command clause demonstrated. Disconnected read-only behaviour still unobserved |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
@@ -2041,19 +2041,77 @@ APK has not been installed** — the watch dropped off wireless adb mid-session
 and Wear OS randomises that port, so it needs reconnecting by hand. Nothing has
 yet crossed the Data Layer, and 5.2's transport remains unexercised.
 
+### 5.4 — The transport, watched working on hardware — **done**
+
+A Galaxy S23 and a Galaxy Watch Ultra, both on adb, a real workout, and the
+whole loop observed rather than inferred.
+
+**A snapshot crosses.** The watch left "No workout" and drew the exercise
+screen: *side wrist pull stretch, 1 / 2, 10 reps*, from a phone the wearer was
+not holding.
+
+**A command goes back, and the round trip is 1.4 seconds:**
+
+```
+22:27:53.815  WATCH  Sent CompleteSet at revision 1 to 1 node(s)
+22:27:54.182  PHONE  Received CompleteSet expecting revision 1
+22:27:54.219  PHONE  Applied CompleteSet; revision is now 2
+22:27:54.231  PHONE  Published revision 2, phase Rest
+22:27:55.238  WATCH  Received revision 2, phase Rest
+```
+
+**§20's clause, demonstrated.** Three taps inside 180ms, all carrying revision
+5 because the watch had not yet heard about the first:
+
+```
+22:29:49.584  Applying CompleteSet at revision 5
+22:29:49.592  Applied CompleteSet; revision is now 6
+22:29:49.602  Refused CompleteSet: StaleRevision
+22:29:49.663  Refused CompleteSet: StaleRevision
+22:29:49.668  Published revision 6, phase Rest
+```
+
+One applied, two refused, **revision 5 to 6 — one set recorded, not three**, and
+each refusal answered with the current snapshot rather than an error. Each tap
+generated its own UUID, so this is the revision check doing the work and not the
+`recentCommandIds` dedup behind it; the two mechanisms cover different failures
+and this was the one under test.
+
+Getting there took three false starts, all environmental and all now in
+`AGENTS.md`: the Xiaomi has no Wear support at all and fails every publish with
+`API_UNAVAILABLE`; the watch leaves wireless adb whenever its screen sleeps and
+returns on a new port; and reinstalling the phone app kills `WorkoutService` and
+with it the running workout, which is a thing to do before a test rather than
+during one.
+
+**One instrumentation gap found by needing it.** `WearBridge` logged only
+failures, so an empty log was equally consistent with "the snapshot crossed" and
+"the publish never ran". Both directions now log what happened, which is what
+made everything above readable.
+
+**A small inefficiency worth recording, not fixing yet.** Applying one command
+produced three `Published revision 6` lines — `WorkoutService`'s collector and
+`WearCommandService` both publish, and each refusal republishes too. The writes
+are idempotent so nothing is wrong, but it is more Data Layer traffic than the
+state changes justify.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **The wear transport has never carried a byte.** Both halves are now
-   written and both build; nothing has been seen to cross. The watch APK needs
-   installing, which needs the watch back on adb — it drops off when the screen
-   sleeps and Wear OS randomises the port, so the number has to be read off the
-   watch each time. Until that happens, §20's two watch clauses are supported by
-   unit tests and nothing else.
-2. **Two surfaces still have no golden, and both are dialogs.** The Settings
+1. **§20's other watch clause is still unobserved.** "A disconnected watch
+   clearly becomes read-only while the phone workout continues" — the code
+   disables every control and keeps the last snapshot visible, and there is a
+   unit-testable `controlsEnabled`, but nobody has yet walked out of Bluetooth
+   range mid-set and looked. That is the remaining hardware test, and it is a
+   short one.
+2. **One command produces three publishes.** `WorkoutService`'s collector and
+   `WearCommandService` both publish, and a refusal republishes as well. The
+   writes are idempotent so nothing is wrong; it is simply more Data Layer
+   traffic than the state changes justify.
+3. **Two surfaces still have no golden, and both are dialogs.** The Settings
    schedule dialog and the equipment dialog are opened by state held inside
    `SettingsScreen`, so a screenshot test cannot reach them without hoisting
    that state — which is a change to the screen for the sake of the test, and
@@ -2065,18 +2123,18 @@ In the order they are worth doing, and why.
    unphotographed, it is unreachable by the accessibility checks too — a
    deliberate break of its `Role.Checkbox` was not caught, because no test can
    open it. Hoisting that state now buys two guards rather than one.
-3. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
+4. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
    per history row, and `ProgressSummary.topMuscles`, which is never populated
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-4. **Two modules configure their own instrumentation runner.**
+5. **Two modules configure their own instrumentation runner.**
    `core/database` and `core/secrets` set `testInstrumentationRunner` in their
    build files; `AndroidApplicationConventionPlugin` sets it for application
    modules, and toolchain configuration belongs in build-logic. Found by an
    audit during 3.7, verified, and not fixed there because it had nothing to do
    with baseline profiles.
-5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+6. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
