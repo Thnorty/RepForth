@@ -26,6 +26,22 @@
                 android:value="Keeps a workout timer and its rest countdown running while the
                     screen is off. The app has no sensor, location or health-data access." />
         </service>
+        <!--
+            §11: the watch sends commands over MessageClient, and the phone has
+            to answer whether or not its screen is on. Exported because the
+            sender is Play Services delivering on the watch's behalf, not this
+            app; the intent filter narrows it to Data Layer messages, and
+            `WearCommandService` drops anything on a path it does not own.
+        -->
+        <service
+            android:name=".WearCommandService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/workout" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

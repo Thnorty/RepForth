@@ -54,6 +54,8 @@ class WorkoutService : Service() {
 
     @Inject lateinit var exercises: ExerciseRepository
 
+    @Inject lateinit var bridge: WearBridge
+
     private val scope = CoroutineScope(SupervisorJob())
     private var ticker: Job? = null
     private var names: Map<String, String> = emptyMap()
@@ -76,6 +78,13 @@ class WorkoutService : Service() {
                 } else {
                     if (names.isEmpty()) names = resolveNames(snapshot)
                     notify(snapshot)
+                    // §11: the watch mirrors this service exactly. It is alive
+                    // for the life of a workout and dead outside one, which is
+                    // precisely the window in which a wrist has anything to
+                    // show -- so the snapshot goes out from here rather than
+                    // from a second collector with its own lifetime to get
+                    // wrong.
+                    bridge.publish(snapshot, names)
                 }
             }
         }

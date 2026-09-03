@@ -29,6 +29,13 @@ dependencies {
     // rememberLauncherForActivityResult, for the notification permission.
     implementation(libs.androidx.activity.compose)
 
+    // §11: the watch is a remote for the workout this module runs, so the
+    // bridge lives beside the service that keeps it alive rather than in a
+    // module of its own that would need the controller anyway.
+    implementation(project(":core:wear-sync"))
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
+
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.hilt.navigation.compose)
