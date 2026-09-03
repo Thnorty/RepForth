@@ -126,6 +126,8 @@ class SessionScreenshotTest {
                     onResume = {},
                     onFinish = {},
                     onAbandon = {},
+                    onKeepRunningSession = {},
+                    onDiscardRunningAndStart = {},
                 )
             }
         }

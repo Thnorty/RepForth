@@ -91,7 +91,7 @@ fun SessionRoute(
     LaunchedEffect(state.isResting) {
         while (state.isResting) {
             viewModel.onTick()
-            delay(SessionViewModel.TICK_MS)
+            delay(REST_TICK_MS)
         }
     }
 
@@ -131,6 +131,8 @@ fun SessionRoute(
         onResume = viewModel::onResume,
         onFinish = viewModel::onFinish,
         onAbandon = viewModel::onAbandon,
+        onKeepRunningSession = viewModel::onKeepRunningSession,
+        onDiscardRunningAndStart = viewModel::onDiscardRunningAndStart,
         modifier = modifier,
     )
 }
@@ -139,6 +141,8 @@ fun SessionRoute(
 internal fun SessionScreen(
     state: SessionUiState,
     onCompleteSet: (Int?, Double?, Long?) -> Unit,
+    onKeepRunningSession: () -> Unit,
+    onDiscardRunningAndStart: () -> Unit,
     onSkipSet: () -> Unit,
     onSkipRest: () -> Unit,
     onNextExercise: () -> Unit,
@@ -198,6 +202,29 @@ internal fun SessionScreen(
             onResume = onResume,
             onFinish = onFinish,
             onAbandon = { confirmingAbandon = true },
+        )
+    }
+
+    // A different workout was already running when this plan was started. §10
+    // will not discard it and will not silently swap to it, so the screen asks.
+    state.conflictingSession?.let {
+        AlertDialog(
+            // No dismiss-by-tapping-away: both answers are consequential, and
+            // the screen behind this one is showing a workout the user did not
+            // choose.
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.session_conflict_title)) },
+            text = { Text(stringResource(R.string.session_conflict_message)) },
+            confirmButton = {
+                TextButton(onClick = onKeepRunningSession) {
+                    Text(stringResource(R.string.session_conflict_keep))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDiscardRunningAndStart) {
+                    Text(stringResource(R.string.session_conflict_discard))
+                }
+            },
         )
     }
 
@@ -325,6 +352,7 @@ private fun RestPanel(state: SessionUiState) {
             RfProgressRing(
                 progress = fraction,
                 tone = RingTone.Rest,
+                stepMillis = REST_TICK_MS.toInt(),
                 content = countdown,
             )
         } else {

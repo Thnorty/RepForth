@@ -70,15 +70,49 @@ class SessionController @Inject constructor(
      * the screen both reacting to the same intent, must not discard a workout
      * in progress.
      */
-    suspend fun start(templateId: String): SessionSnapshot? = mutex.withLock {
+    /**
+     * Begin [templateId], unless something is already running.
+     *
+     * **This used to return whatever was already in progress**, whichever plan
+     * had been asked for. Tapping "start" on a plan then silently resumed a
+     * different one — often a session left unfinished days earlier, since an
+     * active session never expires — and the screen would show a workout the
+     * user had not chosen, mid-way through, with no explanation.
+     *
+     * The outcome is now something the caller has to look at. Resuming the same
+     * plan is fine and is not a conflict; being handed a *different* one is the
+     * bug, and it is the caller's job to ask what the user wants.
+     */
+    suspend fun start(templateId: String): StartOutcome = mutex.withLock {
         val current = _state.value
-        if (current != null && !current.phase.isTerminal) return@withLock current
 
-        val template = templates.find(templateId) ?: return@withLock null
+        if (current != null && !current.phase.isTerminal) {
+            return@withLock if (current.templateId == templateId) {
+                StartOutcome.Resumed(current)
+            } else {
+                StartOutcome.Blocked(current)
+            }
+        }
+
+        val template = templates.find(templateId) ?: return@withLock StartOutcome.NoSuchPlan
         val started = engine.start(UUID.randomUUID().toString(), template)
         sessions.persist(started)
         _state.value = started
-        started
+        StartOutcome.Started(started)
+    }
+
+    /**
+     * Give up whatever is running and begin [templateId].
+     *
+     * Only reached from a user answering the conflict — never automatically.
+     * Everything already recorded on the abandoned session is kept, which is
+     * what `Abandon` means in §10.
+     */
+    suspend fun abandonAndStart(templateId: String): StartOutcome {
+        _state.value?.takeIf { !it.phase.isTerminal }?.let {
+            dispatch(SessionCommand.Abandon(newCommandId()))
+        }
+        return start(templateId)
     }
 
     /**
@@ -126,4 +160,25 @@ class SessionController @Inject constructor(
     fun restRemaining(): Long? = _state.value?.restRemaining(time.elapsedRealtime())
 
     fun newCommandId(): String = UUID.randomUUID().toString()
+}
+
+/** What [SessionController.start] did, which the caller has to decide about. */
+sealed interface StartOutcome {
+
+    /** A new session began. */
+    data class Started(val snapshot: SessionSnapshot) : StartOutcome
+
+    /** The requested plan was already running; this is that session. */
+    data class Resumed(val snapshot: SessionSnapshot) : StartOutcome
+
+    /**
+     * A *different* workout is in progress and was left alone.
+     *
+     * Not an error, and not something to resolve automatically: discarding
+     * someone's half-finished workout to honour a tap is worse than asking.
+     */
+    data class Blocked(val running: SessionSnapshot) : StartOutcome
+
+    /** The plan is gone. */
+    data object NoSuchPlan : StartOutcome
 }

@@ -28,6 +28,16 @@ data class NextUpPreview(
     val totalSets: Int? = null,
 )
 
+/**
+ * How often the rest countdown is recomputed.
+ *
+ * Internal rather than private because the screen animates the rest ring across
+ * exactly this interval — a ring easing over a different span than the one
+ * between its updates is what made the countdown move in two visible jerks per
+ * second.
+ */
+internal const val REST_TICK_MS = 500L
+
 /** What the running workout screen draws. */
 data class SessionUiState(
     val snapshot: SessionSnapshot? = null,
@@ -39,6 +49,14 @@ data class SessionUiState(
     val restRemainingMs: Long? = null,
     val loading: Boolean = true,
     val finished: Boolean = false,
+    /**
+     * A workout that was already running when a different plan was started.
+     *
+     * Non-null means the screen owes the user a question. It is never resolved
+     * automatically: silently resuming this was the original bug, and silently
+     * discarding it would be a worse one.
+     */
+    val conflictingSession: SessionSnapshot? = null,
 ) {
     val phase: SessionPhase? get() = snapshot?.phase
     val currentName: String?
@@ -128,6 +146,9 @@ class SessionViewModel @Inject constructor(
     private val mediaDownloader: MediaDownloader,
 ) : ViewModel() {
 
+    /** Remembered so the conflict dialog knows what to start if it is answered. */
+    private var pendingTemplateId: String? = null
+
     private val _uiState = MutableStateFlow(SessionUiState())
     val uiState: StateFlow<SessionUiState> = _uiState.asStateFlow()
 
@@ -155,10 +176,43 @@ class SessionViewModel @Inject constructor(
     }
 
     fun start(templateId: String) {
-        viewModelScope.launch {
-            val started = controller.start(templateId) ?: return@launch
-            adopt(started)
-            controller.dispatch(SessionCommand.Begin(controller.newCommandId()))
+        pendingTemplateId = templateId
+        viewModelScope.launch { begin(controller.start(templateId)) }
+    }
+
+    /** The user chose to discard the running workout and start the one they tapped. */
+    fun onDiscardRunningAndStart() {
+        val templateId = pendingTemplateId ?: return
+        _uiState.value = _uiState.value.copy(conflictingSession = null)
+        viewModelScope.launch { begin(controller.abandonAndStart(templateId)) }
+    }
+
+    /** The user chose to keep the workout that was already going. */
+    fun onKeepRunningSession() {
+        val running = _uiState.value.conflictingSession ?: return
+        _uiState.value = _uiState.value.copy(conflictingSession = null)
+        viewModelScope.launch { adopt(running) }
+    }
+
+    private suspend fun begin(outcome: StartOutcome) {
+        when (outcome) {
+            is StartOutcome.Started -> {
+                adopt(outcome.snapshot)
+                controller.dispatch(SessionCommand.Begin(controller.newCommandId()))
+            }
+
+            // The same plan, already going. Nothing to begin and nothing to ask:
+            // this is what the user meant by tapping it.
+            is StartOutcome.Resumed -> adopt(outcome.snapshot)
+
+            is StartOutcome.Blocked ->
+                _uiState.value = _uiState.value.copy(
+                    conflictingSession = outcome.running,
+                    loading = false,
+                )
+
+            StartOutcome.NoSuchPlan ->
+                _uiState.value = _uiState.value.copy(loading = false)
         }
     }
 
@@ -244,6 +298,6 @@ class SessionViewModel @Inject constructor(
     }
 
     internal companion object {
-        const val TICK_MS = 500L
+
     }
 }

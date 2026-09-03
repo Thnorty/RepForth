@@ -56,12 +56,21 @@ fun RfProgressRing(
     modifier: Modifier = Modifier,
     size: Dp = 200.dp,
     tone: RingTone = RingTone.Accent,
+    stepMillis: Int = Dur.long,
     content: @Composable () -> Unit,
 ) {
     val target = progress.coerceIn(0f, 1f)
     val swept by animateFloatAsState(
         targetValue = target,
-        animationSpec = rfTween(durationMillis = Dur.long, easing = Ease.standard),
+        // Linear, across exactly the interval between updates, so consecutive
+        // steps join into one continuous sweep.
+        //
+        // The first version eased over 400ms while the rest countdown updated
+        // every 500ms, so the ring accelerated, stopped, waited, and did it
+        // again -- twice a second. A countdown ring either ticks once per
+        // second like a clock hand or moves continuously; moving in two eased
+        // jerks per second reads as neither.
+        animationSpec = rfTween(durationMillis = stepMillis, easing = Ease.linear),
         label = "ring_progress",
     )
 
