@@ -157,9 +157,15 @@ class WearWorkoutStore @Inject constructor(
         )
 
         return try {
-            val nodes = nodeClient.connectedNodes.await()
+            // Nearby, for the same reason `checkReachability` insists on it: a
+            // node that is merely known would set this back to true and put
+            // live controls on a watch that cannot reach anything.
+            val nodes = nodeClient.connectedNodes.await().filter { it.isNearby }
             _phoneReachable.value = nodes.isNotEmpty()
-            if (nodes.isEmpty()) return false
+            if (nodes.isEmpty()) {
+                Log.i(TAG, "Not sending $action: no phone nearby")
+                return false
+            }
 
             val payload = json.encodeToString(command).toByteArray()
             nodes.forEach { node ->
