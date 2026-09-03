@@ -32,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -49,6 +50,7 @@ import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.designsystem.theme.formatWeight
+import com.repforth.core.designsystem.theme.rfPopOnChange
 import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.media.ui.ExerciseMedia
@@ -259,6 +261,10 @@ private fun SessionHeader(state: SessionUiState) {
             text = state.currentName.orEmpty(),
             style = MaterialTheme.typography.headlineSmall,
         )
+        // "Spring for set completion" -- the design system's second motion
+        // rule, and the only motion permitted on this screen while a set is in
+        // progress. It pops when the set number changes and at no other time.
+        val setPop = rfPopOnChange(state.setNumber)
         Text(
             text = stringResource(R.string.session_set_of, state.setNumber, state.setTotal),
             style = MaterialTheme.typography.bodyMedium,
@@ -268,7 +274,12 @@ private fun SessionHeader(state: SessionUiState) {
             // counter moves on its own. Polite, not assertive -- it should be
             // read at the next pause rather than cutting off whatever the user
             // is already listening to.
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = setPop
+                    scaleY = setPop
+                }
+                .semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }

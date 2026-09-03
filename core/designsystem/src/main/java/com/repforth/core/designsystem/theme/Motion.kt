@@ -1,12 +1,18 @@
 package com.repforth.core.designsystem.theme
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.unit.dp
 
@@ -114,3 +120,41 @@ fun <T> rfTween(
 @ReadOnlyComposable
 fun rfTravel(distance: androidx.compose.ui.unit.Dp) =
     if (LocalReducedMotion.current) 0.dp else distance
+
+/**
+ * A scale that pops once, each time [key] changes.
+ *
+ * The design system's second motion rule is "spring for set completion". This
+ * is that spring, expressed as a value rather than a component so the thing
+ * that pops can be any composable — today the set counter, tomorrow a weight
+ * that went up.
+ *
+ * **It does not fire on the first composition.** A pop is a reaction to a
+ * change, and a screen that pops everything the moment it opens is announcing
+ * nothing. Getting this wrong is invisible in a screenshot and obvious on a
+ * device, so the first value of [key] is recorded and skipped.
+ *
+ * Reduced motion returns a flat 1f and never starts the animation, for the same
+ * reason `CoachScreen` branches: this is a sequence of two tweens, and
+ * collapsing their durations to zero would still run the sequence.
+ *
+ * The overshoot is [MotionScale.pop] — 1.06, from `--motion-pop-scale`. On the
+ * running-workout screen it is deliberately the largest motion allowed while a
+ * set is in progress, which is to say: barely any.
+ */
+@Composable
+fun rfPopOnChange(key: Any?): Float {
+    val reduced = LocalReducedMotion.current
+    if (reduced) return 1f
+
+    val scale = remember { Animatable(1f) }
+    var seen by remember { mutableStateOf<Any?>(key) }
+
+    LaunchedEffect(key) {
+        if (key == seen) return@LaunchedEffect
+        seen = key
+        scale.animateTo(MotionScale.pop, tween(durationMillis = Dur.quick, easing = Ease.decelerate))
+        scale.animateTo(1f, tween(durationMillis = Dur.short, easing = Ease.spring))
+    }
+    return scale.value
+}
