@@ -25,7 +25,7 @@ which decisions are closed so they are not reopened.
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
-| 5 — Wear remote | §19 | Not started. No hardware to test against |
+| 5 — Wear remote | §19 | **In progress.** 5.1 shared protocol done, on the JVM. Transport and watch UI still need hardware or a paired emulator |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
@@ -122,6 +122,7 @@ recording them found five more defects.
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
 | **Phase 3** — the rest ring, and goldens for the state that had one | [#7][pr7] |
+| **Phase 5** — the shared wear protocol and its admission rule | [#8][pr8] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -139,6 +140,7 @@ recording them found five more defects.
 [pr5]: https://github.com/Thnorty/RepForth/pull/5
 [pr6]: https://github.com/Thnorty/RepForth/pull/6
 [pr7]: https://github.com/Thnorty/RepForth/pull/7
+[pr8]: https://github.com/Thnorty/RepForth/pull/8
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1868,6 +1870,55 @@ differ. That is 1.45x the measured noise, against roughly 0.25% for a one-word
 label change and whole percent for a wrapped line. The lower margin is thin and
 the comment says so — a platform whose text rendering drifts further needs this
 re-measured rather than nudged.
+
+---
+
+## Phase 5 — Connected Wear remote
+
+### 5.1 — The shared protocol — **done, and no device was needed**
+
+§20 has exactly two clauses left unmet and both are the watch. This is the half
+of the first one — "a connected watch **cannot silently mutate stale state**" —
+that is pure logic.
+
+**Most of the mechanism already existed on the phone.** `SessionEngine` keeps
+the last fifty applied command ids and returns the current state for a repeat,
+and it already compares an `expectedRevision`; `SessionSnapshot` already carries
+`revision`. So this slice is the shared vocabulary and the admission rule, not a
+second copy of the engine — `admit` deliberately does **not** check idempotency,
+because two places that could disagree about whether something already happened
+is worse than one.
+
+`WearPhase` is referenced in §11 and never defined there. It is six values
+rather than the phone's eight, because it chooses one of §11's screens rather
+than driving a state machine: `IDLE` has no member — "no workout" is the absence
+of a snapshot — and `Abandoned` is kept apart from `Finished`, since a watch
+congratulating someone for giving up is worse than one that says nothing.
+
+**A refusal is not an error.** §11 states the response as well as the rule — the
+phone "returns the current snapshot rather than guessing" — so the refusing
+branch is named `AnswerWithCurrentState` and carries the reason for a log, not
+for a screen. The watch has nothing to report and nothing to retry; it had an
+old picture and gets a current one.
+
+Order of checks is asserted, not assumed: format, then identity, then position.
+With a protocol mismatch the session id and revision are fields whose meaning is
+not agreed, so reporting staleness would be a guess dressed as a diagnosis.
+
+**The wire-format test found a real defect immediately.** kotlinx.serialization
+omits a property equal to its default, so `protocolVersion` — the one field that
+must never be missing — was absent from every encoded message. Fixed with
+`@EncodeDefault` rather than `encodeDefaults = true` on a `Json` instance,
+because the guarantee has to hold for whichever instance either side uses.
+
+`WearProtocolIsPlatformFreeTest` bans `android.*` imports here: two apps with
+different platform surfaces compile against this module, and a `Context` in the
+wire format would not fail to compile — it would surface much later as a watch
+module that cannot be built. Watched failing with `import android.os.SystemClock`.
+
+Still to come: 5.2 the phone-side bridge and the `SessionSnapshot` projection,
+5.3 the watch UI, and the disconnected read-only behaviour that is §20's other
+clause.
 
 ---
 
