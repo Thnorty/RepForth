@@ -17,6 +17,11 @@ import com.repforth.core.workout.SessionCommand
  * not a loss of information — `SessionEngine.recordSet` falls back to the
  * target, so a set completed from the wrist records "did what was planned",
  * which is exactly what the user meant by pressing it.
+ *
+ * The mapping is one action to one command, and total in both directions. That
+ * is worth stating because it was not true when §11 was first followed
+ * literally: two of its actions meant the same thing, and no action reached
+ * `SkipSet`. The specification has since been corrected.
  */
 fun WearCommand.toSessionCommand(): SessionCommand = when (action) {
     WearAction.CompleteSet -> SessionCommand.CompleteSet(
@@ -28,11 +33,8 @@ fun WearCommand.toSessionCommand(): SessionCommand = when (action) {
     WearAction.Resume -> SessionCommand.Resume(commandId, expectedRevision)
     WearAction.SkipRest -> SessionCommand.SkipRest(commandId, expectedRevision)
 
-    // Both of §11's remaining actions mean "leave this exercise", and the engine
-    // has one command for that: NextExercise, which abandons the sets left on
-    // it. The redundancy is in the specified enum rather than introduced here,
-    // and is recorded in docs/PLAN.md along with what it costs — there is no
-    // watch action for skipping a single *set*, which the phone can do.
-    WearAction.SkipExercise -> SessionCommand.NextExercise(commandId, expectedRevision)
+    WearAction.SkipSet -> SessionCommand.SkipSet(commandId, expectedRevision)
+
+    // Abandons whatever sets remain on the current exercise.
     WearAction.NextExercise -> SessionCommand.NextExercise(commandId, expectedRevision)
 }

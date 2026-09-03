@@ -65,23 +65,36 @@ class WearCommandsTest {
         assertTrue(command(action = WearAction.SkipRest).toSessionCommand() is SessionCommand.SkipRest)
     }
 
-    /**
-     * §11 names two actions for one effect.
-     *
-     * Recorded as a test rather than left to be discovered: both mean "leave
-     * this exercise", the engine has one command for it, and the mapping is not
-     * hiding a distinction it failed to implement.
-     */
     @Test
-    fun `both of the leaving actions mean the same command`() {
+    fun `skipping a set records it as skipped rather than leaving the exercise`() {
         assertTrue(
-            command(action = WearAction.SkipExercise).toSessionCommand()
-                is SessionCommand.NextExercise,
+            command(action = WearAction.SkipSet).toSessionCommand() is SessionCommand.SkipSet,
         )
+    }
+
+    @Test
+    fun `leaving the exercise moves on rather than skipping one set`() {
         assertTrue(
             command(action = WearAction.NextExercise).toSessionCommand()
                 is SessionCommand.NextExercise,
         )
+    }
+
+    /**
+     * No two actions produce the same command.
+     *
+     * This is the assertion that would have caught §11's original list, where
+     * `SkipExercise` and `NextExercise` were one action under two names. A
+     * duplicate is not merely untidy: it spends a member of a versioned wire
+     * enum, and the cost showed up as `SkipSet` being unreachable from a watch
+     * while the phone could do it.
+     */
+    @Test
+    fun `every action maps to a distinct command`() {
+        val commands = WearAction.entries.map { action ->
+            command(action = action).toSessionCommand()::class
+        }
+        assertEquals(commands.distinct().size, commands.size)
     }
 
     private fun command(
