@@ -23,7 +23,7 @@ which decisions are closed so they are not reopened.
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
-| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display, 3.3 accessibility, 3.4 motion tokens done. Motion *applied*, progress visuals and baseline profiles remain |
+| 3 — Polished phone | §19 | **In progress.** 3.1 downloader and cache, 3.2 media display, 3.3 accessibility, 3.4 motion tokens, 3.5 progress visuals done. Applied motion and baseline profiles remain |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | Not started. No hardware to test against |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
@@ -118,6 +118,7 @@ recording them found five more defects.
 | **Phase 3** — image display and GIF playback in catalog, builder and session | `22383c9` |
 | **Phase 3** — the accessibility pass, and a guard lint could not be | [#2][pr2] |
 | **Phase 3** — motion tokens, and a reduced-motion switch that works | [#3][pr3] |
+| **Phase 3** — progress draws the figures it already computed | [#4][pr4] |
 | **Phase 4** — a week of training, Room v2, contract v3, Today and Plans | `f9ce1de` |
 | **Phase 4** — the request restructured; names sent, derivable fields dropped | `19aa2dd` |
 | **Phase 4** — a week's day stops being saved out of its week | `163de35` |
@@ -131,6 +132,7 @@ recording them found five more defects.
 
 [pr2]: https://github.com/Thnorty/RepForth/pull/2
 [pr3]: https://github.com/Thnorty/RepForth/pull/3
+[pr4]: https://github.com/Thnorty/RepForth/pull/4
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -1107,6 +1109,44 @@ reads them yet beyond the one button.
 
 ---
 
+### 3.5 — Progress visuals — **done; the screen now draws what it was already computing**
+
+`SessionStatistics` computed `daysThisWeek` — with a distinct-calendar-day pass
+over the week — and `totalSets`, and no composable in `feature/history` read
+either. Two figures calculated on every emission since the Progress tab shipped
+and thrown away.
+
+Both are drawn now. `daysThisWeek` needed something to be measured against, so
+`HistoryViewModel` takes `ProfileRepository` and the bar appears only when a
+profile exists: "3 days" alone is a fact, "3 of 4" is the answer to the question
+§3 asked.
+
+`RfSegmentedBar` is ported from `.rf-bar--segmented` — 8dp tall, 3dp gaps,
+fully rounded. **Segmented rather than continuous on purpose:** a week of
+training is three things out of four, not 75%, and a continuous bar invites
+reading a percentage that means nothing. It is the first thing in the app to
+use `rfTween`, so its fill honours reduced motion without knowing the setting
+exists.
+
+**What the design system does and does not offer, checked rather than assumed.**
+A sweep of all 27 files in `design-system/` finds four progress components:
+`.rf-ring`, `.rf-bar`, `.rf-stat`, `.rf-wear-arc`. **There is no sparkline, no
+chart, no graph and no week-grid class anywhere in the reference**, verified by
+grep. So "progress visuals" in §19 means stat blocks and bars, and a chart
+library would be inventing a design the system deliberately does not have.
+
+Two things worth keeping:
+
+- **The string parity guard caught a real collision.** `progress_sets` already
+  existed as a `plurals`; the new `<string>` of the same name was rejected
+  before it could shadow anything. Renamed `progress_total_sets`.
+- **A fifth `FakeProfiles` now exists**, joining four others in `core:transfer`,
+  `feature:builder`, `feature:home` and `feature:settings`. It is marked as such
+  in the file. Consolidating them into `core:testing` is worth doing and was not
+  worth widening this change to do.
+
+---
+
 ## Phase 4 — Weekly plans
 
 A plan became a week of training days rather than a single workout. This was
@@ -1708,14 +1748,12 @@ In the order they are worth doing, and why.
    unphotographed, it is unreachable by the accessibility checks too — a
    deliberate break of its `Role.Checkbox` was not caught, because no test can
    open it. Hoisting that state now buys two guards rather than one.
-2. **Progress computes three figures it never draws.** `daysThisWeek` and
-   `totalSets` are calculated in `SessionStatistics.kt` — the first with a
-   distinct-calendar-day pass over the week — and no composable in
-   `feature/history` reads either. `WorkoutSummary.exerciseCount` is the same
-   story per row. `ProgressSummary.topMuscles` is a fourth, though that one is
-   documented as empty until the catalog is joined. That is most of "progress
-   visuals" already sitting in memory with nothing drawing it.
-3. **Motion exists as tokens and is applied to one button.** 3.4 built the
+2. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
+   per history row, and `ProgressSummary.topMuscles`, which is never populated
+   at all — its kdoc says "empty until the catalog is joined" and that join has
+   not happened. `daysThisWeek` and `totalSets` were the other two and are
+   drawn as of 3.5.
+3. **Motion exists as tokens and is applied to two things.** 3.4 built the
    scale and the reduced-motion switch; the shared-axis plan-to-detail
    transition and the set-completion spring the design system names are still
    unwritten.

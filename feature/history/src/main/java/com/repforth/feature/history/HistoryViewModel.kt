@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.common.time.TimeSource
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.workout.ProgressSummary
 import com.repforth.core.workout.WorkoutSummary
@@ -14,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -24,6 +26,12 @@ data class HistoryUiState(
     val workouts: List<WorkoutSummary> = emptyList(),
     /** Exercise names for [ProgressSummary.topMuscles], resolved from the catalog. */
     val mostPerformed: List<String> = emptyList(),
+    /**
+     * Days a week the user said they train, which is what `daysThisWeek` is
+     * measured against. Null until a profile exists, and the week bar is hidden
+     * rather than guessed at in that case.
+     */
+    val weeklyTarget: Int? = null,
     val loading: Boolean = true,
 ) {
     val isEmpty: Boolean get() = !loading && workouts.isEmpty()
@@ -40,6 +48,7 @@ data class HistoryUiState(
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     sessions: SessionRepository,
+    profiles: ProfileRepository,
     private val exercises: ExerciseRepository,
     private val time: TimeSource,
     /**
@@ -49,10 +58,13 @@ class HistoryViewModel @Inject constructor(
     private val zone: ZoneId,
 ) : ViewModel() {
 
-    val uiState: StateFlow<HistoryUiState> = sessions.observeFinished()
-        .map { history ->
+    val uiState: StateFlow<HistoryUiState> = combine(
+        sessions.observeFinished(),
+        profiles.observeProfile(),
+    ) { history, profile ->
             HistoryUiState(
                 progress = history.toProgress(time.now(), zone),
+                weeklyTarget = profile?.trainingDaysPerWeek,
                 // Newest first. The repository orders for storage, not for
                 // reading, and the question a history answers is "what did I do
                 // last?".
