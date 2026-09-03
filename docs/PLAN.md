@@ -25,7 +25,7 @@ which decisions are closed so they are not reopened.
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
-| 5 — Wear remote | §19 | **In progress.** 5.1–5.4: protocol, bridge, watch app, and the transport watched working on a Galaxy S23 and a Galaxy Watch Ultra. §20's stale-command clause demonstrated. Disconnected read-only behaviour still unobserved |
+| 5 — Wear remote | §19 | **Complete.** Protocol, bridge, watch app, and every §20 watch clause demonstrated on a Galaxy S23 and a Galaxy Watch Ultra: snapshot delivery, commands, stale-command refusal, rest countdown, and disconnected read-only with recovery |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
@@ -122,6 +122,7 @@ recording them found five more defects.
 | **Phase 3** — shared-axis navigation and the set-completion spring | [#5][pr5] |
 | **Phase 3** — baseline profiles, and a guard for a silent no-op | [#6][pr6] |
 | **Phase 3** — the rest ring, and goldens for the state that had one | [#7][pr7] |
+| **Phase 5** — disconnection, the clock fix, and the reachability fix | [#13][pr13], [#14][pr14] |
 | **Phase 5** — the watch app: five screens, listener, command sender | [#11][pr11] |
 | **Phase 5** — §11's duplicated watch action corrected | [#10][pr10] |
 | **Phase 5** — the phone bridge: projection, command mapping, transport | [#9][pr9] |
@@ -147,6 +148,8 @@ recording them found five more defects.
 [pr9]: https://github.com/Thnorty/RepForth/pull/9
 [pr10]: https://github.com/Thnorty/RepForth/pull/10
 [pr11]: https://github.com/Thnorty/RepForth/pull/11
+[pr13]: https://github.com/Thnorty/RepForth/pull/13
+[pr14]: https://github.com/Thnorty/RepForth/pull/14
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
@@ -2095,23 +2098,69 @@ produced three `Published revision 6` lines — `WorkoutService`'s collector and
 are idempotent so nothing is wrong, but it is more Data Layer traffic than the
 state changes justify.
 
+### 5.5 — Disconnection, and two bugs only hardware could find — **done; §20 is met**
+
+The last unmet clause: "a disconnected watch clearly becomes read-only while the
+phone workout continues". Testing it found two defects, and the first attempt to
+test it was itself invalid.
+
+**The rest countdown was wrong by 6.8 days.** A 60-second rest displayed as
+**591092**. `deadlineElapsedRealtimeMs` is on the phone's `elapsedRealtime`,
+which counts from the phone's boot; the watch was subtracting its own, which
+counts from the watch's. The result was the difference in how long the two
+devices had been switched on — the phone up 595515 seconds, the watch 4465. The
+kdoc on that function called it "wrong by a constant" and "close enough for a
+rest timer", which is a comment that had reasoned its way past a bug and would
+have discouraged the next person from checking. The snapshot now carries
+`publishedAtElapsedRealtimeMs` and the watch subtracts two of the phone's own
+timestamps, which is a duration and therefore portable. Verified: 57 to 50 in
+six and a half seconds.
+
+**Reachability was always true.** Three APIs, two of them wrong in ways that
+look right:
+
+- `NodeClient.connectedNodes` returns the nodes this device *knows*, not the
+  ones it can reach. It returned one with the phone's radios off.
+- `CapabilityClient.getCapability(..., FILTER_REACHABLE)` returned one too.
+  Google keeps an entry for the peer so it can route over the cloud.
+- **`Node.isNearby`** is the only field that separates a direct link from a
+  cloud round trip. Measured against a link whose true state was known from
+  `dumpsys`: `capability=1 connected=1 nearby=0`.
+
+So §11's disconnected screen was unreachable code and every control stayed live
+on a watch that could not send anything. The same mistake was in the send path
+and is fixed there too. Reachability is now polled while the state is being
+collected, because nothing pushes a disconnection to an app — the Data Layer
+simply stops delivering.
+
+**The first disconnection test proved nothing.** Turning Bluetooth off does not
+disconnect these devices: Wear OS routes the Data Layer over Wi-Fi when both are
+on the same network, and a `CompleteSet` sent with Bluetooth off arrived on the
+phone. The valid test is the phone on airplane mode with the watch left on
+Wi-Fi, which also keeps the watch on adb and observable.
+
+**Verified, with the phone offline:** "Phone not connected", the last exercise
+name still visible as §11 permits, and no controls at all. On restoring the
+radios the watch recovered on its own within one poll — `1 node(s), 1 nearby` —
+and came back showing the current exercise rather than the one it had been
+holding.
+
+**Every §20 watch clause is now demonstrated on hardware rather than asserted.**
+The pattern across all three defects is worth keeping: each survived review, had
+a plausible API or a confident comment behind it, and fell over within a minute
+of printing the actual numbers.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **§20's other watch clause is still unobserved.** "A disconnected watch
-   clearly becomes read-only while the phone workout continues" — the code
-   disables every control and keeps the last snapshot visible, and there is a
-   unit-testable `controlsEnabled`, but nobody has yet walked out of Bluetooth
-   range mid-set and looked. That is the remaining hardware test, and it is a
-   short one.
-2. **One command produces three publishes.** `WorkoutService`'s collector and
+1. **One command produces three publishes.** `WorkoutService`'s collector and
    `WearCommandService` both publish, and a refusal republishes as well. The
    writes are idempotent so nothing is wrong; it is simply more Data Layer
    traffic than the state changes justify.
-3. **Two surfaces still have no golden, and both are dialogs.** The Settings
+2. **Two surfaces still have no golden, and both are dialogs.** The Settings
    schedule dialog and the equipment dialog are opened by state held inside
    `SettingsScreen`, so a screenshot test cannot reach them without hoisting
    that state — which is a change to the screen for the sake of the test, and
@@ -2123,18 +2172,18 @@ In the order they are worth doing, and why.
    unphotographed, it is unreachable by the accessibility checks too — a
    deliberate break of its `Role.Checkbox` was not caught, because no test can
    open it. Hoisting that state now buys two guards rather than one.
-4. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
+3. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
    per history row, and `ProgressSummary.topMuscles`, which is never populated
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-5. **Two modules configure their own instrumentation runner.**
+4. **Two modules configure their own instrumentation runner.**
    `core/database` and `core/secrets` set `testInstrumentationRunner` in their
    build files; `AndroidApplicationConventionPlugin` sets it for application
    modules, and toolchain configuration belongs in build-logic. Found by an
    audit during 3.7, verified, and not fixed there because it had nothing to do
    with baseline profiles.
-6. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
