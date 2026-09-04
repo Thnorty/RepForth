@@ -163,6 +163,21 @@ jobs:
           :core:secrets:pixel6Api34DebugAndroidTest
           --stacktrace
 
+      # §17: the shell, the navigation graph and the real Hilt graph, which is
+      # where every defect found by hand so far has lived. Kept out of CI until
+      # now because three of the nine failed on an emulator for three unrelated
+      # reasons, none of them the app: a picker that gained a confirmation step,
+      # a Coach that cannot answer without a provider key, and an AVD whose
+      # hardware keyboard suppresses the IME the keyboard test measures.
+      #
+      # A separate step from the module tests above, sharing their emulator, so
+      # a failure names which suite broke without reading the report.
+      - name: App instrumentation
+        run: >
+          ./gradlew
+          :app:pixel6Api34PlaceholderDebugAndroidTest
+          --stacktrace
+
       - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@v4

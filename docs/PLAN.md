@@ -2444,6 +2444,9 @@ does still exist as `builder_save`, so the first is not the same string rot as
 411x891 rather than the Galaxy's, and generation simply being slower than 15s on
 an emulator. Both are guesses and are written down as guesses.
 
+**Both guesses were wrong.** See D.5; there were three failures, not two, and
+none of the three causes was a layout or a timeout.
+
 ### D.4 — Progress finally shows muscle activity (#25)
 
 §12 lists the Progress tab as "history, streaks, volume, and **recent muscle
@@ -2476,24 +2479,108 @@ resources, so a view model that resolved them would need a `Context` and would
 become the one place in this app where the text did not follow the app's own
 language setting. The screen maps them, the way every other enum is rendered.
 
+### D.5 — The builder tests, and why guessing at them was wrong (#26)
+
+D.3 wrote down two guesses about why two `:app` tests failed on the emulator: a
+footer off-screen, and generation being slower than fifteen seconds. Running
+them found three failures, and neither guess was among the causes. Writing them
+down as guesses was right; acting on either would have been a day spent on a
+layout that was correct.
+
+| Test | Actual cause |
+|---|---|
+| `aPlanSavedInTheBuilderAppearsInPlans` | The picker row stopped adding the exercise. It opens `ExerciseDetailSheet`, whose pinned "Add to workout" button adds it — so the picker was still on screen, and the builder's save button genuinely was not in the tree. |
+| `coachFillsTheBuilderButSavesNothingUntilAsked` | Coach cannot generate at all without a provider key. `AiWorkoutGenerator` returns `NO_PROVIDER_CONFIGURATION`, so the wait was for a draft that no configuration on that device could produce. |
+| `theSaveButtonStaysAboveTheKeyboard` | Not in D.3's table at all — it had passed there, and failed here on an unchanged build, about half the time. The app's window does not always hold focus when the test looks, and an unfocused window cannot raise a keyboard. |
+
+**The picker failure is the same rot as `AppRobot`'s "1 to 3 years".** A screen
+gained a step, and the only thing that would have said so was not running. That
+is now twice in two changes, both found the same way, and it is the argument for
+the CI step below rather than for any particular test.
+
+**Coach needed a seam, and §20 is why.** The generator reads a stored provider
+configuration; §20 forbids a key reaching source, CI, or a fixture. So on any
+test device "Build it" can only fail, and the screen that renders a generated
+draft — the whole subject of the test — was unreachable by anything that did not
+either ship a credential or make a network call. `provideWorkoutGenerationService`
+moves out of the internal `AiModule` into a public `AiGenerationModule`, and
+`:app`'s `TestGenerationModule` replaces that one binding with a fixture. The
+HTTP client, the JSON codec and the two provider adapters are untouched and
+unreached.
+
+Deliberately **one day, not three**: a single-day answer is stored as a
+standalone workout rather than a week, which is the screen the manual path uses
+too. A multi-day fixture would have tested the accordion instead of the property
+the test is named for. The generator's own behaviour — retries, validation,
+repair — stays tested in `core:ai`, against no UI.
+
+The draft is unsaved work, so leaving asks first. The test now confirms the
+discard, which is the path that must not write anything.
+
+**The keyboard test was flaky, and two explanations for it were wrong before
+the right one.** It is worth writing all three down, because the two wrong ones
+each had a green run behind them.
+
+*First:* the AVD's hardware keyboard suppresses the software IME, so turn the
+IME back on with `settings put secure show_ime_with_hard_keyboard 1` through
+`UiAutomation.executeShellCommand`. Written, documented, then checked —
+`hw.keyboard = no` in the managed device's own `config.ini`, so there was
+nothing to suppress and the setting could not have done anything. The run that
+appeared to vindicate it had the setting applied and failed anyway, which was in
+the log the whole time. Removed.
+
+*Second:* the first tap on the field is dropped, so ask again. That is real, and
+the retry is kept because it costs nothing — but eight requests over twenty-four
+seconds still failed, so it was not the cause either.
+
+*The actual cause came from Espresso, of all things.* An `@After` calling
+`closeSoftKeyboard()` — an attempt at hygiene that failed all three tests and
+was reverted — printed `RootViewWithoutFocusException` with the decor view's
+`has-window-focus=false`. **An unfocused window cannot raise a keyboard.**
+That is why `showSoftInput` had been returning `false` while
+`dumpsys input_method` still named this app as its current client, and why the
+input-method dump read as a healthy binding for several runs: it was answering a
+different question. The fix is four lines — wait for `hasWindowFocus()` before
+asking for the keyboard.
+
+**The lesson is about the dump that looked healthy.** `mCurClient`,
+`mHaveConnection=true`, `mBoundToMethod=true` and the app's own pid were all
+consistent with a working IME, and they were true. None of them is window focus,
+and none of them was going to say so. The failure message now carries
+`showSoftInput`'s return value and the window's focus state alongside the
+input-method dump, because those two are what actually separate the cases.
+
+**Failure rate before the fix: roughly one run in two.** Ten green full-suite
+runs after it, against three unchanged-build failures before.
+
+**One run of a flaky test proves nothing, which is the whole reason this was
+found.** The first fix went green three times in a row and was two explanations
+away from correct; it took repeating the suite to see it fail again. Anything
+touching this test should be repeated, not run once.
+
+One run along the way failed having executed zero tests —
+`EmulatorTimeoutException`, the emulator never attached to adb after several
+back-to-back `--rerun-tasks` on one machine. Worth knowing rather than rerunning
+quietly: an infrastructure failure looks exactly like a test failure from the
+console, and the report says `tests="0"`.
+
+**`:app` is now in the `device-tests` job**, as its own step sharing the
+emulator the module tests already boot. Nine tests, roughly a minute. That is
+the whole point of the change: the six tests before this had been failing for
+days on a renamed string, and nothing said so because nothing ran them.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **`:app`'s instrumentation tests are not in CI.** Two of them fail on the
-   managed emulator — see the table in D.3 — and until they pass, adding
-   `:app:pixel6Api34PlaceholderDebugAndroidTest` to the `device-tests` job would
-   make every build red. They now *can* be run, which they could not before:
+1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
+   pass on the managed emulator and the `device-tests` job runs them:
 
    ```
    ./gradlew :app:pixel6Api34PlaceholderDebugAndroidTest
    ```
-
-   This is the highest-value item here. The six existing tests had been failing
-   silently for days on a string that no longer existed, and only running them
-   revealed it.
 2. **One command produces three publishes.** `WorkoutService`'s collector and
    `WearCommandService` both publish, and a refusal republishes as well. The
    writes are idempotent so nothing is wrong; it is simply more Data Layer
