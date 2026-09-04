@@ -2,7 +2,11 @@ package com.repforth.app.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -23,6 +27,9 @@ import com.repforth.feature.exercises.ExercisesRoute
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
 import com.repforth.feature.session.SessionRoute
+import com.repforth.feature.session.StartIntent
+import com.repforth.feature.session.WorkoutConflictDialog
+import com.repforth.feature.session.WorkoutStartViewModel
 import com.repforth.feature.settings.AiSettingsRoute
 import com.repforth.feature.settings.SettingsRoute
 
@@ -38,7 +45,30 @@ import com.repforth.feature.settings.SettingsRoute
 fun RepForthNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
+    starter: WorkoutStartViewModel = hiltViewModel(),
 ) {
+    // Starting a plan is routed through the view model rather than navigating
+    // straight there, because a workout may already be running and the user has
+    // to be asked *before* being moved. Both Today and Plans start plans; the
+    // question is identical from either, so it is asked once, here.
+    val intent by starter.intent.collectAsStateWithLifecycle()
+
+    LaunchedEffect(intent) {
+        (intent as? StartIntent.Open)?.let { open ->
+            navController.navigate(Destination.Session(open.templateId))
+            // Cleared immediately so a recomposition cannot navigate twice.
+            starter.consumed()
+        }
+    }
+
+    (intent as? StartIntent.Conflict)?.let { conflict ->
+        WorkoutConflictDialog(
+            runningName = conflict.runningName,
+            onKeep = starter::keepRunning,
+            onDiscard = starter::discardAndStart,
+        )
+    }
+
     // Resolved here, not inside the lambdas: a NavHost transition lambda is not
     // a composable scope, and these read `LocalReducedMotion` through `rfTween`.
     // Composition is the right place to read it anyway -- it is a static local,
@@ -68,7 +98,7 @@ fun RepForthNavHost(
                 // Null template: the session screen shows whatever is already
                 // running rather than starting anything.
                 onResumeWorkout = { navController.navigate(Destination.Session()) },
-                onStartPlan = { planId -> navController.navigate(Destination.Session(planId)) },
+                onStartPlan = starter::request,
                 onBuildWorkout = { navController.navigate(Destination.Builder()) },
             )
         }
@@ -79,7 +109,7 @@ fun RepForthNavHost(
                 onEditWeek = { weekId ->
                     navController.navigate(Destination.Builder(weekId = weekId))
                 },
-                onStartPlan = { planId -> navController.navigate(Destination.Session(planId)) },
+                onStartPlan = starter::request,
             )
         }
         composable<Destination.Session> { entry ->

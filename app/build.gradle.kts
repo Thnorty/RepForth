@@ -50,6 +50,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // The shell hosts one view model of its own: the gate that asks about a
+    // running workout before navigating into a new one.
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.core)
 
     debugImplementation(libs.androidx.compose.ui.tooling)

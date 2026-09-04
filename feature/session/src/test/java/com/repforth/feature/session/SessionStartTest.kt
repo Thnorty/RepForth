@@ -120,7 +120,7 @@ class SessionStartTest {
 }
 
 /** Two plans with genuinely different ids, which is the whole point here. */
-private class StartFakeTemplates : TemplateRepository {
+internal class StartFakeTemplates : TemplateRepository {
     override fun observeAll(): Flow<List<WorkoutTemplate>> = emptyFlow()
 
     override suspend fun find(id: String): WorkoutTemplate? = when (id) {
@@ -147,7 +147,7 @@ private class StartFakeTemplates : TemplateRepository {
     override suspend fun deleteAll() = Unit
 }
 
-private class StartFakeSessions : SessionRepository {
+internal class StartFakeSessions : SessionRepository {
     private val persisted = mutableListOf<SessionSnapshot>()
 
     override fun observeActive(): Flow<SessionSnapshot?> = emptyFlow()

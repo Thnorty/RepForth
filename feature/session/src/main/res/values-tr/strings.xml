@@ -46,7 +46,8 @@
     <string name="session_channel_description">Antrenman sürerken mevcut seti ve dinlenme sayacını gösterir.</string>
     <string name="session_next_up">Sırada: %1$s</string>
     <string name="session_conflict_title">Zaten süren bir antrenman var</string>
-    <string name="session_conflict_message">Yenisine başlamadan önce onu bitir ya da sonlandır. Kaydedilenler her durumda korunur.</string>
+    <string name="session_conflict_message">%1$s hâlâ sürüyor. Hangisini seçersen seç, o ana kadar kaydedilenler korunur.</string>
+    <string name="session_conflict_unnamed">Antrenmanın</string>
     <string name="session_conflict_keep">Ona geri dön</string>
     <string name="session_conflict_discard">Sonlandır ve başlat</string>
 </resources>
