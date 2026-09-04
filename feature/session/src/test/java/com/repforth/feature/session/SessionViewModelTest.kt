@@ -67,7 +67,7 @@ class SessionViewModelTest {
         controller = SessionController(sessions, FakeTemplates(), time)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
         downloader = FakeMediaDownloader()
-        viewModel = SessionViewModel(controller, FakeExercises(), preferences, downloader)
+        viewModel = SessionViewModel(controller, FakeExercises(), FakeTemplates(), preferences, downloader)
     }
 
     @After
@@ -226,6 +226,7 @@ class SessionViewModelTest {
         val revived = SessionViewModel(
             SessionController(sessions, FakeTemplates(), time),
             FakeExercises(),
+            FakeTemplates(),
             preferences,
             downloader,
         )
@@ -290,7 +291,7 @@ class SessionViewModelTest {
         assertEquals(SessionPhase.ABANDONED, state.phase)
 
         // The screen is gone and comes back, as navigation would rebuild it.
-        val next = SessionViewModel(controller, FakeExercises(), preferences, downloader)
+        val next = SessionViewModel(controller, FakeExercises(), FakeTemplates(), preferences, downloader)
         testScheduler.advanceUntilIdle()
         assertEquals(
             "A finished session must not be restored as the running one",
@@ -314,7 +315,7 @@ class SessionViewModelTest {
         testScheduler.advanceUntilIdle()
         assertEquals(SessionPhase.COMPLETED, state.phase)
 
-        val next = SessionViewModel(controller, FakeExercises(), preferences, downloader)
+        val next = SessionViewModel(controller, FakeExercises(), FakeTemplates(), preferences, downloader)
         testScheduler.advanceUntilIdle()
         next.start(TEMPLATE_ID)
         testScheduler.advanceUntilIdle()

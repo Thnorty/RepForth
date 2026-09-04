@@ -1,10 +1,12 @@
 package com.repforth.core.designsystem.component
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -14,7 +16,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.repforth.core.designsystem.theme.Dur
+import com.repforth.core.designsystem.theme.Ease
 import com.repforth.core.designsystem.theme.RepForthTheme
+import com.repforth.core.designsystem.theme.rfTween
 
 /** Which of the ring's three meanings this one carries. `.rf-ring--*` in the CSS. */
 enum class RingTone { Accent, Rest, Done }
@@ -35,25 +40,24 @@ enum class RingTone { Accent, Rest, Done }
  * the arc here starts at -90° for the same reason. A countdown that began at
  * three o'clock would be a clock nobody has ever seen.
  *
- * **This draws exactly the progress it is given, and animates nothing.** That
- * is deliberate, and it is the second attempt at this ring.
+ * **The sweep is the one continuous motion the design system allows.** Its
+ * rules reserve rotation for an active timer ring specifically, and this is
+ * that ring. It goes through [rfTween], so reduced motion snaps between values
+ * rather than sliding — the countdown remains completely readable, which is the
+ * point of the setting.
  *
- * The first version animated between the values it was handed, which is the
- * obvious thing to do and is wrong for a timer. Every Compose animation is
- * scaled by the system's animator duration setting — *0.5* on the phone this
- * was found on, and *0* for anyone who has turned animations off — so a tween
- * written to span the gap between two countdown updates finishes early and
- * leaves the ring standing still for the remainder of it. Widening the tween
- * cannot fix that; the scale applies to whatever it is widened to. The result
- * was a ring that moved in two visible jerks a second at 400ms and still moved
- * in two visible jerks a second at 500ms.
+ * [stepMillis] is how often the caller expects to change [progress], and the
+ * animation is linear across exactly that interval so consecutive steps join
+ * into one sweep rather than easing to a stop between each pair. A caller that
+ * updates on no fixed schedule should leave it alone.
  *
- * So the caller owns the motion, because only the caller knows the timeline it
- * is moving along. A countdown feeds this a value recomputed every frame from
- * its own deadline and gets a continuous sweep with no animation involved; a
- * ring showing something static feeds it a static value. Reduced motion is the
- * caller's decision for the same reason — see `rememberRestSweep` in the
- * session screen, which steps once per second instead.
+ * **What this cannot promise is elapsed time.** Compose multiplies every
+ * animation by the system's animator duration scale — 0.5 on the phone this was
+ * tested on, 0 for anyone who has turned animations off — so a ring told to
+ * take 500ms may take 250, finish early, and stand still until the next value.
+ * That is visible, it was reported, and it is not fixable from here: the scale
+ * applies to whatever duration is passed. Anything that must stay in step with
+ * a clock has to be drawn from the clock instead of animated towards it.
  *
  * The ring draws no semantics of its own. Whatever is written in the middle is
  * already the thing a screen reader should read, and a `contentDescription`
@@ -65,9 +69,14 @@ fun RfProgressRing(
     modifier: Modifier = Modifier,
     size: Dp = 200.dp,
     tone: RingTone = RingTone.Accent,
+    stepMillis: Int = Dur.long,
     content: @Composable () -> Unit,
 ) {
-    val swept = progress.coerceIn(0f, 1f)
+    val swept by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = rfTween(durationMillis = stepMillis, easing = Ease.linear),
+        label = "ring_progress",
+    )
 
     val track = RepForthTheme.colors.track
     val fill: Color = when (tone) {

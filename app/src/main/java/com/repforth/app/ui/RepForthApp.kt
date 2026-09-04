@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -33,6 +35,7 @@ import com.repforth.app.navigation.RepForthNavHost
 import com.repforth.app.navigation.TopLevelDestination
 import com.repforth.app.navigation.navigateToTopLevel
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.feature.session.WorkoutStartViewModel
 
 /**
  * The app shell: the frame every screen lands inside.
@@ -45,6 +48,7 @@ import com.repforth.core.designsystem.component.RfIcons
 @Composable
 fun RepForthApp(
     navController: NavHostController = rememberNavController(),
+    starter: WorkoutStartViewModel = hiltViewModel(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
@@ -55,6 +59,12 @@ fun RepForthApp(
     // goes away, and the up arrow is the only exit.
     val currentTopLevel = TopLevelDestination.entries
         .firstOrNull { currentDestination.isOn(it) }
+
+    // A running workout titles the bar with its own name. "Workout" is true of
+    // every one of them and tells someone glancing down nothing they did not
+    // already know; the plan's name is the one thing on this screen that says
+    // which workout this is.
+    val activeWorkoutName by starter.activeWorkoutName.collectAsStateWithLifecycle()
 
     Scaffold(
         // The bottom edge is the app's to defend. enableEdgeToEdge() turns off
@@ -81,7 +91,7 @@ fun RepForthApp(
         ),
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(currentDestination.titleRes(currentTopLevel))) },
+                title = { Text(barTitle(currentDestination, currentTopLevel, activeWorkoutName)) },
                 navigationIcon = {
                     if (currentTopLevel == null) {
                         // Dispatched as a back press rather than navigateUp().
@@ -139,6 +149,9 @@ fun RepForthApp(
         RepForthNavHost(
             navController = navController,
             modifier = Modifier.padding(innerPadding),
+            // The same instance the bar reads, so the name in the title and the
+            // name in the conflict dialog cannot disagree.
+            starter = starter,
         )
     }
 }
@@ -158,10 +171,30 @@ private fun NavDestination?.isOn(destination: TopLevelDestination): Boolean =
  * the moment the builder was added it titled itself "Settings", which is the
  * failure mode of a default that happens to be right once.
  */
+/**
+ * The app bar's text.
+ *
+ * Everything is a string resource except the running workout, which is titled
+ * with the plan it came from.
+ */
+@Composable
+private fun barTitle(
+    destination: NavDestination?,
+    topLevel: TopLevelDestination?,
+    activeWorkoutName: String?,
+): String {
+    val onSession = destination?.hasRoute(Destination.Session::class) == true
+    if (onSession && topLevel == null && activeWorkoutName != null) return activeWorkoutName
+    return stringResource(destination.titleRes(topLevel))
+}
+
 @StringRes
 private fun NavDestination?.titleRes(topLevel: TopLevelDestination?): Int = when {
     topLevel != null -> topLevel.labelRes
     this?.hasRoute(Destination.Builder::class) == true -> R.string.nav_builder
+    // Replaced by the workout's own name when there is one -- see `barTitle`.
+    // This remains the title for a workout started from no plan, and the branch
+    // NavigationStructureTest looks for.
     this?.hasRoute(Destination.Session::class) == true -> R.string.nav_session
     this?.hasRoute(Destination.AiSettings::class) == true -> R.string.nav_ai_settings
     this?.hasRoute(Destination.Settings::class) == true -> R.string.settings_title

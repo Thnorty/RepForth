@@ -58,7 +58,6 @@ import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.ExerciseTarget
-import kotlin.math.floor
 import kotlinx.coroutines.delay
 
 /**
@@ -178,7 +177,8 @@ internal fun SessionScreen(
     // snapshot has been adopted — and a dialog rendered after an early return
     // is a dialog that never appears in exactly that window.
     state.conflictingSession?.let {
-        ConflictDialog(
+        WorkoutConflictDialog(
+            runningName = state.conflictingName,
             onKeep = onKeepRunningSession,
             onDiscard = onDiscardRunningAndStart,
         )
@@ -259,34 +259,6 @@ internal fun SessionScreen(
             },
         )
     }
-}
-
-/**
- * Asks which workout the user meant.
- *
- * Neither answer is automatic. Silently resuming the running one was the
- * original bug; silently discarding a half-finished workout to honour a tap
- * would be a worse one.
- */
-@Composable
-private fun ConflictDialog(onKeep: () -> Unit, onDiscard: () -> Unit) {
-    AlertDialog(
-        // No dismiss-by-tapping-away: both answers are consequential, and the
-        // screen behind this one is showing a workout the user did not choose.
-        onDismissRequest = {},
-        title = { Text(stringResource(R.string.session_conflict_title)) },
-        text = { Text(stringResource(R.string.session_conflict_message)) },
-        confirmButton = {
-            TextButton(onClick = onKeep) {
-                Text(stringResource(R.string.session_conflict_keep))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDiscard) {
-                Text(stringResource(R.string.session_conflict_discard))
-            }
-        },
-    )
 }
 
 @Composable
@@ -383,13 +355,14 @@ private fun RestPanel(state: SessionUiState) {
         // The ring only appears when there is a rest length to measure against.
         // Without one it would be a full circle that never moves, which says
         // less than the number alone and costs a lot more room.
-        val sweep = state.restTotalMs?.let { total ->
-            state.restRemainingMs?.let { remaining -> steppedSweep(remaining, total) }
-        }
-        if (sweep != null) {
+        val fraction = state.restFraction
+        if (fraction != null) {
             RfProgressRing(
-                progress = sweep,
+                progress = fraction,
                 tone = RingTone.Rest,
+                // The ring is told how often this value changes so it can sweep
+                // across the gap instead of easing to a halt inside it.
+                stepMillis = REST_TICK_MS.toInt(),
                 content = countdown,
             )
         } else {
@@ -426,44 +399,6 @@ private fun RestPanel(state: SessionUiState) {
             }
         }
     }
-}
-
-/**
- * How much of the rest is left, in whole seconds.
- *
- * **The ring ticks once a second like a clock hand, and does not animate.**
- * That is a deliberate departure from the design system's "the sweep is the one
- * continuous motion allowed", and it is the third attempt at this ring.
- *
- * The first eased over 400ms while the countdown updated every 500ms:
- * accelerate, stop, wait, repeat. The second widened the tween to exactly the
- * 500ms between updates, which looked like the answer and was not — Compose
- * multiplies every animation by the system's animator duration setting, *0.5*
- * on the phone this was reported from and *0* for anyone who has turned
- * animations off. A 500ms tween ran in 250ms, finished halfway through the
- * interval and left the ring standing still for the other half: two visible
- * jerks a second, the original complaint, unchanged. No tween survives being
- * multiplied by a number the app does not choose.
- *
- * A frame-driven sweep would be genuinely continuous, and was tried third — but
- * a composable that updates every frame for the length of a rest never lets the
- * composition go idle, which hangs every Robolectric test that renders this
- * screen. A countdown ring is not worth an untestable screen.
- *
- * So it steps, in lockstep with the number drawn inside it, and it steps for
- * everyone: nothing here depends on a device setting, an animation clock, or a
- * preference, so there is no configuration in which it degrades into the
- * two-jerks-a-second this started as. Truncated rather than rounded because the
- * number is truncated — `restRemainingMs / 1000` reads 4 with 4.6 seconds left,
- * and a ring drawn as though 5 remained would sit a whole second ahead of it.
- *
- * Kept out of a composable so it can be checked by a plain JUnit test, the same
- * way `reducedDuration` is.
- */
-internal fun steppedSweep(remainingMs: Long, totalMs: Long): Float {
-    if (totalMs <= 0L) return 0f
-    val whole = floor(remainingMs / 1000.0).toLong() * 1000L
-    return (whole.toFloat() / totalMs.toFloat()).coerceIn(0f, 1f)
 }
 
 @Composable

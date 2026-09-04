@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.media.download.MediaDownloader
 import com.repforth.core.media.download.MediaPrefetchRequest
 import com.repforth.core.model.Exercise
@@ -57,6 +58,13 @@ data class SessionUiState(
      * discarding it would be a worse one.
      */
     val conflictingSession: SessionSnapshot? = null,
+    /**
+     * The name of that workout, so the question can name it.
+     *
+     * Null when the running workout came from no plan; the dialog says
+     * something generic rather than leaving a gap in the sentence.
+     */
+    val conflictingName: String? = null,
 ) {
     val phase: SessionPhase? get() = snapshot?.phase
     val currentName: String?
@@ -111,6 +119,19 @@ data class SessionUiState(
      */
     val restTotalMs: Long? get() = snapshot?.currentExercise?.restMs?.takeIf { it > 0L }
 
+    /**
+     * Rest remaining as a fraction of the whole, counting down from 1.
+     *
+     * Null when there is no rest in progress or the plan asked for none — a
+     * ring with nothing to measure is a circle, and a circle drawn for its own
+     * sake is exactly the decorative motion §12 rules out on this screen.
+     */
+    val restFraction: Float? get() {
+        val total = restTotalMs ?: return null
+        val remaining = restRemainingMs ?: return null
+        return (remaining.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+    }
+
     val isResting: Boolean get() = phase == SessionPhase.RESTING
     val isPaused: Boolean get() = phase == SessionPhase.PAUSED
     val isCompleting: Boolean get() = phase == SessionPhase.COMPLETING
@@ -129,6 +150,7 @@ data class SessionUiState(
 class SessionViewModel @Inject constructor(
     private val controller: SessionController,
     private val exercises: ExerciseRepository,
+    private val templates: TemplateRepository,
     private val preferences: UserPreferencesDataSource,
     private val mediaDownloader: MediaDownloader,
 ) : ViewModel() {
@@ -170,14 +192,14 @@ class SessionViewModel @Inject constructor(
     /** The user chose to discard the running workout and start the one they tapped. */
     fun onDiscardRunningAndStart() {
         val templateId = pendingTemplateId ?: return
-        _uiState.value = _uiState.value.copy(conflictingSession = null)
+        _uiState.value = _uiState.value.copy(conflictingSession = null, conflictingName = null)
         viewModelScope.launch { begin(controller.abandonAndStart(templateId)) }
     }
 
     /** The user chose to keep the workout that was already going. */
     fun onKeepRunningSession() {
         val running = _uiState.value.conflictingSession ?: return
-        _uiState.value = _uiState.value.copy(conflictingSession = null)
+        _uiState.value = _uiState.value.copy(conflictingSession = null, conflictingName = null)
         viewModelScope.launch { adopt(running) }
     }
 
@@ -195,6 +217,7 @@ class SessionViewModel @Inject constructor(
             is StartOutcome.Blocked ->
                 _uiState.value = _uiState.value.copy(
                     conflictingSession = outcome.running,
+                    conflictingName = outcome.running.templateId?.let { templates.find(it)?.name },
                     loading = false,
                 )
 
