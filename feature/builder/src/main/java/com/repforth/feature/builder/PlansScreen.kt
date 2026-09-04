@@ -314,6 +314,29 @@ private fun WeeklyPlanCard(
                     modifier = Modifier.padding(top = Space.s2),
                     verticalArrangement = Arrangement.spacedBy(Space.s2),
                 ) {
+                    // The only way to change which week Today follows.
+                    //
+                    // `onSetActive` was threaded from the DAO to this
+                    // composable's parameter list and then never called, so a
+                    // second week could be saved and never became the active
+                    // one — `BuilderViewModel` sets `active` on the first week
+                    // only, and its comment already said the decision belonged
+                    // here. An unused lambda parameter is legal Kotlin, so
+                    // nothing said the last step was missing.
+                    //
+                    // In the body rather than the header: that row already
+                    // carries three icon buttons beside a name that is longer
+                    // in Turkish, and this is a decision about the week rather
+                    // than a shortcut. Hidden when the week is already active,
+                    // where the badge above says so instead.
+                    if (!week.active) {
+                        TextButton(
+                            onClick = onSetActive,
+                            modifier = Modifier.heightIn(min = Target.min),
+                        ) {
+                            Text(stringResource(R.string.plans_set_active))
+                        }
+                    }
                     week.days.forEach { day ->
                         Row(
                             modifier = Modifier
