@@ -5,6 +5,7 @@ import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
+import com.repforth.core.ai.ProviderAvailability
 import com.repforth.core.ai.di.AiGenerationModule
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.Language
@@ -14,6 +15,8 @@ import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import dagger.hilt.testing.TestInstallIn
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * Coach answers from a fixture on the device, because it cannot answer at all.
@@ -49,9 +52,27 @@ object TestGenerationModule {
     fun provideWorkoutGenerationService(): AiWorkoutGenerationService =
         FixtureGenerationService
 
+    /**
+     * And the same answer to "is a provider set up?".
+     *
+     * Coach now says so before the form rather than failing after it, which
+     * means the screen would offer a notice and a disabled button on a device
+     * that has no provider -- every device this runs on. Replaced here for the
+     * same reason and in the same breath as the generator: this module stands
+     * in for the whole of `AiGenerationModule`, so leaving it out would not
+     * merely change behaviour, it would leave the binding missing.
+     */
+    @Provides
+    @Singleton
+    fun provideProviderAvailability(): ProviderAvailability = FixtureAvailability
+
     /** Ids from the pinned catalog, so the drafts resolve to real names. */
     const val FIRST_EXERCISE_ID = "0025"
     const val SECOND_EXERCISE_ID = "0032"
+}
+
+private object FixtureAvailability : ProviderAvailability {
+    override val configured: Flow<Boolean> = flowOf(true)
 }
 
 private object FixtureGenerationService : AiWorkoutGenerationService {
