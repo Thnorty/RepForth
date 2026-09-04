@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Onboarding flow strings in Turkish -->
 <resources>
-    <string name="onboarding_title">RepForth kurulumu</string>
     <string name="onboarding_next">İleri</string>
     <string name="onboarding_back">Geri</string>
     <string name="onboarding_finish">Tamamla</string>

@@ -125,7 +125,6 @@
     <string name="settings_ai_row">Yapay zekâ sağlayıcısı</string>
     <string name="settings_ai_row_sub">Bir sağlayıcı seç ve kendi API anahtarını ekle. İsteğe bağlı — dahili planlayıcı anahtarsız da çalışır.</string>
 
-    <string name="ai_title">Yapay zekâ sağlayıcısı</string>
     <string name="ai_disclosure">RepForth uygulamasının kendi sunucusu yok. Koç bir antrenman hazırlarken, isteğin ve kısa bir egzersiz listesi bu telefondan doğrudan seçtiğin sağlayıcıya, kendi API anahtarınla gider. Ne kadar tuttuğu ve ne kadar saklandığı seninle onların arasında.</string>
 
     <string name="ai_provider">Sağlayıcı</string>

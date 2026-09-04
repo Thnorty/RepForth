@@ -125,7 +125,6 @@
     <string name="settings_ai_row">AI provider</string>
     <string name="settings_ai_row_sub">Pick a provider and add your own API key. Optional — the built-in planner works without one.</string>
 
-    <string name="ai_title">AI provider</string>
     <string name="ai_disclosure">RepForth has no server of its own. When you ask Coach for a workout, your request and a shortlist of exercises go straight from this phone to the provider you pick, using your own API key. What it costs and how long it is kept are between you and them.</string>
 
     <string name="ai_provider">Provider</string>
