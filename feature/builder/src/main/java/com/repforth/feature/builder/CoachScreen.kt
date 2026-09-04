@@ -118,6 +118,7 @@ internal fun CoachScreen(
     onCancelGenerate: () -> Unit,
     onDismissError: () -> Unit,
     onClose: () -> Unit,
+    onOpenProviderSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var view by remember { mutableStateOf(BodyView.FRONT) }
@@ -222,8 +223,18 @@ internal fun CoachScreen(
             }
         }
 
+        // Said here, before the form is filled in, rather than as an error
+        // after the last tap. There is no built-in planner to fall back to --
+        // `RulesEngine` filters candidates and cannot build a plan -- so
+        // without a provider this screen can only fail, and the one useful
+        // thing it can do is offer the way to fix that.
+        if (!state.providerConfigured) {
+            CoachSetupNotice(onOpenProviderSettings = onOpenProviderSettings)
+        }
+
         CoachGenerateButton(
             generating = state.generating,
+            enabled = state.providerConfigured,
             onClick = { onGenerate(defaultName) },
         )
     }
@@ -510,9 +521,39 @@ private fun coachGlow(): Pair<Float, Float> {
     return scale to alpha
 }
 
+/**
+ * What to do when Coach has nothing to ask.
+ *
+ * A notice rather than a hidden button: the feature stays discoverable, and
+ * someone who has not set up a provider learns why from the screen that needs
+ * one instead of from a dialog at the end.
+ */
+@Composable
+private fun CoachSetupNotice(onOpenProviderSettings: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = Layout.gutterPhone)
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Space.s1),
+    ) {
+        Text(
+            text = stringResource(R.string.coach_setup_needed),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(
+            onClick = onOpenProviderSettings,
+            modifier = Modifier.heightIn(min = Target.min),
+        ) {
+            Text(stringResource(R.string.coach_setup_open))
+        }
+    }
+}
+
 @Composable
 private fun CoachGenerateButton(
     generating: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -527,7 +568,7 @@ private fun CoachGenerateButton(
     ) {
         Button(
             onClick = onClick,
-            enabled = !generating,
+            enabled = enabled && !generating,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,

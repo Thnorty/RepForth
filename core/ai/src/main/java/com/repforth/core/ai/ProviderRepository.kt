@@ -32,7 +32,7 @@ import kotlinx.coroutines.flow.update
 class ProviderRepository @Inject constructor(
     private val store: ProviderSettingsDataSource,
     private val secrets: SecretStore,
-) {
+) : ProviderAvailability {
     /**
      * Bumped whenever a key is written or removed.
      *
@@ -49,6 +49,21 @@ class ProviderRepository @Inject constructor(
     /** Whether a key is stored for the currently selected provider. */
     val hasKey: Flow<Boolean> = combine(store.settings, keyRevision) { settings, _ ->
         secrets.contains(settings.provider.secretId())
+    }
+
+    /**
+     * Whether Coach can reach a provider at all.
+     *
+     * Exactly the condition [configFor] answers null to, as a flow, so a screen
+     * can say so before the user fills in a form rather than after. Coach used
+     * to offer itself unconditionally and fail on the last tap with an error
+     * that named Settings and could not open it.
+     *
+     * A local server needs no key, so `requiresKey` is what separates "not set
+     * up" from "set up and deliberately keyless".
+     */
+    override val configured: Flow<Boolean> = combine(store.settings, keyRevision) { settings, _ ->
+        !settings.provider.requiresKey || secrets.contains(settings.provider.secretId())
     }
 
     /** Which providers have a key, so switching provider can say what is missing. */
@@ -108,8 +123,11 @@ class ProviderRepository @Inject constructor(
      * there is not one.
      *
      * Null rather than an exception: "the user has not set this up" is an
-     * ordinary state that the caller answers by falling back to the rules
-     * engine (§8, step 8), not an error worth a stack trace.
+     * ordinary state, not an error worth a stack trace. This used to say the
+     * caller answers it "by falling back to the rules engine (§8, step 8)" —
+     * `RulesEngine` filters and validates candidates and cannot build a plan,
+     * so no caller ever did, and the settings screen told users for months that
+     * "Coach uses the built-in planner until you add one".
      *
      * A provider with [ProviderId.requiresKey] false gets a config with an
      * empty key, because a local model server does not want one — and the

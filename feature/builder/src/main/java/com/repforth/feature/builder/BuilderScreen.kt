@@ -80,6 +80,9 @@ fun BuilderRoute(
     planId: String? = null,
     weekId: String? = null,
     onExit: () -> Unit = onSaved,
+    // Defaulted so a preview or a test can host the builder without knowing the
+    // app's navigation graph. The real one is supplied by RepForthNavHost.
+    onOpenProviderSettings: () -> Unit = {},
     viewModel: BuilderViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -142,6 +145,7 @@ fun BuilderRoute(
             onCancelGenerate = viewModel::onCancelGenerate,
             onDismissError = viewModel::onDismissCoachError,
             onClose = viewModel::onCoachClose,
+            onOpenProviderSettings = onOpenProviderSettings,
             modifier = modifier,
         )
 

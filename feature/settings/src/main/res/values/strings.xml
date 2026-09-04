@@ -135,7 +135,7 @@
     <string name="ai_key">API key</string>
     <string name="ai_key_hint">Paste your key</string>
     <string name="ai_key_stored">A key is saved for this provider. It is encrypted on this phone, and cannot be shown again.</string>
-    <string name="ai_key_missing">No key yet. Coach uses the built-in planner until you add one.</string>
+    <string name="ai_key_missing">No key yet. Coach needs one before it can build anything.</string>
     <string name="ai_key_optional">No key. Local servers like Ollama do not need one; a hosted service will ask for it.</string>
     <string name="ai_key_save">Save key</string>
     <string name="ai_key_delete">Delete key</string>

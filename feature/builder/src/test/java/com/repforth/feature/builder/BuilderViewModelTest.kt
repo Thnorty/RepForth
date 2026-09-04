@@ -9,6 +9,7 @@ import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
+import com.repforth.core.ai.ProviderAvailability
 import com.repforth.core.ai.ProviderFailure
 import com.repforth.core.exercisedata.CatalogFilter
 import com.repforth.core.exercisedata.ExerciseRepository
@@ -89,6 +90,7 @@ class BuilderViewModelTest {
             catalog,
             profiles,
             generator,
+            AlwaysConfigured,
             weeks,
             UserPreferencesDataSource(FakePreferencesStore()),
         )
@@ -1148,6 +1150,7 @@ class BuilderExerciseDetailTest {
             catalog,
             FakeProfiles(),
             FakeWorkoutGenerator(),
+            AlwaysConfigured,
             RecordingWeekRepository(),
             UserPreferencesDataSource(FakePreferencesStore()),
         )
@@ -1288,3 +1291,14 @@ private class FakeProfiles : ProfileRepository {
 /** What the screen resolves from `coach_day_default_title` and hands in. */
 private val DAY_TITLES = (1..7).map { "Day $it" }
 
+
+/**
+ * A provider is set up, which is the case every test here is about.
+ *
+ * The gate is covered by `CoachComposeTest` instead. Answering "configured" is
+ * what the whole `ProviderAvailability` interface exists for — a view model
+ * test should not have to build a keystore to say it.
+ */
+private object AlwaysConfigured : ProviderAvailability {
+    override val configured = kotlinx.coroutines.flow.flowOf(true)
+}
