@@ -1,14 +1,11 @@
 plugins {
     alias(libs.plugins.repforth.android.library)
     alias(libs.plugins.repforth.android.hilt)
+    alias(libs.plugins.repforth.android.instrumentation)
 }
 
 android {
     namespace = "com.repforth.core.secrets"
-
-    defaultConfig {
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 }
 
 dependencies {

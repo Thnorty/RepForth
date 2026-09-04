@@ -1,7 +1,6 @@
 import androidx.baselineprofile.gradle.consumer.BaselineProfileConsumerExtension
 import androidx.baselineprofile.gradle.producer.BaselineProfileProducerExtension
 import com.android.build.api.dsl.ApplicationExtension
-import com.android.build.api.dsl.ManagedVirtualDevice
 import com.android.build.api.dsl.TestExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -107,18 +106,11 @@ class BaselineProfileProducerConventionPlugin : Plugin<Project> {
             // flavour §20 says the public source must build.
             defaultConfig.missingDimensionStrategy("media", "placeholder")
 
-            // A fixed device, so a profile does not quietly depend on whose
-            // phone recorded it. API 34 matches the Galaxy this project is
-            // tested on; `aosp` rather than `google` because the profile should
-            // describe this app, not Play Services warming up.
-            testOptions.managedDevices.allDevices.create(
-                MANAGED_DEVICE,
-                ManagedVirtualDevice::class.java,
-            ) {
-                device = "Pixel 6"
-                apiLevel = 34
-                systemImageSource = "aosp"
-            }
+            // Declared in ManagedDevice.kt, which `core:database` also uses
+            // to run its migrations. One device, described once -- otherwise
+            // the profile could end up recorded on one API level and the
+            // migrations proven on another, with nothing to say so.
+            configureManagedDevice()
         }
 
         extensions.configure<BaselineProfileProducerExtension> {
@@ -139,6 +131,3 @@ class BaselineProfileProducerConventionPlugin : Plugin<Project> {
         }
     }
 }
-
-/** Named once: the convention plugin declares the device and also selects it. */
-private const val MANAGED_DEVICE = "pixel6Api34"

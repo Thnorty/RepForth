@@ -178,6 +178,7 @@ repforth-android-library = { id = "repforth.android.library" }
 repforth-android-compose = { id = "repforth.android.compose" }
 repforth-android-hilt = { id = "repforth.android.hilt" }
 repforth-android-room = { id = "repforth.android.room" }
+repforth-android-instrumentation = { id = "repforth.android.instrumentation" }
 repforth-android-screenshot = { id = "repforth.android.screenshot" }
 repforth-wear-application = { id = "repforth.wear.application" }
 repforth-baselineprofile-consumer = { id = "repforth.baselineprofile.consumer" }
