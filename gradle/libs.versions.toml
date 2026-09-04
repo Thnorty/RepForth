@@ -63,6 +63,9 @@ junit = "4.13.2"
 # real activity with a real Hilt graph on a real device.
 androidxTestJunit = "1.2.1"
 androidxTestRunner = "1.6.2"
+# Its own line: `rules` has never shipped a 1.6.2, so sharing the runner's
+# version ref failed to resolve. 1.6.1 is the stable pair for runner 1.6.2.
+androidxTestRules = "1.6.1"
 espresso = "3.6.1"
 # Screenshot tests. Roborazzi renders Compose on the JVM through Robolectric, so
 # the whole matrix -- English and Turkish, 1x and 2x font scale -- runs in
@@ -125,6 +128,10 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 # Instrumentation. compose-ui-test-junit4 takes its version from the Compose BOM.
 androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+# GrantPermissionRule: an emulator denies POST_NOTIFICATIONS, a phone that has
+# been through onboarding has already granted it, and the difference kills the
+# activity rather than failing an assertion.
+androidx-test-rules = { group = "androidx.test", name = "rules", version.ref = "androidxTestRules" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }

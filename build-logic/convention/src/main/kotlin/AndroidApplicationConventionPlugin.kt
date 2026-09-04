@@ -27,6 +27,13 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             defaultConfig.testInstrumentationRunner = "com.repforth.app.RepForthTestRunner"
 
             configureMediaFlavours(this)
+
+            // The same emulator the migrations and the baseline profile use.
+            // `connectedAndroidTest` on this module really does uninstall the
+            // app and take the user's plans and history with it, so the phone
+            // must be asked for rather than defaulted to -- and CI has no phone
+            // at all, which is why these tests only ever ran by hand.
+            configureManagedDevice()
         }
     }
 }

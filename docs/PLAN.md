@@ -2399,17 +2399,74 @@ the goldens above are the record of what that looks like — which is the useful
 outcome either way: the next person to see it at 2x can tell it is intended
 rather than rediscovering it as a bug.
 
+### D.3 — The shell is tested against the bug that started this (#24)
+
+`WorkoutStartViewModel` was covered; nothing covered whether the shell reaches
+it. That is the exact shape of U.1, where a fully tested `SessionController.start`
+was never called because the screen guarded it away.
+
+`StartConflictTest` in `:app` seeds two plans and a running session through the
+real repositories, taps Start on the other plan, and asserts the question is
+asked **and that the app is still on the plan list**.
+
+**Both halves are needed, and the break test is why.** Reverting
+`onStartPlan = starter::request` to a direct `navigate` failed exactly one of
+the three tests. The other two still passed — because the session screen's
+backstop dialog *does* appear once you are inside the workout, so "is the
+dialog shown" is satisfied by the broken behaviour. Only "still on Plans"
+separates asking-before from asking-after. A test of the dialog alone would
+have shipped the regression.
+
+`:app` now has the managed emulator too, which is what made this runnable at
+all — and running it immediately found that **`AppRobot` had rotted**. It taps
+`"1 to 3 years"`, a string that no longer exists: the experience chips were
+renamed to the level rather than the span (`ProfileTerms.kt` records the
+reason) and the walk was never updated. Every instrumentation test in `:app`
+had been failing on it, unnoticed, because nothing ran them.
+
+`POST_NOTIFICATIONS` is granted by a rule. Opening a workout starts a foreground
+service; an emulator denies the permission, the service is refused, and the
+activity dies — surfacing as "No compose hierarchies found in the app", which
+names the symptom and nothing else. A phone that has been through onboarding
+granted it long ago, which is why it has never been seen on hardware.
+
+**Two pre-existing `:app` tests still fail on the emulator, and `:app` is
+therefore not in CI yet:**
+
+| Test | Failure |
+|---|---|
+| `aPlanSavedInTheBuilderAppearsInPlans` | no node with text `Save workout` |
+| `coachFillsTheBuilderButSavesNothingUntilAsked` | timed out after 15s waiting for `Sets` |
+
+Neither is caused by this change and neither has been diagnosed. `Save workout`
+does still exist as `builder_save`, so the first is not the same string rot as
+`AppRobot` — the likelier explanations are a footer off-screen at the emulator's
+411x891 rather than the Galaxy's, and generation simply being slower than 15s on
+an emulator. Both are guesses and are written down as guesses.
+
 ---
 
 ## Next
 
 In the order they are worth doing, and why.
 
-1. **One command produces three publishes.** `WorkoutService`'s collector and
+1. **`:app`'s instrumentation tests are not in CI.** Two of them fail on the
+   managed emulator — see the table in D.3 — and until they pass, adding
+   `:app:pixel6Api34PlaceholderDebugAndroidTest` to the `device-tests` job would
+   make every build red. They now *can* be run, which they could not before:
+
+   ```
+   ./gradlew :app:pixel6Api34PlaceholderDebugAndroidTest
+   ```
+
+   This is the highest-value item here. The six existing tests had been failing
+   silently for days on a string that no longer existed, and only running them
+   revealed it.
+2. **One command produces three publishes.** `WorkoutService`'s collector and
    `WearCommandService` both publish, and a refusal republishes as well. The
    writes are idempotent so nothing is wrong; it is simply more Data Layer
    traffic than the state changes justify.
-2. **The AI provider screen has no golden and no accessibility check.** The
+3. **The AI provider screen has no golden and no accessibility check.** The
    two Settings dialogs did not either, and are now covered — see D.2, which
    reached them by tapping the row rather than hoisting their state, so the
    worry recorded here about "changing the screen for the sake of the test"
@@ -2421,31 +2478,29 @@ In the order they are worth doing, and why.
    text field. An accessibility check is still worth having — three of the nine
    device-found defects were on that screen.
 
-3. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
+4. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
    per history row, and `ProgressSummary.topMuscles`, which is never populated
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-4. ~~**Two modules configure their own instrumentation runner.**~~ Done in
+5. ~~**Two modules configure their own instrumentation runner.**~~ Done in
    D.1: `repforth.android.instrumentation` supplies the runner and the emulator
    to both.
-5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
+6. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
-6. **`FakeProfiles` exists five times.** Five test files declare their own copy;
+7. **`FakeProfiles` exists five times.** Five test files declare their own copy;
    the session fakes are now spread across two files as well, `StartFakeSessions`
    and `StartFakeTemplates` having been promoted to `internal` so a second test
    class could use them. `core:testing` is where a shared fixture belongs, and
    already holds `FakePreferencesStore`. Nothing is wrong today; five copies
    drift on the sixth change.
-7. **Nothing tests that the shell reaches the start gate.** `RepForthNavHost`
-   wires `onStartPlan` to `WorkoutStartViewModel.request`, and the view model is
-   covered — but the wiring between them is exactly the shape of the bug in U.1,
-   where a fully tested function was never called. A `*ComposeTest` over the
-   shell would close it; it needs a Hilt-free way to hand the graph a view
-   model, which is why it is written down rather than done.
-8. **The rest ring pauses on any device with a reduced animator scale.** Known
+8. ~~**Nothing tests that the shell reaches the start gate.**~~ Done in D.3, as
+   an instrumentation test on the managed emulator rather than the Robolectric
+   one guessed at here — `:app` already had a working Hilt test graph, so no
+   Hilt-free route was needed.
+9. **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.
