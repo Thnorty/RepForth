@@ -55,21 +55,22 @@ class SessionController @Inject constructor(
     private var restored = false
 
     /** Reads whatever was running, once per process. */
-    suspend fun restore(): SessionSnapshot? = mutex.withLock {
+    suspend fun restore(): SessionSnapshot? = mutex.withLock { restoreLocked() }
+
+    /**
+     * [restore] without taking the lock, for callers that already hold it.
+     *
+     * The mutex is not reentrant, so [start] cannot simply call [restore] — and
+     * it has to do the equivalent, for the reason on [start].
+     */
+    private suspend fun restoreLocked(): SessionSnapshot? {
         if (!restored) {
             restored = true
             _state.value = sessions.restoreActive()?.takeIf { !it.phase.isTerminal }
         }
-        _state.value
+        return _state.value
     }
 
-    /**
-     * Starts a workout from a plan, unless one is already running.
-     *
-     * Refusing rather than replacing: tapping Start twice, or the service and
-     * the screen both reacting to the same intent, must not discard a workout
-     * in progress.
-     */
     /**
      * Begin [templateId], unless something is already running.
      *
@@ -82,9 +83,17 @@ class SessionController @Inject constructor(
      * The outcome is now something the caller has to look at. Resuming the same
      * plan is fine and is not a conflict; being handed a *different* one is the
      * bug, and it is the caller's job to ask what the user wants.
+     *
+     * **It restores first, rather than trusting whatever is in memory.**
+     * Otherwise the answer depends on whether some other caller happened to
+     * have called [restore] already: on a cold start, a workout sitting in the
+     * database but not yet read would leave `_state` null, and this would
+     * cheerfully begin a second session on top of it. Two coroutines racing to
+     * open the same screen is exactly the situation that produces that, and it
+     * is not a race anything else here could arbitrate.
      */
     suspend fun start(templateId: String): StartOutcome = mutex.withLock {
-        val current = _state.value
+        val current = restoreLocked()
 
         if (current != null && !current.phase.isTerminal) {
             return@withLock if (current.templateId == templateId) {

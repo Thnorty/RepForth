@@ -58,6 +58,7 @@ import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.ExerciseTarget
+import kotlin.math.floor
 import kotlinx.coroutines.delay
 
 /**
@@ -77,8 +78,23 @@ fun SessionRoute(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(templateId, state.loading) {
-        if (templateId != null && !state.loading && state.snapshot == null) {
+    // Always tell the view model which plan was tapped. Deciding what that
+    // means is its job, not this effect's.
+    //
+    // **This used to be guarded by `state.snapshot == null`, and that guard was
+    // the whole bug.** The view model restores the running session as it is
+    // created, so by the time this effect ran there was already a snapshot —
+    // and `start` was therefore never called at all. Every outcome it can
+    // return, including the conflict this screen exists to raise, was
+    // unreachable: the screen simply displayed whatever had been restored,
+    // which is precisely the "tapping a plan resumes a different one" this was
+    // supposed to have fixed.
+    //
+    // Keyed on `templateId` alone so it fires once per plan rather than every
+    // time loading flips. `start` is safe to repeat: asking for the plan that
+    // is already running is `Resumed`, not a conflict.
+    LaunchedEffect(templateId) {
+        if (templateId != null) {
             viewModel.start(templateId)
         }
     }
@@ -153,6 +169,21 @@ internal fun SessionScreen(
     modifier: Modifier = Modifier,
 ) {
     val snapshot = state.snapshot
+
+    // A different workout was already running when this plan was started. §10
+    // will not discard it and will not silently swap to it, so the screen asks.
+    //
+    // Raised above the null check below, not after it. The conflict is known as
+    // soon as `start` answers, which can be before the running session's
+    // snapshot has been adopted — and a dialog rendered after an early return
+    // is a dialog that never appears in exactly that window.
+    state.conflictingSession?.let {
+        ConflictDialog(
+            onKeep = onKeepRunningSession,
+            onDiscard = onDiscardRunningAndStart,
+        )
+    }
+
     if (snapshot == null) {
         EmptyMessage(text = stringResource(R.string.session_none), modifier = modifier)
         return
@@ -164,9 +195,9 @@ internal fun SessionScreen(
     //
     // Without this, back left the workout running and returned to Plans, where
     // Start resumed it — which reads as the workout having been abandoned and
-    // then quietly coming back. Worse, Start on a *different* plan resumed the
-    // old one, because a session in progress is never replaced. One way out,
-    // and it asks first.
+    // then quietly coming back. Starting a *different* plan is now a question
+    // rather than a silent swap, but this is still the only way out, and it
+    // asks first.
     BackHandler(enabled = !confirmingAbandon) { confirmingAbandon = true }
 
     Column(
@@ -205,29 +236,6 @@ internal fun SessionScreen(
         )
     }
 
-    // A different workout was already running when this plan was started. §10
-    // will not discard it and will not silently swap to it, so the screen asks.
-    state.conflictingSession?.let {
-        AlertDialog(
-            // No dismiss-by-tapping-away: both answers are consequential, and
-            // the screen behind this one is showing a workout the user did not
-            // choose.
-            onDismissRequest = {},
-            title = { Text(stringResource(R.string.session_conflict_title)) },
-            text = { Text(stringResource(R.string.session_conflict_message)) },
-            confirmButton = {
-                TextButton(onClick = onKeepRunningSession) {
-                    Text(stringResource(R.string.session_conflict_keep))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDiscardRunningAndStart) {
-                    Text(stringResource(R.string.session_conflict_discard))
-                }
-            },
-        )
-    }
-
     if (confirmingAbandon) {
         AlertDialog(
             onDismissRequest = { confirmingAbandon = false },
@@ -251,6 +259,34 @@ internal fun SessionScreen(
             },
         )
     }
+}
+
+/**
+ * Asks which workout the user meant.
+ *
+ * Neither answer is automatic. Silently resuming the running one was the
+ * original bug; silently discarding a half-finished workout to honour a tap
+ * would be a worse one.
+ */
+@Composable
+private fun ConflictDialog(onKeep: () -> Unit, onDiscard: () -> Unit) {
+    AlertDialog(
+        // No dismiss-by-tapping-away: both answers are consequential, and the
+        // screen behind this one is showing a workout the user did not choose.
+        onDismissRequest = {},
+        title = { Text(stringResource(R.string.session_conflict_title)) },
+        text = { Text(stringResource(R.string.session_conflict_message)) },
+        confirmButton = {
+            TextButton(onClick = onKeep) {
+                Text(stringResource(R.string.session_conflict_keep))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDiscard) {
+                Text(stringResource(R.string.session_conflict_discard))
+            }
+        },
+    )
 }
 
 @Composable
@@ -347,12 +383,13 @@ private fun RestPanel(state: SessionUiState) {
         // The ring only appears when there is a rest length to measure against.
         // Without one it would be a full circle that never moves, which says
         // less than the number alone and costs a lot more room.
-        val fraction = state.restFraction
-        if (fraction != null) {
+        val sweep = state.restTotalMs?.let { total ->
+            state.restRemainingMs?.let { remaining -> steppedSweep(remaining, total) }
+        }
+        if (sweep != null) {
             RfProgressRing(
-                progress = fraction,
+                progress = sweep,
                 tone = RingTone.Rest,
-                stepMillis = REST_TICK_MS.toInt(),
                 content = countdown,
             )
         } else {
@@ -389,6 +426,44 @@ private fun RestPanel(state: SessionUiState) {
             }
         }
     }
+}
+
+/**
+ * How much of the rest is left, in whole seconds.
+ *
+ * **The ring ticks once a second like a clock hand, and does not animate.**
+ * That is a deliberate departure from the design system's "the sweep is the one
+ * continuous motion allowed", and it is the third attempt at this ring.
+ *
+ * The first eased over 400ms while the countdown updated every 500ms:
+ * accelerate, stop, wait, repeat. The second widened the tween to exactly the
+ * 500ms between updates, which looked like the answer and was not — Compose
+ * multiplies every animation by the system's animator duration setting, *0.5*
+ * on the phone this was reported from and *0* for anyone who has turned
+ * animations off. A 500ms tween ran in 250ms, finished halfway through the
+ * interval and left the ring standing still for the other half: two visible
+ * jerks a second, the original complaint, unchanged. No tween survives being
+ * multiplied by a number the app does not choose.
+ *
+ * A frame-driven sweep would be genuinely continuous, and was tried third — but
+ * a composable that updates every frame for the length of a rest never lets the
+ * composition go idle, which hangs every Robolectric test that renders this
+ * screen. A countdown ring is not worth an untestable screen.
+ *
+ * So it steps, in lockstep with the number drawn inside it, and it steps for
+ * everyone: nothing here depends on a device setting, an animation clock, or a
+ * preference, so there is no configuration in which it degrades into the
+ * two-jerks-a-second this started as. Truncated rather than rounded because the
+ * number is truncated — `restRemainingMs / 1000` reads 4 with 4.6 seconds left,
+ * and a ring drawn as though 5 remained would sit a whole second ahead of it.
+ *
+ * Kept out of a composable so it can be checked by a plain JUnit test, the same
+ * way `reducedDuration` is.
+ */
+internal fun steppedSweep(remainingMs: Long, totalMs: Long): Float {
+    if (totalMs <= 0L) return 0f
+    val whole = floor(remainingMs / 1000.0).toLong() * 1000L
+    return (whole.toFloat() / totalMs.toFloat()).coerceIn(0f, 1f)
 }
 
 @Composable

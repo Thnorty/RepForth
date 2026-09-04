@@ -84,6 +84,29 @@ class SessionStartTest {
         assertEquals(StartOutcome.NoSuchPlan, controller().start("deleted"))
     }
 
+    /**
+     * A cold process must not start a second workout on top of the first.
+     *
+     * `start` used to read only the in-memory session, which is null until
+     * something calls `restore`. So whether tapping a plan noticed the workout
+     * already in the database came down to which coroutine reached the
+     * controller first — and losing that race meant two live sessions, which is
+     * worse than the bug this class was written for.
+     */
+    @Test
+    fun `a workout in the database blocks a different plan before anything has restored it`() = runTest {
+        val sessions = StartFakeSessions()
+        SessionController(sessions, StartFakeTemplates(), FakeTimeSource()).start(PUSH)
+
+        // A new controller over the same database, as after the process died.
+        // Nothing has called restore() on it.
+        val cold = SessionController(sessions, StartFakeTemplates(), FakeTimeSource())
+        val outcome = cold.start(PULL)
+
+        assertTrue("Expected Blocked, got $outcome", outcome is StartOutcome.Blocked)
+        assertEquals(PUSH, (outcome as StartOutcome.Blocked).running.templateId)
+    }
+
     private fun controller() = SessionController(
         StartFakeSessions(),
         StartFakeTemplates(),
