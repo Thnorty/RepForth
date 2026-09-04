@@ -50,6 +50,14 @@ class RepForthTestRunner : AndroidJUnitRunner() {
      */
     override fun onStart() {
         shell("settings put global hide_error_dialogs 1")
+        // Read back, because a write that did not land looks exactly like a
+        // write that did until a test fails twenty minutes later with focus
+        // held by a dialog this was meant to prevent. That has happened once.
+        val applied = shell("settings get global hide_error_dialogs")
+        check(applied == "1") {
+            "hide_error_dialogs is [$applied] after being set to 1, so a system " +
+                "crash or ANR dialog can still take focus from the app under test."
+        }
         super.onStart()
     }
 
@@ -59,8 +67,10 @@ class RepForthTestRunner : AndroidJUnitRunner() {
      * The descriptor has to be drained and closed. Left unread, the command can
      * block on a full pipe and take the whole run with it.
      */
-    private fun shell(command: String) {
+    private fun shell(command: String): String {
         val pipe: ParcelFileDescriptor = uiAutomation.executeShellCommand(command)
-        ParcelFileDescriptor.AutoCloseInputStream(pipe).use { it.readBytes() }
+        return ParcelFileDescriptor.AutoCloseInputStream(pipe).use {
+            it.readBytes().decodeToString().trim()
+        }
     }
 }

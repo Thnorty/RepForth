@@ -31,6 +31,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.repforth.app.R
 import com.repforth.app.navigation.Destination
 import com.repforth.app.navigation.RepForthNavHost
@@ -117,7 +118,26 @@ fun RepForthApp(
         ),
         topBar = {
             TopAppBar(
-                title = { Text(barTitle(currentDestination, currentTopLevel, activeWorkoutName)) },
+                title = {
+                    Text(
+                        barTitle(
+                            destination = currentDestination,
+                            topLevel = currentTopLevel,
+                            activeWorkoutName = activeWorkoutName,
+                            // The builder edits an existing plan when it was
+                            // opened with one. The bar said "Workout" either
+                            // way, so the one place that could have told you
+                            // whether you were creating or editing did not --
+                            // and `builder_new_title` and `builder_edit_title`
+                            // had been written and translated for exactly this
+                            // and drawn nowhere.
+                            editingExisting = backStackEntry
+                                ?.takeIf { it.destination.hasRoute(Destination.Builder::class) }
+                                ?.toRoute<Destination.Builder>()
+                                ?.let { it.planId != null || it.weekId != null } == true,
+                        ),
+                    )
+                },
                 navigationIcon = {
                     if (currentTopLevel == null) {
                         // Dispatched as a back press rather than navigateUp().
@@ -208,16 +228,21 @@ private fun barTitle(
     destination: NavDestination?,
     topLevel: TopLevelDestination?,
     activeWorkoutName: String?,
+    editingExisting: Boolean,
 ): String {
     val onSession = destination?.hasRoute(Destination.Session::class) == true
     if (onSession && topLevel == null && activeWorkoutName != null) return activeWorkoutName
-    return stringResource(destination.titleRes(topLevel))
+    return stringResource(destination.titleRes(topLevel, editingExisting))
 }
 
 @StringRes
-private fun NavDestination?.titleRes(topLevel: TopLevelDestination?): Int = when {
+private fun NavDestination?.titleRes(
+    topLevel: TopLevelDestination?,
+    editingExisting: Boolean,
+): Int = when {
     topLevel != null -> topLevel.labelRes
-    this?.hasRoute(Destination.Builder::class) == true -> R.string.nav_builder
+    this?.hasRoute(Destination.Builder::class) == true ->
+        if (editingExisting) R.string.nav_builder_edit else R.string.nav_builder_new
     // Replaced by the workout's own name when there is one -- see `barTitle`.
     // This remains the title for a workout started from no plan, and the branch
     // NavigationStructureTest looks for.

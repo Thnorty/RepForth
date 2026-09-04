@@ -2628,9 +2628,18 @@ leave, and the failure rate tracked how busy the machine was rather than
 anything in the app.
 
 `RepForthTestRunner` now runs `settings put global hide_error_dialogs 1` in
-`onStart`. That suppresses the dialog, not a defect — an ANR in
-`com.android.systemui` is the emulator's health, and if this app ever ANRs the
-test driving it still fails. The lesson worth keeping is smaller and more
+`onStart` and reads it back, refusing to start if it did not land. That
+suppresses the dialog, not a defect — an ANR in `com.android.systemui` is the
+emulator's health, and if this app ever ANRs the test driving it still fails.
+
+**It is not sufficient, and that is worth recording rather than quietly
+hoping.** The same failure returned with the setting verified as `1`, so the
+flag does not cover a dialog raised for a system process. The variable that
+actually predicts it is free memory — the failure appears at about 2GB free,
+with two Gradle daemons and an emulator on a 16GB machine, and does not at
+about 4GB. The diagnostic is what makes that legible: the message now names the
+window holding focus and the value of the setting, so the next person does not
+start from the input method again. The lesson worth keeping is smaller and more
 general: **ask the component that owns the answer.** Window focus belongs to the
 window manager, and one line of `dumpsys window` ended a question that two
 rounds of `dumpsys input_method` could not.
@@ -2657,6 +2666,97 @@ twice in a row and green again per-class three times with room to work. Worth
 checking free memory before believing an emulator failure, and worth knowing
 the managed device runs as `qemu-system-x86_64-headless`: looking for
 `qemu-system-x86_64` reports no emulator while one is using 2.7GB.
+
+---
+
+## Found by a UX audit — eleven things, and what they had in common
+
+Not reported from use, and not found by a test. Found by reading the app for
+what it promises and then checking whether it does it, which turned up a
+pattern the existing guards were all blind to: **a control that is built,
+stored, drawn and announced, and acted on by nothing.** Every test in the repo
+passed on every one of these.
+
+The lens that found most of them was a sweep for string resources that no code
+draws. This repo has no `TODO` markers anywhere in production code, so
+unfinished work does not announce itself — it sits as a written and translated
+string with no reader, and 62 of those existed.
+
+### A.1 — The active weekly plan could not be changed (#29)
+
+`onSetActive` was threaded from `WeekDao.setActive` through the repository, the
+view model and `PlansScreen`'s parameter list, and never called by the card that
+received it. `BuilderViewModel` sets `active` on the first week saved and no
+other — and its comment already said the decision belonged on Plans. So a second
+weekly plan could be built and could never become the one Today follows.
+
+An unused lambda parameter is legal Kotlin, the parameter had a default so no
+call site had to supply it, and the goldens could not see it either: an inactive
+week's card starts collapsed, so the missing control is not in the picture.
+
+### A.2 — Two settings controlled nothing, and a third was never read (#30)
+
+"Keep the screen on", default on, with `UserPreferences` arguing in a comment
+that the screen going dark mid-set is a worse failure than the battery cost —
+and no `FLAG_KEEP_SCREEN_ON` anywhere in the repo. "Vibration", default on,
+promising a buzz on completing and skipping a set, with no `performHapticFeedback`,
+no `Vibrator` and no `VibrationEffect` at all, on the phone or the watch.
+`onboardingComplete`, neither written nor read by anything, the app having
+settled on the profile's existence as the answer.
+
+Rest ending was silent for the same reason one level down. `session_rest_over`
+had been written and translated and referenced nowhere, and the engine had
+always returned `SessionEvent.RestEnded` — documented as a side effect "to
+persist and announce" — while `SessionController` dropped every event on the
+floor. The controller now publishes them and the service vibrates and says so,
+but not when the rest was skipped by hand.
+
+**None of these could fail.** Each preference was stored, read back, bound to a
+switch that moved, and survived a process restart, so the round-trip test
+passed, the screenshot showed a switch, and the accessibility check found it
+announced and large enough to tap. `PreferenceReachTest` asks the question none
+of those do — is anything reading it — and it counts the sources it walks so it
+cannot silently inspect nothing. Watched failing.
+
+This is the fourth time. The reduced-motion switch shipped controlling only an
+animated GIF, and that was fixed before there was a guard to stop the next one.
+
+### A.3 — Coach promised a planner that does not exist (#31)
+
+Settings said, in both languages: "No key yet. Coach uses the built-in planner
+until you add one." There is none. `RulesEngine` filters and validates
+candidates and cannot build a plan, so `AiWorkoutGenerator` returns
+`NO_PROVIDER_CONFIGURATION`. `ProviderRepository` carried the same claim in a
+doc comment — that the caller "answers by falling back to the rules engine (§8,
+step 8)" — which is where the copy came from and which no caller has ever done.
+
+Coach also offered itself unconditionally and refused on the last tap: muscles,
+days and session length all chosen, then a dialog naming Settings that could not
+open it. It now says what it needs before the form and offers the way there.
+
+Six error strings were from an older voice than the rest of the file —
+"Please check your internet connection and try again", and "Would you like to
+retry?" in a dialog that already has a Retry button. "Please" appeared four
+times in the repo and all four were in that file.
+
+### A.4 — Every slider in the app was unnamed (#32)
+
+`assertScreenIsAccessible` looked at clickable nodes and at nodes carrying
+toggle or selection state. A slider is neither, so nothing had ever looked at
+one — and they all come through `RfValueSlider`, which drew its label as a
+sibling `Text`. A neighbour is not a name and is not announced with the control,
+so TalkBack read a bare percentage on onboarding's two questions, Coach's
+session length, the Settings schedule dialog and the provider screen's timeout.
+
+The check deliberately does not apply the 48dp rule to sliders: Material
+measures the handle at 44dp from inside the component, where `heightIn`,
+`height` and `requiredHeight` on the caller's modifier all fail to move it, and
+48dp is about hitting a target rather than dragging one.
+
+`AiSettingsAccessibilityTest` closes the last gap in screen coverage, including
+the half behind "Advanced" — where the timeout slider lives, and where a check
+that stopped at the top of the page would have inspected the collapsed screen
+twice and reported nothing.
 
 ---
 

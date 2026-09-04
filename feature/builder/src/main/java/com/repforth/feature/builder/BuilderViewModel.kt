@@ -213,6 +213,14 @@ data class BuilderUiState(
     val weekDays: List<DraftWeekDay> = emptyList(),
     val picking: Boolean = false,
     val pickingDayIndex: Int? = null,
+    /**
+     * The last exercise added while the picker has been open, or null.
+     *
+     * Shown as a confirmation, because the picker no longer closes to provide
+     * one. `builder_pick_added` was written and translated for this and never
+     * drawn, which is what a picker that stayed open would have needed.
+     */
+    val pickerAdded: String? = null,
     val saving: Boolean = false,
     val saved: Boolean = false,
     /** How this plan first entered the builder; retained if the user edits it. */
@@ -522,10 +530,12 @@ class BuilderViewModel @Inject constructor(
     fun onNameChange(name: String) = update { copy(name = name) }
 
     fun onPickerOpen(dayIndex: Int? = null) = update {
-        copy(picking = true, pickingDayIndex = dayIndex)
+        copy(picking = true, pickingDayIndex = dayIndex, pickerAdded = null)
     }
 
-    fun onPickerClose() = update { copy(picking = false, pickingDayIndex = null) }
+    fun onPickerClose() = update {
+        copy(picking = false, pickingDayIndex = null, pickerAdded = null)
+    }
 
     private var generationJob: Job? = null
 
@@ -755,8 +765,19 @@ class BuilderViewModel @Inject constructor(
             name = name,
             thumbnail = thumbnail,
         )
+        // The picker stays open.
+        //
+        // It used to close on every add, so building a six-exercise workout
+        // meant six round trips out to a full-screen picker and back, each with
+        // a detail sheet in the middle. Nothing about that was decided -- it is
+        // simply what one line did -- and `builder_pick_added`, the "%1$s
+        // added" confirmation a picker that stayed open would need, had been
+        // written and translated and drawn nowhere.
+        //
+        // The close button in the search row is the way back, and it was always
+        // there.
         withExercises(dayIndex) { it + added }
-            .copy(picking = false, pickingDayIndex = null)
+            .copy(pickerAdded = name)
     }
 
     fun onRemove(index: Int, dayIndex: Int? = null) = update {
