@@ -2,6 +2,7 @@ package com.repforth.app
 
 import android.app.Application
 import android.content.Context
+import android.os.ParcelFileDescriptor
 import androidx.test.runner.AndroidJUnitRunner
 import dagger.hilt.android.testing.HiltTestApplication
 
@@ -19,4 +20,47 @@ class RepForthTestRunner : AndroidJUnitRunner() {
         className: String?,
         context: Context?,
     ): Application = super.newApplication(classLoader, HiltTestApplication::class.java.name, context)
+
+    /**
+     * Stops the platform putting a crash or ANR dialog over the app.
+     *
+     * **This is what the keyboard flake actually was.** A test that waits for
+     * the window to take focus failed with focus held by
+     * `Window{... Application Not Responding: com.android.systemui}`, while
+     * `mFocusedApp` was still `com.repforth/.app.MainActivity` — the app was the
+     * focused *app* with a system dialog on top of it. An unfocused window
+     * cannot raise a keyboard, so the test then waited out its whole budget on a
+     * precondition that was never coming back.
+     *
+     * It is intermittent because it is SystemUI failing to draw a frame in time
+     * on a busy emulator, not anything this app does; the two earlier
+     * explanations — the AVD's hardware keyboard, and a dropped first tap — were
+     * built from `dumpsys input_method`, which names its current client and
+     * cannot see that a dialog owns the focus.
+     *
+     * Suppressing the dialog does not hide a failure of this app: an ANR in
+     * `com.android.systemui` is the emulator's health, and a suite that any
+     * system process can fail by being slow is measuring the machine. If this
+     * app ever ANRs, the test that was driving it still fails.
+     *
+     * Set in `onStart` rather than `onCreate`: `uiAutomation` needs the
+     * instrumentation to be connected, which `onCreate` is still doing, and
+     * `onCreate` hands off to a worker thread that could start a test before
+     * the setting landed.
+     */
+    override fun onStart() {
+        shell("settings put global hide_error_dialogs 1")
+        super.onStart()
+    }
+
+    /**
+     * Runs a command as the shell user, which holds `WRITE_SECURE_SETTINGS`.
+     *
+     * The descriptor has to be drained and closed. Left unread, the command can
+     * block on a full pipe and take the whole run with it.
+     */
+    private fun shell(command: String) {
+        val pipe: ParcelFileDescriptor = uiAutomation.executeShellCommand(command)
+        ParcelFileDescriptor.AutoCloseInputStream(pipe).use { it.readBytes() }
+    }
 }

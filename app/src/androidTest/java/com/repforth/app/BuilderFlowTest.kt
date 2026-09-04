@@ -309,9 +309,14 @@ class BuilderFlowTest {
      * this app as its current client, which is why the input-method dump alone
      * read as a healthy binding for several runs.
      *
-     * It is intermittent, and it is the emulator rather than the app: a window
-     * that has just replaced another one does not always have focus by the time
-     * the test thread gets to look.
+     * **What holds it has now been measured**, and it is not this app: the
+     * window manager reported
+     * `mCurrentFocus=Window{... Application Not Responding: com.android.systemui}`
+     * with `mFocusedApp` still `com.repforth/.app.MainActivity`. A SystemUI ANR
+     * dialog was sitting over a perfectly healthy activity. `RepForthTestRunner`
+     * now turns those dialogs off for the run, which is why this wait should
+     * never time out again — and if it does, the message below names the window
+     * that took it instead of leaving the next person to guess for a third time.
      */
     private fun awaitWindowFocus() {
         val deadline = SystemClock.uptimeMillis() + WINDOW_FOCUS_TIMEOUT_MS

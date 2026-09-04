@@ -2605,12 +2605,35 @@ same file already re-declared `:core:model` and `:feature:session` as
 
 Two things came out of the run rather than the edit. `AppLaunchTest` had its own
 copy of `awaitFirstScreen`'s wait condition, now one. And the keyboard test
-failed once with the window unfocused for the whole wait — `awaitWindowFocus`
+failed again with the window unfocused for the whole wait — `awaitWindowFocus`
 used to fall through silently, so the run spent another twenty-four seconds
 tapping a field that could not raise a keyboard and then blamed the keyboard.
 That is the headline that sent the first two investigations of this failure in
-the wrong direction. It now fails at the precondition and prints what the window
-manager says holds focus.
+the wrong direction, so it now fails at the precondition and prints what the
+window manager says holds focus.
+
+**Which found the cause on the next run, three explanations in.**
+
+```
+mCurrentFocus=Window{22cf7d u0 Application Not Responding: com.android.systemui}
+mFocusedApp=ActivityRecord{7a09ba7 u0 com.repforth/.app.MainActivity t16}
+```
+
+A SystemUI ANR dialog, sitting over a perfectly healthy activity. The app was
+the focused *app* the whole time, which is exactly why `dumpsys input_method`
+reported a healthy binding for weeks — it names its current client, and cannot
+see that a dialog owns the focus. It also explains the two things neither wrong
+explanation could: waiting longer never helped, because the dialog does not
+leave, and the failure rate tracked how busy the machine was rather than
+anything in the app.
+
+`RepForthTestRunner` now runs `settings put global hide_error_dialogs 1` in
+`onStart`. That suppresses the dialog, not a defect — an ANR in
+`com.android.systemui` is the emulator's health, and if this app ever ANRs the
+test driving it still fails. The lesson worth keeping is smaller and more
+general: **ask the component that owns the answer.** Window focus belongs to the
+window manager, and one line of `dumpsys window` ended a question that two
+rounds of `dumpsys input_method` could not.
 
 The picker step gained a precondition for the same reason. It types the catalog
 query into "the one text field on screen", so a picker that has not opened yet
