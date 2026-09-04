@@ -2386,15 +2386,18 @@ dialog lives in its own window, so the root capture the other goldens use
 photographs the screen behind it and reports success — a green golden of the
 wrong thing.
 
-**What the goldens found, on the first recording:** at 200% font scale the
-equipment checkbox is no longer beside its label. The row is
-`CenterVertically`, so with a label plus a two- or three-line description the
-checkbox centres on the whole block and lands next to the description instead —
-in both languages. Nothing truncates and nothing overlaps, so this is a
-legibility judgement rather than a break, and it is left as the maintainer's
-call: `Alignment.Top` on that `Row` is the fix if it is wanted. It is only
-visible at 2x, which is the configuration nobody has on their own phone and the
-reason these goldens exist.
+**What the goldens showed, and what was decided about it:** at 200% font scale
+the equipment checkbox is no longer level with its label. The row is
+`CenterVertically`, so a label plus a two- or three-line description centres the
+checkbox on the whole block and lands it beside the description, in both
+languages.
+
+It was raised as a possible defect and **the maintainer looked at it and said it
+is fine.** Nothing truncates, nothing overlaps, and each checkbox is still
+nearer its own label than any other. So the rows keep `CenterVertically`, and
+the goldens above are the record of what that looks like — which is the useful
+outcome either way: the next person to see it at 2x can tell it is intended
+rather than rediscovering it as a bug.
 
 ---
 
@@ -2456,6 +2459,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Decision | Rationale | Where |
 |---|---|---|
 | Plans is a tab; Coach is a mode inside the builder | Coach is an input method for building a plan, not a place | Guideline §12 |
+| Equipment rows stay `CenterVertically`; the checkbox is not aligned to the label | Reviewed at 200% font scale and judged fine — nothing truncates, and each checkbox is nearer its own label than any other | `SettingsScreen`, D.2 |
 | Dynamic/wallpaper colour disabled | Breaks the single-accent rule and the measured AA pairs | `Theme.kt` |
 | Vector drawables, not the Material Symbols font | 53 icons used; the font ships ~3,300 glyphs, and `res/font` cannot feed `Icon()` | This file, above |
 | Static font weights, not variable | 614 KB vs. ~1.5 MB for weights the tokens never ask for | `Type.kt` |
