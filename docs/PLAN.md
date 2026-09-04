@@ -2353,8 +2353,8 @@ draws.
 
 CI runs both suites in a `device-tests` job beside `build` rather than inside
 it — it boots an emulator, so it is the slowest thing in the workflow and shares
-nothing with lint or the goldens. **It is not yet a required check**; branch
-protection is a repository setting and has to be added by the maintainer.
+nothing with lint or the goldens. **It is deliberately not a required check** —
+see the decision below; it reports, and the maintainer reads it.
 
 
 ### D.2 — The two dialogs nothing could open (#22)
@@ -2720,6 +2720,11 @@ app icon, and the exact licence.
   branch protection is a repository setting, so
   until a maintainer turns it on, a red build reports the failure but does not
   prevent the merge.
+- **`Device tests` is not one of the required checks, and that is the
+  maintainer's decision rather than an omission.** The required pair stays
+  `Validate Gradle wrapper` and `Build and test`. The job still runs on every
+  pull request and still reports; what it does not do is block a merge. Do not
+  re-raise it — it was proposed twice, in D.1 and again after D.5, and answered.
 - **Phase 2 introduces secrets.** Key handling must land with its own tests and
   a CI secret scan on day one, not as hardening later — §20 requires keys to be
   absent from Room, DataStore, logs, backups, exports, source, CI, and watch
