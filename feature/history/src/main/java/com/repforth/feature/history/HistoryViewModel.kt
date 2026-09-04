@@ -9,6 +9,9 @@ import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.workout.ProgressSummary
 import com.repforth.core.workout.WorkoutSummary
 import com.repforth.core.workout.mostPerformed
+import com.repforth.core.model.ExerciseId
+import com.repforth.core.model.Muscle
+import com.repforth.core.workout.setsPerExercise
 import com.repforth.core.workout.toProgress
 import com.repforth.core.workout.toSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,8 +27,18 @@ data class HistoryUiState(
     val progress: ProgressSummary = ProgressSummary(),
     /** Newest first: the last workout is the one being looked for. */
     val workouts: List<WorkoutSummary> = emptyList(),
-    /** Exercise names for [ProgressSummary.topMuscles], resolved from the catalog. */
+    /** The exercises done most often, resolved from the catalog. */
     val mostPerformed: List<String> = emptyList(),
+    /**
+     * The muscles trained most, by completed sets — §12's "recent muscle
+     * activity".
+     *
+     * Muscles rather than resolved strings: their names are string resources,
+     * and a view model that reached for a `Context` to read them would be the
+     * one place in this app where a language change did not follow the app's
+     * own language setting.
+     */
+    val topMuscles: List<Muscle> = emptyList(),
     /**
      * Days a week the user said they train, which is what `daysThisWeek` is
      * measured against. Null until a profile exists, and the week bar is hidden
@@ -70,6 +83,7 @@ class HistoryViewModel @Inject constructor(
                 // last?".
                 workouts = history.map { it.toSummary() }.sortedByDescending { it.startedAt },
                 mostPerformed = resolveNames(history.mostPerformed(TOP_EXERCISES)),
+                topMuscles = resolveMuscles(history.setsPerExercise()),
                 loading = false,
             )
         }
@@ -86,14 +100,42 @@ class HistoryViewModel @Inject constructor(
      * raw id: this is a summary, not a record, and a line of provenance in a
      * "most performed" list helps nobody. The session itself still keeps the id.
      */
-    private suspend fun resolveNames(ids: List<com.repforth.core.model.ExerciseId>): List<String> {
+    private suspend fun resolveNames(ids: List<ExerciseId>): List<String> {
         if (ids.isEmpty()) return emptyList()
         val summaries = exercises.summaries(ids)
         return ids.mapNotNull { summaries[it]?.name }
     }
 
+    /**
+     * The muscles behind the sets, ranked by how many of them there were.
+     *
+     * The catalog is read once for every exercise in the history rather than
+     * per muscle: `summaries` is a single query, and the alternative is one
+     * lookup per row of a list that grows with everything the user has ever
+     * done.
+     *
+     * Ties break on the muscle's own name so the order is stable — a list that
+     * reshuffles between two equal muscles looks like data changing when
+     * nothing has.
+     */
+    private suspend fun resolveMuscles(setsByExercise: Map<ExerciseId, Int>): List<Muscle> {
+        if (setsByExercise.isEmpty()) return emptyList()
+        val summaries = exercises.summaries(setsByExercise.keys)
+
+        return setsByExercise.entries
+            .mapNotNull { (id, sets) -> summaries[id]?.target?.let { it to sets } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, sets) -> sets.sum() }
+            .entries
+            .sortedWith(compareByDescending<Map.Entry<Muscle, Int>> { it.value }.thenBy { it.key.name })
+            .take(TOP_MUSCLES)
+            .map { it.key }
+    }
+
     private companion object {
         const val TOP_EXERCISES = 5
+        /** Enough to show a pattern, few enough to read at a glance. */
+        const val TOP_MUSCLES = 4
         const val STOP_TIMEOUT_MS = 5_000L
     }
 }

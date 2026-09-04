@@ -2444,6 +2444,38 @@ does still exist as `builder_save`, so the first is not the same string rot as
 411x891 rather than the Galaxy's, and generation simply being slower than 15s on
 an emulator. Both are guesses and are written down as guesses.
 
+### D.4 — Progress finally shows muscle activity (#25)
+
+§12 lists the Progress tab as "history, streaks, volume, and **recent muscle
+activity**". The first three were drawn; the fourth was a field called
+`topMuscles` on `ProgressSummary` whose kdoc read "empty until the catalog is
+joined" — and the join never happened. It defaulted to an empty list for the
+whole life of the field, and nothing rendered it either, so the screenshot and
+accessibility tests set sample values that were never drawn.
+
+**It was in the wrong place, which is why it stayed empty.** `ProgressSummary`
+is built by `toProgress`, a pure roll-up of sessions in `core:workout` — a
+module with no catalog and no business growing one. A muscle is a property of
+the exercise, not of the session, so nothing in that function could ever have
+filled the field in.
+
+So `topMuscles` leaves `ProgressSummary` and joins `HistoryUiState` beside
+`mostPerformed`, which had solved the same problem correctly a long time ago.
+`core:workout` contributes `setsPerExercise()` — the half computable from
+history alone — and the view model does the catalog join.
+
+**Ranked by completed sets, not by sessions.** Three sets of squats in one
+workout is more leg training than one set in each of two, which is the same
+judgement volume already makes about skipped sets. Both are asserted, and each
+guard was watched failing on its own: ranking by session count fails only
+`muscles are ranked by the sets actually performed`, and counting skipped sets
+fails only `skipped sets do not count towards a muscle`.
+
+**The list is `List<Muscle>`, not `List<String>`.** Muscle names are string
+resources, so a view model that resolved them would need a `Context` and would
+become the one place in this app where the text did not follow the app's own
+language setting. The screen maps them, the way every other enum is rendered.
+
 ---
 
 ## Next
@@ -2478,11 +2510,9 @@ In the order they are worth doing, and why.
    text field. An accessibility check is still worth having — three of the nine
    device-found defects were on that screen.
 
-4. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
-   per history row, and `ProgressSummary.topMuscles`, which is never populated
-   at all — its kdoc says "empty until the catalog is joined" and that join has
-   not happened. `daysThisWeek` and `totalSets` were the other two and are
-   drawn as of 3.5.
+4. **`WorkoutSummary.exerciseCount` is still undrawn** per history row.
+   `topMuscles` was the other one and is drawn as of D.4; `daysThisWeek` and
+   `totalSets` were drawn in 3.5.
 5. ~~**Two modules configure their own instrumentation runner.**~~ Done in
    D.1: `repforth.android.instrumentation` supplies the runner and the emulator
    to both.

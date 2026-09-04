@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.component.RfSegmentedBar
+import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
@@ -93,6 +94,31 @@ internal fun HistoryScreen(state: HistoryUiState, modifier: Modifier = Modifier)
                     SectionLabel(stringResource(R.string.progress_most_performed))
                     Text(
                         text = state.mostPerformed.joinToString(" · "),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+
+        // §12 asks Progress for "recent muscle activity". It was specified,
+        // computed as far as history alone allows, and then never joined to the
+        // catalog or drawn -- `ProgressSummary.topMuscles` sat at its default
+        // for as long as it existed.
+        //
+        // Below "most performed" because it is the coarser view of the same
+        // sets: which exercises, then which muscles those add up to.
+        if (state.topMuscles.isNotEmpty()) {
+            item(key = "muscles") {
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
+                    SectionLabel(stringResource(R.string.progress_muscle_activity))
+                    // Resolved here rather than in the view model: these are
+                    // string resources, so the language they are read in has to
+                    // be the composition's. `map` and not `joinToString`'s own
+                    // lambda -- `map` is inline, so a composable call is legal
+                    // inside it, and `joinToString` is not.
+                    val labels = state.topMuscles.map { stringResource(it.labelRes) }
+                    Text(
+                        text = labels.joinToString(" · "),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }

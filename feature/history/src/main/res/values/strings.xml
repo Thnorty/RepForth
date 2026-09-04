@@ -11,6 +11,7 @@
 
     <string name="progress_history">History</string>
     <string name="progress_most_performed">Most performed</string>
+    <string name="progress_muscle_activity">Recent muscle activity</string>
 
     <plurals name="progress_sets">
         <item quantity="one">%1$d set</item>

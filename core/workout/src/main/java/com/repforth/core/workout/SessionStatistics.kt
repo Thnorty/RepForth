@@ -42,8 +42,6 @@ data class ProgressSummary(
     val streakWeeks: Int = 0,
     val totalVolumeKg: Double = 0.0,
     val totalSets: Int = 0,
-    /** Most-trained muscles recently, most first. Empty until the catalog is joined. */
-    val topMuscles: List<String> = emptyList(),
 )
 
 /**
@@ -148,3 +146,26 @@ fun List<SessionSnapshot>.mostPerformed(limit: Int): List<ExerciseId> =
             .thenBy { it.key.value })
         .take(limit)
         .map { it.key }
+
+/**
+ * Completed sets per exercise across a history.
+ *
+ * Sets rather than sessions, which is what separates this from [mostPerformed]:
+ * an exercise done for five sets in one workout is more of that muscle's
+ * training than one done for a single set in three. Skipped sets count for
+ * nothing, for the same reason volume ignores them — the question is what was
+ * performed.
+ *
+ * Returned as ids because this module has no catalog and should not grow one.
+ * §12 asks Progress for "recent muscle activity", and a muscle is a property of
+ * the exercise, not of the session — so the join belongs to whoever can read
+ * the catalog, and this supplies the half that can be computed from history
+ * alone. `topMuscles` used to sit on [ProgressSummary] for that join to fill in
+ * and never was, its kdoc reading "empty until the catalog is joined" for as
+ * long as it existed.
+ */
+fun List<SessionSnapshot>.setsPerExercise(): Map<ExerciseId, Int> =
+    flatMap { it.exercises }
+        .groupingBy { it.exerciseId }
+        .fold(0) { total, exercise -> total + exercise.sets.count { !it.skipped } }
+        .filterValues { it > 0 }

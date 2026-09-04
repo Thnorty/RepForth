@@ -193,6 +193,57 @@ class HistoryViewModelTest {
 
     private fun skipped(position: Int) = SetOutcome(position, skipped = true, recordedAt = 0)
 
+    /**
+     * §12 asks Progress for "recent muscle activity", and until now it got an
+     * empty list — `ProgressSummary.topMuscles` existed, defaulted to empty,
+     * and was never assigned by anything.
+     *
+     * Ranked by completed sets rather than by sessions: three sets of squats in
+     * one workout is more leg training than one set in each of two.
+     */
+    @Test
+    fun `muscles are ranked by the sets actually performed`() = runTest(dispatcher) {
+        sessions.emit(
+            listOf(
+                session("a", startedAt = 1_000, exerciseId = "bench", sets = sets(done = 1)),
+                session("b", startedAt = 1_000, exerciseId = "squat", sets = sets(done = 3)),
+                session("c", startedAt = 1_000, exerciseId = "row", sets = sets(done = 2)),
+            ),
+        )
+        val state = stateOf(viewModel())
+
+        assertEquals(listOf(Muscle.QUADRICEPS, Muscle.LATS, Muscle.PECTORALS), state.topMuscles)
+    }
+
+    /** A skipped set is not training, which is what volume already assumes. */
+    @Test
+    fun `skipped sets do not count towards a muscle`() = runTest(dispatcher) {
+        sessions.emit(
+            listOf(
+                session("a", startedAt = 1_000, exerciseId = "bench", sets = sets(done = 1)),
+                session("b", startedAt = 1_000, exerciseId = "squat", sets = sets(done = 0, skipped = 5)),
+            ),
+        )
+        val state = stateOf(viewModel())
+
+        assertEquals(listOf(Muscle.PECTORALS), state.topMuscles)
+    }
+
+    /** An exercise the catalog no longer has is dropped, not shown as an id. */
+    @Test
+    fun `an exercise missing from the catalog contributes no muscle`() = runTest(dispatcher) {
+        sessions.emit(
+            listOf(session("a", startedAt = 1_000, exerciseId = "vanished", sets = sets(done = 4))),
+        )
+        val state = stateOf(viewModel())
+
+        assertEquals(emptyList<Muscle>(), state.topMuscles)
+    }
+
+    private fun sets(done: Int, skipped: Int = 0) =
+        List(done) { SetOutcome(it, false, reps = 10, weightKg = 50.0, recordedAt = 0) } +
+            List(skipped) { SetOutcome(done + it, true, recordedAt = 0) }
+
     private fun session(
         id: String,
         startedAt: Long,
@@ -258,7 +309,14 @@ private class FakeExercises : ExerciseRepository {
                     else -> id.value
                 },
                 bodyPart = BodyPart.entries.first(),
-                target = Muscle.entries.first(),
+                // Distinct per exercise: a fake that answered the same muscle
+                // for everything would make any ranking test pass.
+                target = when (id.value) {
+                    "bench" -> Muscle.PECTORALS
+                    "squat" -> Muscle.QUADRICEPS
+                    "row" -> Muscle.LATS
+                    else -> Muscle.entries.first()
+                },
                 equipment = Equipment.BARBELL,
             )
         }

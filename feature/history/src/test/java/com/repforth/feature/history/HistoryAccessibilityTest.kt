@@ -3,6 +3,7 @@ package com.repforth.feature.history
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.repforth.core.designsystem.theme.RepForthPreviewHost
+import com.repforth.core.model.Muscle
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
@@ -50,7 +51,6 @@ class HistoryAccessibilityTest {
                 streakWeeks = 6,
                 totalVolumeKg = 128_450.0,
                 totalSets = 1_260,
-                topMuscles = listOf("Pectorals", "Latissimus dorsi", "Quadriceps"),
             ),
             workouts = List(4) { index ->
                 WorkoutSummary(
@@ -66,6 +66,7 @@ class HistoryAccessibilityTest {
                 )
             },
             mostPerformed = listOf("barbell bench press", "barbell decline wide-grip press"),
+            topMuscles = listOf(Muscle.PECTORALS, Muscle.QUADRICEPS, Muscle.LATS),
             // Three of four, so the bar shows both states rather than a full or
             // empty row that proves nothing about the unfilled segment.
             weeklyTarget = 4,
