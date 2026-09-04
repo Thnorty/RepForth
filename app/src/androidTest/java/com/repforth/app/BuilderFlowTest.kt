@@ -127,34 +127,41 @@ class BuilderFlowTest {
         // result, which looks identical until the next assertion fails.
         compose.onNode(hasSetTextAction()).performTextInput(CATALOG_QUERY)
         val result = hasText(CATALOG_EXERCISE) and !hasSetTextAction()
-        // Longer than everything around it, for the same reason
-        // `FIRST_SCREEN_TIMEOUT_MS` is: this is where the packaged catalog gets
-        // opened and searched for the first time, and on a CI runner with a
-        // cold page cache fifteen seconds was not always enough. It is the
-        // slowest step in the test on a warm machine too.
+        // Waited for in two steps, because one timeout cannot tell a slow device
+        // from a wrong answer.
+        //
+        // First: has the search finished at all? This is where the packaged
+        // catalog is opened and queried for the first time, and on a cold CI
+        // runner it is far and away the slowest thing in the suite -- fifteen
+        // seconds was not enough, and neither was thirty. The budget is
+        // generous on purpose, for the same reason `FIRST_SCREEN_TIMEOUT_MS`
+        // is: the cost of being wrong is asymmetric. A run that would have
+        // finished at thirty-one seconds is a false failure that costs an hour
+        // of looking at the catalog, and a query that never finishes fails
+        // either way.
         try {
             compose.waitUntil(CATALOG_TIMEOUT_MS) {
-                compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty() ||
+                    compose.onAllNodesWithText(AppText.pickEmpty)
+                        .fetchSemanticsNodes().isNotEmpty()
             }
         } catch (timeout: ComposeTimeoutException) {
-            // Which of the two it is matters: the empty state means the search
-            // ran and disagrees about the catalog, and no empty state means it
-            // never finished. The first is a real defect and the second is a
-            // slow device, and they are indistinguishable from a bare timeout.
-            val searched = compose.onAllNodesWithText(AppText.pickEmpty)
-                .fetchSemanticsNodes().isNotEmpty()
             throw AssertionError(
-                "The catalog never offered \"$CATALOG_EXERCISE\" for \"$CATALOG_QUERY\". " +
-                    if (searched) {
-                        "The picker is showing its empty state, so the search ran and " +
-                            "found nothing -- the catalog or the query is wrong, not the wait."
-                    } else {
-                        "The picker is not showing its empty state, so the search had not " +
-                            "finished. Give it longer."
-                    },
+                "The picker neither found anything nor said it had found nothing, " +
+                    "${CATALOG_TIMEOUT_MS}ms after typing \"$CATALOG_QUERY\". The search " +
+                    "had not finished, so this is the device rather than the catalog.",
                 timeout,
             )
         }
+
+        // Then: is the answer the right one? Reaching here means the search ran,
+        // so an empty result is a real disagreement about the catalog and is
+        // reported as one rather than as a timeout.
+        assertTrue(
+            "The catalog searched and did not offer \"$CATALOG_EXERCISE\" for " +
+                "\"$CATALOG_QUERY\", which is the catalog or the query, not the wait.",
+            compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty(),
+        )
         compose.onAllNodes(result).onFirst().performClick()
         compose.waitForIdle()
 
@@ -508,8 +515,11 @@ class BuilderFlowTest {
          */
         const val WINDOW_FOCUS_TIMEOUT_MS = 20_000L
 
-        /** The packaged catalog's first query, which is not instant on a cold device. */
-        const val CATALOG_TIMEOUT_MS = 30_000L
+        /**
+         * The packaged catalog's first query, which is not instant on a cold
+         * device: fifteen seconds failed on CI and so did thirty.
+         */
+        const val CATALOG_TIMEOUT_MS = 60_000L
 
         /** Consecutive identical readings before the layout counts as settled. */
         const val STABLE_FRAMES = 3
