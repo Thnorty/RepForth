@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
             RepForthTheme(
                 darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme()),
                 reducedMotion = preferences.reducedMotion,
+                hapticsEnabled = preferences.hapticsEnabled,
             ) {
                 // The language and the unit system are display decisions that
                 // reach almost every screen, so they are provided here rather
@@ -78,7 +79,7 @@ class MainActivity : ComponentActivity() {
 
                             AppUiState.Onboarding -> OnboardingRoute()
 
-                            AppUiState.Ready -> RepForthApp()
+                            AppUiState.Ready -> RepForthApp(keepScreenOn = preferences.keepScreenOn)
                         }
                     }
                     }

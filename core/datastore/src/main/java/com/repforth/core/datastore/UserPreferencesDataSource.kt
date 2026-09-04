@@ -58,10 +58,6 @@ class UserPreferencesDataSource @Inject constructor(
 
     suspend fun setHapticsEnabled(enabled: Boolean) = edit { it[Keys.HAPTICS] = enabled }
 
-    suspend fun setOnboardingComplete(complete: Boolean) = edit {
-        it[Keys.ONBOARDING_COMPLETE] = complete
-    }
-
     suspend fun setMediaWifiOnly(enabled: Boolean) = edit { it[Keys.MEDIA_WIFI_ONLY] = enabled }
 
     /**
@@ -85,7 +81,6 @@ class UserPreferencesDataSource @Inject constructor(
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val REDUCED_MOTION = booleanPreferencesKey("reduced_motion")
         val HAPTICS = booleanPreferencesKey("haptics_enabled")
-        val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val MEDIA_WIFI_ONLY = booleanPreferencesKey("media_wifi_only")
     }
 
@@ -112,8 +107,6 @@ class UserPreferencesDataSource @Inject constructor(
                 ?: UserPreferences.Default.reducedMotion,
             hapticsEnabled = preferences[Keys.HAPTICS]
                 ?: UserPreferences.Default.hapticsEnabled,
-            onboardingComplete = preferences[Keys.ONBOARDING_COMPLETE]
-                ?: UserPreferences.Default.onboardingComplete,
             mediaWifiOnly = preferences[Keys.MEDIA_WIFI_ONLY]
                 ?: UserPreferences.Default.mediaWifiOnly,
         )

@@ -6,13 +6,18 @@ import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.workout.CommandResult
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionEngine
+import com.repforth.core.workout.SessionEvent
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -51,6 +56,27 @@ class SessionController @Inject constructor(
      */
     private val _state = MutableStateFlow<SessionSnapshot?>(null)
     val state: StateFlow<SessionSnapshot?> = _state.asStateFlow()
+
+    /**
+     * What just happened, for whoever has to announce it.
+     *
+     * The engine has always returned these — `CommandResult.Applied.events`,
+     * documented as "the side effects to persist and announce" — and [dispatch]
+     * dropped every one of them on the floor. So the engine knew rest had run
+     * out, and nothing in the app was told: no sound, no vibration, no change
+     * to the notification, on a timer whose entire job is to end.
+     *
+     * A shared flow rather than a callback because both the service and the
+     * screen want them, and neither should have to know about the other. It
+     * drops the oldest when nothing is collecting: an announcement is only
+     * worth making when it happens, and a queue of stale ones is worse than
+     * none.
+     */
+    private val _events = MutableSharedFlow<SessionEvent>(
+        extraBufferCapacity = EVENT_BUFFER,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val events: SharedFlow<SessionEvent> = _events.asSharedFlow()
 
     private var restored = false
 
@@ -139,6 +165,9 @@ class SessionController @Inject constructor(
                 // either way; what changes is whether anything still treats it
                 // as the workout in progress.
                 _state.value = result.state.takeIf { !it.phase.isTerminal }
+                // After the write and after the state, so nothing can be told
+                // about a set that is not on disk yet.
+                result.events.forEach { _events.tryEmit(it) }
                 result.state
             }
 
@@ -169,6 +198,11 @@ class SessionController @Inject constructor(
     fun restRemaining(): Long? = _state.value?.restRemaining(time.elapsedRealtime())
 
     fun newCommandId(): String = UUID.randomUUID().toString()
+
+    private companion object {
+        /** One command's events, several times over. Nothing emits in bulk. */
+        const val EVENT_BUFFER = 32
+    }
 }
 
 /** What [SessionController.start] did, which the caller has to decide about. */

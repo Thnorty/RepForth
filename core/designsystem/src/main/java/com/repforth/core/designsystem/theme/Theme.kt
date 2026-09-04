@@ -123,6 +123,7 @@ private val LightColors = lightColorScheme(
 fun RepForthTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     reducedMotion: Boolean = false,
+    hapticsEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) DarkColors else LightColors
@@ -135,6 +136,9 @@ fun RepForthTheme(
         // what lets `rfTween` honour the setting without a single screen
         // knowing the preference exists.
         LocalReducedMotion provides reducedMotion,
+        // Haptics ride along for the same reason, and were added after the
+        // switch for them was found to control nothing.
+        LocalHapticsEnabled provides hapticsEnabled,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

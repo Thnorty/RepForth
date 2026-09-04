@@ -10,10 +10,15 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.workout.SessionCommand
+import com.repforth.core.workout.SessionEvent
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,6 +28,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -56,9 +62,20 @@ class WorkoutService : Service() {
 
     @Inject lateinit var bridge: WearBridge
 
+    @Inject lateinit var preferences: UserPreferencesDataSource
+
     private val scope = CoroutineScope(SupervisorJob())
     private var ticker: Job? = null
     private var names: Map<String, String> = emptyMap()
+
+    /**
+     * Whether the last rest ran out rather than being skipped.
+     *
+     * Held so the notification can say so. It is cleared by the next set,
+     * because "Rest is over" stops being true the moment the next one starts
+     * and a notification that still says it is lying about the present.
+     */
+    private var restJustEnded = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -88,6 +105,48 @@ class WorkoutService : Service() {
                 }
             }
         }
+
+        // Rest ending was completely silent: a chronometer counting to zero on
+        // a low-importance channel, and then nothing. `session_rest_over` had
+        // been written and translated for this and was referenced nowhere.
+        //
+        // Announced from the service rather than the screen because that is the
+        // situation it is for -- the phone face down on a bench, or in a
+        // pocket, with the screen off. A composable is not running then.
+        scope.launch {
+            controller.events.collect { event ->
+                when (event) {
+                    // Skipped rest is the user's own tap. They know.
+                    is SessionEvent.RestEnded -> if (!event.skipped) {
+                        restJustEnded = true
+                        vibrate()
+                        controller.state.value?.let(::notify)
+                    }
+
+                    is SessionEvent.SetRecorded -> restJustEnded = false
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    /**
+     * §12's haptic for a timer reaching zero, honouring §7's setting.
+     *
+     * A one-shot rather than a pattern: this says "look at me", and the
+     * notification says the rest of it. `VIBRATE` is a normal permission, so
+     * there is nothing to ask the user for.
+     */
+    private suspend fun vibrate() {
+        if (!preferences.preferences.first().hapticsEnabled) return
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.getSystemService(this, VibratorManager::class.java)?.defaultVibrator
+        } else {
+            ContextCompat.getSystemService(this, Vibrator::class.java)
+        }
+        vibrator?.vibrate(
+            VibrationEffect.createOneShot(REST_OVER_VIBRATION_MS, VibrationEffect.DEFAULT_AMPLITUDE),
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -174,11 +233,17 @@ class WorkoutService : Service() {
         if (snapshot == null) return builder.build()
 
         builder.setContentText(
-            getString(
-                R.string.session_set_of,
-                snapshot.currentSetIndex + 1,
-                snapshot.currentExercise?.target?.sets ?: 0,
-            ),
+            if (restJustEnded && snapshot.phase == SessionPhase.ACTIVE) {
+                // The one thing worth reading from across the room. "Set 2 of
+                // 4" is true and was already true a minute ago.
+                getString(R.string.session_rest_over)
+            } else {
+                getString(
+                    R.string.session_set_of,
+                    snapshot.currentSetIndex + 1,
+                    snapshot.currentExercise?.target?.sets ?: 0,
+                )
+            },
         )
 
         // Rest is shown whether it is running or paused, but not the same way.
@@ -267,6 +332,9 @@ class WorkoutService : Service() {
         private const val ACTION_PAUSE = "com.repforth.session.PAUSE"
         private const val ACTION_RESUME = "com.repforth.session.RESUME"
         private const val TICK_MS = 1_000L
+
+        /** Long enough to feel through a pocket, short enough not to nag. */
+        private const val REST_OVER_VIBRATION_MS = 400L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(
