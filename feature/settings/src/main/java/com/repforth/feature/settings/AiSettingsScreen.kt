@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.password
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -430,9 +431,22 @@ private fun TestConnection(
 
 @Composable
 private fun TimeoutSlider(seconds: Int, onChange: (Int) -> Unit) {
+    // `ai_timeout` was written and translated for this control and then never
+    // drawn, so the only thing above the slider was a bare "60 seconds" -- a
+    // number with nothing saying what it measures. To a screen reader it was
+    // worse than that: a sibling Text is not the slider's name, so the control
+    // announced its value and no name at all.
+    val label = stringResource(R.string.ai_timeout)
+    val value = pluralStringResource(R.plurals.ai_timeout_seconds, seconds, seconds)
+
     Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
         Text(
-            text = pluralStringResource(R.plurals.ai_timeout_seconds, seconds, seconds),
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
             style = MaterialTheme.typography.bodyLarge,
         )
         Slider(
@@ -442,7 +456,14 @@ private fun TimeoutSlider(seconds: Int, onChange: (Int) -> Unit) {
                 ProviderSettings.MAX_TIMEOUT_SECONDS.toFloat(),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = Target.min),
+                .heightIn(min = Target.min)
+                // The name and the value, on the node that carries the action.
+                // Compose would otherwise announce a percentage, which is not
+                // what this is measured in.
+                .semantics {
+                    contentDescription = label
+                    stateDescription = value
+                },
         )
     }
 }
