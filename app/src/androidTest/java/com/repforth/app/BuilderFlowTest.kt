@@ -127,8 +127,33 @@ class BuilderFlowTest {
         // result, which looks identical until the next assertion fails.
         compose.onNode(hasSetTextAction()).performTextInput(CATALOG_QUERY)
         val result = hasText(CATALOG_EXERCISE) and !hasSetTextAction()
-        compose.waitUntil(TIMEOUT_MS) {
-            compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty()
+        // Longer than everything around it, for the same reason
+        // `FIRST_SCREEN_TIMEOUT_MS` is: this is where the packaged catalog gets
+        // opened and searched for the first time, and on a CI runner with a
+        // cold page cache fifteen seconds was not always enough. It is the
+        // slowest step in the test on a warm machine too.
+        try {
+            compose.waitUntil(CATALOG_TIMEOUT_MS) {
+                compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (timeout: ComposeTimeoutException) {
+            // Which of the two it is matters: the empty state means the search
+            // ran and disagrees about the catalog, and no empty state means it
+            // never finished. The first is a real defect and the second is a
+            // slow device, and they are indistinguishable from a bare timeout.
+            val searched = compose.onAllNodesWithText(AppText.pickEmpty)
+                .fetchSemanticsNodes().isNotEmpty()
+            throw AssertionError(
+                "The catalog never offered \"$CATALOG_EXERCISE\" for \"$CATALOG_QUERY\". " +
+                    if (searched) {
+                        "The picker is showing its empty state, so the search ran and " +
+                            "found nothing -- the catalog or the query is wrong, not the wait."
+                    } else {
+                        "The picker is not showing its empty state, so the search had not " +
+                            "finished. Give it longer."
+                    },
+                timeout,
+            )
         }
         compose.onAllNodes(result).onFirst().performClick()
         compose.waitForIdle()
@@ -475,6 +500,9 @@ class BuilderFlowTest {
          * that never focuses fails either way.
          */
         const val WINDOW_FOCUS_TIMEOUT_MS = 20_000L
+
+        /** The packaged catalog's first query, which is not instant on a cold device. */
+        const val CATALOG_TIMEOUT_MS = 30_000L
 
         /** Consecutive identical readings before the layout counts as settled. */
         const val STABLE_FRAMES = 3

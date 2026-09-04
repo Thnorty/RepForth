@@ -66,6 +66,9 @@ internal object AppText {
 
     /** The picker's search field, and so the marker for "the picker is up". */
     val pickSearch: String get() = text(BuilderR.string.builder_pick_search)
+
+    /** Shown once the picker has searched and found nothing. */
+    val pickEmpty: String get() = text(BuilderR.string.builder_pick_empty)
     val addToWorkout: String get() = text(BuilderR.string.builder_add_to_workout)
     val saveWorkout: String get() = text(BuilderR.string.builder_save)
     val sets: String get() = text(BuilderR.string.builder_sets)

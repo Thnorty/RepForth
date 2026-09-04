@@ -2641,6 +2641,15 @@ takes the query into the workout's name field, and fifteen seconds later the
 test reports that the catalog has no bench press — a lie about the catalog. It
 now waits for the picker's own search field first.
 
+That precondition passed on CI, which is what made the next failure readable:
+the catalog search underneath it timed out at fifteen seconds on the runner and
+had never done so locally. This is where the packaged catalog is opened and
+searched for the first time, on a device with a cold page cache — the same
+reason `FIRST_SCREEN_TIMEOUT_MS` is longer than everything around it. It now has
+thirty seconds and a message that separates the two cases a bare timeout cannot:
+the picker showing its empty state means the search ran and disagrees about the
+catalog, and no empty state means it had not finished.
+
 **Two failures along the way were the machine, not the suite.** With about
 1.5GB free — a 3GB Gradle daemon and a 2.7GB emulator on a 16GB box — the suite
 ran at half speed and failed twice on two unrelated tests, then went green
