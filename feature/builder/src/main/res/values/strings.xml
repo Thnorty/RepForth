@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Workout builder and the plan library that opens it. -->
 <resources>
-    <string name="builder_new_title">New workout</string>
-    <string name="builder_edit_title">Edit workout</string>
     <string name="builder_name_label">Name</string>
     <string name="builder_name_placeholder">Push day</string>
     <string name="builder_add_exercise">Add exercise</string>
@@ -27,7 +25,6 @@
     <string name="builder_estimate">About %1$d min</string>
     <string name="builder_over_ceiling">Longer than the %1$d min you set up.</string>
 
-    <string name="builder_pick_title">Add an exercise</string>
     <string name="builder_pick_search">Search exercises</string>
     <string name="builder_pick_close">Close</string>
     <string name="builder_pick_empty">Nothing matches that.</string>
@@ -50,8 +47,6 @@
     <string name="coach_any">Pick the muscles you want, or leave the body map alone and Coach uses your goal, equipment and session length from onboarding.</string>
     <string name="coach_generate">Build it</string>
     <string name="coach_generating_action">Building…</string>
-    <string name="coach_generating_title">Building your workout</string>
-    <string name="coach_generating_body">Checking your profile, equipment and selected muscles. This can take a moment.</string>
     <string name="coach_cancel_dialog_title">Cancel workout generation?</string>
     <string name="coach_cancel_dialog_body">Coach is currently preparing your workout plan. Do you want to cancel?</string>
     <string name="coach_cancel_dialog_confirm">Cancel generation</string>
@@ -88,7 +83,6 @@
     <string name="coach_setup_needed">Coach sends your request to an AI provider you choose, using your own API key. Add one to use it.</string>
     <string name="coach_setup_open">Set up a provider</string>
 
-    <string name="week_builder_title">Weekly plan</string>
     <string name="week_builder_save">Save weekly plan</string>
     <string name="week_day_header">Day %1$d</string>
     <string name="week_day_exercises_count">%1$d exercises</string>

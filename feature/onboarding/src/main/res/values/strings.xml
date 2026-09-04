@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Onboarding flow strings -->
 <resources>
-    <string name="onboarding_title">Set up RepForth</string>
     <string name="onboarding_next">Next</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_finish">Finish</string>

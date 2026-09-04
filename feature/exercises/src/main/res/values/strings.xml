@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="exercises_title">Exercises</string>
     <string name="exercises_search_hint">Search exercises</string>
     <string name="exercises_clear_query">Clear search</string>
     <string name="exercises_filters">Filters</string>
@@ -21,7 +20,4 @@
     -->
     <string name="exercises_names_english">Exercise names come from the dataset and are in English.</string>
     <string name="exercises_row_detail">%1$s · %2$s</string>
-    <string name="exercises_instructions">Instructions</string>
-    <string name="exercises_secondary_muscles">Secondary: %1$s</string>
-    <string name="exercises_close_detail">Close</string>
 </resources>

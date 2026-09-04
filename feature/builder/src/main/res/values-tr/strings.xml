@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Antrenman oluşturucu ve onu açan plan listesi. -->
 <resources>
-    <string name="builder_new_title">Yeni antrenman</string>
-    <string name="builder_edit_title">Antrenmanı düzenle</string>
     <string name="builder_name_label">Ad</string>
     <string name="builder_name_placeholder">İtiş günü</string>
     <string name="builder_add_exercise">Egzersiz ekle</string>
@@ -27,7 +25,6 @@
     <string name="builder_estimate">Yaklaşık %1$d dk</string>
     <string name="builder_over_ceiling">Belirlediğin %1$d dakikadan uzun.</string>
 
-    <string name="builder_pick_title">Egzersiz ekle</string>
     <string name="builder_pick_search">Egzersiz ara</string>
     <string name="builder_pick_close">Kapat</string>
     <string name="builder_pick_empty">Eşleşen bir şey yok.</string>
@@ -50,8 +47,6 @@
     <string name="coach_any">İstediğin kasları seç ya da vücut haritasına hiç dokunma; Koç, açılıştaki hedefini, ekipmanını ve antrenman süreni kullansın.</string>
     <string name="coach_generate">Oluştur</string>
     <string name="coach_generating_action">Hazırlanıyor…</string>
-    <string name="coach_generating_title">Antrenmanın hazırlanıyor</string>
-    <string name="coach_generating_body">Profilin, ekipmanın ve seçtiğin kaslar kontrol ediliyor. Bu işlem biraz sürebilir.</string>
     <string name="coach_cancel_dialog_title">Antrenman oluşturma iptal edilsin mi?</string>
     <string name="coach_cancel_dialog_body">Koç şu anda antrenman planını hazırlıyor. İptal etmek istiyor musun?</string>
     <string name="coach_cancel_dialog_confirm">Oluşturmayı iptal et</string>
@@ -88,7 +83,6 @@
     <string name="coach_setup_needed">Koç isteğini, seçtiğin bir yapay zekâ sağlayıcısına kendi API anahtarınla gönderir. Kullanmak için bir tane ekle.</string>
     <string name="coach_setup_open">Sağlayıcı ekle</string>
 
-    <string name="week_builder_title">Haftalık plan</string>
     <string name="week_builder_save">Haftalık planı kaydet</string>
     <string name="week_day_header">%1$d. Gün</string>
     <string name="week_day_exercises_count">%1$d egzersiz</string>
