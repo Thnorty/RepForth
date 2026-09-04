@@ -64,10 +64,19 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.hilt.android.testing)
     androidTestImplementation(libs.androidx.datastore.preferences)
+
+    // `implementation` dependencies reach androidTest at runtime but not at
+    // compile time, so a test that seeds the database through the real
+    // repositories has to name them again. Not a duplicate of the app's own
+    // dependency -- a different configuration of the same project.
+    androidTestImplementation(project(":core:model"))
+    androidTestImplementation(project(":core:user-data"))
+    androidTestImplementation(project(":feature:session"))
     kspAndroidTest(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(project(":core:testing"))

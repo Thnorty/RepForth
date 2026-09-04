@@ -29,7 +29,14 @@ internal fun ComposeTestRule.completeOnboardingIfShown() {
 
     onNodeWithText("Strength").performClick()
     onNodeWithText("Next").performClick()
-    onNodeWithText("1 to 3 years").performClick()
+    // "Intermediate", not "1 to 3 years". The experience chips were renamed to
+    // the level rather than the span of years -- see `ProfileTerms.kt`, which
+    // records the reason -- and this walk kept tapping the old text. Every
+    // instrumentation test in this module failed on it from that moment, and
+    // nothing said so for days because nothing ran them: a library module gets
+    // a managed device from `repforth.android.instrumentation`, and `:app` had
+    // none until it was added for `StartConflictTest`.
+    onNodeWithText("Intermediate").performClick()
 
     // Walk the rest of the questionnaire on its defaults. Every remaining step
     // advances without an answer, which is itself the thing being relied on.
