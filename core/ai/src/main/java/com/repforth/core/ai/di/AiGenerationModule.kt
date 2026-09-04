@@ -2,6 +2,8 @@ package com.repforth.core.ai.di
 
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutGenerator
+import com.repforth.core.ai.ProviderAvailability
+import com.repforth.core.ai.ProviderRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,4 +38,15 @@ object AiGenerationModule {
     fun provideWorkoutGenerationService(
         generator: AiWorkoutGenerator,
     ): AiWorkoutGenerationService = generator
+
+    /**
+     * The "is a provider set up?" question, for screens that must ask it.
+     *
+     * Here rather than in the internal module for the same reason the generator
+     * is: this is the seam a test replaces.
+     */
+    @Provides
+    fun provideProviderAvailability(
+        repository: ProviderRepository,
+    ): ProviderAvailability = repository
 }

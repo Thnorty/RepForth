@@ -8,6 +8,7 @@ import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
 import com.repforth.core.ai.ProviderFailure
+import com.repforth.core.ai.ProviderAvailability
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.Exercise
@@ -220,6 +221,14 @@ data class BuilderUiState(
     val sessionCeilingMinutes: Int? = null,
     /** Coach's sheet is open. */
     val coaching: Boolean = false,
+    /**
+     * Whether a provider is set up, so Coach can say so before the form.
+     *
+     * Defaults true: the screen is drawn before the answer arrives, and one
+     * frame of "not set up" on a configured install is worse than one frame of
+     * silence on an unconfigured one.
+     */
+    val providerConfigured: Boolean = true,
     /** Muscles asked for. Empty means "anything my profile allows". */
     val coachMuscles: Set<Muscle> = emptySet(),
     /**
@@ -378,6 +387,7 @@ class BuilderViewModel @Inject constructor(
     private val exercises: ExerciseRepository,
     private val profiles: ProfileRepository,
     private val generator: AiWorkoutGenerationService,
+    private val providers: ProviderAvailability,
     private val weeks: WeekRepository,
     preferences: UserPreferencesDataSource,
 ) : ViewModel() {
@@ -401,6 +411,15 @@ class BuilderViewModel @Inject constructor(
                 coachDays = profile?.trainingDaysPerWeek?.coerceIn(WorkoutLimits.days)
                     ?: _uiState.value.coachDays,
             )
+        }
+        // Asked before the form rather than after the last tap. Coach offered
+        // itself unconditionally and answered "No AI provider configured" only
+        // once the muscles, days and session length had been chosen -- an error
+        // that named Settings and had no way to open it.
+        viewModelScope.launch {
+            providers.configured.collect { configured ->
+                update { copy(providerConfigured = configured) }
+            }
         }
         viewModelScope.launch {
             preferences.preferences.collect { userPrefs ->

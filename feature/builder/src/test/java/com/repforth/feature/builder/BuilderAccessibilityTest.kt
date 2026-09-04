@@ -109,6 +109,7 @@ class BuilderAccessibilityTest {
             onCancelGenerate = {},
             onDismissError = {},
             onClose = {},
+            onOpenProviderSettings = {},
         )
     }
 

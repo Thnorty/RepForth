@@ -131,6 +131,9 @@ fun RepForthNavHost(
                 // is Plans today and Today tomorrow. popBackStack rather than a
                 // navigate keeps that true without this knowing either.
                 onSaved = { navController.popBackStack() },
+                // Coach needs a provider and cannot set one up itself, so the
+                // screen that says so offers the way there.
+                onOpenProviderSettings = { navController.navigate(Destination.AiSettings) },
             )
         }
         composable<Destination.Exercises> {

@@ -135,7 +135,7 @@
     <string name="ai_key">API anahtarı</string>
     <string name="ai_key_hint">Anahtarını yapıştır</string>
     <string name="ai_key_stored">Bu sağlayıcı için bir anahtar kayıtlı. Bu telefonda şifreli tutuluyor ve bir daha gösterilemez.</string>
-    <string name="ai_key_missing">Henüz anahtar yok. Sen bir tane ekleyene kadar Koç dahili planlayıcıyı kullanır.</string>
+    <string name="ai_key_missing">Henüz anahtar yok. Koç\'un bir şey oluşturabilmesi için buna ihtiyacı var.</string>
     <string name="ai_key_optional">Anahtar yok. Ollama gibi yerel sunucular anahtar istemez; barındırılan bir servis ister.</string>
     <string name="ai_key_save">Anahtarı kaydet</string>
     <string name="ai_key_delete">Anahtarı sil</string>

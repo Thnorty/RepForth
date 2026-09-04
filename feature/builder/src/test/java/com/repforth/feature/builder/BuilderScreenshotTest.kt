@@ -165,6 +165,7 @@ class BuilderScreenshotTest {
             onCancelGenerate = {},
             onDismissError = {},
             onClose = {},
+            onOpenProviderSettings = {},
         )
     }
 
