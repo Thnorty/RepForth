@@ -11,6 +11,7 @@
 
     <string name="progress_history">Geçmiş</string>
     <string name="progress_most_performed">En çok yapılanlar</string>
+    <string name="progress_muscle_activity">Son çalışılan kaslar</string>
 
     <plurals name="progress_sets">
         <item quantity="one">%1$d set</item>

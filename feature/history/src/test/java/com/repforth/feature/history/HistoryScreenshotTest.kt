@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.repforth.core.designsystem.theme.RepForthPreviewHost
+import com.repforth.core.model.Muscle
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
@@ -80,7 +81,6 @@ class HistoryScreenshotTest {
                 // label beside it.
                 totalVolumeKg = 128_450.0,
                 totalSets = 1_260,
-                topMuscles = listOf("Pectorals", "Latissimus dorsi", "Quadriceps"),
             ),
             workouts = List(4) { index ->
                 WorkoutSummary(
@@ -96,6 +96,7 @@ class HistoryScreenshotTest {
                 )
             },
             mostPerformed = listOf("barbell bench press", "barbell decline wide-grip press"),
+            topMuscles = listOf(Muscle.PECTORALS, Muscle.QUADRICEPS, Muscle.LATS),
             // Three of four, so the bar shows both states rather than a full or
             // empty row that proves nothing about the unfilled segment.
             weeklyTarget = 4,
