@@ -27,23 +27,26 @@ which decisions are closed so they are not reopened.
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | **Complete.** Protocol, bridge, watch app, and every §20 watch clause demonstrated on a Galaxy S23 and a Galaxy Watch Ultra: snapshot delivery, commands, stale-command refusal, rest countdown, and disconnected read-only with recovery |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
+| — Reported from use | — | Four rounds after every phase was complete. Three defects, two of which took two attempts each; see below |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
 and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
 larger than they sound. Every screen has been exercised on hardware by hand and
 by `adb input tap`.
 
-**Nine defects have been found on a device and by nothing else:** the launch
-crash from Auto Backup restoring an old database, onboarding drawing under the
-camera cutout, a slider whose sixth value could not be selected, the Hilt crash
-when the locale was overridden, and the builder's Save button sitting behind the
-keyboard — enabled, invisible, and untappable, so a plan could not be saved at
-all; and three on the AI settings screen (2.3b): a keyboard that rewrote a
-typed URL, switch rows that only responded on the switch itself, and a
-disclosure that looked like a heading; and a bad Gemini key reported as a
-parsing failure rather than a rejected key (2.3c), which no local-server test
-could have caught because Gemini answers 400 where the shared mapping expected
-401.
+**Twelve defects have been found on a device and by nothing else.** Three of
+them arrived after Phase 5 was called complete, from ordinary use rather than
+testing, and are written up under "Reported from ordinary use" below. The first
+nine: the launch crash from Auto Backup restoring an old database, onboarding
+drawing under the camera cutout, a slider whose sixth value could not be
+selected, the Hilt crash when the locale was overridden, and the builder's Save
+button sitting behind the keyboard — enabled, invisible, and untappable, so a
+plan could not be saved at all; and three on the AI settings screen (2.3b): a
+keyboard that rewrote a typed URL, switch rows that only responded on the
+switch itself, and a disclosure that looked like a heading; and a bad Gemini
+key reported as a parsing failure rather than a rejected key (2.3c), which no
+local-server test could have caught because Gemini answers 400 where the shared
+mapping expected 401.
 
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
@@ -137,6 +140,10 @@ recording them found five more defects.
 | **Phase 6** — screenshot tests, and the two defects they found | `d9fcd8e` |
 | **Phase 6** — the remaining screens, and three more defects | `e1188bf`, `1c809f9` |
 | **Phase 6** — CI enforced, and goldens that survive the runner | `cc5cec7`, `4654808` |
+| **Use** — the ring and the plan that was tapped, first attempt | [#16][pr16] |
+| **Use** — why neither fix ran: the guard, and the animator scale | [#17][pr17] |
+| **Use** — the question moved before the workout; both are named | [#18][pr18] |
+| **Use** — back and outside-tap dismiss the question | [#19][pr19] |
 
 [pr2]: https://github.com/Thnorty/RepForth/pull/2
 [pr3]: https://github.com/Thnorty/RepForth/pull/3
@@ -150,18 +157,31 @@ recording them found five more defects.
 [pr11]: https://github.com/Thnorty/RepForth/pull/11
 [pr13]: https://github.com/Thnorty/RepForth/pull/13
 [pr14]: https://github.com/Thnorty/RepForth/pull/14
+[pr16]: https://github.com/Thnorty/RepForth/pull/16
+[pr17]: https://github.com/Thnorty/RepForth/pull/17
+[pr18]: https://github.com/Thnorty/RepForth/pull/18
+[pr19]: https://github.com/Thnorty/RepForth/pull/19
 
 Rows above this one name a commit because they were pushed straight to
 `master`. From 4.11 onward `master` only accepts squash merges, whose hash is
 not knowable while the change is being written — so newer rows name the pull
 request instead.
 
-Modules today: `app`, `core:ai`, `core:common`, `core:database`, `core:datastore`,
-`core:designsystem`, `core:exercise-data`, `core:media`, `core:model`, `core:rules`,
-`core:testing`, `core:transfer`, `core:user-data`, `core:workout`,
+Modules today: `app`, `baselineprofile`, `core:ai`, `core:common`, `core:database`,
+`core:datastore`, `core:designsystem`, `core:exercise-data`, `core:media`,
+`core:model`, `core:rules`, `core:secrets`, `core:testing`, `core:transfer`,
+`core:user-data`, `core:wear-protocol`, `core:wear-sync`, `core:workout`,
 `feature:builder`, `feature:exercises`, `feature:history`, `feature:home`,
-`feature:onboarding`, `feature:session`, `feature:settings`.
-439 unit tests across 61 classes, plus fourteen instrumentation tests
+`feature:onboarding`, `feature:session`, `feature:settings`, `wear`.
+
+**This list and the count below were both stale**, and had been since Phase 5 —
+`core:secrets` was missing despite being built in 2.1, and so were the three
+Wear modules and the baseline profile producer. Re-derived from
+`settings.gradle.kts` and from the JUnit XML with every stale result deleted
+first, which matters: renaming a test class leaves its old `TEST-*.xml` behind
+and inflates the total.
+
+669 unit tests across 94 classes, plus fourteen instrumentation tests
 watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets` — and
 five migration tests in `core:database` that have **never been run**, because no
 device has been attached since they were written. Room schema v2 exported and
@@ -2152,6 +2172,124 @@ of printing the actual numbers.
 
 ---
 
+## Reported from ordinary use — four rounds after Phase 5
+
+Not a guideline phase. Every phase was complete and installed when the owner
+used the app to train and reported three things. It took **four pull requests to
+fix two of them**, and the reason is the most useful thing in this section.
+
+### U.1 — Two fixes that passed CI, merged, installed, and did nothing (#16, #17)
+
+Reported: the rest ring "moves 2 every second" rather than ticking or sweeping,
+and starting a plan resumes a previous workout instead of the one tapped.
+
+**#16 fixed both, provably, and neither fix reached the device.** The owner
+tested and reported no change. The instinct was to doubt the build; that was
+checked first and ruled out in two minutes, and the method is worth keeping:
+
+```
+adb shell pm path --user 0 com.repforth        # then adb pull it
+sha256sum on-device.apk built.apk              # identical
+aapt2 dump strings on-device.apk | grep "<a string only the new code has>"
+```
+
+The build was correct. Both fixes were wrong.
+
+**The start fix was never executed.** `SessionRoute` called
+`viewModel.start(templateId)` only `if (state.snapshot == null)` — and the view
+model restores the running session as it is constructed, so a snapshot always
+existed by the time the effect ran. `StartOutcome`, `Blocked`, `abandonAndStart`
+and the conflict dialog were all dead code from the moment they were written.
+`SessionStartTest` passed because it called `SessionController.start` directly.
+
+> **The lesson, now in `AGENTS.md`.** Testing the unit that was edited is the
+> easy half. The question that catches this is *what calls this, and under what
+> state does that caller reach it?* When the caller is a composable, only a test
+> that hosts the real screen can answer it.
+
+**The ring fix was defeated by a device setting.** The tween was widened to the
+500ms between countdown updates so consecutive steps would join. Compose
+multiplies every animation by `Settings.Global.ANIMATOR_DURATION_SCALE` — **0.5
+on this phone**, 0 for anyone who has switched animations off — so it ran in
+250ms, finished halfway through the interval and stood still for the rest of it.
+Two visible jerks a second, unchanged. No tween survives being multiplied by a
+number the app does not choose.
+
+A frame-driven sweep is immune to that and genuinely continuous. It was built,
+and abandoned: a composable that updates every frame for the length of a rest
+never lets the composition go idle, which hangs every Robolectric test that
+renders the screen. #17 shipped a ring that stepped once a second instead.
+
+`start` was also hardened to restore before deciding. It read only the in-memory
+session, so on a cold process — nothing restored yet — it would have begun a
+*second* workout on top of the one in the database, decided by whichever
+coroutine reached the controller first.
+
+### U.2 — The ring reverted, and the question moved out of the workout (#18)
+
+The owner looked at the ticking ring and preferred the animation: a sweep that
+pauses briefly beats a clock hand, and moving twice a second "isn't a problem".
+So the tween came back and `steppedSweep` went. **The constraint stayed written
+down and the verdict changed** — that is the correct division between this file
+and a taste call.
+
+Three changes at the same time, all requested:
+
+- **The conflict is raised before navigating.** `WorkoutStartViewModel` sits
+  above the navigation graph, because Today and Plans both start plans and the
+  answer must not depend on which was used. It calls `restore`, never `start`:
+  asking must change nothing, or "go back to it" would be a lie by the time it
+  was tapped. Both answers lead into a workout.
+- **The dialog names the workout in the way.** "A workout is already running" is
+  true and useless if what the user has forgotten is which one.
+- **The app bar shows the workout's name** instead of "Workout", which was true
+  of every workout.
+
+The session screen kept its own copy of the question, sharing one composable.
+That was checked rather than assumed: it is reachable after process death, where
+the navigation state is restored with the tapped plan id and the running workout
+is still in the database.
+
+### U.3 — The dialog trapped the user (#19)
+
+Reported: back and a tap outside should dismiss it.
+
+`onDismissRequest` was an empty lambda. `AlertDialog` routes **both** gestures
+through that one callback, so blocking one had silently blocked the other — a
+dialog with no way out, no error, and a comment explaining why that was
+deliberate.
+
+The comment was not wrong when it was written. It was inherited from when this
+appeared *inside* the workout screen, over a workout the user had not chosen,
+where there was nowhere harmless to land. Asking from the plan list gives it
+somewhere: exactly where they already are. Cancelling starts nothing, ends
+nothing and navigates nowhere.
+
+The guard drives a real back gesture through `Espresso.pressBack()` rather than
+asserting the callback is connected, because an empty `onDismissRequest`
+compiles, reads as deliberate, and fails only at the gesture.
+
+### What these four rounds are worth
+
+- **Two independent fixes both appearing to do nothing is not two
+  coincidences.** It is the build, the install, or the call path. Rule those out
+  before re-reading the logic.
+- **A confident comment is evidence of nothing.** This is the fourth time in
+  this file: the wear clock skew called "close enough for a rest timer",
+  `NodeClient.connectedNodes` as reachability, `touchBoundsInRoot` as the touch
+  target, and now "no dismiss-by-tapping-away" — each correct once, none
+  re-examined when its context moved.
+- **A guard test is cheap; proving it fails is what makes it a guard.**
+  Twenty-five tests across four new classes — `SessionStartTest` (6),
+  `SessionConflictComposeTest` (5), `WorkoutStartViewModelTest` (9),
+  `WorkoutConflictDialogComposeTest` (5); before #16 this module had four test
+  classes, none of them about starting. Each *guard* was watched failing against
+  the specific mistake it covers, which is not the same as each test having been
+  watched failing. One was initially masked by a second deliberate break in the
+  same run and had to be re-run alone to be worth anything.
+
+---
+
 ## Next
 
 In the order they are worth doing, and why.
@@ -2187,6 +2325,22 @@ In the order they are worth doing, and why.
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
+6. **`FakeProfiles` exists five times.** Five test files declare their own copy;
+   the session fakes are now spread across two files as well, `StartFakeSessions`
+   and `StartFakeTemplates` having been promoted to `internal` so a second test
+   class could use them. `core:testing` is where a shared fixture belongs, and
+   already holds `FakePreferencesStore`. Nothing is wrong today; five copies
+   drift on the sixth change.
+7. **Nothing tests that the shell reaches the start gate.** `RepForthNavHost`
+   wires `onStartPlan` to `WorkoutStartViewModel.request`, and the view model is
+   covered — but the wiring between them is exactly the shape of the bug in U.1,
+   where a fully tested function was never called. A `*ComposeTest` over the
+   shell would close it; it needs a Hilt-free way to hand the graph a view
+   model, which is why it is written down rather than done.
+8. **The rest ring pauses on any device with a reduced animator scale.** Known
+   and accepted — see U.2 — but it is a real visual artefact on the owner's own
+   phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
+   longer tween.
 
 ---
 
