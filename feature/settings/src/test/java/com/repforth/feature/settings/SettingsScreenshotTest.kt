@@ -3,6 +3,10 @@ package com.repforth.feature.settings
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.repforth.core.designsystem.theme.RepForthPreviewHost
 import com.repforth.core.model.Equipment
@@ -63,11 +67,70 @@ class SettingsScreenshotTest {
     fun settings_turkish_large_text() =
         captureSettings("settings-tr-2x", locale = TURKISH, fontScale = 2f)
 
+    /**
+     * The two dialogs, which had no goldens because nothing could open them.
+     *
+     * A dialog is the layout most likely to break under Turkish and 200% text:
+     * it is the one container on this screen with a width it cannot grow past.
+     * Captured through `onNode(isDialog())` rather than `onRoot()` -- a dialog
+     * lives in its own window, so the root capture used above photographs the
+     * screen behind it and reports success.
+     */
+    @Test
+    fun equipment_dialog_english() = captureDialog("settings-equipment-en", EQUIPMENT)
+
+    @Test
+    fun equipment_dialog_turkish() =
+        captureDialog("settings-equipment-tr", EQUIPMENT, locale = TURKISH)
+
+    @Test
+    fun equipment_dialog_english_large_text() =
+        captureDialog("settings-equipment-en-2x", EQUIPMENT, fontScale = 2f)
+
+    @Test
+    fun equipment_dialog_turkish_large_text() =
+        captureDialog("settings-equipment-tr-2x", EQUIPMENT, locale = TURKISH, fontScale = 2f)
+
+    @Test
+    fun schedule_dialog_english() = captureDialog("settings-schedule-en", SCHEDULE)
+
+    @Test
+    fun schedule_dialog_turkish() =
+        captureDialog("settings-schedule-tr", SCHEDULE, locale = TURKISH)
+
+    @Test
+    fun schedule_dialog_english_large_text() =
+        captureDialog("settings-schedule-en-2x", SCHEDULE, fontScale = 2f)
+
+    @Test
+    fun schedule_dialog_turkish_large_text() =
+        captureDialog("settings-schedule-tr-2x", SCHEDULE, locale = TURKISH, fontScale = 2f)
+
+    private fun captureDialog(
+        name: String,
+        rowLabel: Int,
+        locale: String? = null,
+        fontScale: Float = 1f,
+    ) {
+        renderSettings(locale, fontScale)
+
+        val label = ApplicationProvider.getApplicationContext<android.content.Context>()
+            .getString(rowLabel)
+        compose.onNodeWithText(label).performClick()
+
+        compose.onNode(isDialog()).captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
+    }
+
     private fun captureSettings(
         name: String,
         locale: String? = null,
         fontScale: Float = 1f,
     ) {
+        renderSettings(locale, fontScale)
+        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
+    }
+
+    private fun renderSettings(locale: String?, fontScale: Float) {
         // Both, always, even at their defaults. Robolectric carries
         // qualifiers across test methods in the same JVM, so a test that set
         // only what it changed rendered in whatever the previous one left
@@ -104,10 +167,12 @@ class SettingsScreenshotTest {
             }
         }
 
-        compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
 
     private companion object {
+        val EQUIPMENT = R.string.settings_profile_equipment
+        val SCHEDULE = R.string.settings_profile_schedule
+
         /**
          * The longest options in both languages.
          *

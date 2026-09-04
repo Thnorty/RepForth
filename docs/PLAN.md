@@ -26,7 +26,7 @@ which decisions are closed so they are not reopened.
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | **Complete.** Protocol, bridge, watch app, and every §20 watch clause demonstrated on a Galaxy S23 and a Galaxy Watch Ultra: snapshot delivery, commands, stale-command refusal, rest countdown, and disconnected read-only with recovery |
-| 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 50 goldens and enforced CI |
+| 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 61 goldens and enforced CI; migrations and keystore storage now run on a managed emulator |
 | — Reported from use | — | Four rounds after every phase was complete. Three defects, two of which took two attempts each; see below |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
@@ -51,9 +51,12 @@ mapping expected 401.
 Fourteen instrumentation tests now exist and pass on the Galaxy S23 — six in
 `:app`, eight in `core:secrets`. Of the six, three open screens and would not
 have caught any of the nine; three interact — type, tap, save — and the keyboard
-one is a direct regression guard for the fifth. Fifty screenshot goldens now
-cover ten screens in both languages at both font scales (6.1, 6.2, 6.3), and
-recording them found five more defects.
+one is a direct regression guard for the fifth. Sixty-one screenshot goldens
+now cover ten screens and two dialogs in both languages at both font scales
+(6.1, 6.2, 6.3, D.2), and recording them found six more defects. The count had
+been stated as fifty while fifty-three were committed; count them with
+`git ls-files "*src/test/screenshots/*.png" | wc -l` rather than trusting the
+sentence.
 
 ### Built so far
 
@@ -2353,6 +2356,46 @@ it — it boots an emulator, so it is the slowest thing in the workflow and shar
 nothing with lint or the goldens. **It is not yet a required check**; branch
 protection is a repository setting and has to be added by the maintainer.
 
+
+### D.2 — The two dialogs nothing could open (#22)
+
+`SettingsScreen` holds the equipment and schedule dialogs behind its own state,
+and this plan recorded that as needing the state hoisted out before a test could
+reach them — "a change to the screen for the sake of the test".
+
+**It did not.** A test taps the row, the way a user does. That covers the dialog
+*and* the row that opens it, changes no production code, and tests strictly more
+than hoisting would have. Eight goldens and four accessibility checks, for a
+one-line helper.
+
+**Two coverage holes, the second found by breaking the first:**
+
+`Role.Checkbox` was removed from the equipment rows to prove the check bites —
+and nothing failed. The reason was not the guard: `Equipment.UNCOMMON` renders
+only after "More equipment" is tapped, so the role that had been removed was on
+rows nothing had ever drawn. Removing it from *both* blocks failed the two
+equipment tests and left the schedule and plain-settings ones green.
+
+So the tests now open the dialog and expand it, and removing the role from the
+uncommon rows alone fails exactly the two expanded tests. That second hole was
+invisible until the first guard was tested; a guard proven against the easy half
+of a screen says nothing about the other half.
+
+**A dialog is captured through `onNode(isDialog())`, never `onRoot()`.** A
+dialog lives in its own window, so the root capture the other goldens use
+photographs the screen behind it and reports success — a green golden of the
+wrong thing.
+
+**What the goldens found, on the first recording:** at 200% font scale the
+equipment checkbox is no longer beside its label. The row is
+`CenterVertically`, so with a label plus a two- or three-line description the
+checkbox centres on the whole block and lands next to the description instead —
+in both languages. Nothing truncates and nothing overlaps, so this is a
+legibility judgement rather than a break, and it is left as the maintainer's
+call: `Alignment.Top` on that `Row` is the fix if it is wanted. It is only
+visible at 2x, which is the configuration nobody has on their own phone and the
+reason these goldens exist.
+
 ---
 
 ## Next
@@ -2363,18 +2406,18 @@ In the order they are worth doing, and why.
    `WearCommandService` both publish, and a refusal republishes as well. The
    writes are idempotent so nothing is wrong; it is simply more Data Layer
    traffic than the state changes justify.
-2. **Two surfaces still have no golden, and both are dialogs.** The Settings
-   schedule dialog and the equipment dialog are opened by state held inside
-   `SettingsScreen`, so a screenshot test cannot reach them without hoisting
-   that state — which is a change to the screen for the sake of the test, and
-   worth thinking about rather than doing reflexively. The AI provider screen
-   has none either; it was left out because its interesting states are a typed
-   key and a connection result rather than a layout under pressure.
+2. **The AI provider screen has no golden and no accessibility check.** The
+   two Settings dialogs did not either, and are now covered — see D.2, which
+   reached them by tapping the row rather than hoisting their state, so the
+   worry recorded here about "changing the screen for the sake of the test"
+   turned out not to apply.
 
-   **3.3 raised the price of this.** The equipment dialog is not merely
-   unphotographed, it is unreachable by the accessibility checks too — a
-   deliberate break of its `Role.Checkbox` was not caught, because no test can
-   open it. Hoisting that state now buys two guards rather than one.
+   The provider screen is a different case and was left out deliberately: its
+   interesting states are a typed key and a connection result rather than a
+   layout under pressure, and a golden of it would mostly photograph an empty
+   text field. An accessibility check is still worth having — three of the nine
+   device-found defects were on that screen.
+
 3. **Two computed fields are still undrawn.** `WorkoutSummary.exerciseCount`
    per history row, and `ProgressSummary.topMuscles`, which is never populated
    at all — its kdoc says "empty until the catalog is joined" and that join has
