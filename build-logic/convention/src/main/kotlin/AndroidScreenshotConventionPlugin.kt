@@ -64,6 +64,13 @@ class AndroidScreenshotConventionPlugin : Plugin<Project> {
                     // The accessibility tests host a screen the same way and
                     // fail the same way without it.
                     exclude("**/*AccessibilityTest*")
+                    // And anything else that puts a composable on screen to
+                    // assert about it -- behaviour under a `ComposeTestRule`
+                    // rather than a picture. Same host activity, same absence
+                    // in release, same failure. Name such a test `*ComposeTest`
+                    // so it lands here rather than discovering this the hard
+                    // way in CI.
+                    exclude("**/*ComposeTest*")
                 }
 
                 // The goldens are read through `java.io.File` at runtime, so
