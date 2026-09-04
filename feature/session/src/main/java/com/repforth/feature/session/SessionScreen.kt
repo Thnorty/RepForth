@@ -181,6 +181,10 @@ internal fun SessionScreen(
             runningName = state.conflictingName,
             onKeep = onKeepRunningSession,
             onDiscard = onDiscardRunningAndStart,
+            // Here there is no list to fall back to -- this screen is already
+            // showing the running workout. Dismissing therefore means the same
+            // thing as keeping it, which is what is behind the dialog anyway.
+            onCancel = onKeepRunningSession,
         )
     }
 

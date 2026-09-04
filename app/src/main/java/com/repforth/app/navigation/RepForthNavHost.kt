@@ -66,6 +66,9 @@ fun RepForthNavHost(
             runningName = conflict.runningName,
             onKeep = starter::keepRunning,
             onDiscard = starter::discardAndStart,
+            // Backing out leaves the user on the list they tapped from, which
+            // is where they already were.
+            onCancel = starter::cancel,
         )
     }
 
