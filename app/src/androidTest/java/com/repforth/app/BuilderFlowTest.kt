@@ -112,8 +112,15 @@ class BuilderFlowTest {
         compose.onNode(hasSetTextAction()).performClick()
         compose.onNode(hasSetTextAction()).performTextInput(name)
 
-        compose.onNodeWithText("Add exercise").performClick()
-        compose.waitForIdle()
+        compose.onNodeWithText(AppText.addExercise).performClick()
+        // Wait for the picker's own search field, not just for idle. The line
+        // below takes "the one text field on screen", so a picker that has not
+        // opened yet sends the catalog query into the workout's name field and
+        // the failure arrives fifteen seconds later as "the catalog has no
+        // bench press" -- which is a lie about the catalog.
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodesWithText(AppText.pickSearch).fetchSemanticsNodes().isNotEmpty()
+        }
         // A prefix, not the whole name. `hasText` matches a text field's own
         // contents too, so searching for the exact name makes the search box
         // itself a match — and the click lands in the box rather than on the
@@ -132,12 +139,12 @@ class BuilderFlowTest {
         // picker was still on screen and the sheet was over the top of it, and
         // reported that the builder had no save button.
         compose.waitUntil(TIMEOUT_MS) {
-            compose.onAllNodesWithText("Add to workout").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText(AppText.addToWorkout).fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("Add to workout").performClick()
+        compose.onNodeWithText(AppText.addToWorkout).performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText("Save workout").performClick()
+        compose.onNodeWithText(AppText.saveWorkout).performClick()
         compose.waitForIdle()
 
         compose.waitUntil(TIMEOUT_MS) {
@@ -166,18 +173,18 @@ class BuilderFlowTest {
     fun coachFillsTheBuilderButSavesNothingUntilAsked() {
         compose.openNewWorkout()
 
-        compose.onNodeWithText("Build one for me").performClick()
+        compose.onNodeWithText(AppText.coachOpen).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Build it").performClick()
+        compose.onNodeWithText(AppText.coachGenerate).performClick()
 
         compose.waitUntil(TIMEOUT_MS) {
-            compose.onAllNodes(hasText("Sets")).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(hasText(AppText.sets)).fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNode(hasText(COACH_PLAN_NAME) and hasSetTextAction()).assertExists()
 
         // Leave without saving. Back, not a tab: the builder is not a
         // top-level destination, so it has no bottom bar to tap.
-        compose.onNodeWithContentDescription("Back").performClick()
+        compose.onNodeWithContentDescription(AppText.back).performClick()
         compose.waitForIdle()
 
         // A generated draft is unsaved work, so leaving asks first -- the top
@@ -185,7 +192,7 @@ class BuilderFlowTest {
         // stack, which is what puts it through the builder's `BackHandler`.
         // Confirming is the path being tested: it is the one that must not
         // write anything.
-        compose.onNodeWithText("Discard").performClick()
+        compose.onNodeWithText(AppText.discard).performClick()
         compose.waitForIdle()
 
         assertTrue(
@@ -285,6 +292,7 @@ class BuilderFlowTest {
                 "[${shell("settings get secure show_ime_with_hard_keyboard")}], " +
                 "showSoftInput: [$lastShowSoftInput], " +
                 "window focus: [${hasWindowFocus()}], " +
+                "focused window: [${focusedWindow()}], " +
                 "state: [${inputMethodState()}]",
         )
     }
@@ -311,7 +319,31 @@ class BuilderFlowTest {
             if (hasWindowFocus()) return
             SystemClock.sleep(IME_POLL_MS)
         }
+        // Fail here rather than falling through. Without this the run spent
+        // another twenty-four seconds tapping a field that could not raise a
+        // keyboard and then blamed the keyboard -- a headline that sent the
+        // first two investigations of this failure in the wrong direction.
+        throw AssertionError(
+            "The activity's window never took focus in ${WINDOW_FOCUS_TIMEOUT_MS}ms, " +
+                "so nothing could have opened a keyboard. Window manager says: " +
+                "[${focusedWindow()}]",
+        )
     }
+
+    /**
+     * What the window manager believes has focus.
+     *
+     * `dumpsys input_method` cannot answer this -- it names its current client,
+     * which stays this app while the app sits unfocused. When the window is
+     * unfocused for the whole wait rather than for a moment, something else is
+     * holding it, and this is the only line that says what.
+     */
+    private fun focusedWindow(): String =
+        shell("dumpsys window")
+            .lineSequence()
+            .filter { "mCurrentFocus" in it || "mFocusedApp" in it }
+            .joinToString(" ; ") { it.trim() }
+            .ifEmpty { "nothing reported" }
 
     private fun hasWindowFocus(): Boolean {
         var focused = false
@@ -358,7 +390,7 @@ class BuilderFlowTest {
             .joinToString(" ; ") { it.trim() }
 
     private fun saveButton(): SemanticsNode =
-        compose.onNodeWithText("Save workout").fetchSemanticsNode()
+        compose.onNodeWithText(AppText.saveWorkout).fetchSemanticsNode()
 
     /** The bottom inset the keyboard currently occupies, in pixels. */
     private fun imeHeight(): Int {
@@ -430,8 +462,14 @@ class BuilderFlowTest {
         /** Between inset readings. Short enough to be invisible when it works. */
         const val IME_POLL_MS = 100L
 
-        /** How long the window is given to take focus before asking anyway. */
-        const val WINDOW_FOCUS_TIMEOUT_MS = 10_000L
+        /**
+         * How long the window is given to take focus before the test gives up.
+         *
+         * Generous because the cost of being wrong is asymmetric: a run that
+         * would have focused at eleven seconds is a false failure, and a run
+         * that never focuses fails either way.
+         */
+        const val WINDOW_FOCUS_TIMEOUT_MS = 20_000L
 
         /** Consecutive identical readings before the layout counts as settled. */
         const val STABLE_FRAMES = 3
