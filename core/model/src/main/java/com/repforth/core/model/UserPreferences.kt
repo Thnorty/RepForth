@@ -19,7 +19,6 @@ data class UserPreferences(
     val keepScreenOn: Boolean,
     val reducedMotion: Boolean,
     val hapticsEnabled: Boolean,
-    val onboardingComplete: Boolean,
     val mediaWifiOnly: Boolean = true,
 ) {
     companion object {
@@ -42,7 +41,6 @@ data class UserPreferences(
             keepScreenOn = true,
             reducedMotion = false,
             hapticsEnabled = true,
-            onboardingComplete = false,
             mediaWifiOnly = true,
         )
     }

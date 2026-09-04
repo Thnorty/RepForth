@@ -45,7 +45,7 @@
     <string name="settings_keep_awake">Ekran açık kalsın</string>
     <string name="settings_keep_awake_sub">Antrenman sürerken.</string>
     <string name="settings_haptics">Titreşim</string>
-    <string name="settings_haptics_sub">Set tamamlarken ve atlarken.</string>
+    <string name="settings_haptics_sub">Set tamamlarken veya atlarken ve dinlenme bittiğinde.</string>
     <string name="settings_reduced_motion">Hareketi azalt</string>
     <string name="settings_reduced_motion_sub">Daha kısa ve sade animasyonlar.</string>
 

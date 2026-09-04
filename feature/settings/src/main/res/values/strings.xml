@@ -45,7 +45,7 @@
     <string name="settings_keep_awake">Keep the screen on</string>
     <string name="settings_keep_awake_sub">While a workout is running.</string>
     <string name="settings_haptics">Vibration</string>
-    <string name="settings_haptics_sub">On completing and skipping a set.</string>
+    <string name="settings_haptics_sub">On completing or skipping a set, and when rest runs out.</string>
     <string name="settings_reduced_motion">Reduce motion</string>
     <string name="settings_reduced_motion_sub">Shorter, plainer animations.</string>
 

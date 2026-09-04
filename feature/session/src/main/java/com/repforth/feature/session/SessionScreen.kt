@@ -52,6 +52,7 @@ import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.designsystem.theme.formatWeight
+import com.repforth.core.designsystem.theme.rfHaptic
 import com.repforth.core.designsystem.theme.rfPopOnChange
 import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.designsystem.theme.toKilograms
@@ -497,6 +498,10 @@ private fun SessionControls(
     onFinish: () -> Unit,
     onAbandon: () -> Unit,
 ) {
+    // Read here and called from the handlers: a haptic belongs to the tap, and
+    // performing one during composition would fire it again on every
+    // recomposition -- of which this screen has one a second while resting.
+    val confirm = rfHaptic()
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
     val units = LocalUnitSystem.current
@@ -545,7 +550,7 @@ private fun SessionControls(
         when {
             state.isResting -> PrimaryAction(
                 text = stringResource(R.string.session_skip_rest),
-                onClick = onSkipRest,
+                onClick = { confirm(); onSkipRest() },
             )
 
             state.isPaused -> PrimaryAction(
@@ -561,6 +566,12 @@ private fun SessionControls(
             else -> PrimaryAction(
                 text = stringResource(R.string.session_log_set),
                 onClick = {
+                    // §12 asks for a haptic here, and the setting for it
+                    // controlled nothing until now. This is the moment in a
+                    // workout when the eyes are least likely to be on the
+                    // screen -- the set has just finished and the phone is
+                    // being put down.
+                    confirm()
                     // Blank means "as prescribed": the target is what was
                     // planned, and typing it again to confirm it is friction
                     // during the one activity where typing is hardest.
@@ -587,7 +598,7 @@ private fun SessionControls(
             }
             if (state.isActive) {
                 OutlinedButton(
-                    onClick = onSkipSet,
+                    onClick = { confirm(); onSkipSet() },
                     modifier = Modifier.weight(1f).heightIn(min = Target.min),
                 ) {
                     Text(stringResource(R.string.session_skip_set))

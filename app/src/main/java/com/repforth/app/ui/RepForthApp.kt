@@ -18,8 +18,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,6 +37,7 @@ import com.repforth.app.navigation.RepForthNavHost
 import com.repforth.app.navigation.TopLevelDestination
 import com.repforth.app.navigation.navigateToTopLevel
 import com.repforth.core.designsystem.component.RfIcons
+import com.repforth.core.model.UserPreferences
 import com.repforth.feature.session.WorkoutStartViewModel
 
 /**
@@ -47,6 +50,7 @@ import com.repforth.feature.session.WorkoutStartViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RepForthApp(
+    keepScreenOn: Boolean = UserPreferences.Default.keepScreenOn,
     navController: NavHostController = rememberNavController(),
     starter: WorkoutStartViewModel = hiltViewModel(),
 ) {
@@ -65,6 +69,28 @@ fun RepForthApp(
     // already know; the plan's name is the one thing on this screen that says
     // which workout this is.
     val activeWorkoutName by starter.activeWorkoutName.collectAsStateWithLifecycle()
+
+    // §7's "keep the screen on" setting, applied.
+    //
+    // It was written to DataStore, read back, and rendered as a switch that was
+    // on by default -- and nothing anywhere asked for the flag, so the screen
+    // dimmed mid-set exactly as `UserPreferences` says it must not. The setting
+    // shipped meaning nothing.
+    //
+    // Here rather than on the session screen, because the setting says "while a
+    // workout is running" and a workout keeps running while its owner checks an
+    // exercise in another tab. `activeWorkoutName` is the shell's existing
+    // answer to whether one is, already collected for the title above.
+    //
+    // Through the view rather than `window.addFlags`: the flag is then released
+    // with the composition, so there is no state to unwind and no way for the
+    // screen to be held awake by a workout that has ended.
+    val view = LocalView.current
+    val holdScreenAwake = keepScreenOn && activeWorkoutName != null
+    DisposableEffect(view, holdScreenAwake) {
+        view.keepScreenOn = holdScreenAwake
+        onDispose { view.keepScreenOn = false }
+    }
 
     Scaffold(
         // The bottom edge is the app's to defend. enableEdgeToEdge() turns off
