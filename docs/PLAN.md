@@ -181,11 +181,17 @@ Wear modules and the baseline profile producer. Re-derived from
 first, which matters: renaming a test class leaves its old `TEST-*.xml` behind
 and inflates the total.
 
-669 unit tests across 94 classes, plus fourteen instrumentation tests
-watched passing on a Galaxy S23 — six in `:app`, eight in `core:secrets` — and
-five migration tests in `core:database` that have **never been run**, because no
-device has been attached since they were written. Room schema v2 exported and
-committed.
+669 unit tests across 94 classes, plus nineteen instrumentation tests: six in
+`:app` watched passing on a Galaxy S23, and thirteen — eight in `core:secrets`,
+five migration tests in `core:database` — now run on a managed emulator by CI on
+every pull request. Room schema v2 exported and committed.
+
+**This paragraph claimed the migration tests had "never been run", and that was
+wrong.** A `TEST-SM-S911B` result from 31 August was sitting in
+`core/database/build/outputs/` the whole time: they were run once by hand,
+passing, the day before they were committed, and never again. The true problem
+was narrower and worse — nothing *repeatable* ran them, so any later change
+could have broken a migration in silence. Fixed under D.1 below.
 
 Counted from the JUnit XML and de-duplicated across build variants, by the class
 name each `TEST-*.xml` reports. Reproduce it with:
@@ -2290,6 +2296,65 @@ compiles, reads as deliberate, and fails only at the gesture.
 
 ---
 
+## Phase 6, continued — the tests that needed a device
+
+### D.1 — The migration tests now run without a phone (#21)
+
+Room migrations are the one failure mode that destroys a user's data rather than
+annoying them, and §7 forbids destructive migration outright. Five tests prove
+the v1→v2 migration; they had run exactly once, by hand, and nothing repeatable
+ran them again.
+
+**A library module has no managed device unless one is declared**, so the only
+target was a plugged-in phone — which CI does not have. `core:database` and
+`core:secrets` each set `testInstrumentationRunner` in their own build files,
+which is toolchain configuration in the one place this project says it must
+never live (this was item 4 in Next, and is now closed).
+
+`repforth.android.instrumentation` supplies both. The emulator itself moved to
+`ManagedDevice.kt`, shared with the baseline profile plugin, which had been
+declaring an identical device privately — two descriptions of one device, which
+could have drifted into a profile recorded on one API level and migrations
+proven on another.
+
+```
+./gradlew :core:database:pixel6Api34DebugAndroidTest
+```
+
+**Two beliefs behind the old situation were wrong, and both were checked rather
+than reasoned about:**
+
+- *"They have never been run."* They had, on 31 August, on the Galaxy S23. The
+  result file was in the build directory the whole time.
+- *"Running them risks the maintainer's plans and history."* It does not. A
+  library module's `androidTest` is self-instrumenting: `aapt2 dump badging`
+  reports the test APK as `com.repforth.core.database.test`, which targets
+  itself and never touches `com.repforth`. `AGENTS.md`'s warning about
+  `connectedAndroidTest` wiping data is about **`:app`**, where the app under
+  test really is the app, and it had been over-generalised to every module.
+
+The real cost was narrower than either belief and worse than both: nothing ran
+them on a change.
+
+**Watched failing, twice, because a test that has never been red is not known to
+be a guard:**
+
+| Break | Result |
+|---|---|
+| `ON DELETE CASCADE` dropped from the `week_id` foreign key | all five fail — `runMigrationsAndValidate` compares against `2.json` column by column |
+| Migration made destructive (`DELETE FROM workout_template`), schema left valid | exactly the two tests that seed v1 rows fail; the other three stay green |
+
+The second is the one worth having: it shows the suite distinguishes "the schema
+is right" from "the user's data survived", which is precisely the distinction §7
+draws.
+
+CI runs both suites in a `device-tests` job beside `build` rather than inside
+it — it boots an emulator, so it is the slowest thing in the workflow and shares
+nothing with lint or the goldens. **It is not yet a required check**; branch
+protection is a repository setting and has to be added by the maintainer.
+
+---
+
 ## Next
 
 In the order they are worth doing, and why.
@@ -2315,12 +2380,9 @@ In the order they are worth doing, and why.
    at all — its kdoc says "empty until the catalog is joined" and that join has
    not happened. `daysThisWeek` and `totalSets` were the other two and are
    drawn as of 3.5.
-4. **Two modules configure their own instrumentation runner.**
-   `core/database` and `core/secrets` set `testInstrumentationRunner` in their
-   build files; `AndroidApplicationConventionPlugin` sets it for application
-   modules, and toolchain configuration belongs in build-logic. Found by an
-   audit during 3.7, verified, and not fixed there because it had nothing to do
-   with baseline profiles.
+4. ~~**Two modules configure their own instrumentation runner.**~~ Done in
+   D.1: `repforth.android.instrumentation` supplies the runner and the emulator
+   to both.
 5. **The screenshot tolerance has a thin lower margin.** 0.1% against 0.069%
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
