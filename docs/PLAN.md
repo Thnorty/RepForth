@@ -2571,6 +2571,95 @@ days on a renamed string, and nothing said so because nothing ran them.
 
 ---
 
+### D.6 — The tests stopped keeping their own copy of the app's words (#28)
+
+The instrumentation tests looked for `onNodeWithText("Save workout")`. That is a
+second copy of a user-visible string, and the repo's one rule says a second copy
+is a bug — this one behaved like one. When the experience chip was renamed from
+"1 to 3 years" to "Intermediate", every test in `:app` failed on a walk that
+still tapped the old words, and nothing in the build could have said so: to the
+compiler a string literal in a test is just a string.
+
+The obvious answer was a guard test — read the literals out of `androidTest`,
+read every `strings.xml`, assert each literal exists. It was the wrong answer,
+and worth writing down why. A guard needs an allowlist ("barbell bench press" is
+a dataset name, not a resource), it cannot see a literal that reaches a finder
+through a variable, and it only ever checks that the words exist *somewhere* —
+not that they are the words that screen draws.
+
+`AppText` reads them through `R` instead, which is strictly stronger and smaller:
+
+- Delete or rename the resource and the tests stop compiling.
+- Reword it and the tests follow, because "the save button" is what they meant.
+  Its wording is the screen's business, and asserting on it here only ever
+  produced false failures.
+- A non-English device now passes rather than failing loudly, which the old note
+  argued was the failure worth having. Both languages are first-class.
+
+**The blocker recorded in `AppRobot` was real, and the fix was three lines up
+`app/build.gradle.kts`.** The note said resolving a feature module's `R` from
+`androidTest` "does not compile ... since a module's `implementation`
+dependencies reach the test at runtime but not at compile time" — true, and the
+same file already re-declared `:core:model` and `:feature:session` as
+`androidTestImplementation` for exactly that reason. Four more were added.
+
+Two things came out of the run rather than the edit. `AppLaunchTest` had its own
+copy of `awaitFirstScreen`'s wait condition, now one. And the keyboard test
+failed again with the window unfocused for the whole wait — `awaitWindowFocus`
+used to fall through silently, so the run spent another twenty-four seconds
+tapping a field that could not raise a keyboard and then blamed the keyboard.
+That is the headline that sent the first two investigations of this failure in
+the wrong direction, so it now fails at the precondition and prints what the
+window manager says holds focus.
+
+**Which found the cause on the next run, three explanations in.**
+
+```
+mCurrentFocus=Window{22cf7d u0 Application Not Responding: com.android.systemui}
+mFocusedApp=ActivityRecord{7a09ba7 u0 com.repforth/.app.MainActivity t16}
+```
+
+A SystemUI ANR dialog, sitting over a perfectly healthy activity. The app was
+the focused *app* the whole time, which is exactly why `dumpsys input_method`
+reported a healthy binding for weeks — it names its current client, and cannot
+see that a dialog owns the focus. It also explains the two things neither wrong
+explanation could: waiting longer never helped, because the dialog does not
+leave, and the failure rate tracked how busy the machine was rather than
+anything in the app.
+
+`RepForthTestRunner` now runs `settings put global hide_error_dialogs 1` in
+`onStart`. That suppresses the dialog, not a defect — an ANR in
+`com.android.systemui` is the emulator's health, and if this app ever ANRs the
+test driving it still fails. The lesson worth keeping is smaller and more
+general: **ask the component that owns the answer.** Window focus belongs to the
+window manager, and one line of `dumpsys window` ended a question that two
+rounds of `dumpsys input_method` could not.
+
+The picker step gained a precondition for the same reason. It types the catalog
+query into "the one text field on screen", so a picker that has not opened yet
+takes the query into the workout's name field, and fifteen seconds later the
+test reports that the catalog has no bench press — a lie about the catalog. It
+now waits for the picker's own search field first.
+
+That precondition passed on CI, which is what made the next failure readable:
+the catalog search underneath it timed out at fifteen seconds on the runner and
+had never done so locally. This is where the packaged catalog is opened and
+searched for the first time, on a device with a cold page cache — the same
+reason `FIRST_SCREEN_TIMEOUT_MS` is longer than everything around it. It now has
+thirty seconds and a message that separates the two cases a bare timeout cannot:
+the picker showing its empty state means the search ran and disagrees about the
+catalog, and no empty state means it had not finished.
+
+**Two failures along the way were the machine, not the suite.** With about
+1.5GB free — a 3GB Gradle daemon and a 2.7GB emulator on a 16GB box — the suite
+ran at half speed and failed twice on two unrelated tests, then went green
+twice in a row and green again per-class three times with room to work. Worth
+checking free memory before believing an emulator failure, and worth knowing
+the managed device runs as `qemu-system-x86_64-headless`: looking for
+`qemu-system-x86_64` reports no emulator while one is using 2.7GB.
+
+---
+
 ## Next
 
 In the order they are worth doing, and why.

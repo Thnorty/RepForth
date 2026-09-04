@@ -100,10 +100,10 @@ class StartConflictTest {
     fun startingADifferentPlanAsksBeforeLeavingTheList() {
         givenRunning(RUNNING, alsoSaved = REQUESTED)
 
-        compose.openTab("Plans")
+        compose.openTab(AppText.plans)
         compose.startPlan(REQUESTED)
 
-        compose.onNodeWithText(CONFLICT_TITLE).assertIsDisplayed()
+        compose.onNodeWithText(AppText.conflictTitle).assertIsDisplayed()
 
         // Still on Plans: the workout screen is not underneath the dialog.
         // Counted as "some", not "two" -- the database outlives this class and
@@ -111,7 +111,7 @@ class StartConflictTest {
         // fail for a reason that has nothing to do with this behaviour.
         assertTrue(
             "The app must not have navigated into a workout",
-            compose.onAllNodesWithText(START).fetchSemanticsNodes().isNotEmpty(),
+            compose.onAllNodesWithText(AppText.startPlan).fetchSemanticsNodes().isNotEmpty(),
         )
     }
 
@@ -126,9 +126,9 @@ class StartConflictTest {
         givenRunning(RUNNING, alsoSaved = REQUESTED)
         val before = controller.state.value?.sessionId
 
-        compose.openTab("Plans")
+        compose.openTab(AppText.plans)
         compose.startPlan(REQUESTED)
-        compose.onNodeWithText(CONFLICT_TITLE).assertIsDisplayed()
+        compose.onNodeWithText(AppText.conflictTitle).assertIsDisplayed()
 
         assertEquals(before, controller.state.value?.sessionId)
         assertEquals(RUNNING, controller.state.value?.templateId)
@@ -139,14 +139,14 @@ class StartConflictTest {
     fun startingTheRunningPlanOpensItWithoutAsking() {
         givenRunning(RUNNING, alsoSaved = REQUESTED)
 
-        compose.openTab("Plans")
+        compose.openTab(AppText.plans)
         compose.startPlan(RUNNING)
         compose.waitForIdle()
 
         assertEquals(
             "Tapping the running plan must not raise the question",
             0,
-            compose.onAllNodesWithText(CONFLICT_TITLE).fetchSemanticsNodes().size,
+            compose.onAllNodesWithText(AppText.conflictTitle).fetchSemanticsNodes().size,
         )
     }
 
@@ -183,9 +183,6 @@ class StartConflictTest {
         // be mistaken for one of these.
         const val RUNNING = "Conflict test running plan"
         const val REQUESTED = "Conflict test requested plan"
-
-        const val START = "Start"
-        const val CONFLICT_TITLE = "A workout is already running"
     }
 }
 
@@ -198,7 +195,7 @@ class StartConflictTest {
  * silently.
  */
 internal fun androidx.compose.ui.test.junit4.ComposeTestRule.startPlan(name: String) {
-    onAllNodesWithText("Start")
+    onAllNodesWithText(AppText.startPlan)
         .filterToOne(hasAnyAncestor(hasText(name, substring = true)))
         .performClick()
     waitForIdle()

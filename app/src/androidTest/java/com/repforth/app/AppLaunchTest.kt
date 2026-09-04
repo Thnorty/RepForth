@@ -1,6 +1,5 @@
 package com.repforth.app
 
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -50,10 +49,11 @@ class AppLaunchTest {
      */
     @Test
     fun onboardingIsShownBeforeAProfileExists() {
-        compose.waitUntil(TIMEOUT_MS) {
-            compose.onAllNodes(hasText("training for", substring = true)).fetchSemanticsNodes().isNotEmpty() ||
-                compose.onAllNodes(hasText("Today", substring = true)).fetchSemanticsNodes().isNotEmpty()
-        }
+        // Exactly what `awaitFirstScreen` waits for, which is the point: this
+        // test asserts that the wait terminates on a real first frame, and a
+        // second copy of the condition could drift away from the one every
+        // other test depends on.
+        compose.awaitFirstScreen()
     }
 
     /**
@@ -67,7 +67,7 @@ class AppLaunchTest {
     fun everyTabOpens() {
         compose.completeOnboardingIfShown()
 
-        listOf("Plans", "Exercises", "Progress", "Today").forEach { tab ->
+        listOf(AppText.plans, AppText.exercises, AppText.progress, AppText.today).forEach { tab ->
             compose.onNodeWithText(tab).performClick()
             compose.waitForIdle()
         }
@@ -84,12 +84,8 @@ class AppLaunchTest {
     fun settingsOpens() {
         compose.completeOnboardingIfShown()
 
-        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithContentDescription(AppText.settings).performClick()
         compose.waitForIdle()
-        compose.onNodeWithText("Appearance").assertExists()
-    }
-
-    private companion object {
-        const val TIMEOUT_MS = 10_000L
+        compose.onNodeWithText(AppText.appearance).assertExists()
     }
 }

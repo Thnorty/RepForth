@@ -77,6 +77,14 @@ dependencies {
     androidTestImplementation(project(":core:model"))
     androidTestImplementation(project(":core:user-data"))
     androidTestImplementation(project(":feature:session"))
+    // The same again, for the resources the tests read their vocabulary from.
+    // `AppText` names a string by its `R` id so a rename is a compile error;
+    // that needs each module's `R` class on the compile classpath, and only
+    // `:feature:session` was already here.
+    androidTestImplementation(project(":core:exercise-data"))
+    androidTestImplementation(project(":feature:builder"))
+    androidTestImplementation(project(":feature:onboarding"))
+    androidTestImplementation(project(":feature:settings"))
     // Coach's generation binding is replaced with a fixture on a test device;
     // see TestGenerationModule for why it has to be.
     androidTestImplementation(project(":core:ai"))
