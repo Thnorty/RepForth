@@ -24,19 +24,31 @@ import androidx.compose.ui.res.stringResource
  * after process death: the navigation state is restored with the plan that was
  * tapped, and the running workout is still in the database.
  *
+ * **Back and a tap outside both dismiss it**, which is a third answer rather
+ * than a way of skipping the question: "never mind, I did not mean to tap
+ * that". It was blocked at first on the grounds that both buttons are
+ * consequential — but that reasoning was inherited from when this appeared
+ * *inside* the workout, over a screen showing a workout the user had not
+ * chosen, where there was nowhere safe to be dropped. Raised from the plan list
+ * there is: exactly where they already are. Cancelling starts nothing, ends
+ * nothing and goes nowhere.
+ *
  * @param runningName the workout in progress, or null if it was not started
  *   from a plan and so has no name of its own.
+ * @param onCancel dismissed without answering. Must leave the running workout
+ *   alone — it is the one outcome that changes nothing at all.
  */
 @Composable
 fun WorkoutConflictDialog(
     runningName: String?,
     onKeep: () -> Unit,
     onDiscard: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     AlertDialog(
-        // No dismiss-by-tapping-away: both answers are consequential, and one
-        // of them ends a workout.
-        onDismissRequest = {},
+        // Back and outside-tap both arrive here; `AlertDialog` allows each by
+        // default, so wiring this is the whole of making it dismissable.
+        onDismissRequest = onCancel,
         title = { Text(stringResource(R.string.session_conflict_title)) },
         text = {
             Text(

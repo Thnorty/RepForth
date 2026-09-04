@@ -146,6 +146,32 @@ class WorkoutStartViewModelTest {
         assertTrue(discarded.intent.value is StartIntent.Open)
     }
 
+    /**
+     * The third answer: never mind.
+     *
+     * Back and a tap outside both land here. Unlike the two buttons it goes
+     * nowhere — which is only safe because the question is asked before leaving
+     * the list, so "nowhere" is somewhere the user already was.
+     */
+    @Test
+    fun `dismissing the question goes nowhere and changes nothing`() = runTest(dispatcher) {
+        controller.start(PUSH)
+        val before = controller.state.value
+        val starter = starter()
+        starter.request(PULL)
+        testScheduler.advanceUntilIdle()
+
+        starter.cancel()
+        testScheduler.advanceUntilIdle()
+
+        // No Open intent, so the shell does not navigate.
+        assertNull(starter.intent.value)
+        // And the workout that was running is untouched -- not resumed, not
+        // abandoned, not swapped.
+        assertEquals(before, controller.state.value)
+        assertEquals(PUSH, controller.state.value?.templateId)
+    }
+
     @Test
     fun `the shell clearing the intent stops it firing twice`() = runTest(dispatcher) {
         val starter = starter()

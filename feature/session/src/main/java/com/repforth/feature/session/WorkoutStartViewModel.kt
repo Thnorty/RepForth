@@ -91,6 +91,18 @@ class WorkoutStartViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The question was dismissed without being answered.
+     *
+     * Nothing starts, nothing ends, and nothing navigates — the user stays on
+     * the list they were already looking at. That is only a safe answer because
+     * this is asked before leaving it; the same gesture inside the workout
+     * screen would have had nowhere harmless to land.
+     */
+    fun cancel() {
+        _intent.value = null
+    }
+
     /** Called once the shell has navigated, so the intent cannot fire twice. */
     fun consumed() {
         _intent.value = null
