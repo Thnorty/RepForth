@@ -12,6 +12,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -109,7 +111,14 @@ fun RfValueSlider(
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = ((range.last - range.first) / step) - 1,
             enabled = enabled,
-            modifier = Modifier.heightIn(min = Target.min),
+            modifier = Modifier
+                .heightIn(min = Target.min)
+                // The label is drawn above as a sibling `Text`, which is not
+                // this control's name and is not announced with it -- so
+                // without this a screen reader read out a bare percentage and
+                // left the listener to guess what was half full. Every slider
+                // in the app comes through here, so every one was unnamed.
+                .semantics { contentDescription = label },
         )
     }
 }

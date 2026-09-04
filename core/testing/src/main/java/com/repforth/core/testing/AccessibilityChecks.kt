@@ -85,6 +85,31 @@ fun SemanticsNodeInteractionsProvider.assertScreenIsAccessible(screen: String) {
         }
     }
 
+    // A slider is not clickable, so nothing above looks at one. Compose gives it
+    // `ProgressBarRangeInfo`, which TalkBack reads as a percentage — so an
+    // unnamed slider announces "fifty percent" and leaves the listener to guess
+    // what is half full. The AI provider screen shipped exactly that: the
+    // timeout slider had "60 seconds" drawn above it as a sibling `Text`, which
+    // is not the slider's name and is not announced with it.
+    //
+    // Deliberately not the touch-target rule. Material measures a slider's
+    // handle at 44dp and imposes it from inside the component, where neither
+    // `heightIn`, `height` nor `requiredHeight` on the caller's modifier moves
+    // it — all three were tried. It is also the wrong rule: 48dp is about
+    // hitting a target, and a slider is dragged along a length that here runs
+    // the full width of the screen.
+    val adjustable = onAllNodes(
+        SemanticsMatcher.keyIsDefined(SemanticsActions.SetProgress),
+        useUnmergedTree = false,
+    ).fetchSemanticsNodes(atLeastOneRootRequired = false)
+
+    for (node in adjustable) {
+        if (node.accessibleLabel().isBlank()) {
+            problems += "${node.describe()} can be adjusted but announces nothing, so its " +
+                "value is read out with no name attached. A neighbouring label is not one."
+        }
+    }
+
     if (problems.isNotEmpty()) {
         throw AssertionError(
             buildString {
