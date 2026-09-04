@@ -22,6 +22,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +55,8 @@ import com.repforth.core.model.MediaRef
 internal fun ExercisePicker(
     onPicked: (ExerciseId, String, MediaRef) -> Unit,
     onClose: () -> Unit,
+    /** The last exercise added since this opened, or null. */
+    addedName: String? = null,
     modifier: Modifier = Modifier,
     viewModel: PickerViewModel = hiltViewModel(),
 ) {
@@ -83,6 +88,22 @@ internal fun ExercisePicker(
                     contentDescription = stringResource(R.string.builder_pick_close),
                 )
             }
+        }
+
+        // The picker no longer closes on an add, so this is what says the tap
+        // worked. It names the exercise rather than counting, because "added"
+        // alone reads as a status and the question being answered is "did the
+        // one I meant go in?".
+        addedName?.let { name ->
+            Text(
+                text = stringResource(R.string.builder_pick_added, name),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Layout.gutterPhone)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
         }
 
         if (state.results.isEmpty() && !state.loading) {

@@ -128,6 +128,7 @@ fun BuilderRoute(
                     viewModel.onExerciseAdded(id, name, thumb, pickingDay)
                 },
                 onClose = viewModel::onPickerClose,
+                addedName = state.pickerAdded,
                 modifier = modifier,
             )
         }

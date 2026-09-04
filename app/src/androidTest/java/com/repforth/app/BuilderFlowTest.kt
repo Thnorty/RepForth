@@ -169,6 +169,12 @@ class BuilderFlowTest {
         compose.onNodeWithText(AppText.addToWorkout).performClick()
         compose.waitForIdle()
 
+        // The picker stays open now, so that a second exercise does not cost a
+        // second round trip through it. Closing is the step a person takes when
+        // they are done adding, and the builder is behind it.
+        compose.onNodeWithContentDescription(AppText.pickClose).performClick()
+        compose.waitForIdle()
+
         compose.onNodeWithText(AppText.saveWorkout).performClick()
         compose.waitForIdle()
 
@@ -356,7 +362,8 @@ class BuilderFlowTest {
         throw AssertionError(
             "The activity's window never took focus in ${WINDOW_FOCUS_TIMEOUT_MS}ms, " +
                 "so nothing could have opened a keyboard. Window manager says: " +
-                "[${focusedWindow()}]",
+                "[${focusedWindow()}], hide_error_dialogs: " +
+                "[${shell("settings get global hide_error_dialogs")}]",
         )
     }
 

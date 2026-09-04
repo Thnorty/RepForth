@@ -52,7 +52,8 @@
     <string name="prs">Bu ayın rekorları</string>
     <string name="streak">Haftalık seri</string>
 
-    <string name="nav_builder">Antrenman</string>
+    <string name="nav_builder_new">Yeni antrenman</string>
+    <string name="nav_builder_edit">Antrenmanı düzenle</string>
     <string name="nav_session">Antrenman</string>
     <string name="nav_ai_settings">Yapay zekâ sağlayıcısı</string>
     <string name="nav_settings">Ayarlar</string>

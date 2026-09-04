@@ -69,6 +69,9 @@ internal object AppText {
 
     /** Shown once the picker has searched and found nothing. */
     val pickEmpty: String get() = text(BuilderR.string.builder_pick_empty)
+
+    /** The picker's own close button, which is now the way back to the builder. */
+    val pickClose: String get() = text(BuilderR.string.builder_pick_close)
     val addToWorkout: String get() = text(BuilderR.string.builder_add_to_workout)
     val saveWorkout: String get() = text(BuilderR.string.builder_save)
     val sets: String get() = text(BuilderR.string.builder_sets)

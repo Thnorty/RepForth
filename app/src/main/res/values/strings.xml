@@ -53,7 +53,8 @@
     <string name="prs">PRs this month</string>
     <string name="streak">Week streak</string>
 
-    <string name="nav_builder">Workout</string>
+    <string name="nav_builder_new">New workout</string>
+    <string name="nav_builder_edit">Edit workout</string>
     <string name="nav_session">Workout</string>
     <string name="nav_ai_settings">AI provider</string>
     <string name="nav_settings">Settings</string>
