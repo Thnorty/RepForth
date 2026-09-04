@@ -77,6 +77,9 @@ dependencies {
     androidTestImplementation(project(":core:model"))
     androidTestImplementation(project(":core:user-data"))
     androidTestImplementation(project(":feature:session"))
+    // Coach's generation binding is replaced with a fixture on a test device;
+    // see TestGenerationModule for why it has to be.
+    androidTestImplementation(project(":core:ai"))
     kspAndroidTest(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(project(":core:testing"))

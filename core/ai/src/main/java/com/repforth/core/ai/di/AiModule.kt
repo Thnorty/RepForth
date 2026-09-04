@@ -1,8 +1,6 @@
 package com.repforth.core.ai.di
 
 import com.repforth.core.ai.AiProvider
-import com.repforth.core.ai.AiWorkoutGenerationService
-import com.repforth.core.ai.AiWorkoutGenerator
 import com.repforth.core.ai.GeminiProvider
 import com.repforth.core.ai.OpenAiCompatibleProvider
 import com.repforth.core.ai.http.ProviderHttp
@@ -72,11 +70,6 @@ internal object AiModule {
         ProviderId.GEMINI to GeminiProvider(http, json),
         ProviderId.OPENAI_COMPATIBLE to OpenAiCompatibleProvider(http, json),
     )
-
-    @Provides
-    fun provideWorkoutGenerationService(
-        generator: AiWorkoutGenerator,
-    ): AiWorkoutGenerationService = generator
 
     private const val CONNECT_TIMEOUT_SECONDS = 15L
     private const val READ_TIMEOUT_SECONDS = 60L
