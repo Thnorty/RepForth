@@ -170,7 +170,10 @@ class SessionViewModel @Inject constructor(
         viewModelScope.launch {
             val restored = controller.restore()
             if (restored != null) {
-                adopt(restored)
+                // ...and begun, if it never was. Reaching the screen without a
+                // plan id -- "resume what is running" -- skips `start` entirely,
+                // so this is the other door onto a session left in `PREPARING`.
+                adoptAndBegin(restored)
             } else {
                 _uiState.value = _uiState.value.copy(loading = false)
             }
@@ -205,14 +208,11 @@ class SessionViewModel @Inject constructor(
 
     private suspend fun begin(outcome: StartOutcome) {
         when (outcome) {
-            is StartOutcome.Started -> {
-                adopt(outcome.snapshot)
-                controller.dispatch(SessionCommand.Begin(controller.newCommandId()))
-            }
+            is StartOutcome.Started -> adoptAndBegin(outcome.snapshot)
 
-            // The same plan, already going. Nothing to begin and nothing to ask:
-            // this is what the user meant by tapping it.
-            is StartOutcome.Resumed -> adopt(outcome.snapshot)
+            // The same plan, already going -- which is what the user meant by
+            // tapping it. It still has to be *begun* if nobody has: see below.
+            is StartOutcome.Resumed -> adoptAndBegin(outcome.snapshot)
 
             is StartOutcome.Blocked ->
                 _uiState.value = _uiState.value.copy(
@@ -223,6 +223,35 @@ class SessionViewModel @Inject constructor(
 
             StartOutcome.NoSuchPlan ->
                 _uiState.value = _uiState.value.copy(loading = false)
+        }
+    }
+
+    /**
+     * Adopts a session, and begins it if nobody has.
+     *
+     * `Resumed` used to adopt and stop there, on the reasoning that a session
+     * already going has nothing to begin. That is true of every session anyone
+     * had watched -- and false for one created outside this screen.
+     *
+     * `WorkoutStartViewModel` answers the "a different workout is running"
+     * question by calling `abandonAndStart`, which creates the new session in
+     * `PREPARING`; `Begin` has only ever been sent from here. The screen then
+     * opened on a session with the id it asked for, was told `Resumed`, and left
+     * it in `PREPARING` forever. The engine rejects `CompleteSet` there with "no
+     * set in progress" and `Pause` with "nothing to pause", and a rejected
+     * command returns the state unchanged -- so the workout drew perfectly and
+     * every button was dead. Reported from a phone, and invisible from the
+     * screen's side because nothing about the screen was wrong.
+     *
+     * Asking the phase rather than the outcome also covers the other way to get
+     * there: the app dying between `start` persisting `PREPARING` and this
+     * sending `Begin` leaves the same stuck session, and this now begins it on
+     * the next open.
+     */
+    private suspend fun adoptAndBegin(snapshot: SessionSnapshot) {
+        adopt(snapshot)
+        if (snapshot.phase == SessionPhase.PREPARING) {
+            controller.dispatch(SessionCommand.Begin(controller.newCommandId()))
         }
     }
 
