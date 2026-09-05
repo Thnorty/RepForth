@@ -16,6 +16,7 @@ import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
 import kotlinx.coroutines.Dispatchers
@@ -106,6 +107,104 @@ class SessionViewModelTest {
 
         assertEquals(sessionId, state.snapshot?.sessionId)
         assertEquals(writes, sessions.persisted.size)
+    }
+
+
+    /**
+     * The bug: discard a running workout, start another, and nothing works.
+     *
+     * Reported from a phone. A workout was left running, the app was closed, a
+     * different plan was tapped, and the conflict was answered with "discard".
+     * The new workout drew correctly — its name, its first exercise, "Set 1 of
+     * 2", the rep count — and "Log set" and "Pause" did nothing at all.
+     *
+     * Nothing was broken about the buttons. `WorkoutStartViewModel` answers the
+     * conflict by calling `abandonAndStart`, which creates the session in
+     * `PREPARING`, and only the workout screen has ever sent `Begin`. The screen
+     * then opened on a session with the id it was asked for, so `start` answered
+     * `Resumed` — "already going, nothing to begin" — and the session sat in
+     * `PREPARING` forever. `CompleteSet` is rejected there with "no set in
+     * progress" and `Pause` with "nothing to pause", and a rejected command
+     * returns the current state, so the screen redrew identically every time.
+     *
+     * The same trap catches a process death in the window between `start`
+     * persisting `PREPARING` and the screen sending `Begin`.
+     */
+    @Test
+    fun `a workout started by discarding another can be logged`() = runTest(dispatcher) {
+        viewModel.start(TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+        assertEquals(SessionPhase.ACTIVE, state.phase)
+
+        // The shell's gate, which is where the conflict is answered.
+        val starter = WorkoutStartViewModel(controller, FakeTemplates())
+        starter.request(SHORT_TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+        starter.discardAndStart()
+        testScheduler.advanceUntilIdle()
+
+        // The screen opens on the session the shell already created.
+        viewModel.start(SHORT_TEMPLATE_ID)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            "A session the shell started is only PREPARING, and PREPARING " +
+                "rejects every control the screen offers",
+            SessionPhase.ACTIVE,
+            state.phase,
+        )
+
+        viewModel.onCompleteSet(reps = 8, weightKg = null, durationMs = null)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            "Log set must record a set",
+            1,
+            state.snapshot!!.exercises.first().sets.size,
+        )
+    }
+
+
+    /**
+     * The same hole, reached through the other door.
+     *
+     * A session persisted as `PREPARING` — the app died between `start` writing
+     * it and the screen sending `Begin` — and then resumed rather than started.
+     * Resuming opens the screen with no plan id, so `start` is never called and
+     * the outcome path above is never taken. Without this the workout comes back
+     * exactly as unusable.
+     */
+    @Test
+    fun `a session restored before it was ever begun is begun`() = runTest(dispatcher) {
+        val store = RecordingSessionRepository()
+        store.persisted += SessionSnapshot(
+            sessionId = "s-preparing",
+            templateId = TEMPLATE_ID,
+            phase = SessionPhase.PREPARING,
+            exercises = listOf(
+                SessionExercise(
+                    id = "s-preparing:row-0",
+                    exerciseId = ExerciseId("ex-0"),
+                    position = 0,
+                    target = ExerciseTarget.Reps(sets = 3, reps = 10),
+                    restMs = REST_MS,
+                ),
+            ),
+            startedAt = 0L,
+        )
+
+        // Its own controller: the shared one has already restored, and that
+        // happens once per process by design.
+        val resumed = SessionViewModel(
+            SessionController(store, FakeTemplates(), time),
+            FakeExercises(),
+            FakeTemplates(),
+            preferences,
+            downloader,
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(SessionPhase.ACTIVE, resumed.uiState.value.phase)
     }
 
     @Test
@@ -410,8 +509,8 @@ private class FakeTemplates : TemplateRepository {
     override fun observeAll(): Flow<List<WorkoutTemplate>> = emptyFlow()
 
     override suspend fun find(id: String): WorkoutTemplate? = when (id) {
-        TEMPLATE_ID -> template(sets = 3, exercises = 2)
-        SHORT_TEMPLATE_ID -> template(sets = 1, exercises = 1)
+        TEMPLATE_ID -> template(TEMPLATE_ID, sets = 3, exercises = 2)
+        SHORT_TEMPLATE_ID -> template(SHORT_TEMPLATE_ID, sets = 1, exercises = 1)
         else -> null
     }
 
@@ -421,8 +520,11 @@ private class FakeTemplates : TemplateRepository {
 
     override suspend fun deleteAll() = Unit
 
-    private fun template(sets: Int, exercises: Int) = WorkoutTemplate(
-        id = TEMPLATE_ID,
+    // The id is the one asked for. It used to be TEMPLATE_ID whichever plan was
+    // requested, so every session claimed to be the same plan and "a different
+    // workout is running" could not be written as a test at all.
+    private fun template(id: String, sets: Int, exercises: Int) = WorkoutTemplate(
+        id = id,
         name = "Push day",
         source = PlanSource.MANUAL,
         exercises = (0 until exercises).map { index ->

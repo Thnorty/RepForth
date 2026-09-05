@@ -2760,6 +2760,43 @@ twice and reported nothing.
 
 ---
 
+### A.5 — Discarding a workout to start another left the new one unusable (#36)
+
+Reported from a phone. A workout was left running, the app was closed, a
+different plan was tapped, and the conflict was answered with "discard". The new
+workout drew perfectly — its name, its first exercise, "Set 1 of 2", the rep
+count — and **"Log set" and "Pause" did nothing at all.**
+
+Nothing was wrong with the buttons, and nothing was wrong with the screen.
+`WorkoutStartViewModel` answers that conflict with `abandonAndStart`, which
+creates the session in `PREPARING` — and `Begin` has only ever been sent from
+the workout screen. The screen then opened on a session carrying the id it had
+asked for, so `start` answered `Resumed`, whose whole comment was "nothing to
+begin". The session sat in `PREPARING` for good. There the engine rejects
+`CompleteSet` with "no set in progress" and `Pause` with "nothing to pause", and
+a rejected command returns the state unchanged, so every tap redrew the same
+frame.
+
+**Two view models can start a workout and only one of them could finish
+starting it.** The gate was moved above the navigation graph deliberately, so
+that the question is asked before leaving the list — that part is right. What
+did not move with it was the second half of starting.
+
+The fix asks the phase rather than the outcome: adopt a snapshot, and if it is
+still `PREPARING`, begin it. That also closes a second door onto the same stuck
+state — the app dying between `start` persisting `PREPARING` and the screen
+sending `Begin` — which is reached by resuming rather than starting, where
+`start` is never called at all. Both are covered by a test, and each was watched
+failing on its own line.
+
+The class is worth naming, because it is the third time: **a seam that is
+correct on the path someone walked, and unfinished on the one they did not.**
+`SessionStartTest` exercised `SessionController.start` while the screen never
+called it; `onSetActive` was threaded to a composable that never invoked it; and
+here `Begin` was sent from the one caller that had always been the only caller.
+
+---
+
 ## Next
 
 In the order they are worth doing, and why.
