@@ -16,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -125,10 +127,12 @@ class BuilderFlowTest {
         // contents too, so searching for the exact name makes the search box
         // itself a match — and the click lands in the box rather than on the
         // result, which looks identical until the next assertion fails.
-        compose.onNode(hasSetTextAction()).performTextInput(CATALOG_QUERY)
+        typeCatalogQuery()
+
         val result = hasText(CATALOG_EXERCISE) and !hasSetTextAction()
-        // Waited for in two steps, because one timeout cannot tell a slow device
-        // from a wrong answer.
+        // Waited for in three steps, because one timeout cannot tell a slow
+        // device from a wrong answer, and could not tell either from a query
+        // that was never on screen.
         //
         // First: has the search finished at all? This is where the packaged
         // catalog is opened and queried for the first time, and on a cold CI
@@ -139,6 +143,7 @@ class BuilderFlowTest {
         // finished at thirty-one seconds is a false failure that costs an hour
         // of looking at the catalog, and a query that never finishes fails
         // either way.
+        val searchStarted = SystemClock.uptimeMillis()
         try {
             compose.waitUntil(CATALOG_TIMEOUT_MS) {
                 compose.onAllNodes(result).fetchSemanticsNodes().isNotEmpty() ||
@@ -148,8 +153,9 @@ class BuilderFlowTest {
         } catch (timeout: ComposeTimeoutException) {
             throw AssertionError(
                 "The picker neither found anything nor said it had found nothing, " +
-                    "${CATALOG_TIMEOUT_MS}ms after typing \"$CATALOG_QUERY\". The search " +
-                    "had not finished, so this is the device rather than the catalog.",
+                    "${SystemClock.uptimeMillis() - searchStarted}ms after the field " +
+                    "accepted [${searchFieldText()}]. The query is on screen, so this is " +
+                    "the search itself -- the device, not the catalog.",
                 timeout,
             )
         }
@@ -260,6 +266,58 @@ class BuilderFlowTest {
      * `ComposeTimeoutException` they were indistinguishable, and a flake in the
      * first half was read for two runs as the layout never settling.
      */
+    /**
+     * Types the catalog query, and makes sure it arrived.
+     *
+     * **This is what the flake on CI was.** `performTextInput` reports success
+     * whether or not the field took the text, and a field still holding "" is
+     * not an error -- it searches for everything. Everything is 1,324 rows, so
+     * there are results, so no empty state is drawn, and the one row being
+     * looked for is not among the handful a `LazyColumn` composes. The wait
+     * below then spent its whole budget and reported that the search had not
+     * finished. That was true of the search it was watching and pointed at the
+     * wrong thing entirely: the search had run, on a query nobody typed.
+     *
+     * Retried rather than only asserted, because the cause is upstream of this
+     * screen. A run that loses the text is a run where the app's window did not
+     * have focus, and on this emulator focus is taken by a SystemUI ANR dialog
+     * often enough to have cost the keyboard test three explanations -- see
+     * `awaitWindowFocus`. Waiting for focus first and typing again is free when
+     * it works the first time, which is almost always.
+     */
+    private fun typeCatalogQuery() {
+        val started = SystemClock.uptimeMillis()
+        compose.onNode(hasSetTextAction()).performTextInput(CATALOG_QUERY)
+        try {
+            compose.waitUntil(CATALOG_TIMEOUT_MS) {
+                compose.onAllNodes(hasSetTextAction() and hasText(CATALOG_QUERY, substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (timeout: ComposeTimeoutException) {
+            throw AssertionError(
+                "The picker's field never showed \"$CATALOG_QUERY\" -- it holds " +
+                    "[${searchFieldText()}] ${SystemClock.uptimeMillis() - started}ms after " +
+                    "typing. The field is driven by the view model's state, so this is the " +
+                    "picker never emitting rather than a keystroke going astray. Window " +
+                    "focus: [${hasWindowFocus()}], held by [${focusedWindow()}].",
+                timeout,
+            )
+        }
+    }
+
+    /**
+     * Whatever the one text field on screen currently holds.
+     *
+     * Read for failure messages only. `EditableText` rather than `Text`: a text
+     * field's own contents live there, and its label lives in the other, so
+     * reading the wrong one reports the placeholder as the value.
+     */
+    private fun searchFieldText(): String =
+        compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
+            .firstOrNull()
+            ?.config?.getOrNull(SemanticsProperties.EditableText)?.text
+            ?: "no text field on screen"
+
     private fun awaitSettledSaveButton(): SemanticsNode {
         awaitKeyboard()
         compose.waitForIdle()

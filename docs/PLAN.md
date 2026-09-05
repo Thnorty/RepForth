@@ -2797,6 +2797,45 @@ here `Begin` was sent from the one caller that had always been the only caller.
 
 ---
 
+### A.6 — Three explanations for one flaky wait, and what it actually is (#37)
+
+`BuilderFlowTest`'s catalog search failed on CI three times — at fifteen
+seconds, then thirty, then sixty — each time reporting that the search had not
+finished, and each time passing on a re-run. Two of those budgets were raised on
+the reading that a cold runner is slow. This round produced two more
+explanations before anything was understood, and both were wrong:
+
+- **The cold first query.** Disproved by reading it: the SQL is a `LIKE` over
+  1,324 rows with an `ORDER BY`, which is milliseconds, and the database has
+  already been opened by onboarding writing a profile.
+- **A keystroke lost to an unfocused window** — the cause of the keyboard flake,
+  and a tempting fit. Disproved by measuring: when the typing appears to fail,
+  `dumpsys window` reports focus held by `com.repforth/.MainActivity`.
+
+**The field is controlled by the view model.** `PickerUiState` comes from a
+`combine` of the query, the results, the selection and the preferences, and
+`combine` emits nothing until every source has. The results source is the
+catalog query. So the search box shows the typed text only *after* the catalog
+has answered once — and an empty field is not evidence that typing failed, it is
+the same "has not emitted yet" in a different costume.
+
+A retry was written on the strength of that misreading: type, look, clear, type
+again. It failed three runs out of three, because clearing threw away input that
+had landed and was simply not on screen yet. Deleted.
+
+What the test does now is wait in three steps, each timed: for the field to show
+the query, for the search to answer at all, and then for the answer to be the
+right one. That does not prove a cure — **the reason the first emission is
+sometimes slower than sixty seconds on CI is still unexplained** — but a
+recurrence now says which of the three it was and how long it took, instead of
+accusing the catalog.
+
+The agreement worth keeping is smaller than the investigation: **when a test
+reads state the app owns, it is asking the app whether it is ready, not whether
+the test's own action worked.**
+
+---
+
 ## Next
 
 In the order they are worth doing, and why.
