@@ -2843,6 +2843,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | One contract, weeks always; a single workout is a week of one | Two contracts would drift within a phase, and Coach still generates single workouts | `WEEKLY_PLANS.md` §4.1 |
 | Deleting a week deletes its workouts | An orphan named "Day 3 — Pull" is litter; sessions performed from it still survive | `TemplateEntity.kt`, `WEEKLY_PLANS.md` |
 | Days are ordinal; weekdays are optional | The profile knows how many days, not which; inventing them is a guess presented as a plan | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
+| No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 
 Still open, and fine to leave open (§21): final application ID, accent colour,
