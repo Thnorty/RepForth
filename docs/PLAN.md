@@ -3196,6 +3196,47 @@ they have *already* drifted — 21, 21, 6 and 11 lines — so reconciling four
 different shapes is real work rather than a rename, and it does not belong
 riding on a feature change. Recorded below as its own item.
 
+### 2026-09-07 — the keyboard test's flake is not about memory
+
+Found while getting F5 through CI, and worth writing down because it contradicts
+what is currently recorded.
+
+`BuilderFlowTest` failed three times across CI and this machine, on **three
+different tests** in the class. The message names the cause precisely, and it is
+the one already documented — a SystemUI ANR dialog holding window focus:
+
+```
+mCurrentFocus=Window{... Application Not Responding: com.android.systemui}
+mFocusedApp=ActivityRecord{... com.repforth/.app.MainActivity}
+hide_error_dialogs: [1]
+```
+
+The flag is set and verified by the runner, and does not cover a dialog raised
+for a system process. That much is known.
+
+**What is new is that free memory does not explain it.** The note says the
+failure appears at ~2GB free and not at ~4GB. This machine had **8.2GB free**,
+no stray emulator and no other Gradle daemon, and it still failed — twice.
+
+What did predict it, in five runs, is **how many tests are in the run**:
+
+| Run | Scope | Result |
+|---|---|---|
+| `BuilderFlowTest` only (3 tests) | isolated | passed |
+| `BuilderFlowTest` only (3 tests) | isolated, `--rerun-tasks` | passed |
+| whole `:app` suite (9 tests) | full | **failed** |
+| whole `:app` suite (9 tests) | full, on **`master`** | **failed** |
+| whole `:app` suite (9 tests) | full, on the branch | **failed** |
+
+**It reproduces on `master`.** That is the load-bearing fact: it is not caused by
+any change in flight, and a red device job on a branch is not evidence about that
+branch until this has been ruled out — which takes one run on `master` and should
+be the first thing done, not the last.
+
+So the better model is cumulative emulator load over a run rather than free RAM
+at the start of one. Nothing here fixes it; the evidence is recorded so the next
+attempt does not start from the memory theory again.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
