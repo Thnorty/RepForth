@@ -126,4 +126,11 @@
         <item quantity="other">%1$d dakika</item>
     </plurals>
     <string name="coach_save_defaults">Varsayılan yap</string>
+    <string name="coach_constraints">Planın şunlardan kaçınacak</string>
+    <string name="coach_constraints_muscles">Kaslar: %1$s</string>
+    <string name="coach_constraints_movements">Hareketler: %1$s</string>
+    <plurals name="coach_constraints_exercises">
+        <item quantity="one">%1$d elenen egzersiz</item>
+        <item quantity="other">%1$d elenen egzersiz</item>
+    </plurals>
 </resources>

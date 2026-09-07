@@ -29,6 +29,16 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import com.repforth.core.exercisedata.CatalogFilter
+import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.model.BodyPart
+import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExerciseCandidate
+import com.repforth.core.model.ExerciseId
+import com.repforth.core.model.ExerciseSummary
+import com.repforth.core.model.ExclusionKind
+import com.repforth.core.model.MovementExclusion
+import com.repforth.core.model.Muscle
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -53,6 +63,7 @@ class SettingsViewModelTest {
     private lateinit var profileRepository: FakeProfileRepository
     private lateinit var transfer: RecordingTransfer
     private lateinit var mediaCache: MediaCacheManager
+    private lateinit var exercises: FakeExercises
     private lateinit var cacheDir: File
     private lateinit var viewModel: SettingsViewModel
 
@@ -65,7 +76,10 @@ class SettingsViewModelTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "repforth_test_media_${System.currentTimeMillis()}")
         cacheDir.mkdirs()
         mediaCache = MediaCacheManager(cacheDir, dispatcher)
-        viewModel = SettingsViewModel(preferences, profileRepository, transfer, NoContentResolver(), mediaCache)
+        exercises = FakeExercises()
+        viewModel = SettingsViewModel(
+            preferences, profileRepository, transfer, NoContentResolver(), mediaCache, exercises,
+        )
     }
 
     @After
@@ -316,6 +330,172 @@ class SettingsViewModelTest {
         assertEquals(false, state().preferences.mediaWifiOnly)
     }
 
+    // ---- Editable exclusions (§3, §8) ----
+
+    /**
+     * The three kinds share one field, so each editor has to leave the others.
+     *
+     * This is the whole hazard. `UserProfile.exclusions` is a single set and
+     * `MovementExclusion` carries its own kind, so an editor that wrote only
+     * what it knows about would delete every excluded exercise the moment a
+     * muscle was ticked — and there are now three screens writing this field.
+     */
+    @Test
+    fun `editing muscles leaves excluded exercises and movements alone`() = runTest(dispatcher) {
+        activate()
+        profileRepository.save(
+            profileRepository.getProfile()!!.copy(
+                exclusions = setOf(
+                    MovementExclusion(ExclusionKind.MUSCLE, Muscle.PECTORALS.slug),
+                    MovementExclusion(ExclusionKind.EXERCISE, "ex-1"),
+                    MovementExclusion(ExclusionKind.MOVEMENT, "overhead pressing"),
+                ),
+            ),
+        )
+
+        viewModel.onExcludedMusclesChange(setOf(Muscle.LATS))
+        testScheduler.advanceUntilIdle()
+
+        val stored = profileRepository.getProfile()!!.exclusions
+        assertEquals(
+            "The muscle is replaced",
+            setOf(Muscle.LATS.slug),
+            stored.filter { it.kind == ExclusionKind.MUSCLE }.map { it.value }.toSet(),
+        )
+        assertEquals(
+            "The excluded exercise must survive a muscle edit",
+            setOf("ex-1"),
+            stored.filter { it.kind == ExclusionKind.EXERCISE }.map { it.value }.toSet(),
+        )
+        assertEquals(
+            "And so must the movement",
+            setOf("overhead pressing"),
+            stored.filter { it.kind == ExclusionKind.MOVEMENT }.map { it.value }.toSet(),
+        )
+    }
+
+    @Test
+    fun `editing movements leaves muscles and exercises alone`() = runTest(dispatcher) {
+        activate()
+        profileRepository.save(
+            profileRepository.getProfile()!!.copy(
+                exclusions = setOf(
+                    MovementExclusion(ExclusionKind.MUSCLE, Muscle.PECTORALS.slug),
+                    MovementExclusion(ExclusionKind.EXERCISE, "ex-1"),
+                ),
+            ),
+        )
+
+        viewModel.onMovementExclusionsChange(listOf("deep knee flexion"))
+        testScheduler.advanceUntilIdle()
+
+        val stored = profileRepository.getProfile()!!.exclusions
+        assertEquals(3, stored.size)
+        assertEquals(
+            setOf("deep knee flexion"),
+            stored.filter { it.kind == ExclusionKind.MOVEMENT }.map { it.value }.toSet(),
+        )
+        assertEquals(1, stored.count { it.kind == ExclusionKind.MUSCLE })
+        assertEquals(1, stored.count { it.kind == ExclusionKind.EXERCISE })
+    }
+
+    @Test
+    fun `blank and duplicate movements are dropped rather than stored`() = runTest(dispatcher) {
+        activate()
+
+        viewModel.onMovementExclusionsChange(listOf("  press  ", "press", "", "   "))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            listOf("press"),
+            profileRepository.getProfile()!!.exclusions.map { it.value },
+        )
+    }
+
+    /**
+     * The counter and the rules engine are the same rule.
+     *
+     * A count produced by a second copy of the matching would be a count that
+     * can disagree with the thing it describes, which is worse than no count.
+     * `movementExcludes` is shared for exactly this, and this is the assertion
+     * that the editor is actually using it.
+     */
+    @Test
+    fun `the movement counter reports what the rule would exclude`() = runTest(dispatcher) {
+        activate()
+        exercises.names = listOf(
+            "Barbell Bench Press",
+            "Dumbbell Shoulder Press",
+            "Overhead Press",
+            "Barbell Squat",
+        )
+
+        viewModel.onMovementEditorOpened()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("Three names contain it, case-insensitively", 3, state().movementMatches("press"))
+        assertEquals(1, state().movementMatches("overhead"))
+        assertEquals("Nothing matches, which is worth saying", 0, state().movementMatches("burpee"))
+    }
+
+    @Test
+    fun `the counter loads the catalog once`() = runTest(dispatcher) {
+        activate()
+        viewModel.onMovementEditorOpened()
+        testScheduler.advanceUntilIdle()
+
+        exercises.names = listOf("Something else entirely")
+        viewModel.onMovementEditorOpened()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            "The catalog is read-only and cannot change while Settings is open",
+            4,
+            state().catalogNames.size,
+        )
+    }
+
+    @Test
+    fun `preferred muscles are editable and do not touch exclusions`() = runTest(dispatcher) {
+        activate()
+        profileRepository.save(
+            profileRepository.getProfile()!!.copy(
+                exclusions = setOf(MovementExclusion(ExclusionKind.EXERCISE, "ex-1")),
+            ),
+        )
+
+        viewModel.onPreferredMusclesChange(setOf(Muscle.LATS))
+        testScheduler.advanceUntilIdle()
+
+        val profile = profileRepository.getProfile()!!
+        assertEquals(setOf(Muscle.LATS), profile.preferredMuscles)
+        assertEquals(1, profile.exclusions.size)
+    }
+
+    @Test
+    fun `removing one excluded exercise leaves the rest`() = runTest(dispatcher) {
+        activate()
+        profileRepository.save(
+            profileRepository.getProfile()!!.copy(
+                exclusions = setOf(
+                    MovementExclusion(ExclusionKind.EXERCISE, "ex-1"),
+                    MovementExclusion(ExclusionKind.EXERCISE, "ex-2"),
+                    MovementExclusion(ExclusionKind.MUSCLE, Muscle.LATS.slug),
+                ),
+            ),
+        )
+
+        viewModel.onExcludedExerciseRemoved("ex-1")
+        testScheduler.advanceUntilIdle()
+
+        val stored = profileRepository.getProfile()!!.exclusions
+        assertEquals(
+            setOf("ex-2"),
+            stored.filter { it.kind == ExclusionKind.EXERCISE }.map { it.value }.toSet(),
+        )
+        assertEquals(1, stored.count { it.kind == ExclusionKind.MUSCLE })
+    }
+
     private fun preview(templates: Int = 0) = ImportPreview(
         hasProfile = false,
         templates = templates,
@@ -391,3 +571,40 @@ private class RecordingTransfer : DataTransfer {
  * the system's job and the device's test.
  */
 private class NoContentResolver : ContentResolver(null)
+
+/**
+ * Just enough catalog for the movement editor's counter.
+ *
+ * Names only: that is all `movementExcludes` reads, and a fake that answered
+ * every other question would be pretending this screen asks them.
+ */
+private class FakeExercises : ExerciseRepository {
+    var names: List<String> = listOf(
+        "Barbell Bench Press",
+        "Dumbbell Shoulder Press",
+        "Overhead Press",
+        "Barbell Squat",
+    )
+
+    override suspend fun count(): Int = names.size
+
+    override fun observeCatalog(filter: CatalogFilter): Flow<List<ExerciseSummary>> =
+        MutableStateFlow(emptyList())
+
+    override suspend fun find(id: ExerciseId): Exercise? = null
+
+    override suspend fun summaries(ids: Collection<ExerciseId>): Map<ExerciseId, ExerciseSummary> =
+        emptyMap()
+
+    override suspend fun candidates(): List<ExerciseCandidate> = names.mapIndexed { index, name ->
+        ExerciseCandidate(
+            id = ExerciseId("ex-$index"),
+            name = name,
+            bodyPart = BodyPart.CHEST,
+            target = Muscle.PECTORALS,
+            muscleGroup = Muscle.PECTORALS,
+            secondaryMuscles = emptySet(),
+            equipment = Equipment.BARBELL,
+        )
+    }
+}

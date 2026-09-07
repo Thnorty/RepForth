@@ -15,4 +15,7 @@
     <string name="exercises_loading">Katalog yükleniyor…</string>
     <string name="exercises_names_english">Egzersiz adları veri kümesinden geliyor ve İngilizcedir.</string>
     <string name="exercises_row_detail">%1$s · %2$s</string>
+    <string name="exercises_exclude">Planlarımdan ele</string>
+    <string name="exercises_include">Elemeyi bırak</string>
+    <string name="exercises_excluded_note">Planlar bunu kullanmaz. Elle yine de ekleyebilirsin.</string>
 </resources>

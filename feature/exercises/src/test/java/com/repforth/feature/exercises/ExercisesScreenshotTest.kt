@@ -82,6 +82,7 @@ class ExercisesScreenshotTest {
                     onClearFilters = {},
                     onSelectExercise = {},
                     onDismissDetail = {},
+                onToggleExcluded = {},
                 )
             }
         }

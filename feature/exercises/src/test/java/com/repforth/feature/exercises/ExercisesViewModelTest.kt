@@ -26,6 +26,13 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import com.repforth.core.model.ExperienceLevel
+import com.repforth.core.model.TrainingGoal
+import com.repforth.core.model.ExclusionKind
+import com.repforth.core.model.MovementExclusion
+import com.repforth.core.model.UserProfile
+import com.repforth.core.userdata.ProfileRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -39,6 +46,7 @@ class ExercisesViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var preferences: UserPreferencesDataSource
     private lateinit var repository: FakeExerciseRepository
+    private lateinit var profiles: FakeProfiles
     private lateinit var viewModel: ExercisesViewModel
 
     @Before
@@ -46,7 +54,8 @@ class ExercisesViewModelTest {
         Dispatchers.setMain(dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
         repository = FakeExerciseRepository()
-        viewModel = ExercisesViewModel(repository, preferences)
+        profiles = FakeProfiles()
+        viewModel = ExercisesViewModel(repository, preferences, profiles)
     }
 
     @After
@@ -89,6 +98,72 @@ class ExercisesViewModelTest {
         assertEquals(Equipment.BARBELL, state.filter.equipment)
         assertEquals(BodyPart.CHEST, state.filter.bodyPart)
     }
+
+    // ---- Excluding from the page where the user is looking at it ----
+
+    /**
+     * §8 has enforced [ExclusionKind.EXERCISE] since the beginning, and until
+     * now nothing in the app could write one — the constraint was real and
+     * unreachable, the same shape as the haptics switch that controlled nothing.
+     */
+    @Test
+    fun `excluding an exercise records it and toggling again removes it`() = runTest(dispatcher) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
+
+        viewModel.onToggleExcluded(ExerciseId("ex-1"))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            setOf("ex-1"),
+            profiles.getProfile()!!.exclusions
+                .filter { it.kind == ExclusionKind.EXERCISE }.map { it.value }.toSet(),
+        )
+        assertEquals("The state follows the write", setOf("ex-1"), viewModel.uiState.value.excludedIds)
+
+        viewModel.onToggleExcluded(ExerciseId("ex-1"))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(emptySet<String>(), viewModel.uiState.value.excludedIds)
+    }
+
+    /** The kinds share one field, so this must not take the others with it. */
+    @Test
+    fun `excluding an exercise leaves muscle and movement exclusions alone`() = runTest(dispatcher) {
+        profiles.save(
+            profiles.getProfile()!!.copy(
+                exclusions = setOf(
+                    MovementExclusion(ExclusionKind.MUSCLE, Muscle.PECTORALS.slug),
+                    MovementExclusion(ExclusionKind.MOVEMENT, "overhead pressing"),
+                ),
+            ),
+        )
+
+        viewModel.onToggleExcluded(ExerciseId("ex-1"))
+        testScheduler.advanceUntilIdle()
+
+        val stored = profiles.getProfile()!!.exclusions
+        assertEquals(3, stored.size)
+        assertEquals(1, stored.count { it.kind == ExclusionKind.MUSCLE })
+        assertEquals(1, stored.count { it.kind == ExclusionKind.MOVEMENT })
+    }
+
+    /**
+     * Excluding does not hide it: the owner's decision is that an exclusion
+     * says what the app may programme *for* you, and choosing it by hand is you
+     * overriding yourself.
+     */
+    @Test
+    fun `an excluded exercise is still listed`() = runTest(dispatcher) {
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
+        testScheduler.advanceUntilIdle()
+        val before = viewModel.uiState.value.results.size
+
+        viewModel.onToggleExcluded(ExerciseId(viewModel.uiState.value.results.first().id.value))
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("The catalog is not filtered by exclusions", before, viewModel.uiState.value.results.size)
+    }
+
 }
 
 private class FakeExerciseRepository : ExerciseRepository {
@@ -132,3 +207,39 @@ private class FakeExerciseRepository : ExerciseRepository {
     override suspend fun summaries(ids: Collection<ExerciseId>): Map<ExerciseId, ExerciseSummary> =
         if (testSummary.id in ids) mapOf(testSummary.id to testSummary) else emptyMap()
 }
+
+
+/**
+ * A profile in memory, for the exclude action.
+ *
+ * The fifth copy of this in the repo, and they have already drifted — 21, 21, 6
+ * and 11 lines. Consolidating them into `core:testing` is real work rather than
+ * a rename, because reconciling four different shapes is the job; it is recorded
+ * in the plan as its own change rather than smuggled into this one.
+ */
+internal class FakeProfiles(initial: UserProfile? = SAMPLE_PROFILE) : ProfileRepository {
+    private val flow = MutableStateFlow(initial)
+
+    override fun observeProfile(): Flow<UserProfile?> = flow
+
+    override suspend fun getProfile(): UserProfile? = flow.value
+
+    override suspend fun save(profile: UserProfile) {
+        flow.value = profile
+    }
+
+    override suspend fun deleteAll() {
+        flow.value = null
+    }
+}
+
+private val SAMPLE_PROFILE = UserProfile(
+    id = "user-1",
+    goal = TrainingGoal.STRENGTH,
+    experience = ExperienceLevel.INTERMEDIATE,
+    trainingDaysPerWeek = 4,
+    sessionLengthMs = 45 * 60_000L,
+    availableEquipment = setOf(Equipment.BARBELL),
+    preferredMuscles = emptySet(),
+    exclusions = emptySet(),
+)

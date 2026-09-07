@@ -16,6 +16,10 @@ dependencies {
     implementation(project(":core:exercise-data"))
     implementation(project(":core:media"))
     implementation(project(":core:datastore"))
+    // The profile, for the exclude action on a detail sheet. §8 makes
+    // exclusions a hard constraint, and the catalog is where a user meets
+    // the exercise they want to rule out.
+    implementation(project(":core:user-data"))
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)

@@ -77,6 +77,24 @@ data class MovementExclusion(
     }
 }
 
+/**
+ * Whether a free-text movement phrase rules out an exercise.
+ *
+ * Here rather than inside the rules engine because two callers need the same
+ * answer and they must not each have their own. The engine applies it when it
+ * decides what may be programmed; Settings applies it to tell the user how many
+ * exercises a phrase they are typing would remove. A count computed by a second
+ * copy of this rule is a count that can disagree with the thing it describes,
+ * which is worse than no count at all.
+ *
+ * Coarse on purpose, and the coarseness is the reason the count exists: the
+ * dataset has no vocabulary for movement patterns, so "overhead press" matches
+ * every name containing it — which is what the user meant — and "press" matches
+ * several hundred, which is not, and which they can now see before saving it.
+ */
+fun movementExcludes(exerciseName: String, movement: String): Boolean =
+    movement.isNotBlank() && exerciseName.contains(movement.trim(), ignoreCase = true)
+
 enum class ExclusionKind {
     /** A specific catalog exercise, by upstream id. */
     EXERCISE,
