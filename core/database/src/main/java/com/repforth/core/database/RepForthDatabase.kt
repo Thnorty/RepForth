@@ -77,7 +77,7 @@ abstract class RepForthDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
 
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
 
         /** Also the asset filename once the import task prepackages the catalog. */
         const val NAME = "repforth.db"
@@ -168,6 +168,27 @@ abstract class RepForthDatabase : RoomDatabase() {
                     ), 0)
                     """.trimIndent(),
                 )
+            }
+        }
+
+        /**
+         * Migration from v3 to v4: a timed set gets its own clock.
+         *
+         * §3 asks for timed intervals and, until now, the app displayed a target
+         * duration and recorded that same number whenever the user tapped "Log
+         * set" — so a plank abandoned at forty seconds was filed as sixty. The
+         * clock is what completes one now, and it needs somewhere to survive a
+         * process death, exactly as rest does.
+         *
+         * Both columns are nullable with no backfill, and that is correct rather
+         * than lazy: null means "no timed set is counting", which is true of
+         * every row written before this existed. Nobody had a running timed set,
+         * because there were none.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `set_deadline_at` INTEGER")
+                db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `set_remaining_ms` INTEGER")
             }
         }
     }

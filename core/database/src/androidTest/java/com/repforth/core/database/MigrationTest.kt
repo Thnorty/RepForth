@@ -395,6 +395,64 @@ class MigrationTest {
         migrated.close()
     }
 
+    /**
+     * v3 to v4: a timed set gets its own clock, and nothing already saved moves.
+     *
+     * Both columns are nullable with no backfill, which is correct rather than
+     * lazy — null means "no timed set is counting", and that is true of every
+     * row written before timed sets existed, because there were none.
+     */
+    @Test
+    fun migrating_from_3_to_4_adds_the_set_clock_and_keeps_the_workout() {
+        helper.createDatabase(TEST_DB, 3).use { v3 ->
+            v3.execSQL(
+                """
+                INSERT INTO workout_session
+                    (id, template_id, state, phase_before_pause, deadline_at,
+                     rest_remaining_ms, current_exercise_index, current_set_index,
+                     started_at, ended_at, revision, created_at, updated_at)
+                VALUES ('session-1', 'plan-1', 'ACTIVE', NULL, NULL, NULL, 1, 2,
+                        100, NULL, 7, 100, 200)
+                """.trimIndent(),
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            4,
+            true,
+            RepForthDatabase.MIGRATION_3_4,
+        )
+
+        migrated.query(
+            "SELECT current_exercise_index, current_set_index, set_deadline_at, " +
+                "set_remaining_ms FROM workout_session",
+        ).use { cursor ->
+            assertTrue("The workout in progress must survive", cursor.moveToFirst())
+            assertEquals("Where the user was, untouched", 1, cursor.getInt(0))
+            assertEquals(2, cursor.getInt(1))
+            assertTrue("No timed set was counting, because there were none", cursor.isNull(2))
+            assertTrue(cursor.isNull(3))
+        }
+
+        migrated.close()
+    }
+
+    /** And the whole chain, which is what a v1 install runs. */
+    @Test
+    fun migrating_from_1_to_4_produces_the_schema_room_expects() {
+        helper.createDatabase(TEST_DB, 1).close()
+
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            4,
+            true,
+            RepForthDatabase.MIGRATION_1_2,
+            RepForthDatabase.MIGRATION_2_3,
+            RepForthDatabase.MIGRATION_3_4,
+        ).close()
+    }
+
     private fun SupportSQLiteDatabase.insertSessionInProgress(state: String = "ACTIVE") = execSQL(
         """
         INSERT INTO workout_session

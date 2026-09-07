@@ -30,7 +30,7 @@ internal class RoomSessionRepository @Inject constructor(
 
     override suspend fun restoreActive(): SessionSnapshot? {
         val row = dao.findActive() ?: return null
-        return engine.restore(row.toSnapshot(), row.session.deadlineAt)
+        return engine.restore(row.toSnapshot(), row.session.deadlineAt, row.session.setDeadlineAt)
     }
 
     override fun observeFinished(): Flow<List<SessionSnapshot>> =
@@ -57,6 +57,13 @@ internal class RoomSessionRepository @Inject constructor(
                 // arbitrarily far while a workout is paused, and none of that
                 // should come out of the rest.
                 restRemainingMs = snapshot.restRemainingMs,
+                // Wall clock, for the reason the rest deadline above gives: the
+                // monotonic one the engine counts on means nothing after a
+                // restart, so what survives is the instant the set is due.
+                setDeadlineAt = snapshot.setEndsAtElapsed?.let {
+                    now + (it - time.elapsedRealtime()).coerceAtLeast(0)
+                },
+                setRemainingMs = snapshot.setRemainingMs,
                 currentExerciseIndex = snapshot.currentExerciseIndex,
                 currentSetIndex = snapshot.currentSetIndex,
                 startedAt = snapshot.startedAt,
@@ -140,6 +147,7 @@ private fun SessionWithDetails.toSnapshot(): SessionSnapshot {
         currentExerciseIndex = exerciseIndex,
         currentSetIndex = session.currentSetIndex.coerceAtLeast(0),
         restRemainingMs = session.restRemainingMs,
+        setRemainingMs = session.setRemainingMs,
         startedAt = session.startedAt,
         endedAt = session.endedAt,
         revision = session.revision,

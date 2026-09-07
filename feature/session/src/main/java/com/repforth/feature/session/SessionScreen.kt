@@ -106,8 +106,12 @@ fun SessionRoute(
 
     // The countdown's heartbeat while the screen is up. The service keeps its
     // own, coarser one for when it is not.
-    LaunchedEffect(state.isResting) {
-        while (state.isResting) {
+    // Both countdowns, one loop. A timed set counts on the same heartbeat as a
+    // rest because it is the same question -- how long is left -- and because
+    // the loop is what ends it: §3's timed work is measured, so nothing else
+    // completes a timed set.
+    LaunchedEffect(state.isResting, state.isTimedSetRunning) {
+        while (state.isResting || state.isTimedSetRunning) {
             viewModel.onTick()
             delay(REST_TICK_MS)
         }
@@ -439,9 +443,19 @@ private fun TargetPanel(state: SessionUiState) {
             Text(
                 text = when (target) {
                     is ExerciseTarget.Reps -> target.reps.toString()
-                    is ExerciseTarget.Duration -> (target.durationMs / 1000L).toString()
+                    // Counting down while the set runs, rather than restating
+                    // the target. The big number is the screen here, and during
+                    // a plank the only number worth that space is how long is
+                    // left -- the prescription is what the seconds started at.
+                    is ExerciseTarget.Duration ->
+                        ((state.setRemainingMs ?: target.durationMs) / 1000L).toString()
                 },
                 style = RepForthNumeric.xl,
+                // Moves on its own when the clock ends the set, so a screen
+                // reader is told rather than left to notice. Polite for the same
+                // reason the rest counter is: it should be read at the next
+                // pause, not over whatever is already being spoken.
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
             Text(
                 // The unit of the big number above, and nothing else. This line
@@ -573,6 +587,13 @@ private fun SessionControls(
                 text = stringResource(R.string.session_finish),
                 onClick = onFinish,
             )
+
+            // Nothing to press on a timed set: §3's timed work is measured, so
+            // the clock completes it and the engine refuses a CompleteSet while
+            // one is running. Skip set, directly below, is still how to stop
+            // early -- and stopping early is a skip rather than a shorter set,
+            // so there is no button here that could pretend otherwise.
+            state.isTimedSetRunning -> Unit
 
             else -> PrimaryAction(
                 text = stringResource(R.string.session_log_set),
