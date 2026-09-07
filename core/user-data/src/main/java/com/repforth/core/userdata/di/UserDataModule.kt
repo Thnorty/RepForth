@@ -6,9 +6,11 @@ import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.RoomProfileRepository
 import com.repforth.core.userdata.RoomSessionRepository
 import com.repforth.core.userdata.RoomTemplateRepository
+import com.repforth.core.userdata.RoomUserDataTransaction
 import com.repforth.core.userdata.RoomWeekRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.UserDataTransaction
 import com.repforth.core.userdata.WeekRepository
 import dagger.Binds
 import dagger.Module
@@ -37,6 +39,10 @@ internal interface UserDataModule {
     @Binds
     @Singleton
     fun bindSessionRepository(impl: RoomSessionRepository): SessionRepository
+
+    @Binds
+    @Singleton
+    fun bindUserDataTransaction(impl: RoomUserDataTransaction): UserDataTransaction
 
     /**
      * Bound here rather than in core:common so that module stays free of Hilt

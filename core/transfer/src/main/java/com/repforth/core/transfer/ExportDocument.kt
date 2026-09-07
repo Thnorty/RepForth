@@ -154,22 +154,46 @@ data class SetOutcomeDto(
 /**
  * What importing this file would do, shown before it is done (§7).
  *
- * Counted rather than described, because the only question that matters before
- * overwriting the only copy of something is how much of it there is.
+ * **Import replaces everything.** Not "merges", not "adds what is missing": the
+ * workout data in the app afterwards is exactly the workout data in the file.
+ * That is the decision, and it is why this counts two things rather than one —
+ * what arrives, and what goes. A preview that only described the file would
+ * answer the easy half of the question and leave the user to discover the other
+ * half afterwards, with nothing to undo it with.
+ *
+ * The alternative was per-record merging, which has to answer "this session
+ * exists in both, and they differ" for every row, and answers it silently. A
+ * file is a snapshot of a phone; restoring one is a restore.
+ *
+ * Counted rather than described, because the only question worth answering
+ * before overwriting the only copy of something is how much of it there is.
+ *
+ * Preferences and stored provider keys are **not** part of this. The export does
+ * not carry them, so importing cannot speak for them, and clearing them is what
+ * "Reset app" is for.
  */
 data class ImportPreview(
+    /** What the file carries. */
     val hasProfile: Boolean,
-    val replacesExistingProfile: Boolean,
-    val newTemplates: Int,
-    val replacedTemplates: Int,
+    val templates: Int,
+    val weeks: Int,
     val sessions: Int,
     val exportedAt: Long,
-    val newWeeks: Int = 0,
-    val replacedWeeks: Int = 0,
+
+    /** What is stored now, all of which the import removes. */
+    val removesProfile: Boolean,
+    val removedTemplates: Int,
+    val removedWeeks: Int,
+    val removedSessions: Int,
 ) {
+    /** Nothing in the file. Importing it would only delete. */
     val isEmpty: Boolean
-        get() = !hasProfile && newTemplates == 0 && replacedTemplates == 0 &&
-            newWeeks == 0 && replacedWeeks == 0 && sessions == 0
+        get() = !hasProfile && templates == 0 && weeks == 0 && sessions == 0
+
+    /** Nothing stored yet, so the import takes nothing away. */
+    val replacesNothing: Boolean
+        get() = !removesProfile && removedTemplates == 0 && removedWeeks == 0 &&
+            removedSessions == 0
 }
 
 /** Why a file could not be read. Each one is something to tell the user. */
@@ -188,4 +212,23 @@ sealed interface ImportFailure {
      * a plan with no name, a target with zero sets, positions with a gap.
      */
     data class Invalid(val detail: String) : ImportFailure
+
+    /**
+     * Larger than anything this app writes.
+     *
+     * Checked before the bytes are read rather than after, because the point is
+     * not to refuse politely — it is not to pull an arbitrary file of arbitrary
+     * size into memory on the strength of the user having tapped it.
+     */
+    data class TooLarge(val bytes: Long, val limit: Long) : ImportFailure
+
+    /**
+     * The write itself failed, and nothing was changed.
+     *
+     * Distinct from [Invalid], which is a file this app will not apply. This is
+     * a file it accepted and then could not store — a full disk, a database it
+     * could not open. The import runs in one transaction, so the claim that
+     * nothing changed is the transaction's, not a hope.
+     */
+    data class NotApplied(val detail: String) : ImportFailure
 }

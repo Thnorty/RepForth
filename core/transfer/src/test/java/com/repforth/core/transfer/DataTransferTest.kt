@@ -26,6 +26,9 @@ import com.repforth.core.workout.SessionSnapshot
 import com.repforth.core.testing.InMemorySecretStore
 import com.repforth.core.workout.SetOutcome
 import kotlinx.coroutines.flow.first
+import java.time.DayOfWeek
+import kotlinx.serialization.json.Json
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -64,9 +67,16 @@ class DataTransferTest {
         providers = repository
         secrets = store
         transfer = DefaultDataTransfer(
-            profiles, templates, weeks, sessions, preferences, providers, FakeTimeSource(),
+            profiles, templates, weeks, sessions, preferences, providers,
+            DirectTransaction, FakeTimeSource(), UnconfinedTestDispatcher(),
         )
     }
+
+    /** Another app with nothing in it, for writing a file to import from. */
+    private fun emptyTransfer() = DefaultDataTransfer(
+        FakeProfiles(), FakeTemplates(), FakeWeeks(), FakeSessions(), fakePreferences(),
+        fakeProviders().first, DirectTransaction, FakeTimeSource(), UnconfinedTestDispatcher(),
+    )
 
     private suspend fun seed() {
         profiles.save(sampleProfile())
@@ -76,11 +86,25 @@ class DataTransferTest {
             TrainingWeek(
                 id = "week-1",
                 name = "Push Pull Split",
+                notes = "Deload in week four",
                 source = PlanSource.MANUAL,
                 active = true,
+                // Their own templates, not the standalone ones above. A day
+                // that belongs to a week has a `week_id`, which is exactly what
+                // `TemplateRepository.observeAll()` filters on -- so the real
+                // app cannot produce a file where one id is both a standalone
+                // plan and a week's day. The seed used to do it anyway, through
+                // a fake that does not model the filter, and the file it
+                // described was one no version of this app could write.
+                // Pinned to weekdays and carrying notes, because those are the
+                // fields with nothing on screen to write them -- so a mapping
+                // that dropped them would look entirely healthy.
                 days = listOf(
-                    WeekDay(0, "Push", workout = sampleTemplate("plan-1", "Push day")),
-                    WeekDay(1, "Pull", workout = sampleTemplate("plan-2", "Pull day")),
+                    WeekDay(
+                        0, "Push", DayOfWeek.MONDAY,
+                        sampleTemplate("day-1", "Push day").copy(notes = "Shoulders first"),
+                    ),
+                    WeekDay(1, "Pull", DayOfWeek.THURSDAY, sampleTemplate("day-2", "Pull day")),
                 ),
             ),
         )
@@ -107,7 +131,8 @@ class DataTransferTest {
         val restoredSessions = FakeSessions()
         val emptied = DefaultDataTransfer(
             restoredProfiles, restoredTemplates, restoredWeeks, restoredSessions,
-            fakePreferences(), fakeProviders().first, FakeTimeSource(),
+            fakePreferences(), fakeProviders().first, DirectTransaction, FakeTimeSource(),
+            UnconfinedTestDispatcher(),
         )
 
         val outcome = emptied.read(exported)
@@ -158,10 +183,15 @@ class DataTransferTest {
         // FakeTemplates does not model the `week_id IS NULL` filter, so this
         // asserts the shape of the document rather than the repository's query;
         // RoomTemplateRepositoryTest covers the filter itself.
+        //
+        // The condition is now "not in both lists", not "not twice in one". The
+        // weaker version passed a document listing a day once as a standalone
+        // plan and once inside its week, which is the case that would create the
+        // workout twice -- the thing this test is named after.
+        val dayIds = document.weeks.flatMap { week -> week.days.map { it.workout.id } }
         assertTrue(
             "A day's workout must not appear in the standalone template list too",
-            document.weeks.flatMap { week -> week.days.map { it.workout.id } }
-                .none { dayId -> document.templates.count { it.id == dayId } > 1 },
+            document.templates.none { it.id in dayIds },
         )
     }
 
@@ -175,7 +205,7 @@ class DataTransferTest {
         val outcome = transfer.read(v1)
 
         assertTrue("A file written before weeks existed must still read", outcome is ImportOutcome.Ready)
-        assertEquals(0, (outcome as ImportOutcome.Ready).preview.newWeeks)
+        assertEquals(0, (outcome as ImportOutcome.Ready).preview.weeks)
     }
 
     @Test
@@ -262,14 +292,11 @@ class DataTransferTest {
     }
 
     @Test
-    fun `the preview counts what would be added and what would be replaced`() = runTest {
+    fun `the preview counts what arrives and what goes`() = runTest {
         templates.save(sampleTemplate("plan-1", "Existing"))
         profiles.save(sampleProfile())
 
-        val other = DefaultDataTransfer(
-            FakeProfiles(), FakeTemplates(), FakeWeeks(), FakeSessions(), fakePreferences(),
-            fakeProviders().first, FakeTimeSource(),
-        )
+        val other = emptyTransfer()
         other.import(
             ExportDocument(
                 exportedAt = 0,
@@ -284,10 +311,241 @@ class DataTransferTest {
 
         val preview = (transfer.read(file) as ImportOutcome.Ready).preview
 
-        assertEquals(1, preview.replacedTemplates)
-        assertEquals(1, preview.newTemplates)
-        assertTrue(preview.replacesExistingProfile)
+        assertEquals("Both plans in the file arrive", 2, preview.templates)
+        assertTrue("And the file's profile with them", preview.hasProfile)
+
+        // The other half, and the one that used to be missing. The old preview
+        // said "1 replaced, 1 added" and never mentioned that the plan whose id
+        // matched nothing in the file was about to go too.
+        assertEquals("Everything stored goes, matching id or not", 1, preview.removedTemplates)
+        assertTrue(preview.removesProfile)
         assertFalse(preview.isEmpty)
+        assertFalse(preview.replacesNothing)
+    }
+
+    @Test
+    fun `a first import into an empty app replaces nothing`() = runTest {
+        val other = emptyTransfer()
+        other.import(
+            ExportDocument(exportedAt = 0, templates = listOf(sampleTemplate("p1", "Legs").toDto())),
+        )
+
+        val preview = (transfer.read(other.export()) as ImportOutcome.Ready).preview
+
+        assertTrue("Nothing is stored, so nothing is taken away", preview.replacesNothing)
+        assertEquals(1, preview.templates)
+    }
+
+    // ---- Import replaces, and either all of it happens or none of it ----
+
+    /**
+     * The decision, as an assertion: what is here afterwards is what was in the
+     * file, and nothing else.
+     *
+     * The old import saved the file's records over whatever shared an id and
+     * left everything else alone, so a phone used since the export ended up
+     * holding a mixture of two states with no way to tell which record came from
+     * where. Restoring a backup is a restore.
+     */
+    @Test
+    fun `importing replaces what was there rather than merging into it`() = runTest {
+        seed()
+        val other = emptyTransfer()
+        other.import(
+            ExportDocument(
+                exportedAt = 0,
+                templates = listOf(sampleTemplate("only-plan", "The only plan").toDto()),
+            ),
+        )
+
+        val outcome = transfer.read(other.export())
+        val result = transfer.import((outcome as ImportOutcome.Ready).document)
+
+        assertEquals(ImportResult.Applied, result)
+        assertEquals(
+            "Only the file's plan may remain",
+            listOf("only-plan"),
+            templates.stored.map { it.id },
+        )
+        assertTrue("A week the file does not contain must go", weeks.stored.isEmpty())
+        assertTrue("History the file does not contain must go", sessions.stored.isEmpty())
+        assertEquals("And a profile the file does not carry", null, profiles.stored)
+    }
+
+    /** Twice is the same as once, which is what makes replacement predictable. */
+    @Test
+    fun `importing the same file twice lands in the same place`() = runTest {
+        val other = emptyTransfer()
+        other.import(
+            ExportDocument(
+                exportedAt = 0,
+                profile = sampleProfile().toDto(),
+                templates = listOf(sampleTemplate("p1", "Legs").toDto()),
+            ),
+        )
+        val file = other.export()
+
+        transfer.import((transfer.read(file) as ImportOutcome.Ready).document)
+        val afterFirst = templates.stored.toList() to profiles.stored
+        transfer.import((transfer.read(file) as ImportOutcome.Ready).document)
+
+        assertEquals(afterFirst.first, templates.stored.toList())
+        assertEquals(afterFirst.second, profiles.stored)
+    }
+
+    /**
+     * A failure partway through leaves the database as it was.
+     *
+     * The transaction is what makes this true, so the test supplies one that
+     * rolls back and asserts the rollback is honoured, rather than asserting
+     * over [DirectTransaction] — which would only prove the fake. The real
+     * implementation is `RoomUserDataTransaction` over `RepForthDatabase`.
+     *
+     * What is actually checked here is that `import` runs *inside* the
+     * transaction at all. The old one wrote through four repositories with
+     * nothing around them, so there was no boundary for a rollback to undo and
+     * a failure on the third left the first two applied.
+     */
+    @Test
+    fun `a failure halfway through leaves everything as it was`() = runTest {
+        seed()
+        val before = StoredState(
+            templates.stored.toList(),
+            weeks.stored.toList(),
+            sessions.stored.toList(),
+            profiles.stored,
+        )
+
+        val failing = DefaultDataTransfer(
+            profiles, templates, weeks, sessions, preferences, providers,
+            RollingBackTransaction(before, profiles, templates, weeks, sessions),
+            FakeTimeSource(), UnconfinedTestDispatcher(),
+        )
+        val result = failing.import(
+            ExportDocument(
+                exportedAt = 0,
+                templates = listOf(sampleTemplate("incoming", "Should not survive").toDto()),
+            ),
+        )
+
+        assertTrue("A failed import must say so", result is ImportResult.Failed)
+        assertTrue((result as ImportResult.Failed).failure is ImportFailure.NotApplied)
+        assertEquals("Plans must be untouched", before.templates, templates.stored.toList())
+        assertEquals("Weeks must be untouched", before.weeks, weeks.stored.toList())
+        assertEquals("History must be untouched", before.sessions, sessions.stored.toList())
+        assertEquals("The profile must be untouched", before.profile, profiles.stored)
+    }
+
+    // ---- What the file as a whole has to be, beyond one record at a time ----
+
+    /**
+     * The domain validates a plan at a time and cannot see this: each of two
+     * templates sharing an id is individually valid, and importing them writes
+     * one over the other. The file then describes fewer plans than it lists, and
+     * the preview counted the ones it listed.
+     */
+    @Test
+    fun `two plans with the same id are refused`() = runTest {
+        val outcome = transfer.read(
+            jsonOf(
+                ExportDocument(
+                    exportedAt = 0,
+                    templates = listOf(
+                        sampleTemplate("same", "One").toDto(),
+                        sampleTemplate("same", "Two").toDto(),
+                    ),
+                ),
+            ),
+        )
+
+        val failure = (outcome as ImportOutcome.Failed).failure
+        assertTrue(failure is ImportFailure.Invalid)
+        assertTrue(
+            "The message should name the id",
+            (failure as ImportFailure.Invalid).detail.contains("same"),
+        )
+    }
+
+    /** The id space is shared: a week's day becomes a plan row like any other. */
+    @Test
+    fun `a week day colliding with a standalone plan is refused`() = runTest {
+        val outcome = transfer.read(
+            jsonOf(
+                ExportDocument(
+                    exportedAt = 0,
+                    templates = listOf(sampleTemplate("shared", "Loose").toDto()),
+                    weeks = listOf(
+                        TrainingWeek(
+                            id = "w1",
+                            name = "Week",
+                            source = PlanSource.MANUAL,
+                            active = false,
+                            days = listOf(
+                                WeekDay(0, "Day", workout = sampleTemplate("shared", "In a week")),
+                            ),
+                        ).toDto(),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue((outcome as ImportOutcome.Failed).failure is ImportFailure.Invalid)
+    }
+
+    @Test
+    fun `two workouts with the same id are refused`() = runTest {
+        val outcome = transfer.read(
+            jsonOf(
+                ExportDocument(
+                    exportedAt = 0,
+                    sessions = listOf(sampleSession().toDto(), sampleSession().toDto()),
+                ),
+            ),
+        )
+
+        assertTrue((outcome as ImportOutcome.Failed).failure is ImportFailure.Invalid)
+    }
+
+    /**
+     * An export contains finished workouts, because that is what it is written
+     * from. A file claiming an unfinished one carries no cursor and no deadline,
+     * so there is nothing to resume it from — and the app would find an active
+     * session on next launch and offer to continue a workout with no position.
+     */
+    @Test
+    fun `a workout that has not finished is refused`() = runTest {
+        val outcome = transfer.read(
+            jsonOf(
+                ExportDocument(
+                    exportedAt = 0,
+                    sessions = listOf(sampleSession().copy(phase = SessionPhase.RESTING).toDto()),
+                ),
+            ),
+        )
+
+        val failure = (outcome as ImportOutcome.Failed).failure
+        assertTrue(failure is ImportFailure.Invalid)
+        assertTrue(
+            "The message should say which phase was wrong",
+            (failure as ImportFailure.Invalid).detail.contains("RESTING"),
+        )
+    }
+
+    @Test
+    fun `an abandoned workout is a finished one and imports`() = runTest {
+        val outcome = transfer.read(
+            jsonOf(
+                ExportDocument(
+                    exportedAt = 0,
+                    sessions = listOf(sampleSession().copy(phase = SessionPhase.ABANDONED).toDto()),
+                ),
+            ),
+        )
+
+        assertTrue(
+            "Abandoning is not deleting, and the export carries them",
+            outcome is ImportOutcome.Ready,
+        )
     }
 
     @Test
@@ -401,6 +659,16 @@ class DataTransferTest {
         assertEquals(listOf("a", "b"), plan.exercises.map { it.id })
     }
 }
+
+/**
+ * A document as the bytes a user would actually hand over.
+ *
+ * Written out and read back rather than passed straight to `import`, because
+ * these tests are about what `read` refuses — and refusing has to happen on the
+ * way in from a file, which is the only way a stranger's document arrives.
+ */
+private fun jsonOf(document: ExportDocument): String =
+    Json { encodeDefaults = true }.encodeToString(document)
 
 private fun sampleProfile() = UserProfile(
     id = "profile-1",

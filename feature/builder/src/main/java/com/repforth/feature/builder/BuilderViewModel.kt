@@ -35,6 +35,7 @@ import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.userdata.WeekRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.DayOfWeek
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -100,6 +101,19 @@ data class DraftWeekDay(
     val dayIndex: Int,
     val title: String,
     val templateId: String = UUID.randomUUID().toString(),
+    /**
+     * Which weekday this is pinned to, or null for a rotation.
+     *
+     * Carried through the draft rather than resolved at save time, for the same
+     * reason [templateId] is: the builder rebuilds a [WeekDay] from scratch on
+     * every save, so a field the draft does not hold is a field the save
+     * deletes. There is no editor for this yet — §3.4's weekday assignment
+     * arrives with a week from AI or from an imported file, and opening that
+     * week to rename it used to silently unpin every day in it.
+     */
+    val dayOfWeek: DayOfWeek? = null,
+    /** §3's per-workout note. Same story: not editable here, and not lost here. */
+    val notes: String? = null,
     val focusMuscles: List<Muscle> = emptyList(),
     val exercises: List<DraftExercise> = emptyList(),
     val isExpanded: Boolean = true,
@@ -209,6 +223,15 @@ data class BuilderUiState(
      */
     val weekId: String? = null,
     val name: String = "",
+    /**
+     * The week's own note, carried but not edited here.
+     *
+     * §3 gives a week a note and the export format carries one, but no screen
+     * writes it yet. It still has to survive the builder: saving replaces the
+     * whole week, so a field the state does not hold is a field that opening a
+     * week and renaming it deletes.
+     */
+    val weekNotes: String? = null,
     val exercises: List<DraftExercise> = emptyList(),
     val weekDays: List<DraftWeekDay> = emptyList(),
     val picking: Boolean = false,
@@ -508,6 +531,7 @@ class BuilderViewModel @Inject constructor(
                 // sit in it is what made every re-save mint a second week.
                 planId = null,
                 name = week.name,
+                weekNotes = week.notes,
                 source = week.source,
                 exercises = emptyList(),
                 weekDays = week.days.map { day ->
@@ -518,6 +542,11 @@ class BuilderViewModel @Inject constructor(
                         // detach every day from the workout history recorded
                         // against it, which is how Today knows what is done.
                         templateId = day.workout.id,
+                        // Carried for a different reason: nothing here edits
+                        // these, and a save rebuilds the WeekDay from the draft.
+                        // Whatever the draft does not hold, the save deletes.
+                        dayOfWeek = day.dayOfWeek,
+                        notes = day.workout.notes,
                         exercises = day.workout.exercises.toDrafts(names),
                         isExpanded = day.position == 0,
                     )
@@ -857,6 +886,7 @@ class BuilderViewModel @Inject constructor(
                     // The draft's id, not a new one. See DraftWeekDay.templateId.
                     id = draftDay.templateId,
                     name = dayTitle,
+                    notes = draftDay.notes,
                     source = state.source,
                     exercises = draftDay.exercises.mapIndexed { exIndex, draftEx ->
                         PlannedExercise(
@@ -871,6 +901,7 @@ class BuilderViewModel @Inject constructor(
                 WeekDay(
                     position = index,
                     title = dayTitle,
+                    dayOfWeek = draftDay.dayOfWeek,
                     workout = template,
                 )
             }
@@ -890,6 +921,7 @@ class BuilderViewModel @Inject constructor(
             val trainingWeek = TrainingWeek(
                 id = weekId,
                 name = weekName,
+                notes = state.weekNotes,
                 source = state.source,
                 active = activeWeekId == null || activeWeekId == weekId,
                 days = weekDays,

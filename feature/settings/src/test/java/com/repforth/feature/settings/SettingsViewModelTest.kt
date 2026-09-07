@@ -15,6 +15,7 @@ import com.repforth.core.transfer.ExportDocument
 import com.repforth.core.transfer.ImportFailure
 import com.repforth.core.transfer.ImportOutcome
 import com.repforth.core.transfer.ImportPreview
+import com.repforth.core.transfer.ImportResult
 import com.repforth.core.userdata.ProfileRepository
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -165,7 +166,7 @@ class SettingsViewModelTest {
     @Test
     fun `a valid export document is presented as ready to import`() = runTest(dispatcher) {
         activate()
-        val expected = preview(newTemplates = 3)
+        val expected = preview(templates = 3)
         val document = ExportDocument(exportedAt = 0L, profile = null, templates = emptyList(), sessions = emptyList())
         transfer.nextRead = ImportOutcome.Ready(expected, document)
 
@@ -193,6 +194,35 @@ class SettingsViewModelTest {
         assertEquals(listOf(document), transfer.imported)
         assertNull(state().pendingImport)
         assertEquals(SettingsMessage.Imported, state().message)
+    }
+
+    /**
+     * An import that failed says so, and stops saying it is busy.
+     *
+     * The result used to be discarded: `import` returned nothing and this
+     * reported `Imported.` whatever had happened. Import replaces everything, so
+     * that message over a failed write is the worst possible thing to be wrong
+     * about — the user has just been told their old data is gone and their new
+     * data arrived, and neither is true.
+     */
+    @Test
+    fun `an import that could not be saved says so`() = runTest(dispatcher) {
+        activate()
+        val document = ExportDocument(exportedAt = 0L)
+        transfer.nextRead = ImportOutcome.Ready(preview(), document)
+        transfer.nextImport = ImportResult.Failed(ImportFailure.NotApplied("disk full"))
+        viewModel.onImportText(Result.success("{}"))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.onImportConfirmed()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            SettingsMessage.ImportRefused(ImportFailure.NotApplied("disk full")),
+            state().message,
+        )
+        assertEquals("The screen must not be left spinning", false, state().busy)
+        assertNull(state().pendingImport)
     }
 
     @Test
@@ -286,13 +316,16 @@ class SettingsViewModelTest {
         assertEquals(false, state().preferences.mediaWifiOnly)
     }
 
-    private fun preview(newTemplates: Int = 0) = ImportPreview(
+    private fun preview(templates: Int = 0) = ImportPreview(
         hasProfile = false,
-        replacesExistingProfile = false,
-        newTemplates = newTemplates,
-        replacedTemplates = 0,
+        templates = templates,
+        weeks = 0,
         sessions = 0,
         exportedAt = 0,
+        removesProfile = false,
+        removedTemplates = 0,
+        removedWeeks = 0,
+        removedSessions = 0,
     )
 }
 
@@ -333,8 +366,12 @@ private class RecordingTransfer : DataTransfer {
 
     override suspend fun read(json: String): ImportOutcome = nextRead
 
-    override suspend fun import(document: ExportDocument) {
+    /** What the next import answers. Applied unless a test says otherwise. */
+    var nextImport: ImportResult = ImportResult.Applied
+
+    override suspend fun import(document: ExportDocument): ImportResult {
         imported += document
+        return nextImport
     }
 
     override suspend fun deleteWorkoutData() {

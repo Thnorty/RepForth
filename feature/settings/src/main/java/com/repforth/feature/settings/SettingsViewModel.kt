@@ -20,7 +20,10 @@ import com.repforth.core.transfer.ExportDocument
 import com.repforth.core.transfer.ImportFailure
 import com.repforth.core.transfer.ImportOutcome
 import com.repforth.core.transfer.ImportPreview
+import com.repforth.core.transfer.ImportResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -206,12 +209,46 @@ class SettingsViewModel @Inject constructor(
             local.value = local.value.copy(busy = true)
             val text = withContext(Dispatchers.IO) {
                 runCatching {
-                    contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+                    contentResolver.openInputStream(uri)?.use { it.readBounded() }
                         ?: error("no input stream")
                 }
             }
-            onImportText(text)
+            val outcome = text.exceptionOrNull()
+                ?.let { it as? FileTooLarge }
+                ?.let { ImportOutcome.Failed(ImportFailure.TooLarge(it.bytes, MAX_IMPORT_BYTES)) }
+            if (outcome != null) {
+                local.value = local.value.copy(
+                    busy = false,
+                    message = SettingsMessage.ImportRefused(outcome.failure),
+                )
+            } else {
+                onImportText(text)
+            }
         }
+    }
+
+    /**
+     * The file, or a refusal, without pulling an arbitrary file into memory.
+     *
+     * `readBytes()` allocates whatever the stream hands it, and the stream is
+     * whatever the user tapped in a file picker. An export of several years of
+     * training is a few megabytes; the limit is far above that and far below
+     * anything that would take the app down with it.
+     *
+     * Measured while reading rather than asked for in advance. A content
+     * provider is not obliged to report a size, and the ones that do are not
+     * obliged to be right — so the bound has to be on the bytes actually taken.
+     */
+    private fun InputStream.readBounded(): String {
+        val buffer = ByteArrayOutputStream()
+        val chunk = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = read(chunk)
+            if (read < 0) break
+            buffer.write(chunk, 0, read)
+            if (buffer.size() > MAX_IMPORT_BYTES) throw FileTooLarge(buffer.size().toLong())
+        }
+        return buffer.toByteArray().decodeToString()
     }
 
     /**
@@ -244,12 +281,27 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Applies the document the user has just been shown.
+     *
+     * The result is read rather than assumed. Import replaces everything, and it
+     * used to report success unconditionally — so a write that failed halfway
+     * said "Imported." over a database holding part of one export and part of
+     * another. It is one transaction now, so a failure here is a database that
+     * did not change, and the message says so.
+     */
     fun onImportConfirmed() {
         val pending = local.value.pendingImport ?: return
         viewModelScope.launch {
             local.value = local.value.copy(busy = true, pendingImport = null)
-            transfer.import(pending.document)
-            local.value = local.value.copy(busy = false, message = SettingsMessage.Imported)
+            val result = transfer.import(pending.document)
+            local.value = local.value.copy(
+                busy = false,
+                message = when (result) {
+                    is ImportResult.Applied -> SettingsMessage.Imported
+                    is ImportResult.Failed -> SettingsMessage.ImportRefused(result.failure)
+                },
+            )
         }
     }
 
@@ -290,3 +342,15 @@ class SettingsViewModel @Inject constructor(
         const val STOP_TIMEOUT_MS = 5_000L
     }
 }
+
+/**
+ * A file bigger than any export this app writes.
+ *
+ * 32 MB against a few megabytes for years of training. Generous on purpose: the
+ * bound exists so that tapping the wrong file in a picker cannot exhaust memory,
+ * not to police how much someone has trained.
+ */
+internal const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
+
+/** Thrown while reading, so the size shows up in the refusal. */
+private class FileTooLarge(val bytes: Long) : Exception("file is $bytes bytes")
