@@ -3181,6 +3181,15 @@ The Settings goldens were re-recorded: four rows were added above the fold. Both
 locales inspected at 1x and 2x; nothing truncates, and Turkish at 200% wraps
 rather than clipping.
 
+**And `AppLaunchTest.settingsOpens` failed in CI, correctly.** It asserted that
+"Appearance" existed after opening Settings, and four new rows pushed that
+section below the fold — a `LazyColumn` does not compose what is off screen, so
+the node was genuinely absent and the test reported that Settings had not opened
+when it plainly had. It scrolls to the section now. Worth noting as a pattern
+rather than a one-off: **any assertion about a Settings row is an assertion about
+where the fold happens to be**, which is also why the sound switch needed its own
+scrolling test rather than riding on the goldens.
+
 **A fifth `FakeProfiles` was added rather than the five being consolidated.**
 AGENTS.md predicted the sixth change would be the one to do it. Looked at, and
 they have *already* drifted — 21, 21, 6 and 11 lines — so reconciling four

@@ -1,9 +1,12 @@
 package com.repforth.app
 
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
@@ -86,6 +89,14 @@ class AppLaunchTest {
 
         compose.onNodeWithContentDescription(AppText.settings).performClick()
         compose.waitForIdle()
+        // Scrolled to, not merely asserted. Settings is a `LazyColumn`, so a
+        // section below the fold is not in the semantics tree at all -- and this
+        // failed the moment four rows were added to the profile section above
+        // it, reporting that Settings had not opened when it plainly had.
+        //
+        // Appearance is still the assertion because it is far enough down to
+        // prove the whole screen is there rather than a header.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(AppText.appearance))
         compose.onNodeWithText(AppText.appearance).assertExists()
     }
 }
