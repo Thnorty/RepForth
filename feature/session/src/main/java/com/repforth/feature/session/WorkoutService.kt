@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -119,7 +121,7 @@ class WorkoutService : Service() {
                     // Skipped rest is the user's own tap. They know.
                     is SessionEvent.RestEnded -> if (!event.skipped) {
                         restJustEnded = true
-                        vibrate()
+                        alert()
                         controller.state.value?.let(::notify)
                     }
 
@@ -131,14 +133,32 @@ class WorkoutService : Service() {
     }
 
     /**
-     * §12's haptic for a timer reaching zero, honouring §7's setting.
+     * A timer reaching zero, felt and heard.
+     *
+     * Two settings and two senses, read together because they answer the same
+     * moment differently: a phone face-down on a bench is felt and not heard, a
+     * phone in a bag across the room is heard and not felt. Either may be off,
+     * and with both off this does nothing at all -- which is a choice the user
+     * made, not a failure.
+     *
+     * Announced from the service rather than the screen for the same reason the
+     * caller gives: this exists for the phone that is not being looked at, and a
+     * composable is not running then.
+     */
+    private suspend fun alert() {
+        val preferences = preferences.preferences.first()
+        if (preferences.hapticsEnabled) vibrate()
+        if (preferences.soundEnabled) playTone()
+    }
+
+    /**
+     * §12's haptic for a timer reaching zero.
      *
      * A one-shot rather than a pattern: this says "look at me", and the
      * notification says the rest of it. `VIBRATE` is a normal permission, so
      * there is nothing to ask the user for.
      */
-    private suspend fun vibrate() {
-        if (!preferences.preferences.first().hapticsEnabled) return
+    private fun vibrate() {
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ContextCompat.getSystemService(this, VibratorManager::class.java)?.defaultVibrator
         } else {
@@ -147,6 +167,34 @@ class WorkoutService : Service() {
         vibrator?.vibrate(
             VibrationEffect.createOneShot(REST_OVER_VIBRATION_MS, VibrationEffect.DEFAULT_AMPLITUDE),
         )
+    }
+
+    /**
+     * The sound, generated rather than shipped.
+     *
+     * [ToneGenerator] means no audio file, which means no asset to license --
+     * §6 keeps unlicensed media out of the default build, and a bundled sound
+     * would be one more thing with a provenance to track for two short beeps.
+     *
+     * **On the alarm stream on purpose.** A rest timer is something the user
+     * started and is actively waiting for, and the phone is usually competing
+     * with gym music. The notification stream would be inaudible in exactly the
+     * situation this exists for, and would also be silent on a phone set to
+     * vibrate -- where the haptic above has already covered that case. The
+     * switch in Settings is the way to turn it off, rather than the ringer.
+     *
+     * Released after the tone rather than kept: a held `ToneGenerator` owns an
+     * audio track for the length of a workout to make a noise twice a set.
+     */
+    private suspend fun playTone() {
+        val tone = runCatching { ToneGenerator(AudioManager.STREAM_ALARM, TONE_VOLUME) }
+            .getOrNull() ?: return
+        runCatching {
+            tone.startTone(ToneGenerator.TONE_PROP_BEEP2, TONE_MS.toInt())
+            // Long enough for the tone to finish; releasing under it cuts it off.
+            delay(TONE_MS + TONE_RELEASE_GRACE_MS)
+        }
+        tone.release()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -335,6 +383,11 @@ class WorkoutService : Service() {
 
         /** Long enough to feel through a pocket, short enough not to nag. */
         private const val REST_OVER_VIBRATION_MS = 400L
+
+        /** Loud enough to carry over gym music; not so loud it is a shock. */
+        private const val TONE_VOLUME = 80
+        private const val TONE_MS = 500L
+        private const val TONE_RELEASE_GRACE_MS = 100L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(

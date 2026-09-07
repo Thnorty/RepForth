@@ -144,6 +144,7 @@ class SettingsAccessibilityTest {
                     onUnitsChange = {},
                     onKeepScreenOnChange = {},
                     onHapticsChange = {},
+                    onSoundChange = {},
                     onReducedMotionChange = {},
                     onMediaWifiOnlyChange = {},
                     onClearMediaCache = {},

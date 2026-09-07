@@ -154,6 +154,8 @@ class SettingsViewModel @Inject constructor(
 
     fun onHapticsChange(enabled: Boolean) = edit { preferences.setHapticsEnabled(enabled) }
 
+    fun onSoundChange(enabled: Boolean) = edit { preferences.setSoundEnabled(enabled) }
+
     fun onReducedMotionChange(enabled: Boolean) = edit { preferences.setReducedMotion(enabled) }
 
     fun onMediaWifiOnlyChange(enabled: Boolean) = edit { preferences.setMediaWifiOnly(enabled) }

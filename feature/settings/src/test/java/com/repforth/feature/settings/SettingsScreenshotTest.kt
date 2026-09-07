@@ -152,6 +152,7 @@ class SettingsScreenshotTest {
                     onUnitsChange = {},
                     onKeepScreenOnChange = {},
                     onHapticsChange = {},
+                    onSoundChange = {},
                     onReducedMotionChange = {},
                     onMediaWifiOnlyChange = {},
                     onClearMediaCache = {},

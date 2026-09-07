@@ -19,6 +19,15 @@ data class UserPreferences(
     val keepScreenOn: Boolean,
     val reducedMotion: Boolean,
     val hapticsEnabled: Boolean,
+    /**
+     * Whether a timer reaching zero makes a noise.
+     *
+     * Separate from [hapticsEnabled] because they answer different questions. A
+     * phone face-down on a bench is felt and not heard; a phone in a bag across
+     * the room is heard and not felt. §7 makes the haptic optional and this
+     * follows it rather than riding on it.
+     */
+    val soundEnabled: Boolean = true,
     val mediaWifiOnly: Boolean = true,
 ) {
     companion object {
@@ -41,6 +50,7 @@ data class UserPreferences(
             keepScreenOn = true,
             reducedMotion = false,
             hapticsEnabled = true,
+            soundEnabled = true,
             mediaWifiOnly = true,
         )
     }

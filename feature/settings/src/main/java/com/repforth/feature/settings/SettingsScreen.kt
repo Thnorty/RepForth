@@ -96,6 +96,7 @@ fun SettingsRoute(
         onUnitsChange = viewModel::onUnitsChange,
         onKeepScreenOnChange = viewModel::onKeepScreenOnChange,
         onHapticsChange = viewModel::onHapticsChange,
+        onSoundChange = viewModel::onSoundChange,
         onReducedMotionChange = viewModel::onReducedMotionChange,
         onMediaWifiOnlyChange = viewModel::onMediaWifiOnlyChange,
         onClearMediaCache = viewModel::onClearMediaCache,
@@ -126,6 +127,7 @@ internal fun SettingsScreen(
     onUnitsChange: (UnitSystem) -> Unit,
     onKeepScreenOnChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onSoundChange: (Boolean) -> Unit,
     onReducedMotionChange: (Boolean) -> Unit,
     onMediaWifiOnlyChange: (Boolean) -> Unit,
     onClearMediaCache: () -> Unit,
@@ -284,6 +286,18 @@ internal fun SettingsScreen(
                 detail = stringResource(R.string.settings_haptics_sub),
                 checked = state.preferences.hapticsEnabled,
                 onCheckedChange = onHapticsChange,
+            )
+        }
+
+        // Next to the haptic, because they answer the same moment. Separate
+        // from it, because a phone face down on a bench is felt and not heard
+        // and a phone in a bag is heard and not felt.
+        item(key = "sound") {
+            SwitchRow(
+                label = stringResource(R.string.settings_sound),
+                detail = stringResource(R.string.settings_sound_sub),
+                checked = state.preferences.soundEnabled,
+                onCheckedChange = onSoundChange,
             )
         }
 
