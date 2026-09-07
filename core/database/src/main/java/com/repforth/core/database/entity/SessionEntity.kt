@@ -54,6 +54,39 @@ data class WorkoutSessionEntity(
     @ColumnInfo(name = "deadline_at")
     val deadlineAt: Long?,
 
+    /**
+     * How much rest was left when the session was paused, in milliseconds.
+     *
+     * A duration rather than an instant, and that is the point: a pause has no
+     * end, so there is no deadline to store. [deadlineAt] is null while paused
+     * and this is set; resuming turns it back into a deadline. Storing only the
+     * deadline lost the remainder entirely, and a restored paused rest could
+     * then never end.
+     */
+    @ColumnInfo(name = "rest_remaining_ms")
+    val restRemainingMs: Long?,
+
+    /**
+     * Where the user is, stored rather than derived.
+     *
+     * These were once recomputed on read from the set records — the first
+     * exercise still owed sets, and the count of sets already recorded. That
+     * derivation cannot express two states the engine really has. During a rest
+     * the cursor still points at the set just finished, so a count read it as
+     * the next one and ending the rest advanced past a set nobody did. And
+     * skipping an exercise records nothing, so the derivation walked straight
+     * back into the exercise the user had just left.
+     *
+     * The cursor and the set records are written in one transaction, so the
+     * drift the derivation was guarding against cannot happen; what it cost was
+     * two wrong answers about where the workout stood.
+     */
+    @ColumnInfo(name = "current_exercise_index")
+    val currentExerciseIndex: Int,
+
+    @ColumnInfo(name = "current_set_index")
+    val currentSetIndex: Int,
+
     @ColumnInfo(name = "started_at")
     val startedAt: Long,
 

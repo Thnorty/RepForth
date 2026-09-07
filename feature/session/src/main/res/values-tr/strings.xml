@@ -18,6 +18,7 @@
     <string name="session_seconds">Saniye</string>
     <string name="session_reps">Tekrar</string>
     <string name="session_weight">Ağırlık (%1$s)</string>
+    <string name="session_weight_invalid">Bir sayı girin, örneğin 12,5</string>
     <string name="session_log_set">Seti kaydet</string>
     <string name="session_skip_set">Seti atla</string>
     <string name="session_next_exercise">Sonraki egzersiz</string>

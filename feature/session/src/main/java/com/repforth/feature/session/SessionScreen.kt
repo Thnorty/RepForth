@@ -51,11 +51,13 @@ import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.designsystem.theme.WeightEntry
 import com.repforth.core.designsystem.theme.formatWeight
 import com.repforth.core.designsystem.theme.rfHaptic
 import com.repforth.core.designsystem.theme.rfPopOnChange
+import com.repforth.core.designsystem.theme.readWeight
+import com.repforth.core.designsystem.theme.sanitizeWeightInput
 import com.repforth.core.designsystem.theme.symbol
-import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.ExerciseTarget
@@ -505,6 +507,7 @@ private fun SessionControls(
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
     val units = LocalUnitSystem.current
+    val weightEntry = units.readWeight(weight)
 
     Column(
         modifier = Modifier
@@ -529,9 +532,11 @@ private fun SessionControls(
                 )
                 OutlinedTextField(
                     value = weight,
-                    onValueChange = {
-                        weight = it.filter { c -> c.isDigit() || c == '.' }.take(MAX_DIGITS)
-                    },
+                    // One parser, one editor, shared with the builder's field.
+                    // A comma is a decimal point here, because on a Turkish
+                    // keyboard it is the decimal key -- and dropping it turned
+                    // 12,5 into 125 and logged it without a word.
+                    onValueChange = { weight = sanitizeWeightInput(it) },
                     label = {
                         Text(stringResource(R.string.session_weight, units.symbol))
                     },
@@ -539,6 +544,12 @@ private fun SessionControls(
                         targetWeight?.takeIf { it > 0.0 }?.let {
                             Text(units.formatWeight(it))
                         }
+                    },
+                    isError = weightEntry is WeightEntry.Invalid,
+                    supportingText = if (weightEntry is WeightEntry.Invalid) {
+                        { Text(stringResource(R.string.session_weight_invalid)) }
+                    } else {
+                        null
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -565,6 +576,10 @@ private fun SessionControls(
 
             else -> PrimaryAction(
                 text = stringResource(R.string.session_log_set),
+                // A weight nobody can read is not a weight to record. Blank is
+                // still "as prescribed"; this is the case that used to become
+                // blank on its way through toDoubleOrNull.
+                enabled = weightEntry !is WeightEntry.Invalid,
                 onClick = {
                     // §12 asks for a haptic here, and the setting for it
                     // controlled nothing until now. This is the moment in a
@@ -577,8 +592,9 @@ private fun SessionControls(
                     // during the one activity where typing is hardest.
                     onCompleteSet(
                         reps.toIntOrNull(),
-                        // Typed in the user's unit, stored in kilograms (§7).
-                        weight.toDoubleOrNull()?.let(units::toKilograms),
+                        // Already in kilograms: the field's parser converts, so
+                        // no screen decides what unit a stored number is in.
+                        (weightEntry as? WeightEntry.Value)?.kg,
                         (state.target as? ExerciseTarget.Duration)?.durationMs,
                     )
                     reps = ""
@@ -633,9 +649,10 @@ private fun SessionControls(
 
 /** The one control used mid-set, at the session touch target rather than the floor. */
 @Composable
-private fun PrimaryAction(text: String, onClick: () -> Unit) {
+private fun PrimaryAction(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Target.session),

@@ -879,12 +879,19 @@ class BuilderViewModel @Inject constructor(
             // a second one silently replacing it would change what the app tells
             // you to train today without asking. Plans has a "set active" action
             // for that, which is where the decision belongs.
-            val isFirstWeek = weeks.observeActive().first() == null
+            //
+            // The third case is the one this used to get wrong. Saving is a
+            // whole-week replace, so `active` is not left alone by omission --
+            // whatever is passed here is what gets written. Asking only whether
+            // an active week exists answered "yes" when the active week was
+            // *this* one, wrote false, and Today lost its plan for the sake of
+            // renaming it.
+            val activeWeekId = weeks.observeActive().first()?.id
             val trainingWeek = TrainingWeek(
                 id = weekId,
                 name = weekName,
                 source = state.source,
-                active = isFirstWeek,
+                active = activeWeekId == null || activeWeekId == weekId,
                 days = weekDays,
             )
             weeks.save(trainingWeek)

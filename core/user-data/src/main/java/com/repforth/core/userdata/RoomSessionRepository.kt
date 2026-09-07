@@ -52,6 +52,13 @@ internal class RoomSessionRepository @Inject constructor(
                 deadlineAt = snapshot.restEndsAtElapsed?.let {
                     now + (it - time.elapsedRealtime()).coerceAtLeast(0)
                 },
+                // A pause has no deadline, so the remainder is what survives it.
+                // Kept as a duration for that reason: the wall clock may move
+                // arbitrarily far while a workout is paused, and none of that
+                // should come out of the rest.
+                restRemainingMs = snapshot.restRemainingMs,
+                currentExerciseIndex = snapshot.currentExerciseIndex,
+                currentSetIndex = snapshot.currentSetIndex,
                 startedAt = snapshot.startedAt,
                 endedAt = snapshot.endedAt,
                 revision = snapshot.revision,
@@ -109,14 +116,17 @@ internal class RoomSessionRepository @Inject constructor(
 private fun SessionWithDetails.toSnapshot(): SessionSnapshot {
     val ordered = exercises.sortedBy { it.exercise.position }
 
-    // Where the user is, derived rather than stored: the first exercise still
-    // owed sets. Deriving it means the cursor cannot disagree with the set
-    // records, which is the kind of drift a crash mid-write would otherwise
-    // leave behind.
-    val exerciseIndex = ordered
-        .indexOfFirst { it.sets.size < it.exercise.targetSets }
-        .takeIf { it >= 0 }
-        ?: ordered.lastIndex.coerceAtLeast(0)
+    // Where the user is, read back rather than recomputed. Counting the stored
+    // set records looks equivalent and is not: during a rest the cursor still
+    // names the set just finished, and skipping an exercise records nothing at
+    // all. Both are states the engine reaches every workout, and a count got
+    // both of them wrong -- see WorkoutSessionEntity.
+    //
+    // Clamped only into the range the row itself allows, so a truncated or
+    // hand-edited database lands somewhere in the workout rather than throwing
+    // on the way to the screen.
+    val exerciseIndex =
+        if (ordered.isEmpty()) 0 else session.currentExerciseIndex.coerceIn(0, ordered.lastIndex)
 
     return SessionSnapshot(
         sessionId = session.id,
@@ -128,7 +138,8 @@ private fun SessionWithDetails.toSnapshot(): SessionSnapshot {
         },
         exercises = ordered.map(SessionExerciseWithSets::toDomain),
         currentExerciseIndex = exerciseIndex,
-        currentSetIndex = ordered.getOrNull(exerciseIndex)?.sets?.size ?: 0,
+        currentSetIndex = session.currentSetIndex.coerceAtLeast(0),
+        restRemainingMs = session.restRemainingMs,
         startedAt = session.startedAt,
         endedAt = session.endedAt,
         revision = session.revision,

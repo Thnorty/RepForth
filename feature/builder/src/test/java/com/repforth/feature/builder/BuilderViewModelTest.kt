@@ -85,21 +85,30 @@ class BuilderViewModelTest {
         catalog = FakeExercises()
         profiles = FakeProfiles()
         generator = FakeWorkoutGenerator()
-        viewModel = BuilderViewModel(
-            templates,
-            catalog,
-            profiles,
-            generator,
-            AlwaysConfigured,
-            weeks,
-            UserPreferencesDataSource(FakePreferencesStore()),
-        )
+        viewModel = newViewModel()
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
     }
+
+    /**
+     * Another visit to the builder, over the same stored data.
+     *
+     * The view model holds the draft, including which week is being edited, so
+     * "the user comes back and makes a different week" is a new instance and
+     * cannot be faked by calling [BuilderViewModel.onGenerate] twice.
+     */
+    private fun newViewModel() = BuilderViewModel(
+        templates,
+        catalog,
+        profiles,
+        generator,
+        AlwaysConfigured,
+        weeks,
+        UserPreferencesDataSource(FakePreferencesStore()),
+    )
 
     private val state get() = viewModel.uiState.value
 
@@ -931,6 +940,14 @@ class BuilderViewModelTest {
      * The first week has nothing to displace, so it becomes active. A later one
      * would otherwise change what the app tells you to train today without
      * asking; Plans has an explicit "set active" action for that.
+     *
+     * The second week comes from a second view model, and it has to. `onGenerate`
+     * does not clear `weekId`, so generating again on a screen that has already
+     * saved re-saves *that* week rather than making another one — this test used
+     * to generate twice into one view model and believe it had two weeks, while
+     * `weeks.saved` held one. It passed because the answer for a re-save and the
+     * answer for a second week were both `false` at the time, and only one of
+     * those was right. The size assertions are here so it cannot drift back.
      */
     @Test
     fun `a generated week only becomes active when no week is active yet`() = runTest(dispatcher) {
@@ -952,13 +969,105 @@ class BuilderViewModelTest {
         assertTrue("The first week has nothing to displace", weeks.saved.single().active)
 
         weeks.activeWeek = weeks.saved.single()
+        val second = newViewModel()
+        second.onCoachDaysChange(2)
+        second.onGenerate("Second", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+        second.onSaveWeek("Second", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertEquals("This must really be a second week", 2, weeks.saved.size)
+        assertFalse(
+            "A later week must not displace the active one without being asked",
+            weeks.saved.last().active,
+        )
+        assertTrue(
+            "And the first week must still be the active one",
+            weeks.saved.first().active,
+        )
+    }
+
+    /**
+     * Renaming the week Today is offering does not take it away.
+     *
+     * Saving replaces the whole row, so `active` is written on every save rather
+     * than left alone. Asking only whether *an* active week exists answered
+     * "yes" when the active week was this one, wrote false, and Today went
+     * blank because someone had fixed a typo in a week title.
+     */
+    @Test
+    fun `editing the active week leaves it active`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            days = listOf(day("Push", "a"), day("Pull", "b")),
+            rationale = "Upper/lower",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.LATS),
+        )
+
+        viewModel.onCoachDaysChange(2)
+        viewModel.onGenerate("My Week", DAY_TITLES, Language.ENGLISH)
+        advanceUntilIdle()
+        viewModel.onSaveWeek("My Week", DAY_TITLES)
+        advanceUntilIdle()
+
+        val saved = weeks.saved.single()
+        assertTrue("The first week has nothing to displace", saved.active)
+        // What the database now holds: this week, and it is the active one.
+        weeks.activeWeek = saved
+
+        viewModel.onNameChange("My Week B")
+        viewModel.onSaveWeek("My Week", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertEquals("The same week, not a second one", saved.id, weeks.saved.last().id)
+        assertEquals("My Week B", weeks.saved.last().name)
+        assertTrue(
+            "Renaming the active week must not deactivate it",
+            weeks.saved.last().active,
+        )
+    }
+
+    /**
+     * And editing an inactive week does not promote it either.
+     *
+     * The pair matters: a fix that simply always wrote true would pass the test
+     * above and hand Today to whichever week was edited last.
+     */
+    @Test
+    fun `editing an inactive week leaves the other one active`() = runTest(dispatcher) {
+        generator.response = AiWorkoutResponse(
+            days = listOf(day("Push", "a"), day("Pull", "b")),
+            rationale = "Upper/lower",
+        )
+        catalog.catalog = listOf(
+            candidate("a", Muscle.PECTORALS),
+            candidate("b", Muscle.LATS),
+        )
+
+        // Someone else's week already owns Today.
+        weeks.activeWeek = TrainingWeek(
+            id = "already-active",
+            name = "The one I train",
+            source = PlanSource.MANUAL,
+            active = true,
+            days = emptyList(),
+        )
+
+        viewModel.onCoachDaysChange(2)
         viewModel.onGenerate("Second", DAY_TITLES, Language.ENGLISH)
         advanceUntilIdle()
         viewModel.onSaveWeek("Second", DAY_TITLES)
         advanceUntilIdle()
+        assertFalse("A new week does not displace the active one", weeks.saved.last().active)
+
+        viewModel.onNameChange("Second, renamed")
+        viewModel.onSaveWeek("Second", DAY_TITLES)
+        advanceUntilIdle()
 
         assertFalse(
-            "A later week must not displace the active one without being asked",
+            "Editing an inactive week must not promote it over the active one",
             weeks.saved.last().active,
         )
     }
@@ -1160,6 +1269,7 @@ class BuilderExerciseDetailTest {
     fun tearDown() {
         Dispatchers.resetMain()
     }
+
 
     /**
      * The builder could show what an exercise was nowhere at all: the detail

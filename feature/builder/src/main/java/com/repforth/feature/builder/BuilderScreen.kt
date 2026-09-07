@@ -54,9 +54,11 @@ import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.designsystem.theme.WeightEntry
 import com.repforth.core.designsystem.theme.formatWeight
+import com.repforth.core.designsystem.theme.readWeight
+import com.repforth.core.designsystem.theme.sanitizeWeightInput
 import com.repforth.core.designsystem.theme.symbol
-import com.repforth.core.designsystem.theme.toKilograms
 import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.media.ui.ExerciseDetailSheet
 import com.repforth.core.media.ui.ExerciseMedia
@@ -648,8 +650,13 @@ private fun DecimalField(
 
     var text by remember { mutableStateOf(TextFieldValue(shown(value))) }
 
+    // Pulls the field back in line when the weight changes from outside it.
+    // Separator-insensitive, because `formatWeight` always writes a period: a
+    // plain string comparison decided that a typed `12,5` disagreed with the
+    // 12.5 it had just produced, and rewrote the comma under the cursor while
+    // someone was still typing the number.
     LaunchedEffect(value, units) {
-        if (text.text != shown(value)) {
+        if (text.text.replace(',', '.') != shown(value)) {
             text = TextFieldValue(shown(value), TextRange(shown(value).length))
         }
     }
@@ -657,13 +664,23 @@ private fun DecimalField(
     OutlinedTextField(
         value = text,
         onValueChange = { typed ->
-            val cleaned = typed.text.filter { it.isDigit() || it == '.' }.take(MAX_DIGITS)
+            // The same parser the running workout uses. This field had the same
+            // defect and it is worse here, because a plan is written once and
+            // then trained from for weeks: `12,5` became `125`, and `1.2.3`
+            // cleared the weight rather than refusing.
+            val cleaned = sanitizeWeightInput(typed.text)
             text = typed.copy(text = cleaned)
-            onValueChange(
-                if (cleaned.isBlank()) null else cleaned.toDoubleOrNull()?.let(units::toKilograms),
-            )
+            when (val entry = units.readWeight(cleaned)) {
+                is WeightEntry.Value -> onValueChange(entry.kg)
+                // An empty field is a state to pass through, not a value to
+                // store; an unreadable one is a state to sit in, so the last
+                // good weight stays until it becomes readable again.
+                WeightEntry.Blank -> onValueChange(null)
+                WeightEntry.Invalid -> Unit
+            }
         },
         label = { Text(label) },
+        isError = units.readWeight(text.text) is WeightEntry.Invalid,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = modifier,

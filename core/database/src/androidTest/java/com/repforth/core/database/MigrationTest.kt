@@ -1,6 +1,7 @@
 package com.repforth.core.database
 
 import androidx.room.testing.MigrationTestHelper
+import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -253,6 +254,176 @@ class MigrationTest {
 
         migrated.close()
     }
+
+    /**
+     * The second migration's structural half.
+     *
+     * Started from a real version 2 rather than from 1, because that is what is
+     * on the phones this update reaches: `2.json` is the committed record of
+     * that shape, and `createDatabase` builds it from that file.
+     */
+    @Test
+    fun migrating_from_2_to_3_produces_the_schema_room_expects() {
+        helper.createDatabase(TEST_DB, 2).close()
+
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            3,
+            true,
+            RepForthDatabase.MIGRATION_2_3,
+        ).close()
+    }
+
+    /** And the whole chain, which is what a v1 install actually runs. */
+    @Test
+    fun migrating_from_1_to_3_produces_the_schema_room_expects() {
+        helper.createDatabase(TEST_DB, 1).close()
+
+        helper.runMigrationsAndValidate(
+            TEST_DB,
+            3,
+            true,
+            RepForthDatabase.MIGRATION_1_2,
+            RepForthDatabase.MIGRATION_2_3,
+        ).close()
+    }
+
+    /**
+     * The half that matters to the user: the workout they were in the middle of
+     * is still there, and still says where they had got to.
+     *
+     * Version 3 stores the cursor because deriving it from the set records was
+     * wrong in two states. A migration that only added the columns would leave
+     * everybody mid-workout at the first set of the first exercise — correct by
+     * the schema and wrong on the device — so the backfill reproduces the old
+     * derivation, and this is what says it ran.
+     */
+    @Test
+    fun migrating_from_2_to_3_backfills_where_the_user_had_got_to() {
+        helper.createDatabase(TEST_DB, 2).use { v2 ->
+            v2.insertSessionInProgress()
+            // Exercise 0 is finished: three of three. Exercise 1 has one set
+            // done, so that is where the user is standing.
+            v2.insertExercise("ex-0", position = 0, targetSets = 3)
+            v2.insertExercise("ex-1", position = 1, targetSets = 3)
+            repeat(3) { v2.insertSet("ex-0", it) }
+            v2.insertSet("ex-1", 0)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            3,
+            true,
+            RepForthDatabase.MIGRATION_2_3,
+        )
+
+        migrated.query(
+            "SELECT state, current_exercise_index, current_set_index, rest_remaining_ms, revision " +
+                "FROM workout_session",
+        ).use { cursor ->
+            assertTrue("The workout in progress must survive the migration", cursor.moveToFirst())
+            assertEquals(1, cursor.count)
+            assertEquals("ACTIVE", cursor.getString(0))
+            assertEquals("The exercise still owed sets", 1, cursor.getInt(1))
+            assertEquals("The sets already recorded against it", 1, cursor.getInt(2))
+            assertTrue("Nothing was paused, so there is no remainder", cursor.isNull(3))
+            assertEquals(7L, cursor.getLong(4))
+        }
+
+        migrated.query("SELECT COUNT(*) FROM set_record").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Every set the user performed must survive", 4, cursor.getInt(0))
+        }
+
+        migrated.close()
+    }
+
+    /**
+     * The fallback arm, which the old code also had: a session owing nothing
+     * lands on its last exercise rather than on exercise zero.
+     */
+    @Test
+    fun migrating_from_2_to_3_lands_a_complete_session_on_its_last_exercise() {
+        helper.createDatabase(TEST_DB, 2).use { v2 ->
+            v2.insertSessionInProgress(state = "COMPLETING")
+            v2.insertExercise("ex-0", position = 0, targetSets = 2)
+            v2.insertExercise("ex-1", position = 1, targetSets = 2)
+            repeat(2) { v2.insertSet("ex-0", it) }
+            repeat(2) { v2.insertSet("ex-1", it) }
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            3,
+            true,
+            RepForthDatabase.MIGRATION_2_3,
+        )
+
+        migrated.query(
+            "SELECT current_exercise_index, current_set_index FROM workout_session",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+            assertEquals(2, cursor.getInt(1))
+        }
+
+        migrated.close()
+    }
+
+    /** A session with no exercises at all must not break the backfill's subqueries. */
+    @Test
+    fun migrating_from_2_to_3_handles_a_session_with_no_exercises() {
+        helper.createDatabase(TEST_DB, 2).use { v2 ->
+            v2.insertSessionInProgress(state = "PREPARING")
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            3,
+            true,
+            RepForthDatabase.MIGRATION_2_3,
+        )
+
+        migrated.query(
+            "SELECT current_exercise_index, current_set_index FROM workout_session",
+        ).use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+            assertEquals(0, cursor.getInt(1))
+        }
+
+        migrated.close()
+    }
+
+    private fun SupportSQLiteDatabase.insertSessionInProgress(state: String = "ACTIVE") = execSQL(
+        """
+        INSERT INTO workout_session
+            (id, template_id, state, phase_before_pause, deadline_at,
+             started_at, ended_at, revision, created_at, updated_at)
+        VALUES ('session-1', 'plan-1', '$state', NULL, NULL, 100, NULL, 7, 100, 200)
+        """.trimIndent(),
+    )
+
+    private fun SupportSQLiteDatabase.insertExercise(id: String, position: Int, targetSets: Int) =
+        execSQL(
+            """
+            INSERT INTO session_exercise
+                (id, session_id, exercise_id, position, target_sets, target_reps,
+                 target_duration_ms, target_weight_kg, rest_ms, created_at, updated_at)
+            VALUES ('$id', 'session-1', 'catalog-$position', $position, $targetSets, 10,
+                    NULL, 60.0, 90000, 100, 200)
+            """.trimIndent(),
+        )
+
+    private fun SupportSQLiteDatabase.insertSet(exerciseId: String, position: Int) = execSQL(
+        """
+        INSERT INTO set_record
+            (id, session_exercise_id, position, outcome, reps, weight_kg,
+             duration_ms, rpe, recorded_at, created_at, updated_at)
+        VALUES ('$exerciseId:$position', '$exerciseId', $position, 'COMPLETED', 10, 60.0,
+                NULL, NULL, 300, 300, 300)
+        """.trimIndent(),
+    )
 
     private companion object {
         const val TEST_DB = "migration-test"
