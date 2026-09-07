@@ -48,6 +48,13 @@ internal fun Project.configureGuardTestInputs() {
         // this rule doing its job: corrupting the JSON left the task
         // UP-TO-DATE and the build green.
         "../../tools/gemini-schema.json",
+        // WearPathsTest in core:wear-protocol reads both apps' manifests, to
+        // check the pathPrefix each listener filters on still covers every path
+        // the protocol declares. An intent filter cannot read a Kotlin constant,
+        // so this is the forced duplicate; a path outside the prefix is
+        // delivered to nobody and the send still reports success.
+        "../../wear/src/main/AndroidManifest.xml",
+        "../../feature/session/src/main/AndroidManifest.xml",
     )
 
     declareRepoWideGuardInputs()

@@ -41,4 +41,17 @@ dependencies {
     // must never reach an APK -- this module has no androidTest, and adding
     // one would need its own fixtures.
     testImplementation(project(":core:testing"))
+
+    // The watch's screens, rendered on the JVM. Named here rather than through
+    // `repforth.android.screenshot` because that plugin is about goldens and
+    // configures a library extension; the watch records none and is an
+    // application. What both need -- merged resources and the release-variant
+    // exclusion -- is in the compose convention plugin, which this module has.
+    //
+    // Behavioural, not visual: §11 gives the watch no engine, so what is worth
+    // asserting is which controls a given snapshot offers. A timed set must not
+    // offer Complete, because the phone's engine refuses it.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

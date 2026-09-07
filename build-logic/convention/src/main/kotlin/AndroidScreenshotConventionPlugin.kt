@@ -1,9 +1,7 @@
-import com.android.build.api.dsl.LibraryExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
-import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.withType
 
@@ -32,13 +30,6 @@ import org.gradle.kotlin.dsl.withType
 class AndroidScreenshotConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
-            extensions.configure<LibraryExtension> {
-                // Robolectric reads the merged resources: without this every
-                // `stringResource` in a screenshot resolves to nothing and the
-                // images are of an app with no words in it.
-                testOptions.unitTests.isIncludeAndroidResources = true
-            }
-
             dependencies {
                 add("testImplementation", libs.library("robolectric"))
                 add("testImplementation", libs.library("roborazzi"))
@@ -52,26 +43,10 @@ class AndroidScreenshotConventionPlugin : Plugin<Project> {
             }
 
             tasks.withType<Test>().configureEach {
-                // Debug only. `./gradlew test` runs the release unit tests too,
-                // and the host activity above arrives through
-                // `debugImplementation` -- so the release copy of every
-                // screenshot test failed with no launcher activity to resolve.
-                // Running them twice was never wanted regardless: a rendered
-                // composable does not differ between variants, and these are the
-                // slowest tests in the suite.
-                if (name.contains("Release")) {
-                    exclude("**/*ScreenshotTest*")
-                    // The accessibility tests host a screen the same way and
-                    // fail the same way without it.
-                    exclude("**/*AccessibilityTest*")
-                    // And anything else that puts a composable on screen to
-                    // assert about it -- behaviour under a `ComposeTestRule`
-                    // rather than a picture. Same host activity, same absence
-                    // in release, same failure. Name such a test `*ComposeTest`
-                    // so it lands here rather than discovering this the hard
-                    // way in CI.
-                    exclude("**/*ComposeTest*")
-                }
+                // The release-variant exclusion that used to be here is now in
+                // the compose convention plugin, which every module applying
+                // this one already has. It moved because the watch needs it and
+                // is an application module, which this plugin cannot configure.
 
                 // The goldens are read through `java.io.File` at runtime, so
                 // Gradle cannot see them -- the same blind spot

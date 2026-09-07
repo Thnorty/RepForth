@@ -82,10 +82,30 @@ fun NoWorkoutScreen(modifier: Modifier = Modifier) {
     }
 }
 
-/** §11 screen 3: working a set. */
+/**
+ * §11 screen 3: working a set — counted in repetitions, or in seconds.
+ *
+ * The two are genuinely different screens sharing a frame, and the difference is
+ * not decoration. A timed set **cannot be completed by hand**: the phone's
+ * engine refuses `CompleteSet` for a duration target, because §3's timed work is
+ * measured rather than declared and a plank stopped at forty seconds is a skip,
+ * not a sixty-second set. So the Complete button is absent rather than disabled
+ * — a disabled control says "not yet", and this one is never coming.
+ *
+ * That refusal already existed on the phone when this screen did not know about
+ * it, which is the shape worth naming: the watch went on offering a button whose
+ * command the phone would reject, and every engine test stayed green because
+ * they test the rule, not the sender. §11 makes the watch a second sender, and a
+ * second sender has to be looked at whenever the rules change.
+ *
+ * [remainingSeconds] is what the clock says, or null before the phone has armed
+ * one — in which case the prescription is drawn instead, which is the honest
+ * answer to "how long is this" when nothing is counting yet.
+ */
 @Composable
 fun ExerciseScreen(
     state: WearWorkoutState,
+    remainingSeconds: Int?,
     enabled: Boolean,
     onAction: (WearAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -98,29 +118,53 @@ fun ExerciseScreen(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            text = stringResource(R.string.wear_set_of, state.setNumber, state.totalSets),
-            style = MaterialTheme.typography.displaySmall,
-        )
-        state.targetReps?.let { reps ->
+
+        val holdMs = state.targetDurationMs
+        if (holdMs != null) {
+            // The clock takes the big slot, exactly as it does on the phone.
+            // During a plank the only number worth that space is how long is
+            // left; the prescription is merely what the seconds started at.
             Text(
-                text = stringResource(R.string.wear_target_reps, reps),
+                text = (remainingSeconds ?: (holdMs / 1000L).toInt()).toString(),
+                style = MaterialTheme.typography.displayLarge,
+            )
+            Text(
+                text = stringResource(R.string.wear_seconds),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                text = stringResource(R.string.wear_set_of, state.setNumber, state.totalSets),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text = stringResource(R.string.wear_set_of, state.setNumber, state.totalSets),
+                style = MaterialTheme.typography.displaySmall,
+            )
+            state.targetReps?.let { reps ->
+                Text(
+                    text = stringResource(R.string.wear_target_reps, reps),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // Complete is the button the whole app exists for, so it is the wide
+            // one and it is first. §12's out-of-breath-with-chalk argument is
+            // even truer on a wrist than on a phone.
+            Button(
+                onClick = { onAction(WearAction.CompleteSet) },
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.wear_complete_set))
+            }
         }
 
-        // Complete is the button the whole app exists for, so it is the wide
-        // one and it is first. §12's out-of-breath-with-chalk argument is even
-        // truer on a wrist than on a phone.
-        Button(
-            onClick = { onAction(WearAction.CompleteSet) },
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(stringResource(R.string.wear_complete_set))
-        }
-
+        // Both kinds keep these. Stopping early is still allowed for timed work
+        // — it is a skip, which is a row in the history and not an absence.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(4.dp),

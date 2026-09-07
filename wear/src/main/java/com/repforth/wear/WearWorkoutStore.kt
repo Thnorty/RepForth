@@ -10,6 +10,7 @@ import com.google.android.gms.wearable.Wearable
 import com.repforth.core.wearprotocol.WEAR_PROTOCOL_VERSION
 import com.repforth.core.wearprotocol.WearAction
 import com.repforth.core.wearprotocol.WearCommand
+import com.repforth.core.wearprotocol.WearPaths
 import com.repforth.core.wearprotocol.WearWorkoutState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
@@ -196,9 +197,9 @@ class WearWorkoutStore @Inject constructor(
     private companion object {
         const val TAG = "WearWorkoutStore"
 
-        /** §11 names these paths, and the phone bridge uses the same two. */
-        const val PATH = "/workout/active"
-        const val COMMAND_PATH = "/workout/command"
+        /** §11's paths, from the protocol module the phone bridge also reads. */
+        const val PATH = WearPaths.STATE
+        const val COMMAND_PATH = WearPaths.COMMAND
 
         /** Declared by the phone in `res/values/wear.xml`. */
         const val PHONE_CAPABILITY = "repforth_phone"

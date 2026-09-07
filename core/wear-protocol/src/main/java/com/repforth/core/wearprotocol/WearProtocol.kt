@@ -4,6 +4,7 @@ package com.repforth.core.wearprotocol
 
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /*
@@ -28,6 +29,44 @@ import kotlinx.serialization.Serializable
  * occasionally for weeks if one of them is not opened.
  */
 const val WEAR_PROTOCOL_VERSION: Int = 1
+
+/**
+ * The Data Layer paths the phone and the watch agree on (§11).
+ *
+ * Here rather than as a constant on each side. They were four literals across two
+ * files — `/workout/active` and `/workout/command`, spelled out in the phone's
+ * bridge and again in the watch's store — and two strings that must be equal, in
+ * two modules that never see each other, are a typo away from a watch that
+ * publishes into silence. Nothing would fail to compile and no test would notice;
+ * the symptom is a workout that simply never reaches the wrist.
+ *
+ * [PREFIX] is the part the manifests have to repeat, because an intent filter
+ * cannot read a Kotlin constant. `WearPathsTest` reads both manifests and
+ * asserts they still cover everything declared here — a path added outside the
+ * prefix is delivered to nobody, silently.
+ */
+object WearPaths {
+
+    /**
+     * What both listener services filter on.
+     *
+     * A prefix rather than three exact filters, so a new path needs no manifest
+     * change on either side. The services check the exact path themselves.
+     */
+    const val PREFIX: String = "/workout"
+
+    /** The latest snapshot, over `DataClient`. Phone to watch. */
+    const val STATE: String = "$PREFIX/active"
+
+    /** A request from the wrist, over `MessageClient`. Watch to phone. */
+    const val COMMAND: String = "$PREFIX/command"
+
+    /** A timer reaching zero, over `MessageClient`. Phone to watch. */
+    const val ALERT: String = "$PREFIX/alert"
+
+    /** Every path, for the guard that checks the manifests cover them. */
+    val all: List<String> = listOf(STATE, COMMAND, ALERT)
+}
 
 /**
  * What the watch is showing.
@@ -94,6 +133,20 @@ data class WearWorkoutState(
     val setNumber: Int,
     val totalSets: Int,
     val targetReps: Int?,
+
+    /**
+     * How long a timed set is prescribed to run, or null when it is not timed.
+     *
+     * The other half of §3's "repetitions **or duration**". Exactly one of this
+     * and [targetReps] is set, because a phone-side `ExerciseTarget` is one or
+     * the other — and before this the watch had only the reps half, so a plank
+     * arrived on the wrist as a set number with nothing to say what to do.
+     *
+     * Kept even while [setDeadlineElapsedRealtimeMs] is counting: the deadline
+     * says how much is left and this says what it was, and the watch needs the
+     * second one the moment the first is absent (paused, or not yet armed).
+     */
+    val targetDurationMs: Long?,
     /**
      * When the current rest ends, on **the phone's** `elapsedRealtime` clock.
      *
@@ -108,16 +161,40 @@ data class WearWorkoutState(
      * because the phone had been up 595515 seconds and the watch 4465.
      *
      * [publishedAtElapsedRealtimeMs] is what makes it usable. See [restRemainingMs].
+     *
+     * **The wire name is the old one, and stays.** The property was `deadline…`
+     * while a rest was the only clock the watch knew about; a second clock made
+     * that ambiguous to read, but renaming the *key* would hide the rest
+     * countdown from every watch built before this — which is precisely the
+     * split-version window [protocolVersion] exists for. `WearWireFormatTest`
+     * asserts the key rather than the property for that reason.
      */
-    val deadlineElapsedRealtimeMs: Long?,
+    @SerialName("deadlineElapsedRealtimeMs")
+    val restDeadlineElapsedRealtimeMs: Long?,
+
+    /**
+     * When the timed set in progress ends, on the same clock, or null.
+     *
+     * Null for an exercise measured in repetitions, and null while a timed set
+     * is paused or has not been armed yet — [targetDurationMs] is what the watch
+     * shows then.
+     *
+     * A second field rather than one deadline the phase disambiguates. A rest
+     * and a set never run at once, so one field would have been sufficient and
+     * would also have been the kind of sufficiency that breaks silently: the
+     * watch decides what to draw from the phase, and any disagreement between
+     * the phase and the meaning of a shared number is a countdown labelled as
+     * the wrong thing. Two names cannot be misread.
+     */
+    val setDeadlineElapsedRealtimeMs: Long?,
 
     /**
      * The phone's `elapsedRealtime` at the moment this snapshot was published.
      *
-     * The reference point for [deadlineElapsedRealtimeMs]. Both are on the
-     * phone's clock, so their *difference* is a duration, and a duration means
-     * the same thing on both devices. The watch never compares a phone
-     * timestamp with one of its own.
+     * The reference point for both deadlines above. All three are on the
+     * phone's clock, so a *difference* between them is a duration, and a
+     * duration means the same thing on both devices. The watch never compares a
+     * phone timestamp with one of its own.
      */
     val publishedAtElapsedRealtimeMs: Long = 0L,
     val nextExerciseName: String?,
@@ -174,6 +251,76 @@ data class WearCommand(
 )
 
 /**
+ * Something a timer did, sent to `/workout/alert` over `MessageClient` (§11).
+ *
+ * §3 asks the watch for "a haptic signal when a timed set or rest reaches
+ * zero", and the watch cannot work out that moment for itself. It sees phases,
+ * and *both* ways out of a rest — it ran out, or the user skipped it — are the
+ * same phase change. The phone is the only side that knows which happened,
+ * because only the phone has the events.
+ *
+ * **A message, not a field on the snapshot, and the reason is the one
+ * `WearBridge` already gives for the opposite choice.** State goes over
+ * `DataClient` because the Data Layer keeps the last value, so a watch that was
+ * out of range still learns the current set. An alert wants exactly the reverse:
+ * it happened at an instant, and a wrist buzzing for a rest that ended while the
+ * watch was in a drawer is worse than one that never buzzed. A message has no
+ * memory, which here is the feature.
+ *
+ * Sending it at all is gated on the phone's haptics preference, since §12 makes
+ * haptics optional and the watch has no settings of its own to read.
+ */
+@Serializable
+enum class WearAlert {
+    /** A rest ran out. Never sent for a rest the user skipped — they know. */
+    RestEnded,
+
+    /** A timed set ran its full length, and was therefore recorded. */
+    TimedSetEnded,
+}
+
+/** The envelope for a [WearAlert], carrying the two fields every message carries. */
+@Serializable
+data class WearAlertMessage(
+    /** Always written. See [WearWorkoutState.protocolVersion]. */
+    @EncodeDefault(EncodeDefault.Mode.ALWAYS)
+    val protocolVersion: Int = WEAR_PROTOCOL_VERSION,
+    /**
+     * The workout this is about.
+     *
+     * Not used to refuse anything today — there is nothing to refuse, a buzz
+     * mutates nothing — but a watch that has already moved on to the next
+     * session should not be buzzed by the tail of the last one.
+     */
+    val sessionId: String,
+    val alert: WearAlert,
+)
+
+/**
+ * Whether this alert is about the workout the watch is showing.
+ *
+ * A buzz mutates nothing, so there is no `admit`-style refusal here and no
+ * revision to check — a haptic cannot be applied to the wrong state, only at the
+ * wrong moment. What it *can* be wrong about is which workout and which format:
+ *
+ * - A **different session** means the watch has already moved on, or never saw
+ *   this one. Buzzing then is a wrist twitching for a workout its wearer is not
+ *   doing.
+ * - An **unreadable version** is refused for the same reason [admit] refuses a
+ *   command: a field whose meaning changed is indistinguishable from one that
+ *   did not, and §11 guarantees the two apps are different versions of
+ *   themselves for part of every install.
+ *
+ * [currentSessionId] is null when the watch holds no snapshot — a cold process,
+ * or one that missed the publish. That is allowed to buzz: there is nothing to
+ * contradict the phone with, and the phone only sends this during a workout it
+ * is actually running.
+ */
+fun WearAlertMessage.appliesTo(currentSessionId: String?): Boolean =
+    protocolVersion == WEAR_PROTOCOL_VERSION &&
+        (currentSessionId == null || currentSessionId == sessionId)
+
+/**
  * How much rest is left, from a snapshot and nothing else.
  *
  * The subtraction is between two of the **phone's** timestamps, which is the
@@ -187,7 +334,17 @@ data class WearCommand(
  * A watch that then counts down locally is wrong once, by that latency, rather
  * than drifting.
  */
-fun WearWorkoutState.restRemainingMs(): Long? {
-    val deadline = deadlineElapsedRealtimeMs ?: return null
-    return (deadline - publishedAtElapsedRealtimeMs).coerceAtLeast(0L)
-}
+fun WearWorkoutState.restRemainingMs(): Long? = remainingUntil(restDeadlineElapsedRealtimeMs)
+
+/**
+ * How much of the timed set is left, or null when nothing is being timed.
+ *
+ * The same subtraction as [restRemainingMs], through the same helper and not
+ * beside it. Two copies of this arithmetic would be two chances to write the
+ * one that reads the watch's own clock, and that mistake has already been made
+ * once here — it is the reason this function exists as a function at all.
+ */
+fun WearWorkoutState.setRemainingMs(): Long? = remainingUntil(setDeadlineElapsedRealtimeMs)
+
+private fun WearWorkoutState.remainingUntil(deadline: Long?): Long? =
+    deadline?.let { (it - publishedAtElapsedRealtimeMs).coerceAtLeast(0L) }

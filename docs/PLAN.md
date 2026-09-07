@@ -3237,6 +3237,115 @@ So the better model is cumulative emulator load over a run rather than free RAM
 at the start of one. Nothing here fixes it; the evidence is recorded so the next
 attempt does not start from the memory theory again.
 
+### 2026-09-08 — timed sets reach the wrist (F1's watch half, F7's alerts)
+
+#41 made the clock the only way to end a timed set, and refused `CompleteSet`
+for a duration target. It changed nothing on the watch, and that is the defect
+this slice is really about: **the wrist went on drawing a Complete button whose
+command the phone would reject.**
+
+Every engine test stayed green, because they test the rule. §11 makes the watch
+a *second sender* of the command the rule refuses, and nothing in the suite could
+see a sender. That is the same shape as U.1's "two fixes that did nothing" — a
+guard proven where it is written and never checked where it is reached — and it
+is worth naming as a standing question: **when a command becomes illegal, who
+else sends it?**
+
+Three other things were wrong on the wrist for the same reason:
+
+- **No duration.** §3 asks the watch for "current set/total sets and repetitions
+  **or duration**". `toWearState` mapped `ExerciseTarget.Reps` only, so a plank
+  arrived as "1 / 3" with nothing under it.
+- **No countdown.** Only rest's deadline crossed, so the timed set had none.
+- **No haptic.** §3 asks for one "when a timed set or rest reaches zero", and
+  neither had one. The phone had buzzed since #40; the watch never has.
+
+**What was built**
+
+- `WearWorkoutState` gained `targetDurationMs` and `setDeadlineElapsedRealtimeMs`.
+  Adding a field is not a version bump — the protocol says so itself — and the
+  set's deadline is a *second* field rather than one the phase disambiguates,
+  because the watch picks its screen from the phase and a shared number can only
+  ever be labelled by agreement.
+- The rest field was renamed `restDeadlineElapsedRealtimeMs` **in Kotlin only**.
+  `@SerialName` keeps the wire key, and `WearWireFormatTest` asserts the key
+  rather than the property: renaming it would have silently cost every
+  already-installed watch its rest countdown, in exactly the split-version window
+  §11 says exists on every install.
+- `ExerciseScreen` draws a countdown for a timed set and **omits** Complete
+  rather than disabling it. Disabled says "not yet"; this one is never coming.
+- A `/workout/alert` message, phone to watch, buzzing the wrist at zero.
+
+**Why the alert is a message and not a field**
+
+The watch cannot work the moment out for itself: *both* ways out of a rest — it
+ran out, or the user skipped it — are the same phase change in the snapshot. Only
+the phone has the events that separate them.
+
+`WearBridge`'s own kdoc gives the argument for state going over `DataClient`: the
+Data Layer keeps the last value, so a watch that was out of range still learns
+the current set. An alert wants precisely the reverse. It is true at an instant,
+and a wrist buzzing on reconnect for a rest that ended while the watch sat in a
+drawer is worse than one that never buzzed. **A message has no memory, and here
+that is the feature.**
+
+It is gated on the phone's haptics preference, because §11 gives the watch no
+settings to read: "haptics off" can only be honoured on the wrist by not sending.
+One switch for two devices is the honest MVP, and is recorded as a decision
+rather than left implicit.
+
+**The paused remainder, fixed on the way past (backlog 14)**
+
+The projection now rebuilds both deadlines from the phase-aware remainder instead
+of reading the raw field. The phone drops its deadline on a pause and keeps a
+duration — a pause has no end — so reading `restEndsAtElapsed` published null and
+the watch drew "—" over a rest that was merely suspended. Rebuilding costs
+nothing, needs no new field, and the watch simply does not tick while paused.
+
+What is **not** fixed is which screen a paused rest shows: `WearPhase.Paused`
+still falls through to the exercise screen, so a paused *rest* is correct on the
+wire and invisible on the display. A paused timed set is correct in both, because
+that is the screen it was already on. That remainder is a §11 screen question and
+stays on the backlog.
+
+**One home for the Data Layer paths**
+
+`/workout/active` and `/workout/command` were four literals in four files across
+two modules that never see each other — two strings that must be equal, a typo
+away from a watch that publishes into silence, with nothing failing to compile.
+Adding a third path would have made it six. They are now `WearPaths` in the
+protocol both sides compile against.
+
+The manifests still repeat the `/workout` prefix, because an intent filter cannot
+read a Kotlin constant. That is the forced duplicate, so it gets a test:
+`WearPathsTest` reads both manifests and asserts the prefix still covers every
+declared path. **Watched failing** by changing the watch manifest's prefix to
+`/session` and nothing else — which also proved the Gradle input declaration
+works, since a manifest-only edit would otherwise report UP-TO-DATE.
+
+**The watch has behavioural tests now (review item 4.2)**
+
+`wear/src/test` was string parity and nothing else. `ExerciseScreenComposeTest`
+hosts the real screen on a round 240dp qualifier and asserts what a snapshot
+offers — seven tests, and the one that matters is that a timed set has no
+Complete button. **Watched failing** by drawing Complete unconditionally, as it
+did before this change.
+
+Getting there needed a build-logic move, not a copy. The screenshot convention
+plugin held two things every module that renders a composable needs — merged
+resources under Robolectric, and the release-variant exclusion of `*ComposeTest`
+— and it configures a `LibraryExtension`, which cannot be applied to the watch
+because the watch is an *application*. Those two moved to the compose convention
+plugin, which already handles both. The alternative was a second copy in
+`wear/build.gradle.kts`, which is the one place toolchain configuration must not
+live. Verified by running `:wear:testPlaceholderReleaseUnitTest`: only the string
+parity test ran, so the exclusion is reached from an application module.
+
+**Still missing on the watch.** The static thumbnail and the ongoing-activity
+entry, both F7, and `WearAction.NextExercise` — which exists in the protocol,
+maps to a command, and no screen offers. That last one is the F5 shape again: a
+capability with nothing able to reach it. Recorded as backlog 16.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3300,19 +3409,27 @@ attempt does not start from the memory theory again.
    builder screen that has already saved one replaces the saved week instead of
    making another. Found while fixing R3; not changed, because whether Coach
    should mint a new week there is a product decision. See Slice 1 above.
-13. **The watch knows nothing about a timed set.** `toWearState` publishes
-   rest's deadline only, so a timed set on the wrist draws a set panel with no
-   countdown and no zero-time haptic — which §3 asks for by name. Needs a
-   protocol field; pairs with F7's watch alerts.
-14. **The watch shows no remainder on a paused rest.** `toWearState` publishes
-   `deadlineElapsedRealtimeMs = restEndsAtElapsed`, which is null while paused,
-   and the phone shows the frozen remainder. The watch draws its set panel
-   rather than a countdown, so nothing is currently wrong on screen — but the
-   two devices do not agree, and closing it means a protocol field.
+13. ~~**The watch knows nothing about a timed set.**~~ Done 2026-09-08. The
+   countdown, the duration target and the zero-time haptic all cross now, and
+   the Complete button the phone would have refused is gone.
+14. ~~**The watch shows no remainder on a paused rest.**~~ Mostly done
+   2026-09-08: the remainder crosses, because the projection rebuilds both
+   deadlines from the phase-aware remainder rather than the raw field. What is
+   left is a screen question, not a protocol one — `WearPhase.Paused` falls
+   through to the exercise screen, so a paused rest is right on the wire and
+   invisible on the display. A paused timed *set* is right in both.
 15. **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.
+16. **`WearAction.NextExercise` reaches no button.** It is in the protocol, it
+   maps to `SessionCommand.NextExercise`, and §3's watch MVP lists it — and no
+   watch screen offers it. The same shape as the exclusions F5 fixed: a
+   capability the model carries with nothing able to reach it. Small, and it
+   belongs with F7's remaining watch work rather than on its own.
+17. **The watch has no static thumbnail and no ongoing activity.** The rest of
+   F7. §3 asks for both; the thumbnail means moving an asset across the Data
+   Layer, which is the larger half.
 
 ---
 
@@ -3350,6 +3467,9 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Days are ordinal; weekdays are optional | The profile knows how many days, not which; inventing them is a guess presented as a plan | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
 | No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
+| One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |
+| A timer reaching zero is a message, not snapshot state | The Data Layer keeps the last value, which is why state goes over it and why an event must not: a wrist buzzing on reconnect for a rest that ended in a drawer is worse than one that never buzzed | `WearBridge.alert`, 2026-09-08 |
+| A wire key outlives the Kotlin property name | §11 guarantees the two apps are different versions of themselves on every install, so renaming a JSON key silently costs already-installed watches the field | `WearProtocol.kt`, `WearWireFormatTest` |
 
 Still open, and fine to leave open (§21): final application ID, accent colour,
 app icon, and the exact licence.
