@@ -74,23 +74,18 @@
     <string name="settings_export_failed">Could not write that file.</string>
 
     <string name="settings_import_title">Import this file?</string>
-    <string name="settings_import_profile">Replaces your profile</string>
-    <string name="settings_import_profile_new">Adds a profile</string>
-    <plurals name="settings_import_new_plans">
-        <item quantity="one">%1$d new plan</item>
-        <item quantity="other">%1$d new plans</item>
+    <string name="settings_import_replaces_all">Importing replaces everything in the app with what is in this file. It cannot be undone.</string>
+    <string name="settings_import_file_has">This file has</string>
+    <string name="settings_import_removes">This removes</string>
+    <string name="settings_import_removes_nothing">There is nothing saved yet, so nothing is removed.</string>
+    <string name="settings_import_profile">your profile</string>
+    <plurals name="settings_import_plans">
+        <item quantity="one">%1$d plan</item>
+        <item quantity="other">%1$d plans</item>
     </plurals>
-    <plurals name="settings_import_replaced_plans">
-        <item quantity="one">%1$d plan replaced</item>
-        <item quantity="other">%1$d plans replaced</item>
-    </plurals>
-    <plurals name="settings_import_new_weeks">
-        <item quantity="one">%1$d new week</item>
-        <item quantity="other">%1$d new weeks</item>
-    </plurals>
-    <plurals name="settings_import_replaced_weeks">
-        <item quantity="one">%1$d week replaced</item>
-        <item quantity="other">%1$d weeks replaced</item>
+    <plurals name="settings_import_weeks">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weeks</item>
     </plurals>
     <plurals name="settings_import_sessions">
         <item quantity="one">%1$d workout</item>
@@ -104,6 +99,8 @@
     <string name="settings_import_wrong_format">That is not a RepForth export.</string>
     <string name="settings_import_too_new">That file is from a newer version of RepForth.</string>
     <string name="settings_import_invalid">That file is a RepForth export, but something in it is not valid.</string>
+    <string name="settings_import_too_large">That file is too large to be a RepForth export.</string>
+    <string name="settings_import_not_applied">That file could not be saved. Nothing was changed.</string>
 
     <string name="settings_delete_title">Delete workout data?</string>
     <string name="settings_delete_body">Your profile, plans and history go. The exercise catalog and your settings stay. This cannot be undone.</string>

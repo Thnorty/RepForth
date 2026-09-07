@@ -461,7 +461,13 @@ internal fun SettingsScreen(
 /**
  * What an import would do, before it does it (§7).
  *
- * Counted rather than described: the only question worth answering before
+ * Two lists, because import replaces rather than merges: what arrives, and what
+ * goes. The version before this counted "new" and "replaced" by matching ids,
+ * which described the arriving half accurately and never mentioned that
+ * everything whose id was *not* in the file was about to go as well — on the one
+ * screen whose whole job is saying what is about to be overwritten.
+ *
+ * Counted rather than described. The only question worth answering before
  * overwriting the only copy of something is how much of it there is.
  */
 @Composable
@@ -474,66 +480,28 @@ private fun ImportDialog(pending: PendingImport, onConfirm: () -> Unit, onDismis
             Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
                 if (preview.isEmpty) {
                     Text(stringResource(R.string.settings_import_nothing))
-                }
-                if (preview.hasProfile) {
-                    Text(
-                        stringResource(
-                            if (preview.replacesExistingProfile) {
-                                R.string.settings_import_profile
-                            } else {
-                                R.string.settings_import_profile_new
-                            },
-                        ),
+                } else {
+                    Text(stringResource(R.string.settings_import_replaces_all))
+
+                    ImportList(
+                        heading = stringResource(R.string.settings_import_file_has),
+                        profile = preview.hasProfile,
+                        plans = preview.templates,
+                        weeks = preview.weeks,
+                        workouts = preview.sessions,
                     )
-                }
-                if (preview.newTemplates > 0) {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.settings_import_new_plans,
-                            preview.newTemplates,
-                            preview.newTemplates,
-                        ),
-                    )
-                }
-                if (preview.replacedTemplates > 0) {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.settings_import_replaced_plans,
-                            preview.replacedTemplates,
-                            preview.replacedTemplates,
-                        ),
-                    )
-                }
-                // `ImportPreview` has counted weeks since export format 2 and
-                // this dialog never showed them, so a file carrying five weeks
-                // was described as though it carried none — on the one screen
-                // whose whole job is saying what is about to be overwritten.
-                if (preview.newWeeks > 0) {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.settings_import_new_weeks,
-                            preview.newWeeks,
-                            preview.newWeeks,
-                        ),
-                    )
-                }
-                if (preview.replacedWeeks > 0) {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.settings_import_replaced_weeks,
-                            preview.replacedWeeks,
-                            preview.replacedWeeks,
-                        ),
-                    )
-                }
-                if (preview.sessions > 0) {
-                    Text(
-                        pluralStringResource(
-                            R.plurals.settings_import_sessions,
-                            preview.sessions,
-                            preview.sessions,
-                        ),
-                    )
+
+                    if (preview.replacesNothing) {
+                        Text(stringResource(R.string.settings_import_removes_nothing))
+                    } else {
+                        ImportList(
+                            heading = stringResource(R.string.settings_import_removes),
+                            profile = preview.removesProfile,
+                            plans = preview.removedTemplates,
+                            weeks = preview.removedWeeks,
+                            workouts = preview.removedSessions,
+                        )
+                    }
                 }
             }
         },
@@ -546,6 +514,39 @@ private fun ImportDialog(pending: PendingImport, onConfirm: () -> Unit, onDismis
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
         },
     )
+}
+
+/**
+ * One side of the import: a heading and the counts under it.
+ *
+ * Both sides are the same four counts, so they are drawn by the same thing. The
+ * headings differ and nothing else does, which is exactly the point being made —
+ * what arrives and what goes are the same kind of list.
+ *
+ * Zero is omitted rather than shown as "0 plans": a line saying nothing happens
+ * to something is noise in a dialog whose job is naming what does.
+ */
+@Composable
+private fun ImportList(
+    heading: String,
+    profile: Boolean,
+    plans: Int,
+    weeks: Int,
+    workouts: Int,
+) {
+    Text(heading, style = MaterialTheme.typography.titleSmall)
+    if (profile) {
+        Text(stringResource(R.string.settings_import_profile))
+    }
+    if (plans > 0) {
+        Text(pluralStringResource(R.plurals.settings_import_plans, plans, plans))
+    }
+    if (weeks > 0) {
+        Text(pluralStringResource(R.plurals.settings_import_weeks, weeks, weeks))
+    }
+    if (workouts > 0) {
+        Text(pluralStringResource(R.plurals.settings_import_sessions, workouts, workouts))
+    }
 }
 
 @Composable
@@ -563,6 +564,8 @@ private fun MessageDialog(message: SettingsMessage, onDismiss: () -> Unit) {
                 is ImportFailure.WrongFormat -> R.string.settings_import_wrong_format
                 is ImportFailure.TooNew -> R.string.settings_import_too_new
                 is ImportFailure.Invalid -> R.string.settings_import_invalid
+                is ImportFailure.TooLarge -> R.string.settings_import_too_large
+                is ImportFailure.NotApplied -> R.string.settings_import_not_applied
             },
         )
     }

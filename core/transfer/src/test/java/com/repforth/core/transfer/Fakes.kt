@@ -11,6 +11,7 @@ import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
+import com.repforth.core.userdata.UserDataTransaction
 import com.repforth.core.userdata.WeekRepository
 import com.repforth.core.workout.SessionSnapshot
 import kotlinx.coroutines.flow.Flow
@@ -152,4 +153,66 @@ internal fun fakeProviders(): Pair<ProviderRepository, InMemorySecretStore> {
     val secrets = InMemorySecretStore()
     val settings = ProviderSettingsDataSource(FakePreferencesStore())
     return ProviderRepository(settings, secrets) to secrets
+}
+
+/**
+ * A transaction that only sequences, because these fakes are not a database.
+ *
+ * Enough for every test about *what* the import writes. It is deliberately not
+ * enough for the test about rollback — that one supplies its own
+ * [UserDataTransaction] which throws, and asserts the fakes it rolls back are
+ * the ones it rolled back itself. Faking atomicity here would prove the fake.
+ * The real one is `RoomUserDataTransaction` over `RepForthDatabase`.
+ */
+internal object DirectTransaction : UserDataTransaction {
+    override suspend fun <R> run(block: suspend () -> R): R = block()
+}
+
+/** What the four repositories held, so a rollback has something to restore. */
+internal data class StoredState(
+    val templates: List<WorkoutTemplate>,
+    val weeks: List<TrainingWeek>,
+    val sessions: List<SessionSnapshot>,
+    val profile: UserProfile?,
+)
+
+/**
+ * A transaction that fails, and really does undo what the block had written.
+ *
+ * The fakes have no rollback of their own, so this puts the recorded state back
+ * — which is what makes the assertion afterwards mean something. Without it the
+ * test would pass whether or not `import` had a transaction around it at all,
+ * because the throw would simply stop the writes early and the earlier ones
+ * would still be sitting in the fakes. That is the exact bug, so a test that
+ * cannot tell the difference is worse than none.
+ */
+internal class RollingBackTransaction(
+    private val before: StoredState,
+    private val profiles: FakeProfiles,
+    private val templates: FakeTemplates,
+    private val weeks: FakeWeeks,
+    private val sessions: FakeSessions,
+) : UserDataTransaction {
+
+    override suspend fun <R> run(block: suspend () -> R): R {
+        try {
+            block()
+        } catch (e: Exception) {
+            restore()
+            throw e
+        }
+        restore()
+        throw IllegalStateException("could not be saved")
+    }
+
+    private suspend fun restore() {
+        templates.deleteAll()
+        before.templates.forEach { templates.save(it) }
+        weeks.deleteAll()
+        before.weeks.forEach { weeks.save(it) }
+        sessions.deleteAll()
+        before.sessions.forEach { sessions.persist(it) }
+        profiles.deleteAll()
+        before.profile?.let { profiles.save(it) }
+    }
 }

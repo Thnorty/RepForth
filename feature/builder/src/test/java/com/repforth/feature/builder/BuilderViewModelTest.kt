@@ -40,6 +40,7 @@ import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.userdata.WeekRepository
 import com.repforth.core.rules.GenerationRequest
+import java.time.DayOfWeek
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -1070,6 +1071,136 @@ class BuilderViewModelTest {
             "Editing an inactive week must not promote it over the active one",
             weeks.saved.last().active,
         )
+    }
+
+    /** One exercise, so a week clears `canSaveWeek`. */
+    private fun plannedExercise(id: String, exerciseId: String) = PlannedExercise(
+        id = id,
+        exerciseId = ExerciseId(exerciseId),
+        position = 0,
+        target = ExerciseTarget.Reps(sets = 3, reps = 10),
+        restMs = 60_000L,
+    )
+
+    /**
+     * Renaming a week changes its name and nothing else.
+     *
+     * Saving replaces the whole week, so every field the draft does not hold is
+     * a field the save deletes. `DraftWeekDay` held neither the weekday
+     * assignment nor the workout's note, and the state held no week note — so
+     * opening an imported or generated week to fix its title unpinned every day
+     * from its weekday and dropped every note in it, silently, with the week
+     * still looking correct on screen.
+     *
+     * The acceptance from the review, as an assertion: change only the name, and
+     * every untouched field comes back identical.
+     */
+    @Test
+    fun `editing a week keeps the metadata no screen can edit`() = runTest(dispatcher) {
+        val stored = TrainingWeek(
+            id = "week-1",
+            name = "Imported split",
+            notes = "Deload in week four",
+            source = PlanSource.AI,
+            active = true,
+            days = listOf(
+                WeekDay(
+                    position = 0,
+                    title = "Push",
+                    dayOfWeek = DayOfWeek.MONDAY,
+                    workout = WorkoutTemplate(
+                        id = "day-1",
+                        name = "Push",
+                        notes = "Warm up the shoulders",
+                        source = PlanSource.AI,
+                        exercises = listOf(plannedExercise("pe-1", "a")),
+                    ),
+                ),
+                WeekDay(
+                    position = 1,
+                    title = "Pull",
+                    dayOfWeek = DayOfWeek.THURSDAY,
+                    workout = WorkoutTemplate(
+                        id = "day-2",
+                        name = "Pull",
+                        notes = null,
+                        source = PlanSource.AI,
+                        exercises = listOf(plannedExercise("pe-2", "b")),
+                    ),
+                ),
+            ),
+        )
+        weeks.save(stored)
+        weeks.activeWeek = stored
+
+        viewModel.loadWeek("week-1")
+        advanceUntilIdle()
+        viewModel.onNameChange("Imported split B")
+        viewModel.onSaveWeek("Fallback", DAY_TITLES)
+        advanceUntilIdle()
+
+        val saved = weeks.saved.single()
+        assertEquals("Only the name may change", "Imported split B", saved.name)
+        assertEquals("The week's own note must survive", stored.notes, saved.notes)
+        assertEquals(
+            "Every day must keep the weekday it was assigned",
+            listOf(DayOfWeek.MONDAY, DayOfWeek.THURSDAY),
+            saved.days.map { it.dayOfWeek },
+        )
+        assertEquals(
+            "And every workout note with it",
+            listOf("Warm up the shoulders", null),
+            saved.days.map { it.workout.notes },
+        )
+        assertEquals(
+            "Editing the active week still leaves it active",
+            true,
+            saved.active,
+        )
+        assertEquals(
+            "Template ids are what history is recorded against",
+            listOf("day-1", "day-2"),
+            saved.days.map { it.workout.id },
+        )
+    }
+
+    /**
+     * A week with no weekdays assigned stays that way.
+     *
+     * The pair to the test above: a fix that invented a weekday per day would
+     * pass that one and pin every rotation week to a calendar, which §3.4 makes
+     * a deliberate choice rather than a default.
+     */
+    @Test
+    fun `a rotation week keeps its days unpinned`() = runTest(dispatcher) {
+        weeks.save(
+            TrainingWeek(
+                id = "week-2",
+                name = "Rotation",
+                source = PlanSource.MANUAL,
+                active = false,
+                days = listOf(
+                    WeekDay(
+                        position = 0,
+                        title = "A",
+                        workout = WorkoutTemplate(
+                            id = "d1",
+                            name = "A",
+                            source = PlanSource.MANUAL,
+                            exercises = listOf(plannedExercise("pe-3", "a")),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        viewModel.loadWeek("week-2")
+        advanceUntilIdle()
+        viewModel.onNameChange("Rotation B")
+        viewModel.onSaveWeek("Fallback", DAY_TITLES)
+        advanceUntilIdle()
+
+        assertEquals(listOf(null), weeks.saved.single().days.map { it.dayOfWeek })
     }
 
     /**

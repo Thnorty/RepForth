@@ -2859,9 +2859,11 @@ Recommended next corrections, before the older polish backlog below:
 1. ~~Preserve session position and paused-rest remainder across persistence~~ and
    ~~preserve the active flag when editing a week, and fix decimal-comma weight
    input~~. **Done — see "Slice 1" below (R1–R4).**
-2. Make import atomic and fully validated, preserve notes/weekday assignments
-   through builder edits, and reproduce deletion/reset during a running session
-   (R5/R6 and the review's reset risk).
+2. ~~Make import atomic and fully validated, preserve notes/weekday assignments
+   through builder edits~~. **Done — see "Slice 2" below (R5/R6).** Reproducing
+   the deletion/reset-during-a-running-session risk is still open; it is a
+   different mechanism (the singleton controller, not the file format) and is
+   recorded in the backlog.
 3. Reconcile remaining specification gaps: timed sets, live replacement,
    notes/RPE, editable exclusions, deterministic training-rule coverage, and
    the missing watch features. The review proposes acceptance checks and scope.
@@ -2952,6 +2954,87 @@ it is not what corrupted the data. Recorded in the backlog below.
 Verified: `assemblePlaceholderDebug`, `test` and `lint` each on their own, all
 green; 61 goldens unchanged.
 
+### 2026-09-07 — Slice 2: preserve user data (R5/R6)
+
+**The conflict question is closed: import replaces.** The owner chose it over
+merging. The workout data after an import is exactly the workout data in the
+file — the profile, the standalone plans, the weekly plans and the history are
+cleared first. A file is a snapshot of a phone, and restoring one is a restore;
+merging has to answer "this workout exists in both copies and they differ" for
+every row, and answers it silently. Preferences and stored provider keys are not
+part of it: the export does not carry them, so an import cannot speak for them.
+
+Recorded in Decisions below.
+
+**R5 — the import is one transaction.** `DatabaseTransaction` in `core:database`
+wraps `RepForthDatabase.withTransaction`; `UserDataTransaction` in
+`core:user-data` is the door onto it, so `core:transfer` still never sees Room.
+Each repository was already transactional for its own rows, which is the right
+grain for everything except the one operation that writes through four of them.
+
+The test supplies a transaction that rolls back and asserts the rollback is
+honoured, rather than asserting over a pass-through fake — which would only
+prove the fake. Removing `transaction.run` turns it red.
+
+**Validation the domain cannot do.** The domain validates one plan at a time and
+cannot see the file as a whole. Two additions, both refusals before the preview:
+
+- **Duplicate identities**, across templates and week days together, since a
+  week's day becomes a `workout_template` row and shares the id space. Two
+  records with one id import as one, so the file described fewer plans than it
+  listed and the preview counted the ones it listed.
+- **Sessions must be finished.** The export writes `observeFinished()`, so
+  `COMPLETED` and `ABANDONED` are all it can contain. `SessionDto.toDomain`
+  accepted any phase, and the file carries no cursor and no deadline — so a
+  hand-edited file could install a `RESTING` workout that the app would offer to
+  resume and that has no position to resume to. Refused rather than coerced to
+  `ABANDONED`: rewriting what a record says happened is not this code's call.
+
+**Catalog references are deliberately still not checked.** The review lists them
+alongside the two above. §7 has no foreign key from user data to `exercise` on
+purpose — a cascade would delete history with a retired exercise, and a restrict
+would make a dataset update impossible — and a missing exercise is handled at
+display time. Refusing an import because the dataset pin has moved would reopen
+that. Reporting unknown ids in the preview without failing is a reasonable
+future addition and is in the backlog.
+
+**The preview tells the truth now.** It counts two things: what arrives, and what
+goes. The old one counted "new" and "replaced" by matching ids, which described
+the arriving half accurately and never mentioned that everything whose id was
+*not* in the file was about to go too — on the one screen whose entire job is
+saying what is about to be overwritten. Nine strings replaced in both locales.
+
+**The failure path exists at all now.** `import` returns `ImportResult`; the view
+model reads it. It used to report `Imported.` whatever happened, which over a
+failed write is the worst thing to be wrong about — the user has just been told
+their old data is gone and their new data arrived, and neither is true.
+
+**And the file is bounded before it is read.** `readBytes()` allocated whatever
+the picker handed over; reading is now capped at 32 MB, measured on the bytes
+actually taken rather than on a size a content provider is not obliged to report
+or to get right. JSON parsing and serialising moved off the main thread.
+
+**R6 — the builder stopped deleting what it cannot edit.** `DraftWeekDay` now
+carries `dayOfWeek` and the workout's `notes`, and the state carries the week's
+`notes`. Saving replaces the whole week, so any field the draft does not hold is
+a field that opening a week and renaming it deletes — and none of these three has
+an editor, so a generated or imported week lost its weekday assignments and every
+note the moment somebody fixed a typo in its title. Nothing on screen would have
+shown it.
+
+**One stale test, again.** `DataTransferTest`'s seed built a file where one
+template id was both a standalone plan and a week's day. The real app cannot
+produce that — `TemplateRepository.observeAll()` filters on `week_id IS NULL` —
+and the test's own comment said the fake did not model the filter. The new
+duplicate check caught it. The seed is now faithful, and the test that is
+*named* for this ("a week's days are exported inside the week and nowhere else")
+asserts "not in both lists" rather than the weaker "not twice in one list" it
+had been asserting.
+
+Verified: `assemblePlaceholderDebug`, `test` and `lint` each on their own, all
+green; 26 transfer tests; `:core:database` and `:core:user-data` instrumentation
+green on `pixel6Api34`.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -2997,21 +3080,30 @@ green; 61 goldens unchanged.
    an instrumentation test on the managed emulator rather than the Robolectric
    one guessed at here — `:app` already had a working Hilt test graph, so no
    Hilt-free route was needed.
-9. **Weights are displayed with a period in Turkish too.** §13 asks for
+9. **An import does not report unknown catalog ids.** Deliberately not a
+   refusal — §7 has no foreign key from user data to `exercise`, and a missing
+   exercise is handled at display time — but a preview line saying "3 exercises
+   in this file are not in the catalog" would be honest and cheap. See Slice 2.
+10. **Deleting data while a workout runs is still unreproduced.** Settings
+   deletes the rows without clearing the singleton `SessionController`, so a
+   later service or watch command may write its old snapshot back. Source-derived
+   from the review; nobody has made it happen yet. Unrelated to the transfer
+   work — the mechanism is the live controller, not the file format.
+11. **Weights are displayed with a period in Turkish too.** §13 asks for
    locale-aware numbers; `formatWeight` writes `12.5` whatever the locale, and
    `formatVolume` does the same. Input accepts both separators as of R4, so
    nothing is recorded wrongly — this is display only. Doing it means
    re-recording goldens that draw a fractional weight, so it is its own change.
-10. **`onGenerate` does not clear `weekId`.** Generating a second week on a
+12. **`onGenerate` does not clear `weekId`.** Generating a second week on a
    builder screen that has already saved one replaces the saved week instead of
    making another. Found while fixing R3; not changed, because whether Coach
    should mint a new week there is a product decision. See Slice 1 above.
-11. **The watch shows no remainder on a paused rest.** `toWearState` publishes
+13. **The watch shows no remainder on a paused rest.** `toWearState` publishes
    `deadlineElapsedRealtimeMs = restEndsAtElapsed`, which is null while paused,
    and the phone shows the frozen remainder. The watch draws its set panel
    rather than a countdown, so nothing is currently wrong on screen — but the
    two devices do not agree, and closing it means a protocol field.
-12. **The rest ring pauses on any device with a reduced animator scale.** Known
+14. **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.
@@ -3024,6 +3116,8 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 
 | Decision | Rationale | Where |
 |---|---|---|
+| Import replaces; it does not merge | A file is a snapshot of a phone, so restoring one is a restore. Merging has to answer "this record exists in both and they differ" for every row, and answers it silently. Asked and decided by the owner | `DataTransfer.import`, Slice 2 |
+| Import does not refuse unknown catalog ids | §7 has no foreign key from user data to `exercise` on purpose; a missing exercise is handled at display time, and refusing would break importing after a dataset pin moves | `DataTransfer.read`, Slice 2 |
 | Plans is a tab; Coach is a mode inside the builder | Coach is an input method for building a plan, not a place | Guideline §12 |
 | Equipment rows stay `CenterVertically`; the checkbox is not aligned to the label | Reviewed at 200% font scale and judged fine — nothing truncates, and each checkbox is nearer its own label than any other | `SettingsScreen`, D.2 |
 | Dynamic/wallpaper colour disabled | Breaks the single-accent rule and the measured AA pairs | `Theme.kt` |
