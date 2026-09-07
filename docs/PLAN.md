@@ -2865,9 +2865,9 @@ Recommended next corrections, before the older polish backlog below:
    different mechanism (the singleton controller, not the file format) and is
    recorded in the backlog.
 3. Reconcile remaining specification gaps: ~~timed sets~~ (done on the phone —
-   see below; the watch half is still open), live replacement, notes/RPE,
-   editable exclusions, deterministic training-rule coverage, and the missing
-   watch features. The review proposes acceptance checks and scope.
+   the watch half is still open), live replacement, notes/RPE,
+   ~~editable exclusions~~, deterministic training-rule coverage, and the
+   missing watch features. The review proposes acceptance checks and scope.
 
 The best proposed additions after those corrections are workout detail,
 last-session comparison and manual weekly planning. Their product decisions
@@ -3132,6 +3132,61 @@ one their music is on: the beep lands at a level they chose, and the volume keys
 adjust it without a trip into Settings. The alarm stream also plays through a
 phone deliberately silenced, which is a decision the user has already made.
 
+### 2026-09-07 — editable exclusions (F5)
+
+**Two of the three exclusion kinds were enforced and writable by nothing.** The
+model has carried `EXERCISE`, `MUSCLE` and `MOVEMENT` from the start and
+`RulesEngine` applies all three; onboarding wrote only muscles, and nothing wrote
+the other two ever. `preferredMuscles` had the same shape — gathered once, never
+editable. So a shoulder that healed stayed excluded for the life of the install,
+and the only way out was a reset that took every workout with it.
+
+This is the same defect class as the haptics and reduced-motion switches that
+shipped controlling nothing, one step further along: not a setting that does
+nothing, but a constraint with no setting at all.
+
+Two decisions were put to the owner and both went the recommended way.
+
+**Exclusions constrain generation, not the picker.** An exclusion says what the
+app may programme *for* you; choosing an exercise by hand is you overriding
+yourself, which is allowed. So the catalog is not filtered, the picker is
+untouched, and the detail sheet carries the action and the state instead. There
+is a test asserting the result count does not change when something is excluded.
+
+**Free-text movements are exposed, with a live count.** §7 keeps this kind free
+text because the dataset has no vocabulary for movement patterns. The cost is
+that matching is by name and therefore coarse — the code said so itself:
+"overhead pressing" removes fourteen exercises and "press" removes several
+hundred, and nothing distinguished them. The editor now shows how many the
+phrase excludes, updating as it is typed.
+
+**The count and the rules engine are one rule.** `movementExcludes` moved into
+`core:model` and both call it. A count computed by a second copy is a count that
+can disagree with the thing it describes, which is worse than no count — and
+breaking the shared function turns *both* an existing `RulesEngineTest` case and
+the new counter test red, which is what says they are genuinely shared rather
+than merely similar.
+
+**The real hazard is that all three kinds live in one set.** `MovementExclusion`
+carries its own kind, so an editor writing only what it knows about would delete
+every excluded exercise the moment a muscle was ticked — and there are now three
+screens writing this field. `replacingKind` is the one place that swaps a kind
+out; replacing it with the naive version turns two tests red.
+
+Coach reports the active constraints above the generate button, built in the
+composable because the view model has no resources and must not have any — the
+same rule `onSaveWeek` follows by taking its day titles in.
+
+The Settings goldens were re-recorded: four rows were added above the fold. Both
+locales inspected at 1x and 2x; nothing truncates, and Turkish at 200% wraps
+rather than clipping.
+
+**A fifth `FakeProfiles` was added rather than the five being consolidated.**
+AGENTS.md predicted the sixth change would be the one to do it. Looked at, and
+they have *already* drifted — 21, 21, 6 and 11 lines — so reconciling four
+different shapes is real work rather than a rename, and it does not belong
+riding on a feature change. Recorded below as its own item.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3167,12 +3222,12 @@ phone deliberately silenced, which is a decision the user has already made.
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
-7. **`FakeProfiles` exists five times.** Five test files declare their own copy;
-   the session fakes are now spread across two files as well, `StartFakeSessions`
-   and `StartFakeTemplates` having been promoted to `internal` so a second test
-   class could use them. `core:testing` is where a shared fixture belongs, and
-   already holds `FakePreferencesStore`. Nothing is wrong today; five copies
-   drift on the sixth change.
+7. **`FakeProfiles` exists five times, and they have drifted.** Measured while
+   adding the fifth: 21, 21, 6 and 11 lines, so they are no longer the same
+   fixture with the same name. Consolidating into `core:testing` means
+   reconciling four shapes, which is a change of its own rather than a rename —
+   this note previously said "nothing is wrong today", and that is no longer
+   quite true.
 8. ~~**Nothing tests that the shell reaches the start gate.**~~ Done in D.3, as
    an instrumentation test on the managed emulator rather than the Robolectric
    one guessed at here — `:app` already had a working Hilt test graph, so no

@@ -20,4 +20,7 @@
     -->
     <string name="exercises_names_english">Exercise names come from the dataset and are in English.</string>
     <string name="exercises_row_detail">%1$s · %2$s</string>
+    <string name="exercises_exclude">Exclude from my plans</string>
+    <string name="exercises_include">Stop excluding this</string>
+    <string name="exercises_excluded_note">Plans will not use this. You can still add it by hand.</string>
 </resources>

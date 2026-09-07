@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -23,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -39,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
+import com.repforth.core.designsystem.theme.Target
 import com.repforth.core.exercisedata.labelRes
 import com.repforth.core.media.ui.ExerciseDetailSheet
 import com.repforth.core.media.ui.ExerciseMedia
@@ -48,6 +51,7 @@ import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.BodyView
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.Exercise
+import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Language
 import com.repforth.core.model.Muscle
@@ -76,6 +80,7 @@ fun ExercisesRoute(
         onClearFilters = viewModel::onClearFilters,
         onSelectExercise = viewModel::onSelectExercise,
         onDismissDetail = viewModel::onDismissDetail,
+        onToggleExcluded = viewModel::onToggleExcluded,
         modifier = modifier,
     )
 }
@@ -94,6 +99,7 @@ internal fun ExercisesScreen(
     onClearFilters: () -> Unit,
     onSelectExercise: (ExerciseSummary) -> Unit,
     onDismissDetail: () -> Unit,
+    onToggleExcluded: (ExerciseId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Hoisted above the LazyColumn deliberately. Held inside the filters item,
@@ -149,6 +155,35 @@ internal fun ExercisesScreen(
             equipmentLabel = stringResource(exercise.equipment.labelRes),
             secondaryMuscleLabels = exercise.secondaryMuscles.map { stringResource(it.labelRes) },
             onDismiss = onDismissDetail,
+            // §8's hard constraint, from the page where the user is looking at
+            // the thing they want to rule out. It hides nothing: the picker
+            // still lists it and it can still be chosen by hand, because an
+            // exclusion says what the app may programme *for* you.
+            bottomAction = {
+                val excluded = state.isSelectedExcluded
+                OutlinedButton(
+                    onClick = { onToggleExcluded(exercise.id) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
+                ) {
+                    Text(
+                        stringResource(
+                            if (excluded) {
+                                R.string.exercises_include
+                            } else {
+                                R.string.exercises_exclude
+                            },
+                        ),
+                    )
+                }
+                if (excluded) {
+                    Text(
+                        text = stringResource(R.string.exercises_excluded_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = Space.s1),
+                    )
+                }
+            },
         )
     }
 }

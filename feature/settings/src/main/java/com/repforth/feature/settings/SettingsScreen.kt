@@ -2,15 +2,20 @@ package com.repforth.feature.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.PluralsRes
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -18,8 +23,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -43,6 +52,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.R as DsR
 import com.repforth.core.designsystem.component.RfValueSlider
+import com.repforth.core.designsystem.component.RfIcons
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
@@ -52,6 +62,7 @@ import com.repforth.core.media.cache.MediaCacheManager
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
+import com.repforth.core.model.Muscle
 import com.repforth.core.model.ThemeMode
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UnitSystem
@@ -96,6 +107,12 @@ fun SettingsRoute(
         onUnitsChange = viewModel::onUnitsChange,
         onKeepScreenOnChange = viewModel::onKeepScreenOnChange,
         onHapticsChange = viewModel::onHapticsChange,
+        onExcludedMusclesChange = viewModel::onExcludedMusclesChange,
+        onPreferredMusclesChange = viewModel::onPreferredMusclesChange,
+        onMovementExclusionsChange = viewModel::onMovementExclusionsChange,
+        onMovementEditorOpened = viewModel::onMovementEditorOpened,
+        onExcludedExercisesOpened = viewModel::onExcludedExercisesOpened,
+        onExcludedExerciseRemoved = viewModel::onExcludedExerciseRemoved,
         onSoundChange = viewModel::onSoundChange,
         onReducedMotionChange = viewModel::onReducedMotionChange,
         onMediaWifiOnlyChange = viewModel::onMediaWifiOnlyChange,
@@ -127,6 +144,12 @@ internal fun SettingsScreen(
     onUnitsChange: (UnitSystem) -> Unit,
     onKeepScreenOnChange: (Boolean) -> Unit,
     onHapticsChange: (Boolean) -> Unit,
+    onExcludedMusclesChange: (Set<Muscle>) -> Unit,
+    onPreferredMusclesChange: (Set<Muscle>) -> Unit,
+    onMovementExclusionsChange: (List<String>) -> Unit,
+    onMovementEditorOpened: () -> Unit,
+    onExcludedExercisesOpened: () -> Unit,
+    onExcludedExerciseRemoved: (String) -> Unit,
     onSoundChange: (Boolean) -> Unit,
     onReducedMotionChange: (Boolean) -> Unit,
     onMediaWifiOnlyChange: (Boolean) -> Unit,
@@ -146,6 +169,10 @@ internal fun SettingsScreen(
     var confirmingClearMediaCache by rememberSaveable { mutableStateOf(false) }
     var editingEquipment by rememberSaveable { mutableStateOf(false) }
     var editingSchedule by rememberSaveable { mutableStateOf(false) }
+    var editingExcludedMuscles by rememberSaveable { mutableStateOf(false) }
+    var editingPreferredMuscles by rememberSaveable { mutableStateOf(false) }
+    var editingMovements by rememberSaveable { mutableStateOf(false) }
+    var editingExcludedExercises by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -206,6 +233,66 @@ internal fun SettingsScreen(
                         ),
                         enabled = !state.busy,
                         onClick = { editingSchedule = true },
+                    )
+
+                    // §3 gathers all three of these at onboarding and, until
+                    // now, nothing could change any of them -- so a shoulder
+                    // that healed stayed excluded for the life of the install,
+                    // and the only way out was a reset that took every workout
+                    // with it. Two of the three kinds were enforced by the rules
+                    // engine and writable by nothing at all.
+                    ActionRow(
+                        label = stringResource(R.string.settings_profile_avoid_muscles),
+                        detail = summary(
+                            count = state.excludedMuscles.size,
+                            none = R.string.settings_profile_avoid_muscles_none,
+                            some = R.plurals.settings_profile_avoid_muscles_sub,
+                        ),
+                        enabled = !state.busy,
+                        onClick = { editingExcludedMuscles = true },
+                    )
+
+                    ActionRow(
+                        label = stringResource(R.string.settings_profile_preferred_muscles),
+                        detail = summary(
+                            count = profile.preferredMuscles.size,
+                            none = R.string.settings_profile_preferred_muscles_none,
+                            some = R.plurals.settings_profile_preferred_muscles_sub,
+                        ),
+                        enabled = !state.busy,
+                        onClick = { editingPreferredMuscles = true },
+                    )
+
+                    ActionRow(
+                        label = stringResource(R.string.settings_profile_avoid_movements),
+                        detail = summary(
+                            count = state.excludedMovements.size,
+                            none = R.string.settings_profile_avoid_movements_none,
+                            some = R.plurals.settings_profile_avoid_movements_sub,
+                        ),
+                        enabled = !state.busy,
+                        onClick = {
+                            onMovementEditorOpened()
+                            editingMovements = true
+                        },
+                    )
+
+                    // Written from the catalog rather than here, so this row
+                    // reports rather than edits -- and reports even when it is
+                    // zero, because "you have excluded nothing" is the fact
+                    // somebody checking their constraints came to find.
+                    ActionRow(
+                        label = stringResource(R.string.settings_profile_excluded_exercises),
+                        detail = summary(
+                            count = state.excludedExerciseCount,
+                            none = R.string.settings_profile_excluded_exercises_none,
+                            some = R.plurals.settings_profile_excluded_exercises_sub,
+                        ),
+                        enabled = !state.busy && state.excludedExerciseCount > 0,
+                        onClick = {
+                            onExcludedExercisesOpened()
+                            editingExcludedExercises = true
+                        },
                     )
                 }
             }
@@ -417,6 +504,44 @@ internal fun SettingsScreen(
             selected = state.profile?.availableEquipment ?: emptySet(),
             onSave = onEquipmentChange,
             onDismiss = { editingEquipment = false },
+        )
+    }
+
+    if (editingExcludedMuscles) {
+        MuscleDialog(
+            title = R.string.settings_profile_avoid_muscles_dialog,
+            help = R.string.settings_profile_avoid_muscles_help,
+            selected = state.excludedMuscles,
+            onSave = onExcludedMusclesChange,
+            onDismiss = { editingExcludedMuscles = false },
+        )
+    }
+
+    if (editingPreferredMuscles) {
+        MuscleDialog(
+            title = R.string.settings_profile_preferred_muscles_dialog,
+            help = R.string.settings_profile_preferred_muscles_help,
+            selected = state.profile?.preferredMuscles ?: emptySet(),
+            onSave = onPreferredMusclesChange,
+            onDismiss = { editingPreferredMuscles = false },
+        )
+    }
+
+    if (editingMovements) {
+        MovementDialog(
+            movements = state.excludedMovements,
+            matches = state::movementMatches,
+            onSave = onMovementExclusionsChange,
+            onDismiss = { editingMovements = false },
+        )
+    }
+
+    if (editingExcludedExercises) {
+        ExcludedExercisesDialog(
+            excluded = state.excludedExerciseIds,
+            names = state.excludedExerciseNames,
+            onRemove = onExcludedExerciseRemoved,
+            onDismiss = { editingExcludedExercises = false },
         )
     }
 
@@ -696,6 +821,280 @@ private fun ScheduleDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
+    )
+}
+
+/**
+ * A row's detail line, which reads differently when the count is zero.
+ *
+ * "0 muscles avoided" is a sentence nobody writes. The zero case is the one most
+ * users are in, and it is also the one worth stating plainly — somebody opening
+ * Settings to check their constraints came to find out whether there are any.
+ */
+@Composable
+private fun summary(count: Int, @StringRes none: Int, @PluralsRes some: Int): String =
+    if (count == 0) stringResource(none) else pluralStringResource(some, count, count)
+
+/**
+ * Picks muscles, for the two lists that are both a set of muscles.
+ *
+ * One dialog rather than two nearly identical ones: avoiding and favouring
+ * differ in their title, their help line and where the result is written, and in
+ * nothing else. A second copy would be the place the touch-target fix below gets
+ * applied once.
+ *
+ * Chips in a [FlowRow], not a [LazyRow]. Compose expands a 32dp chip's touch
+ * bounds to 48dp and a lazy row sized to its tallest child clips that expansion
+ * straight back off — so the height floor is not belt and braces, it is what
+ * makes these reach `Target.min` at all.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MuscleDialog(
+    @StringRes title: Int,
+    @StringRes help: Int,
+    selected: Set<Muscle>,
+    onSave: (Set<Muscle>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draft by remember { mutableStateOf(selected) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Space.s2),
+            ) {
+                Text(
+                    text = stringResource(help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.s1)) {
+                    Muscle.entries.filter { it == it.canonical }.forEach { muscle ->
+                        val checked = muscle in draft
+                        FilterChip(
+                            selected = checked,
+                            onClick = { draft = if (checked) draft - muscle else draft + muscle },
+                            label = { Text(stringResource(muscle.labelRes)) },
+                            modifier = Modifier.heightIn(min = Target.min),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSave(draft)
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.settings_profile_equipment_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
+    )
+}
+
+/**
+ * Free-text movement patterns, with the damage shown before it is done.
+ *
+ * §7 keeps this kind free text because the dataset has no vocabulary for
+ * movement patterns, and inventing one would be guessing at what a
+ * physiotherapist told the user. The cost is that matching is by name and
+ * therefore coarse: "overhead pressing" removes fourteen exercises and "press"
+ * removes several hundred, and before this there was nothing to tell them apart.
+ *
+ * So the count is the feature, not decoration. It is computed with
+ * `movementExcludes` — the same function the rules engine applies when it
+ * decides what may be programmed — because a count produced by a second copy of
+ * the rule is a count that can disagree with the thing it describes.
+ */
+@Composable
+private fun MovementDialog(
+    movements: List<String>,
+    matches: (String) -> Int,
+    onSave: (List<String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draft by remember { mutableStateOf(movements) }
+    var typed by rememberSaveable { mutableStateOf("") }
+    val trimmed = typed.trim()
+    val canAdd = trimmed.isNotEmpty() && draft.none { it.equals(trimmed, ignoreCase = true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_profile_avoid_movements_dialog)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Space.s2),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_profile_avoid_movements_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                draft.forEach { movement ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Space.s2),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(movement, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = countLabel(matches(movement)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(
+                            onClick = { draft = draft - movement },
+                            modifier = Modifier.size(Target.min),
+                        ) {
+                            Icon(
+                                painter = RfIcons.Remove,
+                                contentDescription = stringResource(
+                                    R.string.settings_profile_avoid_movements_remove,
+                                    movement,
+                                ),
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = typed,
+                    onValueChange = { typed = it },
+                    placeholder = {
+                        Text(stringResource(R.string.settings_profile_avoid_movements_hint))
+                    },
+                    singleLine = true,
+                    // The count moves as they type, which is the whole point:
+                    // the decision to keep a phrase is made here, not after
+                    // saving it and wondering why Coach ran out of exercises.
+                    supportingText = {
+                        if (trimmed.isNotEmpty()) Text(countLabel(matches(trimmed)))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                TextButton(
+                    onClick = {
+                        draft = draft + trimmed
+                        typed = ""
+                    },
+                    enabled = canAdd,
+                    modifier = Modifier.heightIn(min = Target.min),
+                ) {
+                    Text(stringResource(R.string.settings_profile_avoid_movements_add))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    // Whatever is in the field but unadded counts as added. A
+                    // phrase typed and then confirmed is a phrase the user meant.
+                    onSave(if (canAdd) draft + trimmed else draft)
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.settings_profile_equipment_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
+        },
+    )
+}
+
+/** "excludes 312 exercises", or that it matches nothing at all. */
+@Composable
+private fun countLabel(count: Int): String =
+    if (count == 0) {
+        stringResource(R.string.settings_profile_avoid_movements_none_match)
+    } else {
+        pluralStringResource(R.plurals.settings_profile_avoid_movements_count, count, count)
+    }
+
+/**
+ * The exercises excluded one at a time, and the way back.
+ *
+ * Excluding happens on the exercise page, which makes this the only place they
+ * are listed — and without it the action would be a one-way door for anybody who
+ * did not remember what they had excluded.
+ *
+ * An id whose exercise the catalog no longer has is shown as its id rather than
+ * hidden. A dataset update can retire an exercise, and an exclusion that has
+ * become unreadable still has to be removable.
+ */
+@Composable
+private fun ExcludedExercisesDialog(
+    excluded: List<String>,
+    names: Map<String, String>,
+    onRemove: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_profile_excluded_exercises_dialog)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Space.s2),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_profile_excluded_exercises_help),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                excluded.forEach { id ->
+                    val name = names[id] ?: id
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Space.s2),
+                    ) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(
+                            onClick = { onRemove(id) },
+                            modifier = Modifier.size(Target.min),
+                        ) {
+                            Icon(
+                                painter = RfIcons.Remove,
+                                contentDescription = stringResource(
+                                    R.string.settings_profile_excluded_exercises_remove,
+                                    name,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.settings_profile_equipment_save))
+            }
         },
     )
 }

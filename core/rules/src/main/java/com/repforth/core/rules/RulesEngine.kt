@@ -3,6 +3,7 @@ package com.repforth.core.rules
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.model.movementExcludes
 
 /** The local hard-rule boundary shared by provider input and output validation. */
 data class CandidateFilterOutcome(
@@ -56,12 +57,10 @@ class RulesEngine {
             return RejectionReason.EXCLUDED_MUSCLE
         }
 
-        // Matched against the name because the dataset has no vocabulary for
-        // movement patterns. Coarse on purpose: someone who wrote "overhead
-        // press" gets every exercise whose name contains it, which is what they
-        // meant, and someone who writes "press" gets a very short catalog and
-        // the "nothing matched" screen that explains why.
-        if (request.excludedMovements.any { candidate.name.contains(it, ignoreCase = true) }) {
+        // `movementExcludes` rather than the comparison written out here, so
+        // that Settings' "excludes 312 exercises" counter and this decision are
+        // the same rule. They were about to be two.
+        if (request.excludedMovements.any { movementExcludes(candidate.name, it) }) {
             return RejectionReason.EXCLUDED_MOVEMENT
         }
 
