@@ -125,6 +125,14 @@ class WorkoutService : Service() {
                         controller.state.value?.let(::notify)
                     }
 
+                    // A timed set running out is the same moment as a rest
+                    // running out, from the same place: the phone is on a bench
+                    // and the user is holding a plank, not watching a number.
+                    is SessionEvent.TimedSetEnded -> {
+                        alert()
+                        controller.state.value?.let(::notify)
+                    }
+
                     is SessionEvent.SetRecorded -> restJustEnded = false
                     else -> Unit
                 }
@@ -176,18 +184,22 @@ class WorkoutService : Service() {
      * §6 keeps unlicensed media out of the default build, and a bundled sound
      * would be one more thing with a provenance to track for two short beeps.
      *
-     * **On the alarm stream on purpose.** A rest timer is something the user
-     * started and is actively waiting for, and the phone is usually competing
-     * with gym music. The notification stream would be inaudible in exactly the
-     * situation this exists for, and would also be silent on a phone set to
-     * vibrate -- where the haptic above has already covered that case. The
-     * switch in Settings is the way to turn it off, rather than the ringer.
+     * **On the media stream.** That is the volume someone training has already
+     * set, because it is the one their music is on -- so the beep lands at a
+     * level they chose, next to what they are listening to, and the volume keys
+     * adjust it without a trip into Settings. The alarm stream would be louder
+     * and would also play through a phone deliberately silenced, which is a
+     * decision the user has already made and this has no business overriding.
+     *
+     * The notification stream was the other candidate and is the wrong one: it
+     * is silent on a phone set to vibrate, which is most phones in a gym, and
+     * the haptic above already covers that case on its own.
      *
      * Released after the tone rather than kept: a held `ToneGenerator` owns an
      * audio track for the length of a workout to make a noise twice a set.
      */
     private suspend fun playTone() {
-        val tone = runCatching { ToneGenerator(AudioManager.STREAM_ALARM, TONE_VOLUME) }
+        val tone = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, TONE_VOLUME) }
             .getOrNull() ?: return
         runCatching {
             tone.startTone(ToneGenerator.TONE_PROP_BEEP2, TONE_MS.toInt())
@@ -249,7 +261,7 @@ class WorkoutService : Service() {
         if (ticker?.isActive == true) return
         ticker = scope.launch {
             while (true) {
-                controller.onRestTick()
+                controller.onTick()
                 delay(TICK_MS)
             }
         }
@@ -294,14 +306,21 @@ class WorkoutService : Service() {
             },
         )
 
-        // Rest is shown whether it is running or paused, but not the same way.
-        // A chronometer is a deadline the system counts towards, so it cannot be
-        // stopped — leaving it on while paused would show a timer ticking down
-        // during a pause, which is worse than showing none. Paused rest is
-        // written out instead, frozen at whatever is left.
-        val remaining = snapshot.restRemaining(SystemClock.elapsedRealtime())
+        // Whichever clock is running is the one shown, and there is never more
+        // than one: a rest and a timed set are different phases.
+        //
+        // Running or paused, but not the same way. A chronometer is a deadline
+        // the system counts towards, so it cannot be stopped — leaving it on
+        // while paused would show a timer ticking down during a pause, which is
+        // worse than showing none. A paused remainder is written out instead,
+        // frozen at whatever is left.
+        val now = SystemClock.elapsedRealtime()
+        val rest = snapshot.restRemaining(now)
+        val set = snapshot.setRemaining(now)
+        val remaining = rest ?: set
         when {
-            snapshot.phase == SessionPhase.RESTING && remaining != null -> {
+            (snapshot.phase == SessionPhase.RESTING || snapshot.phase == SessionPhase.ACTIVE) &&
+                remaining != null -> {
                 builder.setUsesChronometer(true)
                     .setChronometerCountDown(true)
                     .setWhen(System.currentTimeMillis() + remaining)
@@ -312,7 +331,10 @@ class WorkoutService : Service() {
                 builder.setUsesChronometer(false)
                     .setShowWhen(false)
                     .setSubText(
-                        getString(R.string.session_paused_rest, remaining.asClock()),
+                        getString(
+                            if (rest != null) R.string.session_paused_rest else R.string.session_paused_set,
+                            remaining.asClock(),
+                        ),
                     )
             }
 

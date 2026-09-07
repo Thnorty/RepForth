@@ -2864,9 +2864,10 @@ Recommended next corrections, before the older polish backlog below:
    the deletion/reset-during-a-running-session risk is still open; it is a
    different mechanism (the singleton controller, not the file format) and is
    recorded in the backlog.
-3. Reconcile remaining specification gaps: timed sets, live replacement,
-   notes/RPE, editable exclusions, deterministic training-rule coverage, and
-   the missing watch features. The review proposes acceptance checks and scope.
+3. Reconcile remaining specification gaps: ~~timed sets~~ (done on the phone —
+   see below; the watch half is still open), live replacement, notes/RPE,
+   editable exclusions, deterministic training-rule coverage, and the missing
+   watch features. The review proposes acceptance checks and scope.
 
 The best proposed additions after those corrections are workout detail,
 last-session comparison and manual weekly planning. Their product decisions
@@ -3063,6 +3064,74 @@ value — and was watched failing for this preference before the service read it
 
 The same alert path is what a timed set will use when it reaches zero.
 
+### 2026-09-07 — timed sets, on the phone (F1)
+
+Three product decisions from the owner, and everything else follows from them.
+
+**The clock completes the set.** There is no "Log set" for timed work, and the
+engine *refuses* `CompleteSet` while a timed set is running rather than the
+screen merely hiding the button — the watch is a second sender, and a rule
+enforced where the button is drawn is a rule the other sender does not have.
+
+**Stopping early is a skip, not a shorter set.** A plank abandoned at forty
+seconds is not forty seconds of work in the history; it is a set nobody
+finished. `SkipSet` already did exactly this, so no new semantics were needed.
+
+**The timer starts on arrival**, with nothing to press. The cost, accepted
+knowingly: the countdown is already running while someone gets into position.
+
+Together the first two make the recorded duration *true*. It was already the
+prescribed duration — the screen passed the target straight back — and that was
+a lie only because a human could tap early. With the clock as the only way to
+finish one, "recorded sixty seconds" is sixty seconds by construction. The
+review asked to keep actual and prescribed duration distinct; these decisions
+dissolve the distinction instead, which is a better answer than implementing it.
+
+**Start-on-arrival is why most of the tests are about arriving.** Four separate
+paths produce an `ACTIVE` state — begin, the advance after a set or a rest,
+skipping to the next exercise, and resuming — and one that forgot to arm would
+leave a set that never counts and, with `CompleteSet` refused, never ends at
+all. `armTimedSet` is the one place; `TimedSetTest` walks all four. Disabling it
+turns eleven cases red, and removing only the call in `advance` turns exactly
+the two that cover that path red — so each call site is separately covered
+rather than all four riding on one.
+
+**Database v4** adds `set_deadline_at` and `set_remaining_ms`, the same
+wall-clock deadline plus paused-remainder pair that rest got in v3. Separate
+columns rather than reusing rest's: the two can never both run, but one column
+would mean every reader had to consult `state` before it knew what the number
+meant, and a reader that forgot would be quietly wrong. No backfill, and that is
+correct rather than lazy — null means "no timed set is counting", true of every
+row written before timed sets existed.
+
+**A deadline that passed while the process was dead comes back at zero** and is
+recorded on the next tick. The wall clock did reach the end of it, which is the
+owner's rule for completion; the alternative, silently restarting the count,
+would record a set that took twice as long as it claims. Worth revisiting if it
+ever surprises anyone in practice.
+
+`SessionController.onRestTick` became `onTick` and drives both clocks. One
+ticker, because they cannot run at once and two would be two loops to start,
+stop and get wrong in the same places.
+
+The countdown replaces the target as the screen's big number, which is also why
+`TimedSetComposeTest` exists: a screen that kept drawing the prescription would
+look right in a screenshot and never move, and one that still offered "Log set"
+would send a command the engine now refuses, with every engine test green.
+
+**The watch is not done.** `toWearState` publishes rest's deadline and knows
+nothing about a set's, so a timed set on the wrist shows a set panel with no
+countdown and no zero-time haptic. That is `core:wear-protocol`, which two apps
+compile against, and it pairs with F7's watch alerts — recorded in the backlog.
+
+### 2026-09-07 — the rest sound moved to the media stream
+
+Changed on the owner's instruction, from the alarm stream it shipped on hours
+earlier. Media is the volume someone training has already set, because it is the
+one their music is on: the beep lands at a level they chose, and the volume keys
+adjust it without a trip into Settings. The alarm stream also plays through a
+phone deliberately silenced, which is a decision the user has already made.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3126,12 +3195,16 @@ The same alert path is what a timed set will use when it reaches zero.
    builder screen that has already saved one replaces the saved week instead of
    making another. Found while fixing R3; not changed, because whether Coach
    should mint a new week there is a product decision. See Slice 1 above.
-13. **The watch shows no remainder on a paused rest.** `toWearState` publishes
+13. **The watch knows nothing about a timed set.** `toWearState` publishes
+   rest's deadline only, so a timed set on the wrist draws a set panel with no
+   countdown and no zero-time haptic — which §3 asks for by name. Needs a
+   protocol field; pairs with F7's watch alerts.
+14. **The watch shows no remainder on a paused rest.** `toWearState` publishes
    `deadlineElapsedRealtimeMs = restEndsAtElapsed`, which is null while paused,
    and the phone shows the frozen remainder. The watch draws its set panel
    rather than a countdown, so nothing is currently wrong on screen — but the
    two devices do not agree, and closing it means a protocol field.
-14. **The rest ring pauses on any device with a reduced animator scale.** Known
+15. **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.

@@ -41,7 +41,11 @@ object DatabaseModule {
             // (§16), and the asset carries Room's identity hash, so a database
             // built from different entities is refused rather than half-read.
             .createFromAsset(ASSET)
-            .addMigrations(RepForthDatabase.MIGRATION_1_2, RepForthDatabase.MIGRATION_2_3)
+            .addMigrations(
+                RepForthDatabase.MIGRATION_1_2,
+                RepForthDatabase.MIGRATION_2_3,
+                RepForthDatabase.MIGRATION_3_4,
+            )
             .build()
 
     @Provides

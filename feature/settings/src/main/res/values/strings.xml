@@ -47,7 +47,7 @@
     <string name="settings_haptics">Vibration</string>
     <string name="settings_haptics_sub">On completing or skipping a set, and when rest runs out.</string>
     <string name="settings_sound">Sound</string>
-    <string name="settings_sound_sub">A beep when rest runs out, loud enough to hear across a gym.</string>
+    <string name="settings_sound_sub">A beep when a rest or a timed set runs out, at your media volume.</string>
     <string name="settings_reduced_motion">Reduce motion</string>
     <string name="settings_reduced_motion_sub">Shorter, plainer animations.</string>
 

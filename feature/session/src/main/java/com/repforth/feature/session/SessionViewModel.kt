@@ -48,6 +48,13 @@ data class SessionUiState(
     val reducedMotion: Boolean = false,
     /** Rest left, recomputed on a tick rather than counted down. */
     val restRemainingMs: Long? = null,
+    /**
+     * Time left on the timed set in progress, on the same terms.
+     *
+     * Null for an ordinary set, which is what tells the screen to draw a Log set
+     * button rather than a countdown.
+     */
+    val setRemainingMs: Long? = null,
     val loading: Boolean = true,
     val finished: Boolean = false,
     /**
@@ -136,6 +143,15 @@ data class SessionUiState(
     val isPaused: Boolean get() = phase == SessionPhase.PAUSED
     val isCompleting: Boolean get() = phase == SessionPhase.COMPLETING
     val isActive: Boolean get() = phase == SessionPhase.ACTIVE
+
+    /**
+     * A timed set is counting right now.
+     *
+     * What the screen turns on, rather than the target type: an exercise can be
+     * timed while the workout is paused or resting, and neither of those is a
+     * moment to draw a running countdown.
+     */
+    val isTimedSetRunning: Boolean get() = isActive && setRemainingMs != null
 }
 
 /**
@@ -279,14 +295,20 @@ class SessionViewModel @Inject constructor(
     fun onAbandon() = dispatch(SessionCommand.Abandon(controller.newCommandId()))
 
     /**
-     * Refreshes the rest remainder, and lets the controller end the rest.
+     * Refreshes both countdowns, and lets the controller end whichever ran out.
+     *
+     * Compared before writing so a tick that changed nothing does not recompose
+     * the screen; at two ticks a second for the length of a workout that is not
+     * a micro-optimisation.
      */
     fun onTick() {
         viewModelScope.launch {
-            controller.onRestTick()
-            val remaining = controller.restRemaining()
-            if (remaining != _uiState.value.restRemainingMs) {
-                _uiState.value = _uiState.value.copy(restRemainingMs = remaining)
+            controller.onTick()
+            val rest = controller.restRemaining()
+            val set = controller.setRemaining()
+            val current = _uiState.value
+            if (rest != current.restRemainingMs || set != current.setRemainingMs) {
+                _uiState.value = current.copy(restRemainingMs = rest, setRemainingMs = set)
             }
         }
     }
@@ -331,6 +353,7 @@ class SessionViewModel @Inject constructor(
             summaries = summaries,
             currentExercise = current,
             restRemainingMs = controller.restRemaining(),
+            setRemainingMs = controller.setRemaining(),
             loading = false,
             finished = snapshot.phase.isTerminal,
         )

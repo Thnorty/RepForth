@@ -243,7 +243,75 @@ class SessionRecoveryTest {
         assertEquals(null, repository().restoreActive())
     }
 
+    // ---- Timed sets, which carry a second clock ----
+
+    private fun timedTemplate(sets: Int = 2) = WorkoutTemplate(
+        id = "plan",
+        name = "Core",
+        source = PlanSource.MANUAL,
+        exercises = listOf(
+            PlannedExercise(
+                id = "planned-0",
+                exerciseId = ExerciseId("exercise-0"),
+                position = 0,
+                target = ExerciseTarget.Duration(sets = sets, durationMs = HOLD_MS),
+                restMs = REST_MS,
+            ),
+        ),
+    )
+
+    @Test
+    fun restoring_a_running_timed_set_owes_what_is_left_of_it() = runTest {
+        val running = engine.start("session", timedTemplate()) + SessionCommand.Begin(id())
+        assertEquals(HOLD_MS, running.setRemaining(time.elapsedRealtime()))
+        time.advance(20_000L)
+
+        val restored = restart(running)
+
+        assertEquals(
+            "A plank interrupted by a process death owes the seconds it had left",
+            HOLD_MS - 20_000L,
+            restored.setRemaining(time.elapsedRealtime()),
+        )
+    }
+
+    @Test
+    fun restoring_a_paused_timed_set_resumes_with_the_time_that_was_left() = runTest {
+        val running = engine.start("session", timedTemplate()) + SessionCommand.Begin(id())
+        time.advance(20_000L)
+        val paused = running + SessionCommand.Pause(id())
+
+        val restored = restart(paused)
+        assertEquals(HOLD_MS - 20_000L, restored.setRemainingMs)
+
+        // The clock moving while paused must not come out of the set, which is
+        // why the remainder is a duration and not a deadline.
+        time.advance(10 * 60_000L)
+        val resumed = restored + SessionCommand.Resume(id())
+
+        assertEquals(SessionPhase.ACTIVE, resumed.phase)
+        assertEquals(
+            HOLD_MS - 20_000L,
+            resumed.setRemaining(time.elapsedRealtime()),
+        )
+    }
+
+    @Test
+    fun a_restored_rest_after_a_timed_set_counts_the_rest_and_not_the_set() = runTest {
+        // Both deadlines live on one row. Persisting one into the other's column
+        // would be invisible until a restored rest counted down a plank.
+        val resting = engine.start("session", timedTemplate()) +
+            SessionCommand.Begin(id()) + SessionCommand.SetElapsed(id())
+        assertEquals(SessionPhase.RESTING, resting.phase)
+
+        val restored = restart(resting)
+
+        assertEquals(REST_MS, restored.restRemaining(time.elapsedRealtime()))
+        assertEquals(null, restored.setRemaining(time.elapsedRealtime()))
+    }
+
     private companion object {
         const val REST_MS = 60_000L
+        const val HOLD_MS = 45_000L
     }
 }

@@ -65,6 +65,24 @@ sealed interface SessionCommand {
         override val expectedRevision: Long? = null,
     ) : SessionCommand
 
+    /**
+     * A timed set's own clock reached zero.
+     *
+     * The only way a timed set is completed. §3's timed work is measured, not
+     * declared: a plank ends when the sixty seconds end, so there is no "Log
+     * set" for one and [CompleteSet] is refused while one is running. Stopping
+     * early is [SkipSet], which records a skip — a set nobody finished is not a
+     * set with a shorter duration, and treating it as one would put work in the
+     * history that was not done.
+     *
+     * A command for the same reason [RestElapsed] is: the engine is a pure
+     * function with no clock, so whoever is watching one tells it.
+     */
+    data class SetElapsed(
+        override val commandId: String,
+        override val expectedRevision: Long? = null,
+    ) : SessionCommand
+
     /** Jump to the next exercise, abandoning any sets left on this one. */
     data class NextExercise(
         override val commandId: String,
@@ -134,6 +152,24 @@ sealed interface SessionEvent {
     data class SetRecorded(val exerciseIndex: Int, val outcome: SetOutcome) : SessionEvent
     data class RestStarted(val durationMs: Long, val endsAtWallClock: Long) : SessionEvent
     data class RestEnded(val skipped: Boolean) : SessionEvent
+
+    /**
+     * A timed set began counting, which happens on arrival rather than on a tap.
+     *
+     * Announced so the notification can show the countdown without the service
+     * having to work out for itself which exercises are timed.
+     */
+    data class TimedSetStarted(val durationMs: Long, val endsAtWallClock: Long) : SessionEvent
+
+    /**
+     * A timed set ran out, and was therefore completed.
+     *
+     * Separate from [SetRecorded], which fires for every set however it ended.
+     * This one is the moment that deserves a noise: the user is holding a plank
+     * and is not looking at the phone, which is the same argument §12 makes for
+     * the rest alert.
+     */
+    data class TimedSetEnded(val exerciseIndex: Int) : SessionEvent
     data class ExerciseChanged(val exerciseIndex: Int) : SessionEvent
     data class PhaseChanged(val from: SessionPhase, val to: SessionPhase) : SessionEvent
 }

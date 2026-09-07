@@ -67,6 +67,23 @@ data class WorkoutSessionEntity(
     val restRemainingMs: Long?,
 
     /**
+     * When the timed set in progress ends, as epoch milliseconds.
+     *
+     * Its own column rather than a second meaning for [deadlineAt]. The two can
+     * never both be running — a rest and a set are different phases — but one
+     * column would mean every reader had to consult `state` before it knew what
+     * the number was, and a query that forgot would be quietly wrong rather than
+     * failing. §3's timed work and §10's rest are different things that happen
+     * to count down.
+     */
+    @ColumnInfo(name = "set_deadline_at")
+    val setDeadlineAt: Long?,
+
+    /** A timed set's remaining time when paused. See [restRemainingMs]. */
+    @ColumnInfo(name = "set_remaining_ms")
+    val setRemainingMs: Long?,
+
+    /**
      * Where the user is, stored rather than derived.
      *
      * These were once recomputed on read from the set records — the first

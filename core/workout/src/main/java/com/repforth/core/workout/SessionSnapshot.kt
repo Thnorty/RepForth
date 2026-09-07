@@ -42,6 +42,23 @@ data class SessionSnapshot(
     /** Rest left at the moment of pausing. Set only while paused. */
     val restRemainingMs: Long? = null,
 
+    /**
+     * When the current **timed set** ends, on the monotonic clock.
+     *
+     * The same shape as [restEndsAtElapsed] and for the same reasons — never
+     * persisted directly, recomputed on restore from a wall-clock deadline — but
+     * a separate field rather than a reuse. The two can never both be running,
+     * yet one field would mean every reader had to consult the phase before it
+     * knew what the number meant, and the watch would have to as well. §3's
+     * timed work and §10's rest are different things that happen to count down.
+     *
+     * Null while an exercise is untimed, which is most of them.
+     */
+    val setEndsAtElapsed: Long? = null,
+
+    /** A timed set's remaining time at the moment of pausing. */
+    val setRemainingMs: Long? = null,
+
     /** Wall-clock start, for the record. */
     val startedAt: Long,
 
@@ -86,6 +103,22 @@ data class SessionSnapshot(
         SessionPhase.PAUSED -> restRemainingMs
         else -> null
     }
+
+    /**
+     * Milliseconds left on the current timed set, or null when there is not one.
+     *
+     * Answers `PAUSED` from the stored remainder rather than a deadline, exactly
+     * as rest does: a pause has no end, so what survives it is a duration.
+     */
+    fun setRemaining(nowElapsed: Long): Long? = when (phase) {
+        SessionPhase.ACTIVE -> setEndsAtElapsed?.let { (it - nowElapsed).coerceAtLeast(0) }
+        SessionPhase.PAUSED -> setRemainingMs
+        else -> null
+    }
+
+    /** Whether the exercise in progress is measured in time rather than reps. */
+    val isTimedSet: Boolean
+        get() = currentExercise?.target is ExerciseTarget.Duration
 
     internal fun withCommand(commandId: String) = copy(
         revision = revision + 1,

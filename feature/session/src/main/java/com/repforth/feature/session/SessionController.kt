@@ -176,26 +176,44 @@ class SessionController @Inject constructor(
     }
 
     /**
-     * Tells the engine when rest has run out.
+     * Tells the engine when a timer has run out — either of them.
      *
-     * Whoever is watching the clock calls this — the screen while it is open,
-     * the service otherwise. Both calling is fine: the second finds the phase is
-     * no longer `RESTING` and is rejected without a write.
+     * Whoever is watching the clock calls this: the screen while it is open, the
+     * service otherwise. Both calling is fine, and both do — the second finds the
+     * phase already moved on and is rejected without a write.
+     *
+     * One tick for both timers rather than one each. They cannot run at the same
+     * time (a rest and a set are different phases), and two tickers would be two
+     * loops to start, stop and get wrong in the same places.
      */
-    suspend fun onRestTick(): SessionSnapshot? {
+    suspend fun onTick(): SessionSnapshot? {
         val snapshot = _state.value ?: return null
-        if (snapshot.phase != SessionPhase.RESTING) return snapshot
+        return when (snapshot.phase) {
+            SessionPhase.RESTING -> snapshot.elapsed(snapshot.restRemaining(time.elapsedRealtime())) {
+                SessionCommand.RestElapsed(newCommandId())
+            }
 
-        val remaining = snapshot.restRemaining(time.elapsedRealtime())
-        return if (remaining != null && remaining <= 0L) {
-            dispatch(SessionCommand.RestElapsed(newCommandId()))
-        } else {
-            snapshot
+            // A timed set only ends this way; §3's timed work is measured, not
+            // declared, so there is no tap that could get here first.
+            SessionPhase.ACTIVE -> snapshot.elapsed(snapshot.setRemaining(time.elapsedRealtime())) {
+                SessionCommand.SetElapsed(newCommandId())
+            }
+
+            else -> snapshot
         }
     }
 
+    private suspend inline fun SessionSnapshot.elapsed(
+        remaining: Long?,
+        command: () -> SessionCommand,
+    ): SessionSnapshot? =
+        if (remaining != null && remaining <= 0L) dispatch(command()) else this
+
     /** Milliseconds of rest left right now, or null when not resting. */
     fun restRemaining(): Long? = _state.value?.restRemaining(time.elapsedRealtime())
+
+    /** Milliseconds left on the timed set in progress, or null when there is not one. */
+    fun setRemaining(): Long? = _state.value?.setRemaining(time.elapsedRealtime())
 
     fun newCommandId(): String = UUID.randomUUID().toString()
 
