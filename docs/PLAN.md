@@ -21,11 +21,11 @@ which decisions are closed so they are not reopened.
 | Phase | Guideline | State |
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
-| 1 — Local workout core | §19 | **Complete.** Engines, data, all six screens, manual builder, and local constraints |
+| 1 — Local workout core | §19 | **Built; recovery corrections needed.** Engines, data, all six screens and manual builder exist; the 2026-09-07 audit reproduced three persistence-mapping failures. See Next |
 | 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
-| 5 — Wear remote | §19 | **Complete.** Protocol, bridge, watch app, and every §20 watch clause demonstrated on a Galaxy S23 and a Galaxy Watch Ultra: snapshot delivery, commands, stale-command refusal, rest countdown, and disconnected read-only with recovery |
+| 5 — Wear remote | §19 | **Core remote demonstrated on hardware.** Snapshot delivery, commands, stale-command refusal, rest countdown and disconnected recovery were demonstrated on a Galaxy S23 and Galaxy Watch Ultra. The 2026-09-07 source audit found the §3/§11 thumbnail, watch timer alerts and ongoing activity still missing |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 61 goldens and enforced CI; migrations and keystore storage now run on a managed emulator |
 | — Reported from use | — | Four rounds after every phase was complete. Three defects, two of which took two attempts each; see below |
 
@@ -2838,7 +2838,121 @@ the test's own action worked.**
 
 ## Next
 
-In the order they are worth doing, and why.
+### 2026-09-07 — feature and improvement assessment
+
+Completed a specification-to-source review, saved as
+[FEATURE_GAP_REVIEW.md](FEATURE_GAP_REVIEW.md). That file is an assessment
+snapshot; implementation status and sequencing stay here. No production code or
+specification changes were made, and new feature proposals are not approved scope.
+
+Four isolated JVM probes used the real session engine and repository mapping
+with a fake DAO row store: active-set restoration passed; restoration during
+rest skipped a set, paused-rest restoration lost its deadline, and restoration
+after Next exercise returned to the skipped exercise. **Three failures out of
+four**, not a device/SQLite test. Local probe source and failure XML are retained
+under ignored `_staging/feature-audit/`, loaded only by its explicit init script.
+The ordinary user-data/workout test invocation then succeeded using cached and
+up-to-date results; no full build, lint or device suite was run for this audit.
+
+Recommended next corrections, before the older polish backlog below:
+
+1. ~~Preserve session position and paused-rest remainder across persistence~~ and
+   ~~preserve the active flag when editing a week, and fix decimal-comma weight
+   input~~. **Done — see "Slice 1" below (R1–R4).**
+2. Make import atomic and fully validated, preserve notes/weekday assignments
+   through builder edits, and reproduce deletion/reset during a running session
+   (R5/R6 and the review's reset risk).
+3. Reconcile remaining specification gaps: timed sets, live replacement,
+   notes/RPE, editable exclusions, deterministic training-rule coverage, and
+   the missing watch features. The review proposes acceptance checks and scope.
+
+The best proposed additions after those corrections are workout detail,
+last-session comparison and manual weekly planning. Their product decisions
+remain open; they have not been added to the specification.
+
+### 2026-09-07 — Slice 1: preserve the workout (R1–R4)
+
+The review's four P1 defects were re-verified against source, then fixed. All
+four were reproduced as failing tests first, and each was watched going red
+against the unfixed code before being made green — the numbers below are from
+those runs, not from the review.
+
+**R1/R2 — a workout in progress now records where it is.** `workout_session`
+gained `current_exercise_index`, `current_set_index` and `rest_remaining_ms`
+(database v3, `MIGRATION_2_3`). Position used to be recomputed on read as "the
+first exercise still owed sets, and the count of sets recorded against it",
+which cannot express two states the engine reaches every workout: during a rest
+the cursor still names the set just finished, and `NextExercise` records nothing
+at all. So ending a restored rest skipped a set, and restoring after skipping an
+exercise walked back into it.
+
+The migration **backfills** rather than defaulting to zero. Only an unfinished
+session reads these columns and there is at most one — but that one belongs to
+somebody mid-workout when the update lands, and the old derivation is the best
+answer available for a row written before the fix.
+
+The packaged catalog asset was rebuilt for v3 (`tools/import-dataset.py`);
+`PackagedCatalogTest` checks the asset's identity hash and `user_version` against
+the current schema, so a version bump without it fails the JVM suite.
+
+**Where these are tested is the point.** `core:user-data` now has instrumentation
+tests (`SessionRecoveryTest`, nine of them) against a real in-memory Room
+database, and the module was given `repforth.android.instrumentation` for it.
+A fake DAO hands back the entity object it was given, so a field the repository
+never writes to a column still comes back intact — which is exactly the shape of
+the paused-rest defect. Against the unfixed repository, four failed:
+
+| Test | Was |
+|---|---|
+| `restoring_a_rest_then_ending_it_enters_the_next_set` | expected set 1, got 2 |
+| `restoring_a_rest_after_the_last_set_enters_the_next_exercise` | expected set 0, got 1 |
+| `restoring_after_skipping_an_exercise_stays_on_the_new_one` | expected exercise 1, got 0 |
+| `restoring_a_paused_rest_resumes_with_the_time_that_was_left` | expected 50000ms, got null |
+
+`MigrationTest` gained five cases (10 total), including the backfill, the
+all-complete fallback arm, and a session with no exercises. Both suites run on
+`pixel6Api34`, and CI's device job now runs `:core:user-data` alongside them.
+
+**R3 — editing the active week no longer deactivates it.** Saving replaces the
+whole row, so `active` is written on every save rather than left alone.
+`onSaveWeek` asked only whether *an* active week existed, which answered "yes"
+when the active week was this one, wrote false, and Today lost its plan for the
+sake of a rename. It now asks whether the active week is a *different* one.
+
+Fixing it exposed a stale test. `a generated week only becomes active when no
+week is active yet` generated twice into one view model believing it had made two
+weeks — `onGenerate` does not clear `weekId`, so the second generate re-saved the
+first week and `weeks.saved` held one entry. It passed because "re-save" and
+"second week" both answered false at the time, and only one of those was right.
+It now uses a second view model and asserts the count.
+
+**That `weekId` behaviour is itself worth a decision, and has not been changed.**
+Generating a second week on a builder screen that has already saved one silently
+replaces the saved week rather than creating another. Whether Coach should mint a
+new week there is a product call, not a defect fix.
+
+**R4 — one weight parser, shared by both fields.** `sanitizeWeightInput` and
+`UnitSystem.readWeight` live in `core/designsystem/theme/Units.kt`, next to
+`formatWeight`, and the session screen and the builder's `DecimalField` both use
+them. Both had filtered input by hand and both dropped everything but digits and
+`.`, so on a Turkish keyboard — where the decimal key *is* a comma — `12,5` did
+not fail. It became `125`. Measured through the real screen: `onCompleteSet`
+received **125.0**.
+
+The parser returns three states, not two. Blank means "as prescribed" and records
+the planned weight, so folding an unreadable entry into it recorded a number the
+user did not type — which is what `toDoubleOrNull() ?: null` had been doing. Log
+set is now disabled and the field explains itself (`session_weight_invalid`, both
+locales) rather than logging the target.
+
+`formatWeight` still writes a period in every locale. §13 asks for locale-aware
+numbers and that half is **not** done; it is display-only, it churns goldens, and
+it is not what corrupted the data. Recorded in the backlog below.
+
+Verified: `assemblePlaceholderDebug`, `test` and `lint` each on their own, all
+green; 61 goldens unchanged.
+
+### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
    pass on the managed emulator and the `device-tests` job runs them:
@@ -2850,7 +2964,8 @@ In the order they are worth doing, and why.
    `WearCommandService` both publish, and a refusal republishes as well. The
    writes are idempotent so nothing is wrong; it is simply more Data Layer
    traffic than the state changes justify.
-3. **The AI provider screen has no golden and no accessibility check.** The
+3. **The AI provider screen has no golden.** Accessibility coverage was added
+   in A.4 (`AiSettingsAccessibilityTest`), including Advanced settings. The
    two Settings dialogs did not either, and are now covered — see D.2, which
    reached them by tapping the row rather than hoisting their state, so the
    worry recorded here about "changing the screen for the sake of the test"
@@ -2859,8 +2974,8 @@ In the order they are worth doing, and why.
    The provider screen is a different case and was left out deliberately: its
    interesting states are a typed key and a connection result rather than a
    layout under pressure, and a golden of it would mostly photograph an empty
-   text field. An accessibility check is still worth having — three of the nine
-   device-found defects were on that screen.
+   text field. Consider a golden for expanded/error states if layout risk
+   warrants it; the accessibility gap is closed.
 
 4. **`WorkoutSummary.exerciseCount` is still undrawn** per history row.
    `topMuscles` was the other one and is drawn as of D.4; `daysThisWeek` and
@@ -2882,7 +2997,21 @@ In the order they are worth doing, and why.
    an instrumentation test on the managed emulator rather than the Robolectric
    one guessed at here — `:app` already had a working Hilt test graph, so no
    Hilt-free route was needed.
-9. **The rest ring pauses on any device with a reduced animator scale.** Known
+9. **Weights are displayed with a period in Turkish too.** §13 asks for
+   locale-aware numbers; `formatWeight` writes `12.5` whatever the locale, and
+   `formatVolume` does the same. Input accepts both separators as of R4, so
+   nothing is recorded wrongly — this is display only. Doing it means
+   re-recording goldens that draw a fractional weight, so it is its own change.
+10. **`onGenerate` does not clear `weekId`.** Generating a second week on a
+   builder screen that has already saved one replaces the saved week instead of
+   making another. Found while fixing R3; not changed, because whether Coach
+   should mint a new week there is a product decision. See Slice 1 above.
+11. **The watch shows no remainder on a paused rest.** `toWearState` publishes
+   `deadlineElapsedRealtimeMs = restEndsAtElapsed`, which is null while paused,
+   and the phone shows the frozen remainder. The watch draws its set panel
+   rather than a countdown, so nothing is currently wrong on screen — but the
+   two devices do not agree, and closing it means a protocol field.
+12. **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.
@@ -2933,33 +3062,31 @@ app icon, and the exact licence.
   that the body map's tap targets on phone screens feel small for consistent,
   accurate touch input. The artwork is sound, but needs an expanded presentation,
   dedicated zoom/full-screen sheet, or enlarged touch bounds in a follow-up iteration.
-- **The v1 to v2 migration is proven; no later one exists yet.** `MigrationTest`
-  ran on a Galaxy S23 on 2026-08-31, five tests, no failures. The risk that
-  remains is the next schema change, not this one. Re-run with
-  `./gradlew :core:database:connectedAndroidTest` — and read the warning in
-  `AGENTS.md` first, because `connectedAndroidTest` uninstalls the app when it
-  finishes and uninstalling wipes exactly the data the migration protects.
-  Export first, every time.
+- **The v1 to v2 migration is proven; no later one exists yet.** Migration
+  coverage runs on a managed emulator in CI (D.1). Prefer
+  `./gradlew :core:database:pixel6Api34DebugAndroidTest` for repeatable checks.
+  The library's instrumentation targets its own test package; the app-data
+  uninstall hazard in `AGENTS.md` applies to `:app` instrumentation, not this
+  library. Session-recovery fixes identified on 2026-09-07 may need a new schema.
 - **A live provider has now returned a week**, on schema version 4: six days
   from Gemini on a Galaxy S23, first try. Every *automated* multi-day test still
   answers from MockWebServer, so the shape is confirmed by hand and not by the
   suite. Whether a **small local model** holds a strict seven-day schema remains
   unmeasured, and stays the risk most likely to change the design;
   `docs/WEEKLY_PLANS.md` §4.6 records the fallback and its trigger.
-- **Screenshot tests cover every screen but AI settings, and no dialog.** 46
-  goldens across nine screens, both languages, both font scales; the Settings
-  schedule and equipment dialogs open from state held inside the screen, so
-  nothing renders them. A layout regression in the
-  AI provider screen is still something only a person holding a phone would
-  notice.
+- **AI settings and Wear still need visual coverage.** Settings schedule and
+  equipment dialog coverage exists (D.2); the older statement that no dialogs
+  were rendered is superseded. AI settings accessibility also exists (A.4).
+  Count committed goldens rather than carrying another stale total here.
 - **A golden agrees with whatever it was last shown.** Re-recording is one flag
   away, and a re-record that nobody looked at turns the guard into a rubber
   stamp. Read the diff before committing a changed image.
 - **Two devices, and they disagree.** A Galaxy S23 (API 34) runs the
   instrumentation suite; the Xiaomi (API 30) hangs on it, because MIUI refuses
   an activity start from instrumentation and the permission that would allow it
-  cannot be set over adb. Paired-watch tests still have no hardware at all, so
-  Phase 5 remains unverifiable here.
+  cannot be set over adb. Paired-watch transport was subsequently demonstrated
+  on the Galaxy S23 and Galaxy Watch Ultra (5.4/5.5); automated Wear UI and
+  paired-device regression coverage remains a separate gap.
 - **Cleartext is permitted and nothing narrows it (2.3d, §8 amended).** There is
   no address policy any more: a base URL typed as `http://` is sent as `http://`,
   to any host, and the API key rides in a header in clear text. That is the

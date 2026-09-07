@@ -77,7 +77,7 @@ abstract class RepForthDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
 
         /** Also the asset filename once the import task prepackages the catalog. */
         const val NAME = "repforth.db"
@@ -106,6 +106,68 @@ abstract class RepForthDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `workout_template` ADD COLUMN `week_position` INTEGER")
                 db.execSQL("ALTER TABLE `workout_template` ADD COLUMN `day_of_week` INTEGER")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_workout_template_week_id` ON `workout_template` (`week_id`)")
+            }
+        }
+
+        /**
+         * Migration from v2 to v3: `workout_session` records where the user is.
+         *
+         * Position used to be recomputed on read from the set records, and that
+         * derivation was wrong in two states the engine really has — see
+         * [com.repforth.core.database.entity.WorkoutSessionEntity]. A paused
+         * rest had nowhere to keep its remainder at all.
+         *
+         * The backfill reproduces the old derivation rather than leaving the
+         * defaults in place. Only an unfinished session reads these columns, and
+         * there is at most one — but that one belongs to somebody in the middle
+         * of a workout when the update lands, and without the backfill they come
+         * back to the first set of the first exercise. The old answer is the
+         * best answer available for a row written before the fix, and it is the
+         * answer they were already getting.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `rest_remaining_ms` INTEGER")
+                db.execSQL(
+                    "ALTER TABLE `workout_session` ADD COLUMN `current_exercise_index` INTEGER NOT NULL DEFAULT 0",
+                )
+                db.execSQL(
+                    "ALTER TABLE `workout_session` ADD COLUMN `current_set_index` INTEGER NOT NULL DEFAULT 0",
+                )
+
+                // The first exercise still owed sets, by position — which is
+                // also its index, because a template's positions are contiguous
+                // from zero. The second COALESCE arm is the old fallback for a
+                // session with no exercise left owing anything.
+                db.execSQL(
+                    """
+                    UPDATE `workout_session` SET `current_exercise_index` = COALESCE((
+                        SELECT MIN(e.`position`) FROM `session_exercise` e
+                        WHERE e.`session_id` = `workout_session`.`id`
+                          AND (
+                            SELECT COUNT(*) FROM `set_record` r
+                            WHERE r.`session_exercise_id` = e.`id`
+                          ) < e.`target_sets`
+                    ), (
+                        SELECT MAX(e.`position`) FROM `session_exercise` e
+                        WHERE e.`session_id` = `workout_session`.`id`
+                    ), 0)
+                    """.trimIndent(),
+                )
+
+                // And the count of sets already recorded against that exercise.
+                db.execSQL(
+                    """
+                    UPDATE `workout_session` SET `current_set_index` = COALESCE((
+                        SELECT COUNT(*) FROM `set_record` r
+                        WHERE r.`session_exercise_id` = (
+                            SELECT e.`id` FROM `session_exercise` e
+                            WHERE e.`session_id` = `workout_session`.`id`
+                              AND e.`position` = `workout_session`.`current_exercise_index`
+                        )
+                    ), 0)
+                    """.trimIndent(),
+                )
             }
         }
     }

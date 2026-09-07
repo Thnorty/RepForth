@@ -156,11 +156,18 @@ jobs:
       # every released database version. `core:secrets` joins it because the
       # Android Keystore does not exist on the JVM either, and both want the
       # same emulator.
-      - name: Migrations and keystore storage
+      #
+      # `core:user-data` is here for a third reason: what a workout in progress
+      # survives is a statement about columns, and a fake DAO hands back the
+      # object it was given. Two defects lived exactly in that gap -- a rest
+      # restored mid-exercise skipped the next set, and a paused rest lost its
+      # remainder entirely -- and both passed every test the module had.
+      - name: Migrations, keystore storage and session recovery
         run: >
           ./gradlew
           :core:database:pixel6Api34DebugAndroidTest
           :core:secrets:pixel6Api34DebugAndroidTest
+          :core:user-data:pixel6Api34DebugAndroidTest
           --stacktrace
 
       # §17: the shell, the navigation graph and the real Hilt graph, which is
