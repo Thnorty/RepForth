@@ -3035,6 +3035,34 @@ Verified: `assemblePlaceholderDebug`, `test` and `lint` each on their own, all
 green; 26 transfer tests; `:core:database` and `:core:user-data` instrumentation
 green on `pixel6Api34`.
 
+### 2026-09-07 — the rest timer makes a noise
+
+Asked for directly. Rest ending already vibrated (`WorkoutService`, §12) and was
+otherwise silent, which is the wrong half for a phone in a bag across the room.
+
+`ToneGenerator` rather than a bundled audio file: no asset, so nothing with a
+licence to track — §6 keeps unlicensed media out of the default build and two
+short beeps are not worth a provenance. **On the alarm stream on purpose.** A
+rest timer is something the user started and is waiting for, and it competes
+with gym music; the notification stream would be inaudible in exactly the
+situation this exists for, and silent on a phone set to vibrate — where the
+haptic already covers it. The switch is the way to turn it off, not the ringer.
+
+`soundEnabled` is a separate preference from `hapticsEnabled`, not a rider on
+it: a phone face down on a bench is felt and not heard, one in a bag is heard
+and not felt. On by default.
+
+**The switch needed a test of its own, and the reason is worth keeping.**
+Settings is a `LazyColumn` and the new row sits below the fold, so the
+screenshot goldens were unchanged by adding it and the accessibility walk never
+composed it. A row wired to the wrong callback would have passed the entire
+suite. `SoundSettingComposeTest` scrolls to it and toggles it; miswiring it to
+`onHapticsChange` turns three of its four cases red. `PreferenceReachTest`
+covers the other end — it fails if nothing outside `feature:settings` reads the
+value — and was watched failing for this preference before the service read it.
+
+The same alert path is what a timed set will use when it reaches zero.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

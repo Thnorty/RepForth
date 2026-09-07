@@ -58,6 +58,8 @@ class UserPreferencesDataSource @Inject constructor(
 
     suspend fun setHapticsEnabled(enabled: Boolean) = edit { it[Keys.HAPTICS] = enabled }
 
+    suspend fun setSoundEnabled(enabled: Boolean) = edit { it[Keys.SOUND] = enabled }
+
     suspend fun setMediaWifiOnly(enabled: Boolean) = edit { it[Keys.MEDIA_WIFI_ONLY] = enabled }
 
     /**
@@ -81,6 +83,7 @@ class UserPreferencesDataSource @Inject constructor(
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val REDUCED_MOTION = booleanPreferencesKey("reduced_motion")
         val HAPTICS = booleanPreferencesKey("haptics_enabled")
+        val SOUND = booleanPreferencesKey("sound_enabled")
         val MEDIA_WIFI_ONLY = booleanPreferencesKey("media_wifi_only")
     }
 
@@ -107,6 +110,8 @@ class UserPreferencesDataSource @Inject constructor(
                 ?: UserPreferences.Default.reducedMotion,
             hapticsEnabled = preferences[Keys.HAPTICS]
                 ?: UserPreferences.Default.hapticsEnabled,
+            soundEnabled = preferences[Keys.SOUND]
+                ?: UserPreferences.Default.soundEnabled,
             mediaWifiOnly = preferences[Keys.MEDIA_WIFI_ONLY]
                 ?: UserPreferences.Default.mediaWifiOnly,
         )
