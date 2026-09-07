@@ -40,11 +40,25 @@ fun SessionSnapshot.toWearState(
         setNumber = currentSetIndex + 1,
         totalSets = current.target.sets,
         targetReps = (current.target as? ExerciseTarget.Reps)?.reps,
-        // The deadline and the clock it is measured against, together. Either
-        // alone is useless to the watch: `elapsedRealtime` counts from each
-        // device's own boot, so only the difference between two of the phone's
-        // own timestamps means anything on the other side.
-        deadlineElapsedRealtimeMs = restEndsAtElapsed,
+        // §3 asks the wrist for "repetitions or duration", and until this the
+        // watch had only the first half: a plank arrived as a set number with
+        // nothing under it.
+        targetDurationMs = (current.target as? ExerciseTarget.Duration)?.durationMs,
+        // Both deadlines and the clock they are measured against, together.
+        // Either alone is useless to the watch: `elapsedRealtime` counts from
+        // each device's own boot, so only the difference between two of the
+        // phone's own timestamps means anything on the other side.
+        //
+        // Rebuilt from the phase-aware remainder rather than read off the raw
+        // field, which is what makes a *paused* clock survive the crossing. The
+        // phone drops its deadline on a pause and keeps a duration instead —
+        // there is no deadline, because a pause has no end — so a projection
+        // reading `restEndsAtElapsed` published null and the watch drew "—" over
+        // a rest that was merely suspended.
+        restDeadlineElapsedRealtimeMs = restRemaining(nowElapsedRealtimeMs)
+            ?.let { nowElapsedRealtimeMs + it },
+        setDeadlineElapsedRealtimeMs = setRemaining(nowElapsedRealtimeMs)
+            ?.let { nowElapsedRealtimeMs + it },
         publishedAtElapsedRealtimeMs = nowElapsedRealtimeMs,
         nextExerciseName = nextExerciseName(names),
     )

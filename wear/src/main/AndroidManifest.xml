@@ -10,6 +10,14 @@
     -->
     <uses-feature android:name="android.hardware.type.watch" />
 
+    <!--
+        §3 asks for a haptic when a timed set or a rest reaches zero. A normal
+        permission, granted at install, so there is nothing to prompt for — and
+        whether it fires at all is the phone's decision: §11 gives the watch no
+        settings, so "haptics off" is honoured by the phone not sending.
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:name=".RepForthWearApplication"
         android:allowBackup="false"
@@ -44,6 +52,17 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/workout" />
+            </intent-filter>
+            <!--
+                And a timer reaching zero, which travels as a message rather than
+                as state: it is true at an instant, and the Data Layer's habit of
+                keeping the last value would buzz a watch on reconnect for a rest
+                that ended while it was in a drawer. A prefix filter like the
+                phone's; the service checks the exact path itself.
+            -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/workout" />
             </intent-filter>
         </service>

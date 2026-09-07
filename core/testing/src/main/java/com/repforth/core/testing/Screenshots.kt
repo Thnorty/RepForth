@@ -40,6 +40,17 @@ const val SCREENSHOT_DEVICE =
     "w411dp-h891dp-normal-long-notround-any-420dpi-keyshidden-nonav"
 
 /**
+ * A 240x240dp round watch at 320dpi — a Galaxy Watch Ultra, the paired device.
+ *
+ * `round` is the qualifier that matters and the reason this is not simply a
+ * small phone: §11's screens are centred rather than start-aligned because a
+ * round display clips its corners, and a square render would let a layout that
+ * loses its edges pass. `small` and `notlong` come with the shape.
+ */
+const val WATCH_SCREENSHOT_DEVICE =
+    "w240dp-h240dp-small-notlong-round-any-320dpi-keyshidden-nonav"
+
+/**
  * Robolectric's qualifiers for the two languages this app ships.
  *
  * Both are named, including the default. A screenshot test that set a qualifier

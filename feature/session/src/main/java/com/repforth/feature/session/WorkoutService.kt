@@ -19,6 +19,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.wearprotocol.WearAlert
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionEvent
 import com.repforth.core.workout.SessionPhase
@@ -121,7 +122,7 @@ class WorkoutService : Service() {
                     // Skipped rest is the user's own tap. They know.
                     is SessionEvent.RestEnded -> if (!event.skipped) {
                         restJustEnded = true
-                        alert()
+                        alert(WearAlert.RestEnded)
                         controller.state.value?.let(::notify)
                     }
 
@@ -129,7 +130,7 @@ class WorkoutService : Service() {
                     // running out, from the same place: the phone is on a bench
                     // and the user is holding a plank, not watching a number.
                     is SessionEvent.TimedSetEnded -> {
-                        alert()
+                        alert(WearAlert.TimedSetEnded)
                         controller.state.value?.let(::notify)
                     }
 
@@ -153,9 +154,21 @@ class WorkoutService : Service() {
      * caller gives: this exists for the phone that is not being looked at, and a
      * composable is not running then.
      */
-    private suspend fun alert() {
+    private suspend fun alert(kind: WearAlert) {
         val preferences = preferences.preferences.first()
-        if (preferences.hapticsEnabled) vibrate()
+        if (preferences.hapticsEnabled) {
+            vibrate()
+            // The wrist, which §3 asks for by name and which cannot work this
+            // moment out for itself: both ways out of a rest -- it ran out, or the
+            // user skipped it -- are the same phase change in the snapshot, and
+            // only this side has the events that tell them apart.
+            //
+            // Under the same switch as the phone's own buzz, because the watch has
+            // no settings of its own to read (§11) and §12 makes haptics
+            // optional. "Haptics off" can only be honoured on the wrist by not
+            // sending this at all.
+            controller.state.value?.let { bridge.alert(it.sessionId, kind) }
+        }
         if (preferences.soundEnabled) playTone()
     }
 

@@ -5,6 +5,9 @@ import android.os.SystemClock
 import android.util.Log
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
+import com.repforth.core.wearprotocol.WearAlert
+import com.repforth.core.wearprotocol.WearAlertMessage
+import com.repforth.core.wearprotocol.WearPaths
 import com.repforth.core.wearprotocol.WearWorkoutState
 import com.repforth.core.wearsync.toWearState
 import com.repforth.core.workout.SessionSnapshot
@@ -32,6 +35,8 @@ class WearBridge @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val dataClient by lazy { Wearable.getDataClient(context) }
+    private val messageClient by lazy { Wearable.getMessageClient(context) }
+    private val nodeClient by lazy { Wearable.getNodeClient(context) }
 
     /**
      * Encoded here rather than as a `DataMap` of loose keys.
@@ -82,12 +87,54 @@ class WearBridge @Inject constructor(
         }
     }
 
-    companion object {
-        /** §11 names this path. */
-        const val PATH = "/workout/active"
+    /**
+     * Tell the watch a timer reached zero (§3).
+     *
+     * A message rather than a field on the snapshot, and the reasoning is this
+     * class's own argument for state run backwards. The Data Layer keeps the
+     * last value, which is why the snapshot goes over it — a watch that was out
+     * of range still learns the current set. An alert wants the opposite: it is
+     * true at an instant, and a wrist buzzing on reconnect for a rest that ended
+     * while the watch sat in a drawer is worse than one that never buzzed at
+     * all. A message has no memory, and here that is the whole point.
+     *
+     * Sent only to a **nearby** node, for the reason `WearWorkoutStore` gives on
+     * the other side: `connectedNodes` answers what this device knows about, not
+     * what it can reach, and it keeps returning the peer with every radio off so
+     * the Data Layer can route through the cloud. A buzz that arrives by that
+     * route arrives after the rest it was announcing.
+     *
+     * Never fatal, like [publish], and for the same §15 reason: the workout on
+     * the phone does not depend on a watch hearing about it.
+     */
+    suspend fun alert(sessionId: String, kind: WearAlert) {
+        try {
+            val nodes = nodeClient.connectedNodes.await().filter { it.isNearby }
+            if (nodes.isEmpty()) {
+                Log.d(TAG, "Not alerting: no watch nearby")
+                return
+            }
+            val message = WearAlertMessage(sessionId = sessionId, alert = kind)
+            val payload = json.encodeToString(message).toByteArray()
+            nodes.forEach { node ->
+                messageClient.sendMessage(node.id, ALERT_PATH, payload).await()
+            }
+            Log.d(TAG, "Alerted ${nodes.size} watch(es): $kind")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not alert the watch", e)
+        }
+    }
 
-        /** Commands travel the other way, over MessageClient. */
-        const val COMMAND_PATH = "/workout/command"
+    companion object {
+        /**
+         * §11's paths, declared once in the protocol both sides compile against.
+         *
+         * These were literals here and again in the watch's store — two strings
+         * that must be equal, in two modules that never see each other.
+         */
+        const val PATH = WearPaths.STATE
+        const val ALERT_PATH = WearPaths.ALERT
+        const val COMMAND_PATH = WearPaths.COMMAND
 
         private const val TAG = "WearBridge"
     }

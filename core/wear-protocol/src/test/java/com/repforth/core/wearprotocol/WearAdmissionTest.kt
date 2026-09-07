@@ -119,7 +119,9 @@ class WearAdmissionTest {
         setNumber = 2,
         totalSets = 4,
         targetReps = 12,
-        deadlineElapsedRealtimeMs = null,
+        targetDurationMs = null,
+        restDeadlineElapsedRealtimeMs = null,
+        setDeadlineElapsedRealtimeMs = null,
         nextExerciseName = null,
     )
 

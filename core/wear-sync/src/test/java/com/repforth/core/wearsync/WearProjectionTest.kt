@@ -4,6 +4,7 @@ import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.wearprotocol.WearPhase
 import com.repforth.core.wearprotocol.restRemainingMs
+import com.repforth.core.wearprotocol.setRemainingMs
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
@@ -42,13 +43,111 @@ class WearProjectionTest {
         assertNull(timed.toWearState(NAMES, PUBLISHED_AT)!!.targetReps)
     }
 
+    /**
+     * The other half of §3's "repetitions **or** duration".
+     *
+     * The pair with the test above is the point: exactly one of the two targets
+     * is ever set, and it is how the watch decides which screen it is drawing. A
+     * projection that filled in both, or neither, would give the wrist a plank
+     * with a rep count or a curl with a countdown.
+     */
     @Test
-    fun `the rest deadline crosses over untouched`() {
+    fun `a timed exercise reports how long it is`() {
+        val timed = snapshot(
+            target = ExerciseTarget.Duration(sets = 3, durationMs = 45_000L),
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(45_000L, timed.targetDurationMs)
+    }
+
+    @Test
+    fun `an exercise counted in reps has no duration`() {
+        assertNull(snapshot().toWearState(NAMES, PUBLISHED_AT)!!.targetDurationMs)
+    }
+
+    @Test
+    fun `the rest deadline crosses over as a duration from the publish clock`() {
         val resting = snapshot(
             phase = SessionPhase.RESTING,
-            restEndsAtElapsed = 123_456L,
-        )
-        assertEquals(123_456L, resting.toWearState(NAMES, PUBLISHED_AT)!!.deadlineElapsedRealtimeMs)
+            restEndsAtElapsed = PUBLISHED_AT + 90_000L,
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(90_000L, resting.restRemainingMs())
+        assertNull("A rest is not a set", resting.setRemainingMs())
+    }
+
+    /**
+     * A running timed set gets its own deadline, and the rest field stays empty.
+     *
+     * Two fields rather than one the phase disambiguates, so this pair of
+     * assertions is the contract: the watch reads the one named for what it is
+     * drawing, and a projection that wrote the set's clock into the rest field
+     * would put a countdown on the rest screen for a set nobody is resting from.
+     */
+    @Test
+    fun `a running timed set publishes its own deadline`() {
+        val holding = snapshot(
+            target = ExerciseTarget.Duration(sets = 3, durationMs = 60_000L),
+            setEndsAtElapsed = PUBLISHED_AT + 42_000L,
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(42_000L, holding.setRemainingMs())
+        assertNull("Nothing is resting", holding.restRemainingMs())
+    }
+
+    @Test
+    fun `an exercise counted in reps has no set deadline`() {
+        assertNull(snapshot().toWearState(NAMES, PUBLISHED_AT)!!.setRemainingMs())
+    }
+
+    /**
+     * A paused clock survives the crossing, which it did not before.
+     *
+     * The phone drops its deadline on a pause and keeps a duration instead —
+     * there is no deadline, because a pause has no end. A projection reading the
+     * raw `restEndsAtElapsed` therefore published null, and the watch drew "—"
+     * over a rest that was merely suspended. Rebuilding from the phase-aware
+     * remainder is what fixes it, and this is the assertion that keeps it fixed.
+     */
+    @Test
+    fun `a paused rest still says how much is owed`() {
+        val paused = snapshot(
+            phase = SessionPhase.PAUSED,
+            restRemainingMs = 25_000L,
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(25_000L, paused.restRemainingMs())
+    }
+
+    @Test
+    fun `a paused timed set still says how much is owed`() {
+        val paused = snapshot(
+            phase = SessionPhase.PAUSED,
+            target = ExerciseTarget.Duration(sets = 3, durationMs = 60_000L),
+            setRemainingMs = 40_000L,
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(40_000L, paused.setRemainingMs())
+        assertNull("Only the clock that was running is owed anything", paused.restRemainingMs())
+    }
+
+    /**
+     * A deadline belonging to a phase the watch is not in must not be sent.
+     *
+     * The raw fields can hold a number that the phase says is over, so reading
+     * them directly would publish a set countdown to a watch showing a rest
+     * screen — two clocks running at once on a device that has room for one.
+     */
+    @Test
+    fun `a deadline from another phase is not published`() {
+        val resting = snapshot(
+            phase = SessionPhase.RESTING,
+            restEndsAtElapsed = PUBLISHED_AT + 90_000L,
+            setEndsAtElapsed = PUBLISHED_AT + 42_000L,
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(90_000L, resting.restRemainingMs())
+        assertNull("The set's clock stopped when the rest started", resting.setRemainingMs())
     }
 
     @Test
@@ -131,6 +230,26 @@ class WearProjectionTest {
         assertEquals(60_000L, resting.restRemainingMs())
     }
 
+    /**
+     * The one that would have caught the uptime bug, from the sending side.
+     *
+     * `PUBLISHED_AT` is a deliberately large phone uptime. A projection that
+     * measured a deadline against anything else — zero, or the wall clock —
+     * still satisfies every assertion phrased as "the remainder is 42 seconds",
+     * because the subtraction on the other side would cancel the mistake out.
+     * These two are what pin the pair to the same origin.
+     */
+    @Test
+    fun `a countdown is measured against the published clock and not zero`() {
+        val holding = snapshot(
+            target = ExerciseTarget.Duration(sets = 3, durationMs = 60_000L),
+            setEndsAtElapsed = PUBLISHED_AT + 42_000L,
+        ).toWearState(NAMES, PUBLISHED_AT)!!
+
+        assertEquals(PUBLISHED_AT + 42_000L, holding.setDeadlineElapsedRealtimeMs)
+        assertEquals(PUBLISHED_AT, holding.publishedAtElapsedRealtimeMs)
+    }
+
     private companion object {
         /** An arbitrary phone uptime, deliberately large. */
         const val PUBLISHED_AT = 595_515_000L
@@ -154,6 +273,9 @@ class WearProjectionTest {
             currentSetIndex: Int = 0,
             revision: Long = 0,
             restEndsAtElapsed: Long? = null,
+            setEndsAtElapsed: Long? = null,
+            restRemainingMs: Long? = null,
+            setRemainingMs: Long? = null,
             target: ExerciseTarget = ExerciseTarget.Reps(sets = 4, reps = 12, weightKg = 60.0),
             exercises: List<SessionExercise>? = null,
         ) = SessionSnapshot(
@@ -167,6 +289,9 @@ class WearProjectionTest {
             currentExerciseIndex = currentExerciseIndex,
             currentSetIndex = currentSetIndex,
             restEndsAtElapsed = restEndsAtElapsed,
+            setEndsAtElapsed = setEndsAtElapsed,
+            restRemainingMs = restRemainingMs,
+            setRemainingMs = setRemainingMs,
             startedAt = 1_767_225_600_000L,
             revision = revision,
         )

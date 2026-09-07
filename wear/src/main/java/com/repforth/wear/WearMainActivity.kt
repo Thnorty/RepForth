@@ -16,7 +16,9 @@ import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.AppScaffold
 import dagger.hilt.android.AndroidEntryPoint
 import com.repforth.core.wearprotocol.WearWorkoutState
+import com.repforth.core.wearprotocol.WearPhase
 import com.repforth.core.wearprotocol.restRemainingMs
+import com.repforth.core.wearprotocol.setRemainingMs
 import kotlinx.coroutines.delay
 
 /**
@@ -54,6 +56,12 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Exercise -> state.workout?.let { workout ->
                     ExerciseScreen(
                         state = workout,
+                        // Null for anything counted in repetitions, which is
+                        // what makes the screen draw a set number instead.
+                        remainingSeconds = rememberCountdownSeconds(
+                            workout,
+                            workout.setRemainingMs(),
+                        ),
                         enabled = state.controlsEnabled,
                         onAction = viewModel::onAction,
                     )
@@ -62,7 +70,10 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Rest -> state.workout?.let { workout ->
                     RestScreen(
                         state = workout,
-                        remainingSeconds = rememberRestSeconds(workout),
+                        remainingSeconds = rememberCountdownSeconds(
+                            workout,
+                            workout.restRemainingMs(),
+                        ),
                         enabled = state.controlsEnabled,
                         onAction = viewModel::onAction,
                     )
@@ -77,7 +88,11 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
 }
 
 /**
- * The rest countdown, ticked on the watch's own clock.
+ * A countdown, ticked on the watch's own clock.
+ *
+ * One function for both timers rather than one each. A rest and a timed set
+ * are the same arithmetic over different fields, and they cannot run at the
+ * same time — two copies would be two places to reintroduce the bug below.
  *
  * The phone sends a deadline and the clock reading it was taken against, both
  * on the phone's `elapsedRealtime`. Subtracting those two gives a **duration**,
@@ -96,8 +111,16 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
  * its next snapshot resets the count.
  */
 @Composable
-private fun rememberRestSeconds(state: WearWorkoutState): Int? {
-    val remainingAtPublish = state.restRemainingMs() ?: return null
+private fun rememberCountdownSeconds(state: WearWorkoutState, remainingAtPublish: Long?): Int? {
+    if (remainingAtPublish == null) return null
+
+    // A paused clock is a duration, and a duration does not tick. The phone
+    // drops its deadline on a pause and keeps what was owed, so the number that
+    // arrives here is already frozen — starting a ticker on it would count a
+    // suspended plank down to zero on the wrist while the phone still owed it
+    // forty seconds, and the two devices would disagree about a workout the
+    // phone alone is running.
+    if (state.phase == WearPhase.Paused) return (remainingAtPublish / 1000L).toInt()
 
     // Anchored to the snapshot: a new revision restarts the countdown from
     // whatever the phone last said, rather than continuing an old one.
