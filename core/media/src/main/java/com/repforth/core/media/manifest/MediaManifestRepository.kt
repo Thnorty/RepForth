@@ -18,9 +18,10 @@ import kotlinx.serialization.json.Json
 /**
  * Access to the exercise media manifest (§6, §9).
  *
- * Provides lookups for thumbnails and GIFs by [ExerciseId]. In builds where the
- * manifest is not bundled (`placeholder`), returns [MediaRef.Unavailable]
- * gracefully without network or I/O errors.
+ * Provides lookups for thumbnails and GIFs by [ExerciseId]. The manifest is
+ * bundled in `main`, so it is present in every flavour; [MediaRef.Unavailable]
+ * is the answer for an exercise the manifest has no entry for, not for a build
+ * without media. There is no build without media — see §6.
  */
 interface MediaManifestRepository {
     suspend fun getManifest(): MediaManifest?

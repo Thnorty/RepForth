@@ -2,7 +2,8 @@
 
 Four separate sets of terms apply to this repository. They are genuinely
 different, and the most restrictive one is the exercise imagery — read that
-section before enabling the `licensed` flavour.
+section before building this at all. It is **not** confined to one build
+flavour, whatever the flavour names suggest.
 
 ## Exercise data — MIT
 
@@ -31,13 +32,17 @@ it.
 
 What that means in practice:
 
-- The **`placeholder` flavour is the default**, and is the only flavour that can
-  be built and distributed from this source without media rights of your own. It
-  contains no exercise imagery at all.
-- The **`licensed` flavour** downloads imagery at runtime from the pinned commit.
-  Building it for anything beyond local evaluation requires you to obtain your
-  own licence directly from Gym visual, under their
+- **Every build downloads this imagery at runtime**, including the default
+  `placeholder` one. The `media` flavour dimension does not gate it and never
+  did: no source reads the flavour, the manifest ships in the common source set,
+  and all four variants resolve the same upstream URLs. Earlier versions of this
+  file, `PRIVACY.md` and `README.md` said otherwise; they described an intention
+  that was never implemented.
+- So **running or distributing any build of this requires you to obtain your own
+  licence** directly from Gym visual, under their
   [Terms & Conditions of Use](https://gymvisual.com/content/3-terms-and-conditions-of-use).
+  There is currently no flavour that avoids the question. That is a known,
+  deliberate position — see `docs/PLAN.md` — and not an oversight left standing.
 - No image or GIF is committed to this repository. `dataset/media-manifest.json`
   holds URLs, SHA-256 hashes and byte sizes — references, not bytes.
 - Wherever imagery is shown, the attribution above must be shown with it, and the
@@ -73,6 +78,7 @@ individual SVGs named in `tools/icons.txt` and `tools/svg-to-vector.py` converts
 each one into an Android vector drawable, so the app ships 53 paths rather than
 a font containing several thousand glyphs it does not use.
 
-The drawables in `core/designsystem/src/main/res/drawable/rf_sym_*.xml` are
-generated. Do not edit them by hand; change `tools/icons.txt` and rerun the
-script.
+The drawables in `core/designsystem/src/main/res/drawable/rf_sym_*.xml` and
+`wear/src/main/res/drawable/rf_sym_*.xml` are generated. Do not edit them by
+hand; change the list — `tools/icons.txt` for the phone, `tools/icons-wear.txt`
+for the watch, which needs exactly one — and rerun the script.

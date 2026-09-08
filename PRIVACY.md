@@ -47,9 +47,28 @@ configure a provider and supply your own key, then and only then:
   no provider configured. Coach generation requires the provider you selected;
   a provider failure never creates a substitute plan locally.
 
-**Phase 3 — media.** In the `licensed` flavour only, images are fetched from a
-pinned GitHub commit when first shown, and cached on the device. The default
-`placeholder` flavour performs no network I/O at all. See [`NOTICE.md`](NOTICE.md).
+**Phase 3 — media.** Exercise images are fetched from a pinned GitHub commit
+when first shown, and cached on the device. **This happens in every build,
+including the default one.** An earlier version of this page said the default
+flavour performed no network I/O at all; that was never true of the app as
+built, and saying so here was the worst place to get it wrong.
+
+What that means for you, stated plainly:
+
+- The host — `raw.githubusercontent.com` — sees your IP address and which
+  exercise images you asked for, at the time you asked. That is a weak but real
+  signal about what you are training. It goes to GitHub, under **their** terms.
+  There is still no us in the request path: no account, no identifier we
+  attach, nothing about your sets, weights or history leaves the device.
+- Nothing is sent — only fetched. A request says "give me image 0025", never
+  what you did with it.
+- You can bound it. Settings lists both network destinations the app can reach,
+  can restrict media to Wi-Fi, shows the cache size, and can clear it. An
+  exercise whose image is not cached simply shows an icon and its full text
+  instructions, which is the whole screen minus the picture.
+
+See [`NOTICE.md`](NOTICE.md) for who owns that imagery, which is a separate
+question from this one and a sharper one.
 
 **Phase 5 — the watch.** Phone and watch exchange workout state directly over the
 Wear Data Layer. That traffic stays between your paired devices.

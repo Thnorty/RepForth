@@ -36,16 +36,19 @@ Android SDK path in `local.properties`, which is not committed:
 sdk.dir=/path/to/Android/sdk
 ```
 
-There are two build flavours on the `media` dimension:
+There are two build flavours on the `media` dimension, `placeholder` (the
+default) and `licensed`.
 
-| Flavour | What it ships |
-|---|---|
-| `placeholder` *(default)* | Exercise text and metadata only. No exercise imagery. |
-| `licensed` | Adds the upstream exercise imagery. **Requires your own licence** — see [`NOTICE.md`](NOTICE.md). |
+**They do not currently differ in what they fetch.** The dimension was added so
+that the default build would carry no exercise imagery, and that is not what it
+does: nothing reads the flavour at run time, so every build downloads the
+upstream images on demand. This README said otherwise until it was measured.
 
-`placeholder` is the default deliberately, and it is the only flavour that can be
-built and distributed from this source without obtaining media rights of your
-own. An exercise is fully usable from its text in that flavour.
+That matters before you build this, not after: the imagery is **not** licensed to
+you, and there is no flavour that avoids the question today. Read
+[`NOTICE.md`](NOTICE.md) first. The exercise *text* is MIT-licensed and an
+exercise is fully usable from it, so the app works with no images at all — but it
+will still ask for them.
 
 ## Bring your own AI key
 
@@ -64,8 +67,8 @@ it; Coach generation itself requires the provider you configured. See
 
 The catalog comes from [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset),
 pinned to one immutable commit in [`dataset-version.toml`](dataset-version.toml).
-The exercise data is MIT-licensed. **The imagery is not** — read
-[`NOTICE.md`](NOTICE.md) before touching the `licensed` flavour.
+The exercise data is MIT-licensed. **The imagery is not**, and every flavour
+fetches it — read [`NOTICE.md`](NOTICE.md) before building this.
 
 To rebuild the packaged catalog from the pinned commit:
 
