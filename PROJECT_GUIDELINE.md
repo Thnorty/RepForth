@@ -21,13 +21,13 @@ This document is the implementation source of truth for a local-first, open-sour
 | Initial AI support | Native Gemini adapter plus a generic OpenAI-compatible adapter |
 | Exercise data | `hasaneyldrm/exercises-dataset`, imported and versioned in the app project |
 | Dataset/media pin | Recorded once in `dataset-version.toml`; every path and URL derives from it |
-| Media | Licensed flavors download and cache images/GIFs on demand from the pinned upstream commit; placeholder flavors ship generated art and make no media requests |
+| Media | Every build downloads and caches images/GIFs on demand from the pinned upstream commit; there is no bundled art, and an exercise with no cached media shows an icon |
 | Languages | English and Turkish app UI and exercise instructions |
 | Interface | Material 3, polished native motion, dark-first visual system |
 | Primary navigation | Today · Plans · Exercises · Progress; Coach is a mode inside the builder, not a tab (§12) |
 | Source model | Open source; no proprietary service is required to build or run the core app |
 
-“Local-only” means the app has no developer-operated server, account, telemetry service, or cloud database. Network access is still used when the user explicitly asks the app to call an AI provider, or when a licensed build downloads uncached exercise media. The public `placeholder` flavors (§18) issue no media requests at all.
+“Local-only” means the app has no developer-operated server, account, telemetry service, or cloud database. Network access is still used when the user explicitly asks the app to call an AI provider, and when any build downloads uncached exercise media from the pinned upstream commit. Both destinations are listed in Settings (§17), and media downloads can be limited to Wi-Fi or cleared there.
 
 ## 2. Product definition
 
@@ -48,7 +48,7 @@ The watch is a focused remote for an active phone workout. It shows the current 
 
 - First-run onboarding: goals, experience, available equipment, training days, normal session length, preferred and excluded muscles/movements.
 - Search and filter the full bundled catalog (1,324 records at the pinned commit) by name, body part, target muscle, secondary muscle, and equipment.
-- Exercise details with English/Turkish instructions, thumbnail, and tap-to-play GIF in licensed flavors; placeholder flavors show generated art plus the full text instructions.
+- Exercise details with English/Turkish instructions, thumbnail, and tap-to-play GIF, downloaded on demand in every flavour. Until media is cached — or when it cannot be fetched — the full text instructions carry the screen and an icon stands in for the image.
 - Manual workout builder.
 - AI-assisted generation from natural language and explicit muscle-group selections.
 - Editable generated plan before starting.
@@ -240,7 +240,8 @@ Corrected against the upstream `NOTICE.md` at the pinned commit, which is more s
 - Dataset structure, code, and instruction text are MIT-licensed by the upstream project (© 2026 Hasan Emir Yıldırım).
 - Images and GIFs are the property of **Gym visual**, redistributed upstream under a **separate written permission granted to that project**, at 180×180 only, with the notice `© Gym visual — https://gymvisual.com/` required on every use.
 - **That permission is not transitive.** Upstream states that cloning its repository is not a licence. RepForth therefore has no rights to the media, and must obtain its own licence from Gym visual before distributing any build that ships or fetches it.
-- This makes the `placeholder` flavour a legal requirement rather than a convenience: it is the only flavour distributable from this source today, and the default for that reason.
+- **The `placeholder` flavour is not a safeguard against this, and never was.** It was written as one, and the implementation does not match: `PlaceholderMediaResolver` is bound nowhere, `media-manifest.json` ships in `main` rather than a licensed source set, and no source reads the flavour at run time. Every build resolves the upstream URLs and downloads from them. **The owner has decided that this is the intended behaviour** and that the default public build fetches this media; the paragraph this replaces described a protection the app did not have, which is worse than describing the risk.
+- **So the licence position is open and unmitigated by the build.** Obtaining a licence from Gym visual, or changing what the app fetches, is a decision for the owner and is recorded as such in `docs/PLAN.md`. Nothing in the source currently limits the exposure, and no future reader should infer from a flavour name that something does.
 - Keep media attribution intact in the manifest and the exercise detail UI, and respect the 180×180 limit.
 - Never commit media bytes. The manifest carries URLs, SHA-256 hashes and sizes; the bytes stay upstream.
 
@@ -436,7 +437,7 @@ plan afterward. They do not arrange or prescribe a local substitute workout.
 
 ### Chosen strategy
 
-Bundle metadata and lightweight placeholders in the app. Download thumbnails and GIFs when first needed, then keep them in a bounded disk cache. Prefetch only the current and next few exercises in an accepted workout. This download path is reachable only in the licensed flavors (§18); in placeholder flavors the `MediaSource` implementation resolves every `MediaRef` to bundled generated art and performs no network I/O. Both the imported metadata and media must come from the commit pinned in `dataset-version.toml` so their paths cannot drift apart.
+Bundle the metadata in the app. Download thumbnails and GIFs when first needed, then keep them in a bounded disk cache. Prefetch only the current and next few exercises in an accepted workout. **This download path is reachable in every flavour** — see §6 — and no media bytes are bundled, so an exercise whose media is not yet cached draws an icon rather than art. Both the imported metadata and media must come from the commit pinned in `dataset-version.toml` so their paths cannot drift apart.
 
 GitHub can host this without an application backend:
 
@@ -644,7 +645,7 @@ The app should be usable without granting sensitive permissions and without conf
 Every network destination the app is able to contact is listed in Settings. Both are optional, and a working install may contact neither:
 
 - Selected AI provider endpoint, only when the user has configured a key and triggers a request.
-- Version-pinned exercise-media host, licensed flavors only.
+- Version-pinned exercise-media host, in every flavour, when an exercise's media is not already cached.
 
 Default policy:
 
@@ -663,7 +664,7 @@ Default policy:
 | AI offline/timeout | Preserve inputs, name the failure in a popup, and offer retry |
 | Invalid AI JSON | Validate, retry once with typed feedback, then show a retryable error |
 | Provider auth/quota error | Specific corrective message; never erase the user’s request |
-| Media offline | Cached media or placeholder plus full text instructions |
+| Media offline | Cached media, or an icon, plus the full text instructions |
 | Media hash mismatch | Delete file, record a redacted diagnostic, and do not decode it |
 | Watch disconnected | Disable commands, show reconnection state, phone continues workout |
 | Phone process restart | Restore active session and timers from Room/deadlines |
@@ -751,20 +752,30 @@ Use typed error categories and user-actionable messages. Do not expose raw provi
 
 ### Build variants
 
-- `placeholderDebug`: generated placeholder media, fake provider available.
-- `licensedDebug`: licensed media manifest for authorized development.
-- `placeholderRelease`: fully distributable open-source release without protected media.
-- `licensedRelease`: only after media permission and release review.
+- `placeholderDebug`: the default; fake provider available.
+- `licensedDebug`, `placeholderRelease`, `licensedRelease`: the remaining three
+  corners of the `media` × build-type matrix.
 
-Avoid putting licensed media or user keys into public CI artifacts. Release signing credentials live only in the maintainer’s secured CI/release environment.
+**The `media` dimension currently distinguishes nothing at run time.** It was
+introduced to keep protected media out of the public build, and that is not what
+it does: no source reads the flavour, the manifest ships in `main`, and all four
+variants resolve and download the same media (§6). The names are kept because
+removing a flavour dimension touches CI, baseline profiles and the watch module,
+and because a future build that *bundles* media would want the distinction — but
+nothing should be inferred from them about what a given build fetches.
+
+Avoid putting user keys into public CI artifacts. Release signing credentials
+live only in the maintainer’s secured CI/release environment.
 
 ## 19. Delivery phases
 
 ### Phase 0 — Foundation
 
 - Create multi-module Kotlin/Compose project.
-- Add themes, navigation, Room, DataStore, Hilt, CI, and placeholder media flavor.
-- Pin/import the dataset, generate `media-manifest.json`, and implement bilingual exercise browsing against placeholder media.
+- Add themes, navigation, Room, DataStore, Hilt, CI, and the `media` flavour
+  dimension (which turned out to gate nothing — §18).
+- Pin/import the dataset, generate `media-manifest.json`, and implement bilingual
+  exercise browsing.
 
 ### Phase 1 — Local workout core
 
@@ -818,7 +829,7 @@ Version 1 is ready when:
 - A connected watch can display and control the active phone workout, and cannot silently mutate stale state.
 - A disconnected watch clearly becomes read-only while the phone workout continues.
 - API keys do not appear in Room, DataStore, logs, backups, exports, source, CI, or watch messages.
-- Public source builds successfully with placeholder media and no private credentials.
+- Public source builds successfully with no private credentials. It does **not** build without access to the upstream media host at run time; media is fetched, not bundled (§6, §9).
 
 ## 21. Deferred decisions
 

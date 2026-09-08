@@ -12,7 +12,6 @@ import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Muscle
 import com.repforth.core.media.MediaResolver
-import com.repforth.core.media.PlaceholderMediaResolver
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -22,10 +21,16 @@ import kotlinx.coroutines.flow.map
  *
  * `internal`, and bound to the interface by Hilt: nothing outside this module
  * can reach a DAO, which is what stops storage details leaking into features.
+ *
+ * [mediaResolver] has no default, and used to default to a resolver that
+ * answered "no media" to everything. Hilt could never reach that default —
+ * AGENTS.md records the same trap elsewhere — so the app always got the
+ * manifest-backed one, while the signature told every reader the opposite. That
+ * is most of how §6's claim about placeholder builds survived being untrue.
  */
 internal class RoomExerciseRepository @Inject constructor(
     private val dao: ExerciseDao,
-    private val mediaResolver: MediaResolver = PlaceholderMediaResolver(),
+    private val mediaResolver: MediaResolver,
 ) : ExerciseRepository {
 
     override suspend fun count(): Int = dao.count()

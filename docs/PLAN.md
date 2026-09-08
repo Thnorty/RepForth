@@ -3511,6 +3511,63 @@ Building it before that is decided produces work that is wrong either way, so it
 is not started. The decision is the owner's: it is about what the public build
 does with someone else's media, not about code.
 
+**Decided, same day: the default public build downloads the media.** So the
+source was right and every document describing it was wrong. See below.
+
+### 2026-09-08 — the flavours describe nothing, and now say so
+
+The owner decided that the default public build downloading Gym visual media is
+the intended behaviour. That settles it in the direction of the source: **no code
+changed**, and eleven claims across seven documents did.
+
+The rule being retired is the one every one of them asserted in some form —
+"`placeholder` ships no imagery and makes no media requests". It was never
+implemented. `PlaceholderMediaResolver` was bound nowhere,
+`media-manifest.json` ships in `main`, and no source reads the flavour at run
+time, so all four variants resolve the same upstream URLs and download from them.
+
+**Three of the corrected documents face outward, and one of those is a privacy
+statement.** `PRIVACY.md` told users the default flavour "performs no network I/O
+at all". That is the worst possible place for this particular error, so it is now
+the most specific: the page names the host, says what it can observe (your IP and
+which exercise images you asked for, which is a weak signal about your training),
+says what it cannot (nothing is sent, only fetched), and points at the three
+controls Settings already has.
+
+`NOTICE.md` and `README.md` both said the default flavour was the one that could
+be built without media rights. Applying the decision makes those **stronger**
+statements, not weaker ones: every build downloads imagery that is not licensed
+to the builder, and there is no flavour that avoids the question. The rights
+paragraphs themselves are untouched — those are facts about Gym visual's terms
+and upstream's `NOTICE.md`, not the owner's to change by deciding something.
+
+**What changed in code was one deletion and one signature.**
+`PlaceholderMediaResolver` is gone. It answered `Unavailable` to everything, was
+bound nowhere, and existed only to embody the retired rule — along with its one
+test, which asserted that behaviour of a class nothing used. And
+`RoomExerciseRepository`'s `mediaResolver` parameter lost its default, which was
+`PlaceholderMediaResolver()`.
+
+That default is worth naming, because it is most of how the false claim survived
+review. **Hilt cannot use a Kotlin default argument** — AGENTS.md records the same
+trap in another module — so the app always received the manifest-backed resolver
+while the signature told every reader the opposite, in the file most likely to be
+read when asking "what does a placeholder build do about media?". The answer was
+sitting right there and was wrong.
+
+`BatchSummaryTest` now declares its own two-line no-op resolver. A fixture
+belongs in the fixture; that is what the production class had quietly become.
+
+**The `media` dimension itself is kept.** Removing a flavour dimension touches
+CI, the baseline profile source sets and the watch module, and nobody asked for
+that. §18, `MediaFlavours.kt` and AGENTS.md now all say plainly that it
+distinguishes nothing at run time, so the names cannot teach the misconception
+again.
+
+**And the watch thumbnail is unblocked.** With media present in every build, the
+`Asset` transfer §11 asks for is exercisable in the default build and in CI —
+which was the whole reason it was not started.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3590,13 +3647,20 @@ does with someone else's media, not about code.
 16. ~~**`WearAction.NextExercise` reaches no button.**~~ Done 2026-09-08. On
    both action screens, at the phone's emphasis, on a container that scrolls —
    which also gave the watch its first layout that survives 200% font scaling.
-17. **The watch has no static thumbnail.** Half of this is done: the ongoing
-   activity landed 2026-09-08. The thumbnail is blocked on the media-flavour
-   question above — whether a placeholder build has any media to send — not on
-   effort.
-18. **The `media` flavour dimension has no runtime effect.** See above. The
-   placeholder build resolves and downloads licensed media, which §6, §9, §18
-   and §20 all say it must not. A licensing-posture decision, not a code one.
+17. **The watch has no static thumbnail.** Half of F7 is done: the ongoing
+   activity landed 2026-09-08. The thumbnail is now **unblocked** — media is
+   present in every build, so the `Asset` transfer §11 asks for can be exercised
+   in the default build and in CI. It is the next piece of watch work.
+18. ~~**The `media` flavour dimension has no runtime effect.**~~ Resolved
+   2026-09-08 by decision: the behaviour is intended, and eleven claims across
+   seven documents were corrected to match. The dimension is kept and is now
+   documented as gating nothing.
+19. **No guard holds the documents to the media behaviour.** The claim that came
+   apart was asserted in `PRIVACY.md`, `NOTICE.md`, `README.md`,
+   `PROJECT_GUIDELINE.md`, `AGENTS.md` and two kdocs, and nothing could fail when
+   it stopped being true. A test that asserts *what the app fetches* — rather
+   than what a document says about it — is the shape that would have caught it;
+   `NetworkBoundaryTest` already does something adjacent for HTTP clients.
 
 ---
 
@@ -3634,6 +3698,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Days are ordinal; weekdays are optional | The profile knows how many days, not which; inventing them is a guess presented as a plan | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
 | No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
+| Every build downloads the upstream exercise media | Decided by the owner 2026-09-08. The `media` flavours never gated it, so the choice was between implementing a safeguard nobody had relied on and saying plainly what the app does. The licence question is unchanged and unmitigated by the build | Guideline §6, `PRIVACY.md`, `NOTICE.md` |
 | One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |
 | A timer reaching zero is a message, not snapshot state | The Data Layer keeps the last value, which is why state goes over it and why an event must not: a wrist buzzing on reconnect for a rest that ended in a drawer is worse than one that never buzzed | `WearBridge.alert`, 2026-09-08 |
 | A wire key outlives the Kotlin property name | §11 guarantees the two apps are different versions of themselves on every install, so renaming a JSON key silently costs already-installed watches the field | `WearProtocol.kt`, `WearWireFormatTest` |

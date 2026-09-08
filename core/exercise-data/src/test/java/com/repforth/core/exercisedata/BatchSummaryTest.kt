@@ -5,7 +5,9 @@ import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.dao.ExerciseSummaryRow
 import com.repforth.core.database.dao.ExerciseWithDetails
 import com.repforth.core.database.dao.SecondaryMuscleRow
+import com.repforth.core.media.MediaResolver
 import com.repforth.core.model.ExerciseId
+import com.repforth.core.model.MediaRef
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.runTest
@@ -23,6 +25,19 @@ import org.junit.Test
  * has must be visibly absent rather than silently shortening the result.
  */
 class BatchSummaryTest {
+
+    /**
+     * Answers nothing, because none of this is about media.
+     *
+     * Written here rather than taken from production: the class that used to
+     * serve this purpose was `PlaceholderMediaResolver`, which existed to say
+     * that placeholder builds fetch no media — a rule the app never had and no
+     * longer claims (§6). A fixture belongs in the fixture.
+     */
+    private object NoMedia : MediaResolver {
+        override suspend fun resolveThumbnail(exerciseId: ExerciseId) = MediaRef.Unavailable
+        override suspend fun resolveAnimation(exerciseId: ExerciseId) = MediaRef.Unavailable
+    }
 
     private class RecordingDao(private val known: Set<String>) : ExerciseDao {
         val calls = mutableListOf<List<String>>()
@@ -66,7 +81,7 @@ class BatchSummaryTest {
     fun `an empty plan never reaches the database`() = runTest {
         val dao = repository(emptySet())
 
-        val result = RoomExerciseRepository(dao).summaries(emptyList())
+        val result = RoomExerciseRepository(dao, NoMedia).summaries(emptyList())
 
         assertTrue(result.isEmpty())
         assertTrue("`IN ()` is a SQL syntax error, so this must not query", dao.calls.isEmpty())
@@ -76,7 +91,7 @@ class BatchSummaryTest {
     fun `ids are resolved and keyed by id`() = runTest {
         val dao = repository(setOf("a", "b"))
 
-        val result = RoomExerciseRepository(dao)
+        val result = RoomExerciseRepository(dao, NoMedia)
             .summaries(listOf(ExerciseId("a"), ExerciseId("b")))
 
         assertEquals(setOf(ExerciseId("a"), ExerciseId("b")), result.keys)
@@ -91,7 +106,7 @@ class BatchSummaryTest {
     fun `an id the catalog no longer has is absent rather than substituted`() = runTest {
         val dao = repository(setOf("a"))
 
-        val result = RoomExerciseRepository(dao)
+        val result = RoomExerciseRepository(dao, NoMedia)
             .summaries(listOf(ExerciseId("a"), ExerciseId("gone")))
 
         assertEquals(setOf(ExerciseId("a")), result.keys)
@@ -102,7 +117,7 @@ class BatchSummaryTest {
     fun `duplicate ids are asked for once`() = runTest {
         val dao = repository(setOf("a"))
 
-        RoomExerciseRepository(dao)
+        RoomExerciseRepository(dao, NoMedia)
             .summaries(listOf(ExerciseId("a"), ExerciseId("a"), ExerciseId("a")))
 
         assertEquals(listOf("a"), dao.calls.single())
@@ -118,7 +133,7 @@ class BatchSummaryTest {
         val ids = (1..1_200).map { ExerciseId("id-$it") }
         val dao = repository(ids.map { it.value }.toSet())
 
-        val result = RoomExerciseRepository(dao).summaries(ids)
+        val result = RoomExerciseRepository(dao, NoMedia).summaries(ids)
 
         assertEquals(1_200, result.size)
         assertTrue("Expected more than one statement", dao.calls.size > 1)

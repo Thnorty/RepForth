@@ -57,13 +57,4 @@ class MediaManifestRepositoryTest {
         assertEquals("52b897152a76309a61be8bc917196bfe3558e7d55861f2d44b8375e4d5720286", entry.thumbnail.sha256)
         assertEquals(6108L, entry.thumbnail.bytes)
     }
-
-    @Test
-    fun `placeholder resolver returns unavailable without network`() = runTest {
-        val resolver = PlaceholderMediaResolver()
-        val id = ExerciseId("0001")
-
-        assertEquals(MediaRef.Unavailable, resolver.resolveThumbnail(id))
-        assertEquals(MediaRef.Unavailable, resolver.resolveAnimation(id))
-    }
 }

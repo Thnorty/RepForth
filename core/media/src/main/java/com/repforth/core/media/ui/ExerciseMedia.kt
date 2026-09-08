@@ -33,8 +33,12 @@ enum class ExerciseMediaSize(val dp: Dp, val cornerRadius: Dp) {
 /**
  * Renders 1:1 exercise media strictly without blurring or backdrop distortion (§9).
  *
- * Falls back to placeholder icon [RfIcons.fitnessCenter] when media is unavailable
- * or while loading.
+ * Falls back to an icon while media is loading, and when the manifest has no
+ * entry for the exercise.
+ *
+ * An icon, not generated art. §3 used to promise "generated art" for placeholder
+ * builds; none was ever drawn, and none is needed now that every build fetches
+ * the real thing (§6). The icon is the honest stand-in for "not here yet".
  */
 @Composable
 fun ExerciseMedia(
