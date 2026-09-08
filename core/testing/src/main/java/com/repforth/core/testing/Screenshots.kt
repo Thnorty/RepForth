@@ -46,9 +46,33 @@ const val SCREENSHOT_DEVICE =
  * small phone: §11's screens are centred rather than start-aligned because a
  * round display clips its corners, and a square render would let a layout that
  * loses its edges pass. `small` and `notlong` come with the shape.
+ *
+ * The default of the three below: it is the watch this app has actually been
+ * paired to.
  */
 const val WATCH_SCREENSHOT_DEVICE =
     "w240dp-h240dp-small-notlong-round-any-320dpi-keyshidden-nonav"
+
+/**
+ * A 180x180dp round watch — the smallest shape still sold.
+ *
+ * §11 asks for "round/square screen previews", and this is the half that finds
+ * the real problems: 60dp narrower than the device above, which is roughly one
+ * button's worth of label. A row that fits on the Ultra and wraps here is
+ * exactly the defect the phone's Turkish goldens exist to catch, one size down.
+ */
+const val WATCH_SMALL_ROUND_DEVICE =
+    "w180dp-h180dp-small-notlong-round-any-320dpi-keyshidden-nonav"
+
+/**
+ * A 200x200dp square watch.
+ *
+ * `notround`, which changes what the layout may use rather than merely how it
+ * looks: the corners are usable here and clipped everywhere else. A screen
+ * tuned only for round wastes them; one tuned only for square loses content.
+ */
+const val WATCH_SQUARE_DEVICE =
+    "w200dp-h200dp-small-notlong-notround-any-320dpi-keyshidden-nonav"
 
 /**
  * Robolectric's qualifiers for the two languages this app ships.

@@ -2,6 +2,11 @@ plugins {
     alias(libs.plugins.repforth.wear.application)
     alias(libs.plugins.repforth.android.compose)
     alias(libs.plugins.repforth.android.hilt)
+    // Applies unchanged to an application module now. It used to configure a
+    // `LibraryExtension` and could not; moving the two things every rendering
+    // module needs into the compose plugin is what freed it, and this is the
+    // second module to benefit.
+    alias(libs.plugins.repforth.android.screenshot)
 }
 
 android {
@@ -48,16 +53,6 @@ dependencies {
     // one would need its own fixtures.
     testImplementation(project(":core:testing"))
 
-    // The watch's screens, rendered on the JVM. Named here rather than through
-    // `repforth.android.screenshot` because that plugin is about goldens and
-    // configures a library extension; the watch records none and is an
-    // application. What both need -- merged resources and the release-variant
-    // exclusion -- is in the compose convention plugin, which this module has.
-    //
-    // Behavioural, not visual: §11 gives the watch no engine, so what is worth
-    // asserting is which controls a given snapshot offers. A timed set must not
-    // offer Complete, because the phone's engine refuses it.
-    testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Robolectric, Roborazzi and the compose test rule all arrive with the
+    // screenshot plugin above, so nothing is named here twice.
 }
