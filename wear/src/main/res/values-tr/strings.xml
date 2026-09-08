@@ -22,6 +22,8 @@
     <string name="wear_skip_rest">Dinlenmeyi atla</string>
     <string name="wear_next_up">Sırada: %1$s</string>
 
+    <string name="wear_channel_workout">Devam eden antrenman</string>
+
     <string name="wear_workout_finished">Antrenman bitti</string>
     <string name="wear_workout_ended">Antrenman sonlandırıldı</string>
     <string name="wear_summary_on_phone">Özet telefonunda.</string>

@@ -39,6 +39,7 @@ import kotlinx.serialization.json.Json
 @Singleton
 class WearWorkoutStore @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val ongoing: WearWorkoutNotification,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -73,6 +74,12 @@ class WearWorkoutStore @Inject constructor(
         val decoded = decode(payload)
         Log.d(TAG, "Received revision ${decoded?.revision}, phase ${decoded?.phase}")
         _state.value = decoded
+        // §3's way back from the watch face, kept in step here rather than in
+        // the listener service: the snapshot arrives two ways -- pushed while
+        // nothing is on screen, and pulled by `refresh` when the app opens cold
+        // -- and a chip posted on only one of them is missing in exactly the
+        // case it exists for.
+        ongoing.update(decoded)
     }
 
     /** Read whatever is already there, for a screen opening cold. */

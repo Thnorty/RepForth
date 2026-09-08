@@ -1,0 +1,11 @@
+# Material Symbols used by the watch app, one per line.
+#
+# A separate list from icons.txt because the watch does not depend on
+# core:designsystem — §11 gives it the protocol and nothing else — and needs a
+# single glyph for its ongoing-activity chip. Generating all 66 here would be 65
+# drawables nothing draws.
+#
+# Fetched and converted by:
+#   ICON_LIST=tools/icons-wear.txt ICON_OUT=wear/src/main/res/drawable tools/fetch-icons.sh
+
+fitness_center

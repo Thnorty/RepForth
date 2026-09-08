@@ -31,6 +31,13 @@
     <string name="wear_skip_rest">Skip rest</string>
     <string name="wear_next_up">Next: %1$s</string>
 
+    <!--
+        The notification channel behind the watch-face chip. User-visible in the
+        system's own settings, so it is named for what it is rather than for the
+        thing that posts it.
+    -->
+    <string name="wear_channel_workout">Active workout</string>
+
     <string name="wear_workout_finished">Workout finished</string>
     <string name="wear_workout_ended">Workout ended</string>
     <string name="wear_summary_on_phone">The summary is on your phone.</string>
