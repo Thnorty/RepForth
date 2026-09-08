@@ -3,18 +3,27 @@ package com.repforth.wear
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
+import androidx.wear.compose.foundation.rotary.rotaryScrollable
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ChildButton
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import com.repforth.core.wearprotocol.WearAction
@@ -110,7 +119,7 @@ fun ExerciseScreen(
     onAction: (WearAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Centred(modifier) {
+    Scrollable(modifier) {
         Text(
             text = state.exerciseName,
             style = MaterialTheme.typography.titleSmall,
@@ -195,6 +204,8 @@ fun ExerciseScreen(
                 Text(stringResource(R.string.wear_skip_set), maxLines = 1)
             }
         }
+
+        NextExerciseButton(enabled = enabled, onAction = onAction)
     }
 }
 
@@ -207,7 +218,7 @@ fun RestScreen(
     onAction: (WearAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Centred(modifier) {
+    Scrollable(modifier) {
         Text(
             text = stringResource(R.string.wear_resting),
             style = MaterialTheme.typography.bodySmall,
@@ -238,6 +249,44 @@ fun RestScreen(
         ) {
             Text(stringResource(R.string.wear_skip_rest))
         }
+
+        NextExerciseButton(enabled = enabled, onAction = onAction)
+    }
+}
+
+/**
+ * Leave this exercise, abandoning whatever sets remain on it.
+ *
+ * **It had no button at all, on either screen.** `WearAction.NextExercise` has
+ * existed since the protocol was written, maps to a phone command, and §3 lists
+ * it in the watch MVP — and nothing could send it. The protocol's own standard
+ * for the action set is "nothing duplicated and nothing unreachable"; this was
+ * the unreachable half, and it is the same shape as the exclusions the phone
+ * enforced for months with no way to edit them.
+ *
+ * A [ChildButton] rather than a filled one, and last, because that is the
+ * emphasis the phone gives it: Log set is filled, Pause and Skip set are
+ * outlined, and Next exercise sits below both as a text button. The hierarchy is
+ * not decoration on a wrist — this is the control that throws away the sets you
+ * have not done yet, and it should be the hardest of the three to hit by
+ * accident while out of breath.
+ *
+ * Offered while resting as well as during a set, again matching the phone, whose
+ * condition is `isActive || isResting`. The rest screen is where someone is
+ * actually deciding what to do next, and it already names what is coming.
+ *
+ * On the last exercise this finishes the workout rather than being refused —
+ * `SessionEngine.nextExercise` moves to `COMPLETING` — so there is no state in
+ * which it is offered and does nothing.
+ */
+@Composable
+private fun NextExerciseButton(enabled: Boolean, onAction: (WearAction) -> Unit) {
+    ChildButton(
+        onClick = { onAction(WearAction.NextExercise) },
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(stringResource(R.string.wear_next_exercise), maxLines = 1)
     }
 }
 
@@ -274,18 +323,63 @@ fun FinishedScreen(state: WearWorkoutState, modifier: Modifier = Modifier) {
  * A round screen clips its corners, so nothing may sit against the edge and
  * everything is centred rather than start-aligned. The padding is generous for
  * that reason and not for taste.
+ *
+ * For the three screens that are only ever a sentence or two. The two that carry
+ * controls use [Scrollable] instead, which is this plus somewhere for the
+ * content to go when it does not fit.
  */
 @Composable
-private fun Centred(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun Centred(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = PADDING_H, vertical = PADDING_V),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
-        ) {
-            content()
-        }
+            verticalArrangement = Arrangement.spacedBy(SPACING, Alignment.CenterVertically),
+            content = content,
+        )
     }
 }
+
+/**
+ * The same column, but it can be taller than the watch.
+ *
+ * Centred while the content fits and scrollable when it does not, which is what
+ * `fillMaxSize().verticalScroll()` gives: the scroll modifier relaxes the
+ * maximum height to infinity and leaves the minimum at the viewport, so
+ * [Arrangement.spacedBy] with [Alignment.CenterVertically] still centres a short
+ * screen.
+ *
+ * Two things made this necessary at once. A third control does not fit — the
+ * exercise screen already spent about 194 of its 216dp — and **neither of these
+ * screens survived 200% font scaling before**, which §13 requires: the old
+ * container was a fixed-size box, so anything that grew past the display was
+ * simply cut off with no way to reach it.
+ *
+ * The crown scrolls it, which §11 asks for ("rotary scrolling where
+ * appropriate"). Rotary needs the scrollable to hold focus and there is nothing
+ * else on these screens competing for it, so the request is unconditional.
+ */
+@Composable
+private fun Scrollable(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val scroll = rememberScrollState()
+    val focus = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { focus.requestFocus() }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .rotaryScrollable(RotaryScrollableDefaults.behavior(scroll), focus)
+            .verticalScroll(scroll)
+            .padding(horizontal = PADDING_H, vertical = PADDING_V),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(SPACING, Alignment.CenterVertically),
+        content = content,
+    )
+}
+
+private val PADDING_H = 20.dp
+private val PADDING_V = 12.dp
+private val SPACING = 6.dp

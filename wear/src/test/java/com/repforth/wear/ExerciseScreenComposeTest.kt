@@ -1,12 +1,15 @@
 package com.repforth.wear
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.wear.compose.material3.MaterialTheme
+import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.WATCH_SCREENSHOT_DEVICE
 import com.repforth.core.wearprotocol.WearAction
@@ -16,6 +19,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -121,7 +125,91 @@ class ExerciseScreenComposeTest {
         assertEquals(emptyList<WearAction>(), sent)
     }
 
-    private fun render(timed: Boolean, remainingSeconds: Int?, enabled: Boolean = true) {
+    // ---- Leaving the exercise, which had no button at all ----
+
+    /**
+     * `WearAction.NextExercise` was unreachable.
+     *
+     * It has been in the protocol since it was written, maps to a phone command,
+     * and §3 lists it in the watch MVP — and no screen offered it. The protocol's
+     * own standard for the action set is "nothing duplicated and nothing
+     * unreachable"; a member nothing can send fails the second half, and nothing
+     * in the suite could notice because every test asked about the buttons that
+     * *were* drawn.
+     */
+    @Test
+    fun `next exercise can be sent from a running set`() {
+        render(timed = false, remainingSeconds = null)
+
+        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+
+        assertEquals(listOf(WearAction.NextExercise), sent)
+    }
+
+    @Test
+    fun `next exercise can be sent from a timed set too`() {
+        render(timed = true, remainingSeconds = 42)
+
+        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+
+        assertEquals(listOf(WearAction.NextExercise), sent)
+    }
+
+    @Test
+    fun `a disconnected watch cannot leave the exercise`() {
+        render(timed = false, remainingSeconds = null, enabled = false)
+
+        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+
+        assertEquals(emptyList<WearAction>(), sent)
+    }
+
+    /**
+     * The third control does not fit, and that is why the screen scrolls.
+     *
+     * The exercise screen already spent about 194 of the watch's 216dp before
+     * this. A fixed container would simply have cut the new button off the
+     * bottom with no way to reach it — which is the failure this asserts is
+     * gone, rather than the presence of a scrollbar for its own sake.
+     */
+    @Test
+    fun `the screen scrolls`() {
+        render(timed = true, remainingSeconds = 42)
+
+        compose.onNode(hasScrollAction()).assertExists()
+    }
+
+    /**
+     * §13 requires text to survive 200% scaling, and this screen did not.
+     *
+     * The old container was a fixed-size box: anything that grew past the
+     * display was cut off, with nothing to scroll. Every control has to remain
+     * reachable, not merely present in the tree — so this scrolls to the last
+     * one and presses it, which is the only version of the assertion that a
+     * clipped layout would fail.
+     */
+    @Test
+    fun `every control is still reachable at 200 percent font scale`() {
+        render(timed = false, remainingSeconds = null, fontScale = 2f)
+
+        compose.onNodeWithText(COMPLETE).performScrollTo().performClick()
+        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+
+        assertEquals(listOf(WearAction.CompleteSet, WearAction.NextExercise), sent)
+    }
+
+    private fun render(
+        timed: Boolean,
+        remainingSeconds: Int?,
+        enabled: Boolean = true,
+        fontScale: Float = 1f,
+    ) {
+        // Both, always, even at their defaults: Robolectric carries these across
+        // test methods in one JVM, so a test that set only what it changed would
+        // run in whatever the previous one left behind.
+        RuntimeEnvironment.setQualifiers("+$ENGLISH")
+        RuntimeEnvironment.setFontScale(fontScale)
+
         compose.setContent {
             MaterialTheme {
                 ExerciseScreen(
@@ -153,6 +241,7 @@ class ExerciseScreenComposeTest {
         const val COMPLETE = "Complete"
         const val SKIP = "Skip"
         const val PAUSE = "Pause"
+        const val NEXT = "Next exercise"
         const val SECONDS = "Seconds"
         const val REPS = "12 reps"
     }

@@ -63,9 +63,17 @@ The watch is a focused remote for an active phone workout. It shows the current 
 - Current exercise name and compact static thumbnail.
 - Current set/total sets and repetitions or duration.
 - Rest countdown with skip-rest action.
-- Complete set, pause/resume, skip exercise (abandon its remaining sets and advance), and next exercise (advance after the final set is completed).
+- Complete set, skip set, pause/resume, and next exercise (leave the current
+  exercise, abandoning whatever sets remain on it).
 - Haptic signal when a timed set or rest reaches zero.
 - Ongoing activity entry so the user can return from the watch face.
+
+The action list above previously read "skip exercise (abandon its remaining sets
+and advance), and next exercise (advance after the final set is completed)".
+Those were one command under two names — the same mistake §11 records and
+corrects — and the pair between them left no room for skipping a single *set*,
+which the phone has always been able to do. Advancing after the final set is the
+engine's own behaviour rather than a control the watch offers.
 
 ### Explicit non-goals for MVP
 
