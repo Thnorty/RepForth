@@ -22,14 +22,14 @@ up whatever the hardware in front of you allows.
 
 | Section | Needs |
 |---|---|
-| 1. Timed sets | **Phone only** |
-| 2. Both timers make a noise | **Phone only** |
+| 1. Timed sets | **Phone only** — done 2026-09-08 |
+| 2. Both timers make a noise | **Phone only** — done 2026-09-08 |
 | 3. The watch, first light | Phone + watch |
 | 4. The watch's controls | Phone + watch |
 | 5. Return from the watch face | Phone + watch |
 | 6. Disconnection | Phone + watch |
 | 7. Shapes and sizes | Phone + watch |
-| 8. Media | **Phone only** |
+| 8. Media | **Phone only** — done 2026-09-08 |
 
 **The watch does not need adb for any of these.** It needs the watch APK
 installed, which needs adb *once*; after that the Data Layer works over the
@@ -94,7 +94,10 @@ It should name the watch with `IsConnected=true`.
 
 ---
 
-## 1. Timed sets (#41, #43) — phone only
+## 1. Timed sets (#41, #43) — phone only — ✅ passed 2026-09-08
+
+Confirmed on the Galaxy S23. Left here rather than deleted because it is the
+regression list for the next change to the session engine.
 
 The clock ends a timed set; there is no way to complete one by hand. Build a plan
 with a duration-based exercise — a plank, or anything the builder lets you set
@@ -119,7 +122,14 @@ seconds on.
 
 ---
 
-## 2. Both timers make a noise (#40, #43) — phone only
+## 2. Both timers make a noise (#40, #43) — phone only — ✅ passed 2026-09-08
+
+Confirmed, including the media-stream question that had never been heard. The
+sound itself was then replaced (#50): the `ToneGenerator` beep became a
+synthesised bell, and its first tail was audibly cut — reported as "it starts
+fading, then it cuts", fixed by moving the fade to a raised cosine that takes
+over 13 dB quieter. **Re-listen after any change to `Chime`**; its tests cover
+clicks and clipping and cannot tell you whether it sounds right.
 
 - [ ] **Rest ending buzzes and beeps** with the phone face-down on a bench and the
       screen off. This is the case it exists for.
@@ -219,7 +229,10 @@ you how it feels.
 
 ---
 
-## 8. Media, now that every build downloads it (#46) — phone only
+## 8. Media, now that every build downloads it (#46) — phone only — ◐ partly done
+
+Images confirmed visible in a plain `placeholderDebug` build, which was the
+decision made 2026-09-08. The three items below are still open.
 
 - [ ] **Images appear in a plain `placeholderDebug` build.** This is the decision
       made 2026-09-08 and the documents now describe it; confirm reality agrees.

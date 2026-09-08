@@ -3778,9 +3778,12 @@ install before starting a workout because reinstalling kills the service.
    three watch shapes, both languages and both font scales. The screenshot plugin
    applied unchanged — the earlier move into the compose plugin had already made
    it application-safe.
-20. **None of the Wear work has run on hardware.** Not a defect, a gap: the whole
-   feature set from 2026-09-07 onward is JVM-verified only. `docs/DEVICE_TESTS.md`
-   is the list; this entry stays until it has been worked through.
+20. **The Wear work has still not run on hardware.** The phone-only half of
+   `docs/DEVICE_TESTS.md` passed on 2026-09-08 — timed sets, both alerts and
+   media are confirmed on the Galaxy S23 — and every item that needs the watch
+   is untouched, because the watch could not be reached that day. Sections 3–7,
+   plus §9's split-version check, which expires the moment the watch app is
+   updated.
 21. **No guard holds the documents to the media behaviour.** The claim that came
    apart was asserted in `PRIVACY.md`, `NOTICE.md`, `README.md`,
    `PROJECT_GUIDELINE.md`, `AGENTS.md` and two kdocs, and nothing could fail when
