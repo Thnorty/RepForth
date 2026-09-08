@@ -3,6 +3,7 @@ package com.repforth.core.wearprotocol
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -104,6 +105,59 @@ class WearWireFormatTest {
         )
     }
 
+    // ---- The §6 notice, which may not travel alone ----
+
+    /**
+     * A picture carries its notice.
+     *
+     * §6 requires the media attribution wherever the imagery is shown, and the
+     * watch shows it. The phone is the only side that can supply the wording —
+     * it lives in `media-manifest.json`, which the watch cannot read — so this
+     * is the rule that puts it on the wire beside the asset.
+     */
+    @Test
+    fun `attribution is sent when a thumbnail is`() {
+        val attributed = state().withMediaAttribution(NOTICE, hasThumbnail = true)
+
+        assertEquals(NOTICE, attributed.mediaAttribution)
+    }
+
+    /**
+     * And a notice never travels without one.
+     *
+     * The other half, and the less obvious one: attribution attached to a
+     * snapshot with no picture is a legal claim about something the user cannot
+     * see. The watch would draw a copyright line under an exercise showing an
+     * icon.
+     */
+    @Test
+    fun `attribution is not sent without a thumbnail`() {
+        val bare = state().withMediaAttribution(NOTICE, hasThumbnail = false)
+
+        assertNull(bare.mediaAttribution)
+    }
+
+    /** No manifest, no notice — and still no crash on the way past. */
+    @Test
+    fun `a missing notice is simply absent`() {
+        assertNull(state().withMediaAttribution(null, hasThumbnail = true).mediaAttribution)
+    }
+
+    @Test
+    fun `a state carries no attribution until one is attached`() {
+        assertNull(state().mediaAttribution)
+    }
+
+    @Test
+    fun `attribution survives a round trip`() {
+        val attributed = state().withMediaAttribution(NOTICE, hasThumbnail = true)
+
+        assertEquals(
+            attributed,
+            json.decodeFromString<WearWorkoutState>(json.encodeToString(attributed)),
+        )
+    }
+
     @Test
     fun `an alert survives a round trip`() {
         val original = alert()
@@ -163,6 +217,11 @@ class WearWireFormatTest {
         setDeadlineElapsedRealtimeMs = null,
         nextExerciseName = "dumbbell incline hammer curl",
     )
+
+    private companion object {
+        /** The wording upstream's terms require, as the shipped manifest carries it. */
+        const val NOTICE = "© Gym visual — https://gymvisual.com/"
+    }
 
     private fun alert(kind: WearAlert = WearAlert.RestEnded) = WearAlertMessage(
         sessionId = "today",

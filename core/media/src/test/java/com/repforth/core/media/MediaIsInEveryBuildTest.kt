@@ -1,5 +1,6 @@
 package com.repforth.core.media
 
+import com.repforth.core.media.download.DEFAULT_MEDIA_VERSION
 import com.repforth.core.media.manifest.MediaManifest
 import java.io.File
 import kotlinx.serialization.json.Json
@@ -90,6 +91,28 @@ class MediaIsInEveryBuildTest {
         assertTrue(
             "Attribution rides with the manifest (§6) and is shown wherever media is",
             parsed.attribution.contains("Gym visual"),
+        )
+    }
+
+    /**
+     * The cache generation callers assume matches the one the manifest declares.
+     *
+     * §9 keys the cache as `<mediaVersion>/<exerciseId>/<mediaType>/<sha256>`,
+     * so two callers that disagree about the number do not share a cache — they
+     * each download the same bytes into a different directory and nothing fails.
+     * There are two callers now: the session screen prefetches, and the service
+     * reads the same file to send to the watch. If the manifest bumps its
+     * version and the constant does not, the watch quietly re-downloads
+     * everything the phone already has.
+     */
+    @Test
+    fun `the shipped manifest agrees with the cache generation callers use`() {
+        val parsed = json.decodeFromString<MediaManifest>(manifest.readText())
+
+        assertEquals(
+            "DEFAULT_MEDIA_VERSION is what both callers key the cache by",
+            parsed.mediaVersion,
+            DEFAULT_MEDIA_VERSION,
         )
     }
 

@@ -31,10 +31,25 @@ class MediaIntegrityException(message: String) : IOException(message)
 class MediaNetworkPolicyException(message: String) : IOException(message)
 
 /**
+ * The manifest's media version, and the cache generation that goes with it.
+ *
+ * §9 keys the cache as `<mediaVersion>/<exerciseId>/<mediaType>/<sha256>`, so
+ * two callers that disagree about this number do not share a cache — they each
+ * download the same bytes into a different directory, and nothing fails. It was
+ * a literal `1` in the only caller; it is a constant now because there are two.
+ *
+ * `MediaIsInEveryBuildTest` asserts it still matches the shipped manifest.
+ */
+const val DEFAULT_MEDIA_VERSION: Int = 1
+
+/** The `mediaType` segment of that key for a still image. */
+const val THUMBNAIL_MEDIA_TYPE: String = "thumbnail"
+
+/**
  * Describes a piece of exercise media to prefetch in the background (§9).
  */
 data class MediaPrefetchRequest(
-    val mediaVersion: Int = 1,
+    val mediaVersion: Int = DEFAULT_MEDIA_VERSION,
     val exerciseId: String,
     val mediaType: String,
     val mediaRef: MediaRef,

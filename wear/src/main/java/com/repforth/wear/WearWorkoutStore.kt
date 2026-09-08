@@ -1,7 +1,10 @@
 package com.repforth.wear
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataItem
@@ -9,6 +12,7 @@ import com.google.android.gms.wearable.Node
 import com.google.android.gms.wearable.Wearable
 import com.repforth.core.wearprotocol.WEAR_PROTOCOL_VERSION
 import com.repforth.core.wearprotocol.WearAction
+import com.repforth.core.wearprotocol.WearAssets
 import com.repforth.core.wearprotocol.WearCommand
 import com.repforth.core.wearprotocol.WearPaths
 import com.repforth.core.wearprotocol.WearWorkoutState
@@ -16,9 +20,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.serialization.json.Json
 
@@ -48,10 +56,35 @@ class WearWorkoutStore @Inject constructor(
     private val nodeClient by lazy { Wearable.getNodeClient(context) }
     private val capabilityClient by lazy { Wearable.getCapabilityClient(context) }
 
+    /**
+     * For decoding assets, which cannot happen on the callback that delivers them.
+     *
+     * The store is a singleton for the life of the process and so is this. There
+     * is nothing to cancel: a decode that outlives the screen still leaves the
+     * right bitmap in hand for whatever opens next, which is the entire reason
+     * the snapshot is held here rather than in a view model.
+     */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val _state = MutableStateFlow<WearWorkoutState?>(null)
 
     /** The last snapshot the phone published, or null when it has said nothing. */
     val state: StateFlow<WearWorkoutState?> = _state.asStateFlow()
+
+    private val _thumbnail = MutableStateFlow<Bitmap?>(null)
+
+    /**
+     * The current exercise's still image (§3, §11), or null when there is none.
+     *
+     * Null covers every reason at once — the phone has not cached it, the
+     * manifest has no entry, the user restricted downloads to Wi-Fi — because
+     * the screen does the same thing for all of them, which is the same thing
+     * the phone does: draw an icon.
+     */
+    val thumbnail: StateFlow<Bitmap?> = _thumbnail.asStateFlow()
+
+    /** The asset already fetched, so a snapshot per second is not a decode per second. */
+    private var thumbnailRef: String? = null
 
     private val _phoneReachable = MutableStateFlow(true)
 
@@ -74,12 +107,53 @@ class WearWorkoutStore @Inject constructor(
         val decoded = decode(payload)
         Log.d(TAG, "Received revision ${decoded?.revision}, phase ${decoded?.phase}")
         _state.value = decoded
+
+        // Read here, synchronously, and not inside the coroutine below. The
+        // `DataEventBuffer` this item came from is released the moment
+        // `onDataChanged` returns, so the id has to be taken out of it first;
+        // the id is a plain string and outlives the buffer, the DataItem does
+        // not.
+        onThumbnailAsset(item.assets[WearAssets.THUMBNAIL]?.id)
         // §3's way back from the watch face, kept in step here rather than in
         // the listener service: the snapshot arrives two ways -- pushed while
         // nothing is on screen, and pulled by `refresh` when the app opens cold
         // -- and a chip posted on only one of them is missing in exactly the
         // case it exists for.
         ongoing.update(decoded)
+    }
+
+    /**
+     * Fetch and decode the thumbnail, or drop it.
+     *
+     * Keyed on the asset id, which the Data Layer derives from the content: the
+     * same picture republished with a new snapshot is the same id, so staying on
+     * one exercise costs one decode rather than one per publish.
+     */
+    private fun onThumbnailAsset(assetId: String?) {
+        if (assetId == thumbnailRef) return
+        thumbnailRef = assetId
+
+        if (assetId == null) {
+            _thumbnail.value = null
+            return
+        }
+        scope.launch {
+            val decoded = try {
+                val response = dataClient.getFdForAsset(Asset.createFromRef(assetId)).await()
+                val bitmap = response.inputStream?.use { BitmapFactory.decodeStream(it) }
+                response.release()
+                bitmap
+            } catch (e: Exception) {
+                // A picture is the one thing on this screen that can be missing
+                // without the screen being wrong, so this is a log and nothing
+                // else. The name, the set and the countdown are all still true.
+                Log.w(TAG, "Could not read the exercise thumbnail", e)
+                null
+            }
+            // Only if it is still the one being asked for -- a slow decode must
+            // not overwrite a newer exercise's picture with an older one.
+            if (thumbnailRef == assetId) _thumbnail.value = decoded
+        }
     }
 
     /** Read whatever is already there, for a screen opening cold. */
@@ -207,6 +281,7 @@ class WearWorkoutStore @Inject constructor(
         /** §11's paths, from the protocol module the phone bridge also reads. */
         const val PATH = WearPaths.STATE
         const val COMMAND_PATH = WearPaths.COMMAND
+
 
         /** Declared by the phone in `res/values/wear.xml`. */
         const val PHONE_CAPABILITY = "repforth_phone"

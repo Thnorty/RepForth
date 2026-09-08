@@ -3568,6 +3568,73 @@ again.
 `Asset` transfer §11 asks for is exercisable in the default build and in CI —
 which was the whole reason it was not started.
 
+### 2026-09-08 — the wrist gets the picture (F7 complete)
+
+The last piece of F7, and the one that needed the media decision first. §11 names
+the mechanism exactly — "`Asset`: transfer only the current exercise's small
+static thumbnail when needed" — so this is that, and little else.
+
+**No image pipeline, and that is the point.** The upstream thumbnail is 180×180
+and about 6 KB, §6 caps it at exactly that resolution, and the phone has already
+downloaded it into the §9 cache. So the bytes go across as they are: no decode,
+no resize, no re-encode in a foreground service to make a small thing slightly
+smaller. An `Asset` rather than more JSON because the Data Layer transfers those
+out of band and de-duplicates them by content hash — republishing one exercise's
+snapshot several times a minute re-sends the state and not the picture.
+
+**Fetched ahead, not on arrival.** A publish that waits for a download shows the
+wrist the previous exercise until it finishes; one that does not wait shows no
+picture until something else changes the state, which during a set can be a
+minute away. So the whole plan is warmed in the background when the session
+starts, and the single case that cannot be warmed in advance — the first
+exercise, which the wrist is already looking at — republishes when its bytes
+land. One extra publish per workout rather than one per exercise.
+
+It reuses `MediaDownloader.download`, which is cache-first, so this is a file
+read for anything the session screen already prefetched. It also means the
+**Wi-Fi-only preference reaches the watch**: a restricted download fails, no
+asset is attached, and the wrist draws its icon — the same thing the phone draws.
+
+**§6's notice travels with the picture, and never without it.** The terms require
+the attribution wherever the imagery is shown, and the watch is somewhere it is
+shown. It goes on the wire rather than being a constant in the watch app: it is
+upstream's required wording, it lives in `media-manifest.json`, and a second copy
+on a device that cannot read that file is a copy that can silently stop matching.
+
+The rule has two halves and the second is the one worth a test. A picture without
+its notice breaks the terms; **a notice without a picture is a legal claim about
+something the user cannot see**. `withMediaAttribution` is a pure function in the
+protocol for exactly that reason — the call site is `WearBridge`, which needs Play
+Services and a `Context` to exercise, and this is the part that must be right.
+The screen gates on the decoded bitmap rather than on the phone having sent one,
+so a transfer that arrived and failed to decode shows neither.
+
+**Watched failing.** Making the notice unconditional turned the protocol test red;
+removing the screen's gate turned the screen test red. Both in isolation, both
+restored.
+
+**One home for the asset key.** `"thumbnail"` would have been a literal in the
+phone bridge and again in the watch store — the same shape as the Data Layer
+paths before `WearPaths`. It is `WearAssets.THUMBNAIL` in the protocol both sides
+compile against. `Asset` itself is an `android.*` type and stays out of there; the
+*key* is a plain string and had no reason to be duplicated.
+
+**A latent cache bug, found on the way.** The cache is keyed
+`<mediaVersion>/<exerciseId>/<mediaType>/<sha256>`, and `mediaVersion` was a
+literal `1` in its only caller. Adding a second caller made that a hazard worth
+naming: two callers that disagree do not share a cache, they each download the
+same bytes into a different directory, and nothing fails. It is
+`DEFAULT_MEDIA_VERSION` now, and `MediaIsInEveryBuildTest` asserts it still
+matches the shipped manifest — so a manifest bump cannot silently make the watch
+re-download everything the phone already has.
+
+**What is not proven.** The tests assert what the screen *decides* about the
+picture, not that it draws one: a decorative `Image` has no content description —
+deliberately, since the exercise name is the next line — so it leaves no node to
+query. Proving the pixels needs a wear golden, which this module still does not
+have. Review item 4.2 asks for exactly that, and it is now the last thing between
+the watch and a full §11.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3647,15 +3714,20 @@ which was the whole reason it was not started.
 16. ~~**`WearAction.NextExercise` reaches no button.**~~ Done 2026-09-08. On
    both action screens, at the phone's emphasis, on a container that scrolls —
    which also gave the watch its first layout that survives 200% font scaling.
-17. **The watch has no static thumbnail.** Half of F7 is done: the ongoing
-   activity landed 2026-09-08. The thumbnail is now **unblocked** — media is
-   present in every build, so the `Asset` transfer §11 asks for can be exercised
-   in the default build and in CI. It is the next piece of watch work.
+17. ~~**The watch has no static thumbnail.**~~ Done 2026-09-08. F7 is complete:
+   the countdown, the haptic, the ongoing activity and now the picture, with §6's
+   notice attached to it.
 18. ~~**The `media` flavour dimension has no runtime effect.**~~ Resolved
    2026-09-08 by decision: the behaviour is intended, and eleven claims across
    seven documents were corrected to match. The dimension is kept and is now
    documented as gating nothing.
-19. **No guard holds the documents to the media behaviour.** The claim that came
+19. **The watch has no goldens.** Review item 4.2 asks for small/large round and
+   square rendering cases, and this is now the gap that matters most: the
+   thumbnail's *decision* logic is tested and its *drawing* is not, because a
+   decorative image leaves no node to query. The screenshot convention plugin
+   configures a library extension and the watch is an application, so this needs
+   the same kind of move that let the watch host compose tests at all.
+20. **No guard holds the documents to the media behaviour.** The claim that came
    apart was asserted in `PRIVACY.md`, `NOTICE.md`, `README.md`,
    `PROJECT_GUIDELINE.md`, `AGENTS.md` and two kdocs, and nothing could fail when
    it stopped being true. A test that asserts *what the app fetches* — rather
