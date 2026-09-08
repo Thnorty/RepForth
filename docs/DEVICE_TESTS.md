@@ -15,6 +15,45 @@ delete the entry rather than leaving it ticked.
 
 ---
 
+## What each section needs
+
+Most of this is doable with the phone alone. Sections are marked, so you can pick
+up whatever the hardware in front of you allows.
+
+| Section | Needs |
+|---|---|
+| 1. Timed sets | **Phone only** |
+| 2. Both timers make a noise | **Phone only** |
+| 3. The watch, first light | Phone + watch |
+| 4. The watch's controls | Phone + watch |
+| 5. Return from the watch face | Phone + watch |
+| 6. Disconnection | Phone + watch |
+| 7. Shapes and sizes | Phone + watch |
+| 8. Media | **Phone only** |
+
+**The watch does not need adb for any of these.** It needs the watch APK
+installed, which needs adb *once*; after that the Data Layer works over the
+pairing and adb is only for reading the watch's log. So a watch you cannot put on
+adb today is a watch you can still test with, if the app is already on it.
+
+Check whether the pairing is live without touching the watch:
+
+```
+adb shell dumpsys activity service WearableService | grep -i IsConnected
+```
+
+`IsConnected=true` against the watch's name means the link is up.
+
+To get the watch APK on, when you can reach it:
+
+```
+adb connect <watch-ip>:5555
+./gradlew :wear:assemblePlaceholderDebug
+adb -s <watch-ip>:5555 install -r wear/build/outputs/apk/placeholder/debug/wear-placeholder-debug.apk
+```
+
+---
+
 ## Before you start
 
 **Which phone.** The Galaxy S23 is the one paired to the watch. The Xiaomi has
@@ -55,7 +94,7 @@ It should name the watch with `IsConnected=true`.
 
 ---
 
-## 1. Timed sets (#41, #43)
+## 1. Timed sets (#41, #43) — phone only
 
 The clock ends a timed set; there is no way to complete one by hand. Build a plan
 with a duration-based exercise — a plank, or anything the builder lets you set
@@ -80,7 +119,7 @@ seconds on.
 
 ---
 
-## 2. Both timers make a noise (#40, #43)
+## 2. Both timers make a noise (#40, #43) — phone only
 
 - [ ] **Rest ending buzzes and beeps** with the phone face-down on a bench and the
       screen off. This is the case it exists for.
@@ -96,7 +135,7 @@ seconds on.
 
 ---
 
-## 3. The watch, first light
+## 3. The watch, first light — needs the watch
 
 Everything in this section has only ever run in Robolectric.
 
@@ -121,7 +160,7 @@ Everything in this section has only ever run in Robolectric.
 
 ---
 
-## 4. The watch's controls
+## 4. The watch's controls — needs the watch
 
 - [ ] **Complete set** on the wrist advances the phone.
 - [ ] **Skip set** records a skip.
@@ -134,7 +173,7 @@ Everything in this section has only ever run in Robolectric.
 
 ---
 
-## 5. Return from the watch face (#45)
+## 5. Return from the watch face (#45) — needs the watch
 
 - [ ] **A chip appears on the watch face** while a workout runs, showing the
       exercise name.
@@ -149,7 +188,7 @@ Everything in this section has only ever run in Robolectric.
 
 ---
 
-## 6. Disconnection (§11, §20)
+## 6. Disconnection (§11, §20) — needs the watch
 
 The disconnected path is the one most likely to be wrong, because reaching it is
 awkward.
@@ -164,7 +203,7 @@ awkward.
 
 ---
 
-## 7. Shapes and sizes
+## 7. Shapes and sizes — needs the watch
 
 The goldens render 240dp round, 180dp round and 200dp square. They cannot tell
 you how it feels.
@@ -180,7 +219,7 @@ you how it feels.
 
 ---
 
-## 8. Media, now that every build downloads it (#46)
+## 8. Media, now that every build downloads it (#46) — phone only
 
 - [ ] **Images appear in a plain `placeholderDebug` build.** This is the decision
       made 2026-09-08 and the documents now describe it; confirm reality agrees.
@@ -192,7 +231,40 @@ you how it feels.
 
 ---
 
-## 9. Things known to be missing or unverified
+## 9. If an older watch build is still installed — a free test that expires
+
+The watch app has been installed before: the 591092-second rest bug in
+`docs/PLAN.md` was found on real hardware. If that build is still on the watch and
+has not been updated, then **right now you have a new phone talking to an old
+watch** — which is precisely the split-version window §11 says exists on every
+install, and it is not otherwise reproducible without deliberately downgrading.
+
+Worth five minutes before you update the watch, because updating destroys the
+opportunity:
+
+- [ ] **The old watch still works.** Start a workout. The old build should show
+      the exercise, the set count and the rest countdown as it always did.
+- [ ] **The rest countdown still counts.** This is the one that matters. The rest
+      deadline's Kotlin property was renamed in #43 and its **wire key
+      deliberately was not** — an older watch reads `deadlineElapsedRealtimeMs`
+      and would silently lose its countdown if the key had moved.
+      `WearWireFormatTest` asserts the key, but only hardware proves the
+      assertion was about the right thing.
+- [ ] **The new fields are ignored, not fatal.** The old build has never heard of
+      `targetDurationMs`, `setDeadlineElapsedRealtimeMs` or `mediaAttribution`.
+      `ignoreUnknownKeys` should make them invisible rather than break decoding —
+      a watch stuck on "No workout" during a live session is that failing.
+- [ ] **The alert message is harmless.** The old build has no
+      `onMessageReceived`, so a timer reaching zero should do nothing on the
+      wrist rather than crash it. Check with `adb logcat -b crash -d` on the
+      phone afterwards — and remember a background crash can land tens of
+      seconds late.
+
+Once you update the watch, delete this section.
+
+---
+
+## 10. Things known to be missing or unverified
 
 Not tests — open questions worth confirming on hardware before they are called
 done.
