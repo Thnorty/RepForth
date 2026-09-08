@@ -36,6 +36,12 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    // §3: the ongoing-activity entry that brings someone back from the watch
+    // face. `core-ktx` comes with it for NotificationCompat, which is how the
+    // notification the activity decorates is built.
+    implementation(libs.androidx.wear.ongoing)
+    implementation(libs.androidx.core.ktx)
+
     testImplementation(libs.junit)
     // Unit-test classpath only. core:testing exposes JUnit with `api`, so it
     // must never reach an APK -- this module has no androidTest, and adding

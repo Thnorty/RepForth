@@ -18,6 +18,15 @@
     -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!--
+        §3's ongoing-activity entry is an ongoing notification underneath, so
+        without this there is no way back from the watch face on Android 13 and
+        above. `notify` does not fail there — it silently does nothing, which is
+        why WearMainActivity asks and WearWorkoutNotification logs when it has
+        been refused.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".RepForthWearApplication"
         android:allowBackup="false"

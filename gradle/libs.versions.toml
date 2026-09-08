@@ -23,6 +23,10 @@ ksp = "2.1.20-2.0.1"
 # apart from the phone's Compose BOM.
 # Material 3 for Wear and the Wear foundation ship on one version line.
 wearCompose = "1.6.2"
+# §3's "ongoing activity entry so the user can return from the watch face".
+# Separate from the Compose line: it decorates a notification rather than
+# drawing anything, and has been stable at 1.0.0 since 2021.
+wearOngoing = "1.0.0"
 playServicesWearable = "18.2.0"
 benchmark = "1.3.4"
 profileinstaller = "1.4.1"
@@ -142,6 +146,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }
 androidx-wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
 play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "playServicesWearable" }
+androidx-wear-ongoing = { group = "androidx.wear", name = "wear-ongoing", version.ref = "wearOngoing" }
 # Turns the Data Layer's Task API into suspend functions, so the bridge
 # reads like the rest of the codebase instead of like callbacks.
 kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }

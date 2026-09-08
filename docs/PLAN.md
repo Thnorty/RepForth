@@ -3398,6 +3398,96 @@ mistake §11 records about itself, and the pair left no room for skipping a sing
 control. The corrected list is complete set, skip set, pause/resume, next
 exercise, with skip-rest already on its own line.
 
+### 2026-09-08 — a way back from the watch face (F7, half of backlog 17)
+
+§3 asks for "an ongoing activity entry so the user can return from the watch
+face". The watch had none, and a watch spends a workout on its face — that is
+the point of a remote you glance at. The only way back was the app launcher: a
+scroll past every installed app, mid-set.
+
+An `OngoingActivity` is a decoration on an ordinary ongoing notification. The
+notification is the thing that exists; the decoration is what promotes it to a
+chip on the watch face with a touch target that reopens the app. One object to
+keep correct, not two.
+
+**Driven from the store, not the listener service.** The snapshot reaches the
+watch two ways — pushed by the Data Layer while nothing is on screen, and pulled
+by `refresh()` when the app opens cold. A chip posted on only the push path is
+missing in exactly the case it exists for.
+
+**Removing it matters as much as posting it.** A chip left behind after a workout
+offers a way into a session that no longer exists, and nothing on screen would
+reveal it: the app looks right, and the stale chip lives on a surface the app
+never draws. Null and both terminal phases all clear it.
+
+**Watched failing.** Dropping the single `.apply(context)` call — so the
+decoration is built and never attached — leaves an ordinary ongoing notification
+that is correct, silent, tappable in the notification stream, and **invisible on
+the watch face**. Exactly one of the ten tests went red; the other nine passed,
+which is what the assertion's kdoc claims and now has evidence for.
+
+**Two supporting pieces.**
+
+`POST_NOTIFICATIONS` is asked for on first launch, because on Android 13 and
+above `notify` without it does not fail — it silently does nothing, so the return
+entry would simply not exist with no error anywhere. Same shape as the phone's
+request, and `WearWorkoutNotification` logs when it has been refused so "the user
+said no" and "this is broken" stay distinguishable.
+
+The chip's icon is **generated, not copied**. A notification's small icon is
+drawn as a silhouette, so it has to be the single-path dumbbell rather than the
+launcher icon; the phone gets that from `core:designsystem`, which §11 keeps off
+the watch. `tools/fetch-icons.sh` gained an `ICON_LIST` override and
+`tools/icons-wear.txt` names the one glyph the watch needs — so the watch's copy
+comes out of the same script and is byte-identical to the phone's, and a
+regeneration keeps both in step. Copying the file by hand would have been one
+line and would have drifted silently.
+
+**What is still missing is the thumbnail**, and it is blocked on a question about
+the media flavours rather than on effort. See the entry below.
+
+### 2026-09-08 — the media flavour has no runtime effect (found, not fixed)
+
+Found while working out where the watch's thumbnail would come from. **This is a
+licensing-posture question, so it is recorded rather than acted on.**
+
+§9 states the intent plainly: "This download path is reachable only in the
+licensed flavors (§18); in placeholder flavors the `MediaSource` implementation
+resolves every `MediaRef` to bundled generated art and performs no network I/O."
+§20's public-build claim rests on it.
+
+What the source does:
+
+| Expected | Actual |
+|---|---|
+| `PlaceholderMediaResolver` bound in placeholder builds | Bound **nowhere**. `MediaModule` binds `ManifestMediaResolver` unconditionally |
+| `media-manifest.json` present only in licensed builds | In `core/media/src/main/assets/` — `main`, so **both** flavours |
+| Placeholder resolves to bundled generated art | There is no generated art; `ExerciseMedia` falls back to an *icon* |
+| Placeholder performs no network I/O | The manifest carries real `raw.githubusercontent.com` URLs and the downloader uses them |
+
+There are no `src/placeholder` or `src/licensed` source sets anywhere except the
+generated baseline profiles. The `media` dimension exists in Gradle and **nothing
+reads it at runtime.**
+
+`PlaceholderMediaResolver`'s only use is a Kotlin default argument on
+`RoomExerciseRepository` — which Hilt cannot reach, the same default-argument trap
+already recorded in AGENTS.md. So it is the familiar shape again: a class written
+for a rule, and nothing wiring it up.
+
+**Why this blocks the watch thumbnail rather than merely sitting beside it.** §11
+says to transfer "the current exercise's small static thumbnail" as an `Asset`.
+Whether that path can be exercised at all depends entirely on the answer here:
+
+- If placeholder builds *should* have no media, the transfer is dead code in
+  every build the owner runs and in CI, verifiable only with licensed assets and
+  two paired devices.
+- If they *should* have media, the transfer is fully testable — but it would be
+  built on behaviour the specification currently forbids.
+
+Building it before that is decided produces work that is wrong either way, so it
+is not started. The decision is the owner's: it is about what the public build
+does with someone else's media, not about code.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3477,9 +3567,13 @@ exercise, with skip-rest already on its own line.
 16. ~~**`WearAction.NextExercise` reaches no button.**~~ Done 2026-09-08. On
    both action screens, at the phone's emphasis, on a container that scrolls —
    which also gave the watch its first layout that survives 200% font scaling.
-17. **The watch has no static thumbnail and no ongoing activity.** The rest of
-   F7. §3 asks for both; the thumbnail means moving an asset across the Data
-   Layer, which is the larger half.
+17. **The watch has no static thumbnail.** Half of this is done: the ongoing
+   activity landed 2026-09-08. The thumbnail is blocked on the media-flavour
+   question above — whether a placeholder build has any media to send — not on
+   effort.
+18. **The `media` flavour dimension has no runtime effect.** See above. The
+   placeholder build resolves and downloads licensed media, which §6, §9, §18
+   and §20 all say it must not. A licensing-posture decision, not a code one.
 
 ---
 

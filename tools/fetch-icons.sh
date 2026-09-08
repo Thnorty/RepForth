@@ -15,6 +15,13 @@
 # Env:
 #   ICON_STYLE   materialsymbolsrounded (default) | materialsymbolsoutlined
 #   ICON_OUT     output directory (default: core/designsystem/src/main/res/drawable)
+#   ICON_LIST    name list to read (default: icons.txt beside this script)
+#
+# The watch has its own pair, because it does not depend on core:designsystem
+# and needs exactly one glyph -- generating all 66 into it would be 65 drawables
+# nothing draws:
+#
+#   ICON_LIST=tools/icons-wear.txt ICON_OUT=wear/src/main/res/drawable tools/fetch-icons.sh
 
 set -euo pipefail
 
@@ -22,7 +29,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 STYLE="${ICON_STYLE:-materialsymbolsrounded}"
 OUT="${ICON_OUT:-$ROOT/core/designsystem/src/main/res/drawable}"
-LIST="$HERE/icons.txt"
+LIST="${ICON_LIST:-$HERE/icons.txt}"
 
 if [ ! -f "$LIST" ]; then
   echo "fetch-icons: no icon list at $LIST" >&2

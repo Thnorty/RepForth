@@ -1,9 +1,13 @@
 package com.repforth.wear
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +49,27 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
     // Reachability can change while nothing is on screen, so it is re-checked
     // when the composition starts rather than trusted from the last visit.
     LaunchedEffect(Unit) { viewModel.onResumed() }
+
+    // §3's watch-face entry is an ongoing notification underneath, and on
+    // Android 13 and above `notify` without this permission does not fail — it
+    // silently does nothing. So the way back from the watch face would simply
+    // not exist, with no error anywhere to say why.
+    //
+    // Asked here rather than behind an explanation because the watch has no room
+    // for one and nothing to explain: this app posts exactly one notification,
+    // it is silent, and it is the way back into the workout on screen. The same
+    // shape as the phone's, which launches from the session screen for profiles
+    // created before onboarding asked. Launching when it is already granted
+    // returns immediately and shows nothing, and after a refusal the system does
+    // not ask again — so this cannot become a prompt anyone sees twice.
+    val notifications = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     MaterialTheme {
         AppScaffold {
