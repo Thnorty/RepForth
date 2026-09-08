@@ -22,6 +22,9 @@ class ChimeTest {
 
     private val samples = Chime.samples
 
+    /** Mirrors `Chime`'s own release length, which is private to it. */
+    private val RELEASE_SECONDS = 0.25
+
     @Test
     fun `it is as long as it says it is`() {
         assertEquals(
@@ -53,12 +56,16 @@ class ChimeTest {
     }
 
     /**
-     * And silence at the end, which the decay gives for free — as long as the
-     * decay actually finishes inside the buffer.
+     * And silence at the end, or the buffer running out is itself an event.
      *
-     * This is the assertion that catches a shortened duration or a lengthened
-     * tail: either leaves the sound still ringing when the samples run out, and
-     * the cut is a click.
+     * This catches a shortened duration or a lengthened tail: either leaves the
+     * sound still ringing when the samples stop.
+     *
+     * The bound is tight on purpose. An earlier version allowed 2% of full scale
+     * here and passed a sound that was audibly cut — "it starts fading, then it
+     * cuts" — because 2% at the end of a fast linear ramp is plenty to hear
+     * stop. What is asserted now is that the last few milliseconds are not
+     * merely quiet but effectively gone.
      */
     @Test
     fun `it ends in silence rather than being cut off`() {
@@ -66,7 +73,50 @@ class ChimeTest {
 
         assertTrue(
             "It is still at $ending when the buffer ends, so it is cut rather than faded",
-            ending < Short.MAX_VALUE / 50,
+            ending < Short.MAX_VALUE / 500,
+        )
+    }
+
+    /**
+     * The fade arrives at zero, and arrives there gently.
+     *
+     * A raised cosine leaves and lands at zero slope; a linear ramp lands at a
+     * corner. Measuring the largest jump between neighbouring samples over the
+     * final stretch is the cheapest way to tell them apart — a corner shows up
+     * as a step that the surrounding samples do not have.
+     */
+    @Test
+    fun `the tail lands rather than stopping`() {
+        assertEquals("The last sample must be silence", 0, samples.last().toInt())
+
+        val tail = samples.takeLast(2_000)
+        val biggestStep = tail.zipWithNext().maxOf { (a, b) -> abs(a - b) }
+
+        assertTrue(
+            "A step of $biggestStep in the final milliseconds is a corner, not a fade",
+            biggestStep < Short.MAX_VALUE / 200,
+        )
+    }
+
+    /**
+     * The fade begins on a sound that is already almost gone.
+     *
+     * This is the half the first attempt got wrong, and no assertion about the
+     * *end* would have caught it: the ramp reached zero correctly and still
+     * sounded cut, because it started while the bell was clearly audible. What
+     * matters is the level the fade takes over at, so that is what this
+     * measures.
+     */
+    @Test
+    fun `the natural decay has almost finished before the fade starts`() {
+        val fadeStart = ((Chime.DURATION_MS / 1000.0 - RELEASE_SECONDS) * Chime.SAMPLE_RATE).toInt()
+        val atFadeStart = samples.slice(fadeStart until fadeStart + 1_000)
+            .maxOf { abs(it.toInt()) }
+        val peak = samples.maxOf { abs(it.toInt()) }
+
+        assertTrue(
+            "The fade takes over at $atFadeStart of $peak, which is loud enough to hear it cut",
+            atFadeStart < peak / 20,
         )
     }
 

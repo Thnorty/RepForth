@@ -1,6 +1,7 @@
 package com.repforth.feature.session
 
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.sin
 
@@ -33,10 +34,18 @@ internal object Chime {
 
     const val SAMPLE_RATE: Int = 44_100
 
-    /** Long enough to ring out and be gone before the next thing happens. */
-    const val DURATION_MS: Long = 1_200L
+    /**
+     * Long enough for the ring to end by itself.
+     *
+     * This was 1200ms, and at that length the fade below had to start while the
+     * bell was still clearly audible — which is heard as the sound being cut,
+     * because it is. Most of the extra time is spent below the level anyone
+     * notices; what it buys is that the fade begins at a whisper instead of
+     * partway through the ring.
+     */
+    const val DURATION_MS: Long = 1_800L
 
-    /** Rendered once. About 97 KB, held for the life of the process. */
+    /** Rendered once. About 160 KB, held for the life of the process. */
     val samples: ShortArray by lazy { render() }
 
     /**
@@ -84,23 +93,33 @@ internal object Chime {
     }
 
     /**
-     * The fade that guarantees the last sample is silence.
+     * The fade that takes the tail to exact silence.
      *
-     * **An exponential decay never reaches zero, and the buffer does.** With the
-     * decay alone the fundamental was still at 30% of full amplitude when the
-     * samples ran out — so every timer would have ended on a hard cut, which is
-     * a click, and the tail is the whole reason this replaced a beep. Reaching
-     * true silence by decay alone would need about four seconds of buffer for a
-     * sound nobody wants to listen to for four seconds.
+     * **An exponential decay never reaches zero, and the buffer does.** Without
+     * this the fundamental was still at 30% of full amplitude when the samples
+     * ran out, and every timer ended on a hard cut.
      *
-     * So the last 80ms are faded. It starts around a tenth of full amplitude and
-     * is inaudible as a fade; what it removes is the step.
+     * The first attempt fixed that on paper and still sounded wrong — reported
+     * as "it starts fading, then it cuts". Two things were the matter, and the
+     * fade being *present* was not one of them:
      *
-     * Found by `ChimeTest`, before this was ever played.
+     * - **It was linear.** A straight ramp has a corner where it starts and
+     *   another where it stops, and a corner in an envelope is heard as an
+     *   event. A raised cosine leaves at zero slope and arrives at zero slope,
+     *   so there is nothing to hear beginning or ending.
+     * - **It was 80ms, starting at about a tenth of full amplitude.** Fading an
+     *   audible sound over a twelfth of a second *is* cutting it, however smooth
+     *   the curve. The buffer is longer now so the fade begins at roughly a
+     *   fortieth of full amplitude — already close to silence — and takes 250ms
+     *   to finish the job.
+     *
+     * The natural decay does the work the ear is listening to; this only removes
+     * the step at the very end.
      */
     private fun release(t: Double): Double {
         val secondsLeft = DURATION_MS / 1000.0 - t
-        return if (secondsLeft >= RELEASE_SECONDS) 1.0 else secondsLeft / RELEASE_SECONDS
+        if (secondsLeft >= RELEASE_SECONDS) return 1.0
+        return 0.5 * (1.0 - cos(PI * secondsLeft / RELEASE_SECONDS))
     }
 
     /**
@@ -111,7 +130,7 @@ internal object Chime {
 
     private const val ATTACK_SECONDS = 0.003
 
-    private const val RELEASE_SECONDS = 0.08
+    private const val RELEASE_SECONDS = 0.25
 
     /** Short of full scale, so the sum of the partials cannot clip. */
     private const val HEADROOM = 0.85
