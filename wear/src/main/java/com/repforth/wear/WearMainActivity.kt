@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material3.MaterialTheme
@@ -81,6 +82,7 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Exercise -> state.workout?.let { workout ->
                     ExerciseScreen(
                         state = workout,
+                        thumbnail = state.thumbnail?.asImageBitmap(),
                         // Null for anything counted in repetitions, which is
                         // what makes the screen draw a set number instead.
                         remainingSeconds = rememberCountdownSeconds(

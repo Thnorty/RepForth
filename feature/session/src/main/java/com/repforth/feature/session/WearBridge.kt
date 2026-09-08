@@ -3,11 +3,14 @@ package com.repforth.feature.session
 import android.content.Context
 import android.os.SystemClock
 import android.util.Log
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import com.repforth.core.wearprotocol.WearAlert
 import com.repforth.core.wearprotocol.WearAlertMessage
+import com.repforth.core.wearprotocol.WearAssets
 import com.repforth.core.wearprotocol.WearPaths
+import com.repforth.core.wearprotocol.withMediaAttribution
 import com.repforth.core.wearprotocol.WearWorkoutState
 import com.repforth.core.wearsync.toWearState
 import com.repforth.core.workout.SessionSnapshot
@@ -56,16 +59,41 @@ class WearBridge @Inject constructor(
      * screen, which is the absence of a snapshot rather than a snapshot of an
      * absence.
      */
-    suspend fun publish(snapshot: SessionSnapshot?, names: Map<String, String>) {
+    suspend fun publish(
+        snapshot: SessionSnapshot?,
+        names: Map<String, String>,
+        thumbnail: ByteArray? = null,
+        attribution: String? = null,
+    ) {
         // Stamped at publish, not at composition: the watch measures the rest
         // against this, so it has to be the clock reading that goes on the wire.
         val state = snapshot?.toWearState(names, SystemClock.elapsedRealtime()) ?: return
-        publish(state)
+        // §6's notice rides with the picture and never without it. Applied here
+        // rather than in the projection because the projection cannot see whether
+        // an asset was attached, and the two must agree.
+        publish(state.withMediaAttribution(attribution, thumbnail != null), thumbnail)
     }
 
-    suspend fun publish(state: WearWorkoutState) {
+    /**
+     * [thumbnail] is the current exercise's still image, as §11 asks for it.
+     *
+     * An `Asset` rather than more bytes in the payload, which is what §11 names
+     * it as and what the Data Layer wants: assets are transferred out of band
+     * and de-duplicated by content hash, so republishing the same exercise's
+     * snapshot several times a minute re-sends the JSON and not the picture.
+     *
+     * Sent as downloaded, at the upstream 180x180. There is no resize step and
+     * there must not be one: §6 caps the resolution at exactly that, the file is
+     * about 6 KB, and re-encoding would cost an image pipeline in a foreground
+     * service to make a small thing slightly smaller.
+     */
+    suspend fun publish(state: WearWorkoutState, thumbnail: ByteArray? = null) {
         val request = PutDataRequest.create(PATH).apply {
             data = json.encodeToString(state).toByteArray()
+            // Absent rather than empty when there is none. The watch draws its
+            // icon for a missing asset, which is the same thing the phone draws
+            // for a missing image, so the two devices agree about "not here".
+            thumbnail?.let { putAsset(WearAssets.THUMBNAIL, Asset.createFromBytes(it)) }
             // Rest countdowns and set changes are worth a battery wake-up; the
             // Data Layer otherwise batches, and a watch showing the previous set
             // is exactly what the revision check spends its time refusing.
@@ -78,7 +106,11 @@ class WearBridge @Inject constructor(
             // not evidence that a snapshot crossed -- it is equally consistent
             // with the publish never being attempted, which is exactly the
             // ambiguity this hit during the first hardware test.
-            Log.d(TAG, "Published revision ${state.revision}, phase ${state.phase}")
+            Log.d(
+                TAG,
+                "Published revision ${state.revision}, phase ${state.phase}, " +
+                    "thumbnail ${thumbnail?.size ?: 0} bytes",
+            )
         } catch (e: Exception) {
             // Never fatal. §15 keeps the phone workout working whatever the
             // watch is doing, and a failure here means one device is out of
@@ -135,6 +167,7 @@ class WearBridge @Inject constructor(
         const val PATH = WearPaths.STATE
         const val ALERT_PATH = WearPaths.ALERT
         const val COMMAND_PATH = WearPaths.COMMAND
+
 
         private const val TAG = "WearBridge"
     }

@@ -69,6 +69,20 @@ object WearPaths {
 }
 
 /**
+ * Keys for the binary parts of a data item, which travel beside the JSON.
+ *
+ * Here for the same reason [WearPaths] is: two strings that must be equal, in
+ * two modules that never see each other. The `Asset` type itself is
+ * `android.*` and stays out of this module — but the *key* is a plain string,
+ * so there is no reason for the phone and the watch to each keep their own.
+ */
+object WearAssets {
+
+    /** The current exercise's still image (§3, §11). */
+    const val THUMBNAIL: String = "thumbnail"
+}
+
+/**
  * What the watch is showing.
  *
  * Not a copy of the phone's `SessionPhase`. That has eight values because it
@@ -198,6 +212,23 @@ data class WearWorkoutState(
      */
     val publishedAtElapsedRealtimeMs: Long = 0L,
     val nextExerciseName: String?,
+
+    /**
+     * The notice that must accompany the thumbnail, or null when there is none.
+     *
+     * §6 requires the media attribution wherever the imagery is shown, and the
+     * watch is somewhere it is shown. It travels rather than being a constant on
+     * the watch for the same reason it is not a constant on the phone: it is
+     * upstream's required wording, it lives in `media-manifest.json`, and a
+     * second copy on a device that cannot read that file is a copy that can
+     * silently stop matching what the terms ask for.
+     *
+     * Non-null **exactly when** a thumbnail asset is attached to the same data
+     * item. The two are set together in `WearBridge.publish`, so the watch's rule
+     * is simply "show it if it is here" and it cannot show a notice for an image
+     * it never received, or an image with no notice.
+     */
+    val mediaAttribution: String? = null,
 )
 
 /**
@@ -295,6 +326,23 @@ data class WearAlertMessage(
     val sessionId: String,
     val alert: WearAlert,
 )
+
+/**
+ * The §6 notice, attached only when there is imagery to attach it to.
+ *
+ * §6 requires the media attribution "wherever imagery is shown", and the watch
+ * is somewhere it is shown. The rule has two halves and both matter: a picture
+ * without its notice breaks the terms, and a notice without a picture is a legal
+ * claim about something the user cannot see.
+ *
+ * A function rather than two lines at the call site because the call site is
+ * `WearBridge`, which needs Play Services and a `Context` to test — and this is
+ * the part worth testing.
+ */
+fun WearWorkoutState.withMediaAttribution(
+    attribution: String?,
+    hasThumbnail: Boolean,
+): WearWorkoutState = copy(mediaAttribution = attribution?.takeIf { hasThumbnail })
 
 /**
  * Whether this alert is about the workout the watch is showing.

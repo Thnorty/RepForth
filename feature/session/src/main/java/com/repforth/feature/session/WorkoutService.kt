@@ -19,12 +19,18 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
+import com.repforth.core.media.download.DEFAULT_MEDIA_VERSION
+import com.repforth.core.media.download.MediaDownloader
+import com.repforth.core.media.download.THUMBNAIL_MEDIA_TYPE
+import com.repforth.core.media.manifest.MediaManifestRepository
+import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.wearprotocol.WearAlert
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionEvent
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -67,9 +73,44 @@ class WorkoutService : Service() {
 
     @Inject lateinit var preferences: UserPreferencesDataSource
 
+    /**
+     * §11's thumbnail comes from the same cache the session screen fills.
+     *
+     * `download` is cache-first, so this is a file read for anything the screen
+     * has already prefetched and a 6 KB fetch otherwise — and it honours the
+     * Wi-Fi-only preference either way, which is how that setting reaches the
+     * watch at all.
+     */
+    @Inject lateinit var media: MediaDownloader
+
+    /**
+     * Only for §6's attribution, which must be shown wherever the imagery is.
+     *
+     * Read from the manifest rather than written into the watch app, because it
+     * is upstream's required wording and the watch cannot read the file that
+     * defines it.
+     */
+    @Inject lateinit var manifest: MediaManifestRepository
+
     private val scope = CoroutineScope(SupervisorJob())
     private var ticker: Job? = null
+    private var summaries: Map<String, ExerciseSummary> = emptyMap()
     private var names: Map<String, String> = emptyMap()
+
+    /**
+     * The workout's thumbnails, by exercise id, once they are bytes.
+     *
+     * Concurrent because two coroutines touch it: the state collector reads it
+     * on every publish, and [warmThumbnails] writes it from its own job. A
+     * missing key means "no picture", which is the correct thing to publish
+     * whether the reason is "not fetched yet", "not in the manifest" or "the
+     * user restricted downloads to Wi-Fi" — the watch draws its icon for all
+     * three, exactly as the phone does.
+     */
+    private val thumbnails = ConcurrentHashMap<String, ByteArray>()
+
+    /** §6's notice, read once and sent with every thumbnail. */
+    private var attribution: String? = null
 
     /**
      * Whether the last rest ran out rather than being skipped.
@@ -96,7 +137,11 @@ class WorkoutService : Service() {
                     // terminal phase, which the state machine forbids.
                     stopSelf()
                 } else {
-                    if (names.isEmpty()) names = resolveNames(snapshot)
+                    if (names.isEmpty()) {
+                        summaries = resolveSummaries(snapshot)
+                        names = summaries.mapValues { (_, summary) -> summary.name }
+                        warmThumbnails(snapshot)
+                    }
                     notify(snapshot)
                     // §11: the watch mirrors this service exactly. It is alive
                     // for the life of a workout and dead outside one, which is
@@ -104,7 +149,12 @@ class WorkoutService : Service() {
                     // show -- so the snapshot goes out from here rather than
                     // from a second collector with its own lifetime to get
                     // wrong.
-                    bridge.publish(snapshot, names)
+                    bridge.publish(
+                        snapshot,
+                        names,
+                        thumbnails[snapshot.currentExerciseId()],
+                        attribution,
+                    )
                 }
             }
         }
@@ -280,9 +330,68 @@ class WorkoutService : Service() {
         }
     }
 
-    private suspend fun resolveNames(snapshot: SessionSnapshot): Map<String, String> =
+    private suspend fun resolveSummaries(
+        snapshot: SessionSnapshot,
+    ): Map<String, ExerciseSummary> =
         exercises.summaries(snapshot.exercises.map { it.exerciseId })
-            .entries.associate { (id, summary) -> id.value to summary.name }
+            .entries.associate { (id, summary) -> id.value to summary }
+
+    private fun SessionSnapshot.currentExerciseId(): String? =
+        currentExercise?.exerciseId?.value
+
+    /**
+     * Fetches the workout's thumbnails once, in the background.
+     *
+     * Ahead of time rather than on arrival, because on arrival is too late: a
+     * publish that waits for a download shows the wrist the previous exercise
+     * until it finishes, and a publish that does not wait shows no picture until
+     * something else happens to change the state — which during a set can be a
+     * minute away.
+     *
+     * So the whole plan is warmed at the start, and the one case that cannot be
+     * warmed in advance — the first exercise, which the wrist is already looking
+     * at — republishes as soon as its bytes land. That is at most one extra
+     * publish per workout rather than one per exercise, and the Data Layer drops
+     * it entirely if nothing changed.
+     *
+     * Failures are silent by design. §15 keeps the phone workout working whatever
+     * the watch is doing, and a missing picture is not a reason to interrupt a
+     * set.
+     */
+    private fun warmThumbnails(snapshot: SessionSnapshot) {
+        scope.launch {
+            attribution = manifest.getManifest()?.attribution
+            snapshot.exercises.forEach { planned ->
+                val id = planned.exerciseId.value
+                if (thumbnails.containsKey(id)) return@forEach
+                val bytes = loadThumbnail(id) ?: return@forEach
+                thumbnails[id] = bytes
+
+                // Only if the wrist is still on this exercise. By the time a
+                // download finishes the user may have moved on, and republishing
+                // an old snapshot is exactly what the revision check exists to
+                // refuse -- better not to send it.
+                val current = controller.state.value
+                if (current != null && !current.phase.isTerminal &&
+                    current.currentExerciseId() == id
+                ) {
+                    bridge.publish(current, names, bytes, attribution)
+                }
+            }
+        }
+    }
+
+    private suspend fun loadThumbnail(exerciseId: String): ByteArray? {
+        val ref = summaries[exerciseId]?.thumbnail ?: return null
+        if (!ref.isAvailable) return null
+        val file = media.download(
+            mediaVersion = DEFAULT_MEDIA_VERSION,
+            exerciseId = exerciseId,
+            mediaType = THUMBNAIL_MEDIA_TYPE,
+            mediaRef = ref,
+        ).getOrNull() ?: return null
+        return runCatching { file.readBytes() }.getOrNull()
+    }
 
     private fun notify(snapshot: SessionSnapshot) {
         val manager = ContextCompat.getSystemService(this, NotificationManager::class.java)

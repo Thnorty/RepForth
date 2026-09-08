@@ -1,5 +1,8 @@
 package com.repforth.wear
 
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -125,6 +128,70 @@ class ExerciseScreenComposeTest {
         assertEquals(emptyList<WearAction>(), sent)
     }
 
+    // ---- §3's thumbnail, and the notice that has to come with it ----
+    //
+    // These assert what the screen *decides* about the picture, not that it
+    // draws one. A decorative Image has no content description — deliberately;
+    // the exercise name is the next line and a screen reader should not say it
+    // twice — so it leaves no node to query. Proving the pixels needs a wear
+    // golden, which this module does not have yet; review item 4.2 asks for that
+    // and it is on the backlog.
+
+    /**
+     * The picture is optional and the screen is not.
+     *
+     * Null covers every reason at once — the phone has not cached it, the
+     * manifest has no entry, the user restricted downloads to Wi-Fi — and the
+     * screen does the same thing for all of them, which is what the phone does:
+     * carry on with the name.
+     */
+    @Test
+    fun `an exercise with no thumbnail still draws everything else`() {
+        render(timed = false, remainingSeconds = null, thumbnail = null)
+
+        compose.onNodeWithText(NAME).assertIsDisplayed()
+        compose.onNodeWithText(COMPLETE).assertIsDisplayed()
+    }
+
+    /**
+     * §6, and the licence it comes from: the notice goes wherever the imagery
+     * does. This is the half that is easy to get right.
+     */
+    @Test
+    fun `a thumbnail brings its attribution with it`() {
+        render(timed = false, remainingSeconds = null, thumbnail = image())
+
+        compose.onNodeWithText(NOTICE).performScrollTo().assertIsDisplayed()
+    }
+
+    /**
+     * And this is the half that is easy to get wrong.
+     *
+     * A copyright line under an exercise showing no picture is a claim about
+     * something the user cannot see. The phone only sends the notice with an
+     * asset, and the screen only draws it with a decoded bitmap — so a transfer
+     * that arrived and failed to decode shows neither, rather than the notice
+     * alone.
+     */
+    @Test
+    fun `no thumbnail means no attribution, even when the phone sent one`() {
+        render(timed = false, remainingSeconds = null, thumbnail = null, attributed = true)
+
+        assertEquals(
+            "Attribution without imagery is a claim about nothing",
+            0,
+            compose.onAllNodesWithText(NOTICE).fetchSemanticsNodes().size,
+        )
+    }
+
+    @Test
+    fun `a timed set shows its thumbnail too`() {
+        render(timed = true, remainingSeconds = 42, thumbnail = image())
+
+        compose.onNodeWithText("42").assertIsDisplayed()
+        compose.onNodeWithText(NOTICE).performScrollTo().assertIsDisplayed()
+    }
+
     // ---- Leaving the exercise, which had no button at all ----
 
     /**
@@ -198,11 +265,17 @@ class ExerciseScreenComposeTest {
         assertEquals(listOf(WearAction.CompleteSet, WearAction.NextExercise), sent)
     }
 
+    /** A 1x1 bitmap: this asserts what the screen does with one, not how it looks. */
+    private fun image(): ImageBitmap =
+        Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888).asImageBitmap()
+
     private fun render(
         timed: Boolean,
         remainingSeconds: Int?,
         enabled: Boolean = true,
         fontScale: Float = 1f,
+        thumbnail: ImageBitmap? = null,
+        attributed: Boolean = thumbnail != null,
     ) {
         // Both, always, even at their defaults: Robolectric carries these across
         // test methods in one JVM, so a test that set only what it changed would
@@ -213,21 +286,22 @@ class ExerciseScreenComposeTest {
         compose.setContent {
             MaterialTheme {
                 ExerciseScreen(
-                    state = state(timed),
+                    state = state(timed, attributed),
                     remainingSeconds = remainingSeconds,
                     enabled = enabled,
                     onAction = { sent += it },
+                    thumbnail = thumbnail,
                 )
             }
         }
     }
 
-    private fun state(timed: Boolean) = WearWorkoutState(
+    private fun state(timed: Boolean, attributed: Boolean = false) = WearWorkoutState(
         sessionId = "today",
         revision = 7,
         phase = WearPhase.Exercise,
         exerciseId = "0025",
-        exerciseName = "front plank",
+        exerciseName = NAME,
         setNumber = 1,
         totalSets = 3,
         targetReps = if (timed) null else 12,
@@ -235,9 +309,12 @@ class ExerciseScreenComposeTest {
         restDeadlineElapsedRealtimeMs = null,
         setDeadlineElapsedRealtimeMs = null,
         nextExerciseName = null,
+        mediaAttribution = NOTICE.takeIf { attributed },
     )
 
     private companion object {
+        const val NAME = "front plank"
+        const val NOTICE = "© Gym visual — https://gymvisual.com/"
         const val COMPLETE = "Complete"
         const val SKIP = "Skip"
         const val PAUSE = "Pause"

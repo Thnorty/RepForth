@@ -1,5 +1,6 @@
 package com.repforth.wear
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -15,7 +18,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,6 +116,12 @@ fun NoWorkoutScreen(modifier: Modifier = Modifier) {
  * [remainingSeconds] is what the clock says, or null before the phone has armed
  * one — in which case the prescription is drawn instead, which is the honest
  * answer to "how long is this" when nothing is counting yet.
+ *
+ * [thumbnail] is §3's "compact static thumbnail", transferred as a Data Layer
+ * asset. Null for every reason at once — not cached on the phone, not in the
+ * manifest, downloads restricted to Wi-Fi — because the screen does the same
+ * thing for all of them, which is the same thing the phone does: draw nothing
+ * and let the name carry it.
  */
 @Composable
 fun ExerciseScreen(
@@ -118,8 +130,20 @@ fun ExerciseScreen(
     enabled: Boolean,
     onAction: (WearAction) -> Unit,
     modifier: Modifier = Modifier,
+    thumbnail: ImageBitmap? = null,
 ) {
     Scrollable(modifier) {
+        thumbnail?.let { image ->
+            Image(
+                bitmap = image,
+                // Decorative: the exercise name is the very next line, and a
+                // screen reader announcing the picture as well would say the
+                // same thing twice.
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(THUMBNAIL_SIZE).clip(CircleShape),
+            )
+        }
         Text(
             text = state.exerciseName,
             style = MaterialTheme.typography.titleSmall,
@@ -206,6 +230,22 @@ fun ExerciseScreen(
         }
 
         NextExerciseButton(enabled = enabled, onAction = onAction)
+
+        // §6, and the licence it comes from: the notice is required wherever the
+        // imagery is shown. Gated on the picture actually being on screen rather
+        // than on the phone having sent one, because that is what the terms ask
+        // about — a decode that failed shows no image, and then there is nothing
+        // to attribute.
+        if (thumbnail != null) {
+            state.mediaAttribution?.let { notice ->
+                Text(
+                    text = notice,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 
@@ -379,6 +419,9 @@ private fun Scrollable(modifier: Modifier = Modifier, content: @Composable Colum
         content = content,
     )
 }
+
+/** Big enough to recognise a movement at a glance, small enough to leave the clock room. */
+private val THUMBNAIL_SIZE = 56.dp
 
 private val PADDING_H = 20.dp
 private val PADDING_V = 12.dp

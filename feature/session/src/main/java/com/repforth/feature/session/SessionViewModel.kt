@@ -6,6 +6,7 @@ import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.media.download.MediaDownloader
+import com.repforth.core.media.download.THUMBNAIL_MEDIA_TYPE
 import com.repforth.core.media.download.MediaPrefetchRequest
 import com.repforth.core.model.Exercise
 import com.repforth.core.model.ExerciseSummary
@@ -338,7 +339,11 @@ class SessionViewModel @Inject constructor(
             val summary = summaries[planned.exerciseId.value]
             listOfNotNull(
                 summary?.thumbnail?.takeIf { it.isAvailable }?.let {
-                    MediaPrefetchRequest(exerciseId = planned.exerciseId.value, mediaType = "thumbnail", mediaRef = it)
+                    MediaPrefetchRequest(
+                        exerciseId = planned.exerciseId.value,
+                        mediaType = THUMBNAIL_MEDIA_TYPE,
+                        mediaRef = it,
+                    )
                 },
             )
         }
