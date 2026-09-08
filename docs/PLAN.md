@@ -3635,6 +3635,59 @@ query. Proving the pixels needs a wear golden, which this module still does not
 have. Review item 4.2 asks for exactly that, and it is now the last thing between
 the watch and a full §11.
 
+### 2026-09-08 — the watch gets pictures, and a list of what only hardware can say
+
+Two things, and the second is the more important one.
+
+**Fifteen wear goldens** (review item 4.2). `wear/src/test` was string parity,
+then behaviour, and behaviour cannot see a layout. The matrix is the five screens
+at 240dp round, plus the two that carry controls in Turkish, at 200% font scale,
+on a 180dp round watch and on a 200dp square one — §11 asks for round *and*
+square previews, and 180dp is 60dp narrower than the paired device, which is
+roughly one button label's worth.
+
+`repforth.android.screenshot` applied to the watch **unchanged**. It could not
+before: it configured a `LibraryExtension` and the watch is an application.
+Moving the two things every rendering module needs into the compose plugin — for
+the behavioural tests, days ago — is what freed it, which is the second time that
+refactor has paid.
+
+**Two failures worth recording, because both would have been shipped.**
+
+The first render came out *white text on a near-white window*. `MaterialTheme`
+alone paints no background; the app's screens live inside `AppScaffold`, which
+does. This is verbatim the defect AGENTS.md records for the phone's first Settings
+golden, and `RepForthPreviewHost` exists for it — the wear module had no
+equivalent and I had not looked at the image before believing the run. **A golden
+recorded without looking is a golden that agrees with whatever it was shown.**
+
+Then rendering inside `AppScaffold` killed every test with a `LinkageError`:
+its default `TimeText` draws the clock as *curved* text, and
+`WarpedCurvedTextRenderer` calls a native address method Robolectric cannot
+provide. `AppScaffold(timeText = {})` fixes it, and happens to be right anyway —
+a clock in a golden fails at the next minute.
+
+**The gap the last commit named is now closed.** `exercise-thumbnail` is the only
+artefact that would notice the `Image` call disappearing: a decorative image has
+no content description, so it leaves no node to query, and every behavioural
+assertion stayed green when the draw was removed. Watched failing exactly that
+way. Deleting a golden was also watched failing, which is what says the task
+input is declared — the blind spot AGENTS.md records for the phone's goldens.
+
+**And `docs/DEVICE_TESTS.md`**, which is the part no test replaces. Everything
+built between 2026-09-07 and 2026-09-08 — timed sets, both alerts, the watch's
+countdown, thumbnail, ongoing activity and its three new controls — compiles,
+passes on the JVM, and **has never run on hardware**. The whole Wear feature set
+has never touched a wrist.
+
+That is not a small caveat in this repo. `U.1` is two fixes that passed CI,
+merged, installed and did nothing on the device; nine defects have been found on
+hardware and by nothing else. So the list is written as what to do and what
+success looks like, with the traps already learned recorded beside it: use the
+Galaxy because the Xiaomi has never been paired and reports `API_UNAVAILABLE`;
+Bluetooth off does not disconnect the Data Layer, only phone airplane mode does;
+install before starting a workout because reinstalling kills the service.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3721,13 +3774,14 @@ the watch and a full §11.
    2026-09-08 by decision: the behaviour is intended, and eleven claims across
    seven documents were corrected to match. The dimension is kept and is now
    documented as gating nothing.
-19. **The watch has no goldens.** Review item 4.2 asks for small/large round and
-   square rendering cases, and this is now the gap that matters most: the
-   thumbnail's *decision* logic is tested and its *drawing* is not, because a
-   decorative image leaves no node to query. The screenshot convention plugin
-   configures a library extension and the watch is an application, so this needs
-   the same kind of move that let the watch host compose tests at all.
-20. **No guard holds the documents to the media behaviour.** The claim that came
+19. ~~**The watch has no goldens.**~~ Done 2026-09-08: fifteen of them, across
+   three watch shapes, both languages and both font scales. The screenshot plugin
+   applied unchanged — the earlier move into the compose plugin had already made
+   it application-safe.
+20. **None of the Wear work has run on hardware.** Not a defect, a gap: the whole
+   feature set from 2026-09-07 onward is JVM-verified only. `docs/DEVICE_TESTS.md`
+   is the list; this entry stays until it has been worked through.
+21. **No guard holds the documents to the media behaviour.** The claim that came
    apart was asserted in `PRIVACY.md`, `NOTICE.md`, `README.md`,
    `PROJECT_GUIDELINE.md`, `AGENTS.md` and two kdocs, and nothing could fail when
    it stopped being true. A test that asserts *what the app fetches* — rather
