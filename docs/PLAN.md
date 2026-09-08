@@ -3346,6 +3346,58 @@ entry, both F7, and `WearAction.NextExercise` — which exists in the protocol,
 maps to a command, and no screen offers. That last one is the F5 shape again: a
 capability with nothing able to reach it. Recorded as backlog 16.
 
+### 2026-09-08 — the action nothing could send (backlog 16)
+
+`WearAction.NextExercise` has been in the protocol since it was written. It maps
+to `SessionCommand.NextExercise`, §3 lists it in the watch MVP, and **no screen
+offered it.** The protocol's own standard for the action set is "nothing
+duplicated and nothing unreachable"; this was the unreachable half, and nothing
+in the suite could notice because every test asked about the buttons that *were*
+drawn.
+
+Same shape as the exclusions F5 fixed: a capability the model carries with
+nothing able to reach it. Third time this pattern has come up — the haptics
+switch that controlled nothing, two exclusion kinds with no editor, and now an
+action with no button.
+
+**Where it goes, and why not somewhere cheaper.** The phone's hierarchy answers
+it: Log set is filled, Pause and Skip set are outlined, and Next exercise sits
+below both as a text button, offered when `isActive || isResting`. The watch now
+mirrors that exactly — a `ChildButton` (Wear's lowest-emphasis full-width
+button), last, on both the exercise and the rest screens. That matters more on a
+wrist than on a phone: this is the control that throws away sets you have not
+done, and it should be the hardest of the three to hit while out of breath.
+
+**The screen had to start scrolling, and that turned out to be overdue.** The
+exercise screen already spent roughly 194 of the watch's 216dp; a third control
+did not fit. But the container was a fixed `Box(fillMaxSize)`, which means
+**neither action screen survived 200% font scaling** — §13 requires it, and
+anything that grew past the display was simply cut off with nothing to scroll.
+So the new container is not a concession to one more button; it closes a
+requirement the watch had never met.
+
+`fillMaxSize().verticalScroll()` is what gives both behaviours at once: the
+scroll modifier relaxes the maximum height to infinity and leaves the minimum at
+the viewport, so `Arrangement.spacedBy(_, CenterVertically)` still centres a
+short screen. The crown scrolls it too — §11 asks for "rotary scrolling where
+appropriate" and the watch had none.
+
+The three message screens keep the old fixed container. They are a sentence or
+two and always will be; two containers here are two behaviours, not a duplicate.
+
+**Watched failing.** Removing `verticalScroll` and leaving everything else
+turned eight tests red across both screens, including both 200%-font-scale
+cases. That is what says the reachability assertions are real rather than
+passing because everything happened to fit.
+
+**§3 was corrected, the way §11 already had been.** Its watch bullet read "skip
+exercise (abandon its remaining sets and advance), and next exercise (advance
+after the final set is completed)" — one command under two names, exactly the
+mistake §11 records about itself, and the pair left no room for skipping a single
+*set*. Advancing after the final set is the engine's own behaviour, not a
+control. The corrected list is complete set, skip set, pause/resume, next
+exercise, with skip-rest already on its own line.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3422,11 +3474,9 @@ capability with nothing able to reach it. Recorded as backlog 16.
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.
-16. **`WearAction.NextExercise` reaches no button.** It is in the protocol, it
-   maps to `SessionCommand.NextExercise`, and §3's watch MVP lists it — and no
-   watch screen offers it. The same shape as the exclusions F5 fixed: a
-   capability the model carries with nothing able to reach it. Small, and it
-   belongs with F7's remaining watch work rather than on its own.
+16. ~~**`WearAction.NextExercise` reaches no button.**~~ Done 2026-09-08. On
+   both action screens, at the phone's emphasis, on a container that scrolls —
+   which also gave the watch its first layout that survives 200% font scaling.
 17. **The watch has no static thumbnail and no ongoing activity.** The rest of
    F7. §3 asks for both; the thumbnail means moving an asset across the Data
    Layer, which is the larger half.
