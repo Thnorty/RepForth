@@ -3688,6 +3688,65 @@ Galaxy because the Xiaomi has never been paired and reports `API_UNAVAILABLE`;
 Bluetooth off does not disconnect the Data Layer, only phone airplane mode does;
 install before starting a workout because reinstalling kills the service.
 
+### 2026-09-08 — notes and perceived effort (F3)
+
+§3 asks for notes; the review found that `SetOutcome`, `SessionCommand`, the
+`set_record` table and the export document had all carried `rpe` since they were
+written and **nothing could write it** — the completion callback took reps,
+weight and duration. Fourth time that shape has come up: the haptics switch that
+controlled nothing, two exclusion kinds with no editor, a watch action with no
+button, and now a reserved column.
+
+**Both questions are asked once, at the end.** Two owner decisions shaped this,
+and I got the first one wrong before being corrected:
+
+- **Per workout, not per set.** The first version put effort beside the reps and
+  weight fields, so it was asked on every set — eight or more times a session,
+  for an answer that mostly would not vary. That is how a question stops being
+  answered honestly, and it sat directly on §12's one-tap logging path.
+- **Five sentences, not a number out of ten.** "Too easy … Just right … Too
+  hard". A number asks the user to invent a scale before they can answer: 6 and 7
+  differ by nothing anybody could describe, and two people — or the same person
+  in February — do not mean the same by either. The middle answer is what a
+  well-judged session lands on, which is the signal actually worth recording.
+
+Stored as 1-5. The wording is a label and belongs in `strings.xml` in both
+languages; a history comparing Turkish sentences to English ones compares
+nothing.
+
+**Where it lives.** `workout_session` gained `note` and `effort` in one migration
+(4→5) because they are one feature written at one moment by one command. Both
+ride on `SessionCommand.Finish` rather than having commands of their own — a note
+is typed a character at a time, and a command per keystroke is a revision, a
+database write and a watch publish per letter. The engine clamps the effort
+rather than trusting the caller: the screen is not the only thing that can send a
+`Finish`.
+
+**`set_record.rpe` stays unwritten**, and is now reserved rather than
+unused-by-oversight. Per-set effort is a different question, and removing a
+column is a destructive migration for nothing.
+
+**A component was promoted rather than copied.** The five rows are exactly what
+onboarding already drew for goals and experience levels, privately. It moved to
+`core:designsystem` as `RfChoiceRows` — a second caller is the moment AGENTS.md
+names for that.
+
+**And the move was not as free as it looked.** Retyping the component's
+`DETAIL_ALPHA` as 0.8 instead of 0.75 changed onboarding's appearance, and four
+onboarding goldens went red for it. Nobody asked for that change and no reviewer
+would have seen it. **A component lifted into the design system has to arrive
+identical or it is a redesign wearing a refactor's clothes** — and the goldens
+are the only thing that can tell the difference.
+
+**Watched failing.** Putting effort back on the logging path turns
+`the logging path is untouched` red — the assertion written specifically for the
+mistake I had made an hour earlier.
+
+Four new goldens cover the completing screen in both languages at both font
+scales: a five-row list plus a multi-line field is the densest thing this screen
+draws, and Turkish runs 15-30% longer. The active-screen goldens came back
+byte-identical, which is what says the logging path really is untouched.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

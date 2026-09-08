@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "Ne kadar zorlandın?" sorusunun beş yanıtı (§3). Bkz. values/effort_terms.xml -->
+<resources>
+    <string name="rf_effort_1">Çok kolaydı</string>
+    <string name="rf_effort_2">Biraz kolaydı</string>
+    <string name="rf_effort_3">Tam kıvamında</string>
+    <string name="rf_effort_4">Biraz zordu</string>
+    <string name="rf_effort_5">Çok zordu</string>
+</resources>

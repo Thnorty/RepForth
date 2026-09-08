@@ -62,6 +62,25 @@ data class SessionSnapshot(
     /** Wall-clock start, for the record. */
     val startedAt: Long,
 
+    /**
+     * What the user wrote about this workout (§3), or null.
+     *
+     * Set by [SessionCommand.Finish] and untouched before that, so it is empty
+     * for every session still in progress. On the session rather than on each
+     * exercise: that is the shape chosen for the feature, and a note about one
+     * exercise names it in its own words.
+     */
+    val note: String? = null,
+
+    /**
+     * How hard the whole workout felt (§3), 1-10, or null.
+     *
+     * Set by [SessionCommand.Finish] with [note], and like it untouched before
+     * that. Per session rather than per set: [SetOutcome.rpe] answers a
+     * different question and stays unwritten.
+     */
+    val effort: Int? = null,
+
     val endedAt: Long? = null,
 
     /**

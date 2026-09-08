@@ -393,6 +393,14 @@ class SessionEngine(private val time: TimeSource) {
         val next = state.withCommand(command.commandId).copy(
             phase = SessionPhase.COMPLETED,
             endedAt = time.now(),
+            // Blank is nothing. A note of spaces is a note nobody wrote, and
+            // storing it would put an empty line in the history that reads as a
+            // defect rather than as silence.
+            note = (command as? SessionCommand.Finish)?.note?.trim()?.takeIf { it.isNotEmpty() },
+            // Clamped rather than trusted. The screen offers 1-10, and the
+            // engine is the thing that has to be right whoever is calling it —
+            // a watch, an import, or a screen someone changes later.
+            effort = (command as? SessionCommand.Finish)?.effort?.coerceIn(EFFORT_RANGE),
         )
         return CommandResult.Applied(
             next,
@@ -425,5 +433,16 @@ class SessionEngine(private val time: TimeSource) {
             next,
             listOf(SessionEvent.PhaseChanged(state.phase, SessionPhase.ABANDONED)),
         )
+    }
+
+    private companion object {
+        /**
+          * §3's effort scale, as five sentences stored 1-5.
+          *
+          * The screen offers exactly these and the engine enforces them, because
+          * the screen is not the only thing that can send a `Finish` — an import
+          * can, and so could a watch.
+          */
+         val EFFORT_RANGE = 1..5
     }
 }

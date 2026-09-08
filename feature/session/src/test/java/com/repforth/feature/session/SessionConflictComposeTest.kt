@@ -125,7 +125,7 @@ class SessionConflictComposeTest {
                     onNextExercise = {},
                     onPause = {},
                     onResume = {},
-                    onFinish = {},
+                    onFinish = { _, _ -> },
                     onAbandon = {},
                     onKeepRunningSession = onKeep,
                     onDiscardRunningAndStart = onDiscard,

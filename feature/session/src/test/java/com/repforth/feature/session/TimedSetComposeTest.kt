@@ -129,7 +129,7 @@ class TimedSetComposeTest {
                     onNextExercise = {},
                     onPause = {},
                     onResume = {},
-                    onFinish = {},
+                    onFinish = { _, _ -> },
                     onAbandon = {},
                     onKeepRunningSession = {},
                     onDiscardRunningAndStart = {},

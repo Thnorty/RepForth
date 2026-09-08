@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.repforth.core.designsystem.component.EFFORT_SCALE
+import com.repforth.core.designsystem.component.RfChoiceRows
+import com.repforth.core.designsystem.component.effortLabel
 import com.repforth.core.designsystem.component.RfProgressRing
 import com.repforth.core.designsystem.component.RingTone
 import com.repforth.core.designsystem.theme.Layout
@@ -170,7 +176,7 @@ internal fun SessionScreen(
     onNextExercise: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onFinish: () -> Unit,
+    onFinish: (String?, Int?) -> Unit,
     onAbandon: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -502,6 +508,47 @@ private fun Headline(text: String) {
     )
 }
 
+/**
+ * §3's perceived effort: one question, once, about the whole workout.
+ *
+ * **Per workout and not per set.** The first version put this beside the reps
+ * and weight fields, so it was asked on every set — eight or more times a
+ * session, for an answer that mostly would not vary and would be skipped after
+ * the second. A question asked that often is answered badly or not at all, and
+ * §12's one-tap logging is the thing it was getting in the way of.
+ *
+ * **Sentences, not a number.** It was a 1-10 chip row, and a number out of ten
+ * asks the user to invent a scale before they can answer: 6 and 7 differ by
+ * nothing anybody could describe, and two people — or the same person in
+ * February — do not mean the same thing by either. Five phrases from "too easy"
+ * to "too hard" have an answer that is obviously right, and the one in the
+ * middle is the one a good session lands on, which is the signal worth having.
+ *
+ * Stored as 1-5 rather than as text: the wording is a label and belongs in
+ * `strings.xml` in both languages, and a history that has to compare Turkish
+ * sentences to English ones is a history that cannot compare anything.
+ *
+ * **Nothing is selected by default and nothing has to be.** An untouched list
+ * records null, and choosing the same row again clears it — an optional control
+ * that cannot be un-answered is a required one.
+ *
+ * `set_record.rpe` stays unwritten. It has been in the schema since it was
+ * written and now stays reserved rather than unused-by-oversight: per-set effort
+ * is a different question, and removing the column would be a destructive
+ * migration for nothing.
+ */
+@Composable
+private fun EffortRow(selected: Int?, onSelect: (Int?) -> Unit) {
+    RfChoiceRows(
+        options = EFFORT_SCALE,
+        selected = selected,
+        labelOf = { stringResource(effortLabel(it)) },
+        // Choosing what is already chosen clears it. Without this the only way
+        // back from a mis-tap is to finish the workout and live with it.
+        onSelected = { onSelect(if (it == selected) null else it) },
+    )
+}
+
 @Composable
 private fun SessionControls(
     state: SessionUiState,
@@ -511,7 +558,7 @@ private fun SessionControls(
     onNextExercise: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onFinish: () -> Unit,
+    onFinish: (String?, Int?) -> Unit,
     onAbandon: () -> Unit,
 ) {
     // Read here and called from the handlers: a haptic belongs to the tap, and
@@ -520,6 +567,10 @@ private fun SessionControls(
     val confirm = rfHaptic()
     var reps by rememberSaveable { mutableStateOf("") }
     var weight by rememberSaveable { mutableStateOf("") }
+    // Null is "not answered", which is different from any number on the scale
+    // and is what an ordinary one-tap log records.
+    var effort by rememberSaveable { mutableStateOf<Int?>(null) }
+    var note by rememberSaveable { mutableStateOf("") }
     val units = LocalUnitSystem.current
     val weightEntry = units.readWeight(weight)
 
@@ -572,6 +623,32 @@ private fun SessionControls(
             }
         }
 
+        // §3's two optional questions, asked once, at the one moment the whole
+        // workout is in view and nothing is waiting on the user.
+        //
+        // **Neither is on the logging path.** An ordinary set stays one tap,
+        // which is the constraint the review set and the reason these are not
+        // beside the reps and weight fields: a workout is eight or more sets,
+        // and a question asked eight times is a question that gets answered
+        // badly or not at all.
+        if (state.isCompleting) {
+            Text(
+                text = stringResource(R.string.session_effort),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            EffortRow(selected = effort, onSelect = { effort = it })
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it.take(MAX_NOTE_CHARS) },
+                label = { Text(stringResource(R.string.session_note)) },
+                placeholder = { Text(stringResource(R.string.session_note_hint)) },
+                minLines = 2,
+                maxLines = 4,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
         when {
             state.isResting -> PrimaryAction(
                 text = stringResource(R.string.session_skip_rest),
@@ -585,7 +662,7 @@ private fun SessionControls(
 
             state.isCompleting -> PrimaryAction(
                 text = stringResource(R.string.session_finish),
-                onClick = onFinish,
+                onClick = { onFinish(note, effort) },
             )
 
             // Nothing to press on a timed set: §3's timed work is measured, so
@@ -683,3 +760,6 @@ private fun PrimaryAction(text: String, enabled: Boolean = true, onClick: () -> 
 }
 
 private const val MAX_DIGITS = 5
+
+/** Long enough for a thought, short enough that history stays readable. */
+private const val MAX_NOTE_CHARS = 500

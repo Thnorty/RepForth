@@ -438,18 +438,61 @@ class MigrationTest {
         migrated.close()
     }
 
+    /**
+     * §3's workout note arrives, and the history it is being added to survives.
+     *
+     * There is no backfill and there cannot be one: a workout finished before
+     * the column existed had no note, and writing an empty string for it would
+     * make "the user wrote nothing" and "there was nowhere to write" the same
+     * value in every row that predates this.
+     */
+    @Test
+    fun migrating_from_4_to_5_adds_the_note_and_keeps_the_workout() {
+        helper.createDatabase(TEST_DB, 4).apply {
+            execSQL(
+                """
+                INSERT INTO workout_session
+                    (id, template_id, state, phase_before_pause, deadline_at,
+                     rest_remaining_ms, set_deadline_at, set_remaining_ms,
+                     current_exercise_index, current_set_index,
+                     started_at, ended_at, revision, created_at, updated_at)
+                VALUES ('session-1', 'plan-1', 'COMPLETED', NULL, NULL, NULL, NULL, NULL,
+                        1, 2, 100, 300, 7, 100, 200)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            5,
+            true,
+            RepForthDatabase.MIGRATION_4_5,
+        )
+
+        migrated.query("SELECT note, started_at, ended_at FROM workout_session").use { cursor ->
+            assertTrue("The finished workout must survive", cursor.moveToFirst())
+            assertTrue("A workout from before the column has no note", cursor.isNull(0))
+            assertEquals("And is otherwise untouched", 100, cursor.getInt(1))
+            assertEquals(300, cursor.getInt(2))
+        }
+
+        migrated.close()
+    }
+
     /** And the whole chain, which is what a v1 install runs. */
     @Test
-    fun migrating_from_1_to_4_produces_the_schema_room_expects() {
+    fun migrating_from_1_to_5_produces_the_schema_room_expects() {
         helper.createDatabase(TEST_DB, 1).close()
 
         helper.runMigrationsAndValidate(
             TEST_DB,
-            4,
+            5,
             true,
             RepForthDatabase.MIGRATION_1_2,
             RepForthDatabase.MIGRATION_2_3,
             RepForthDatabase.MIGRATION_3_4,
+            RepForthDatabase.MIGRATION_4_5,
         ).close()
     }
 

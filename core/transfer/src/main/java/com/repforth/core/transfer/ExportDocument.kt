@@ -124,6 +124,16 @@ data class SessionDto(
     val phase: String,
     val startedAt: Long,
     val endedAt: Long? = null,
+    /**
+     * §3's workout note.
+     *
+     * Defaulted so a file written before this field existed still reads. §7's
+     * export is a restore, and refusing an older file because it predates a
+     * column would make every schema addition a data loss.
+     */
+    val note: String? = null,
+    /** §3's perceived effort, 1-10. Defaulted for the same reason [note] is. */
+    val effort: Int? = null,
     val exercises: List<SessionExerciseDto> = emptyList(),
 )
 

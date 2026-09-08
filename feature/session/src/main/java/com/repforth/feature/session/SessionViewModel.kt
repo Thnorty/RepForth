@@ -291,7 +291,15 @@ class SessionViewModel @Inject constructor(
 
     fun onResume() = dispatch(SessionCommand.Resume(controller.newCommandId()))
 
-    fun onFinish() = dispatch(SessionCommand.Finish(controller.newCommandId()))
+    /**
+     * Finishes, carrying §3's note if one was written.
+     *
+     * The note arrives from the screen rather than being held here, because it
+     * exists for the few seconds between typing and pressing Finish and nothing
+     * else reads it. Blank is normalised to nothing by the engine.
+     */
+    fun onFinish(note: String? = null, effort: Int? = null) =
+        dispatch(SessionCommand.Finish(controller.newCommandId(), note = note, effort = effort))
 
     fun onAbandon() = dispatch(SessionCommand.Abandon(controller.newCommandId()))
 

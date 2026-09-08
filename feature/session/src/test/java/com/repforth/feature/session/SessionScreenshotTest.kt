@@ -102,6 +102,40 @@ class SessionScreenshotTest {
     fun session_paused() = capture("session-paused-en", active(phase = SessionPhase.PAUSED))
 
     /** Nothing running is a real state: Session is reachable with no session. */
+    /**
+     * Where §3's two optional questions live, which is the only screen they
+     * appear on.
+     *
+     * Worth a picture in both languages and at 2x: a ten-chip row and a
+     * multi-line field is the densest thing this screen ever draws, and Turkish
+     * runs 15-30% longer. Nothing else here would notice it overflowing.
+     */
+    @Test
+    fun session_completing() =
+        capture("session-completing-en", active(phase = SessionPhase.COMPLETING))
+
+    @Test
+    fun session_completing_turkish() = capture(
+        "session-completing-tr",
+        active(phase = SessionPhase.COMPLETING),
+        locale = TURKISH,
+    )
+
+    @Test
+    fun session_completing_large_text() = capture(
+        "session-completing-en-2x",
+        active(phase = SessionPhase.COMPLETING),
+        fontScale = 2f,
+    )
+
+    @Test
+    fun session_completing_turkish_large_text() = capture(
+        "session-completing-tr-2x",
+        active(phase = SessionPhase.COMPLETING),
+        locale = TURKISH,
+        fontScale = 2f,
+    )
+
     @Test
     fun session_none() = capture("session-none-en", SessionUiState(loading = false))
 
@@ -124,7 +158,7 @@ class SessionScreenshotTest {
                     onNextExercise = {},
                     onPause = {},
                     onResume = {},
-                    onFinish = {},
+                    onFinish = { _, _ -> },
                     onAbandon = {},
                     onKeepRunningSession = {},
                     onDiscardRunningAndStart = {},

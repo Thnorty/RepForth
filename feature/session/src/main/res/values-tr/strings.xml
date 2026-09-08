@@ -22,6 +22,9 @@
     <string name="session_log_set">Seti kaydet</string>
     <string name="session_skip_set">Seti atla</string>
     <string name="session_next_exercise">Sonraki egzersiz</string>
+    <string name="session_effort">Ne kadar zorlandın? (isteğe bağlı)</string>
+    <string name="session_note">Antrenman notu (isteğe bağlı)</string>
+    <string name="session_note_hint">Nasıl geçti?</string>
 
     <string name="session_resting">Dinlenme</string>
     <string name="session_skip_rest">Dinlenmeyi atla</string>
