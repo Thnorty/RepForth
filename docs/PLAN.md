@@ -3237,6 +3237,29 @@ So the better model is cumulative emulator load over a run rather than free RAM
 at the start of one. Nothing here fixes it; the evidence is recorded so the next
 attempt does not start from the memory theory again.
 
+**Update, 2026-09-08: there are two modes, not one.** Two more CI failures on two
+branches that touch only the `wear` module — so neither could have caused them —
+both landed on `BuilderFlowTest.aPlanSavedInTheBuilderAppearsInPlans`, and the
+message is *not* the window-focus one:
+
+```
+The picker's field never showed "barbell bench pr" -- it holds [] 60337ms after
+typing. Window focus: [true], held by
+[mCurrentFocus=Window{... com.repforth/com.repforth.app.MainActivity}]
+```
+
+Focus is healthy and held by the app. What did not happen is the **catalog query
+emitting**, for sixty seconds. The search field is controlled by a `combine` that
+produces nothing until the query has, which the assertion message says itself —
+AGENTS.md already records that an empty field is not evidence about typing.
+
+So the class has at least two independent flakes: a SystemUI ANR dialog stealing
+window focus, and the exercise query not completing in a minute on a loaded
+emulator. Free memory explains neither, and a fix for one would not touch the
+other. Both clear on a re-run, and both have now been seen on branches that
+cannot have caused them — which is the practical rule: **a red device job is not
+evidence about a branch until this class has been ruled out.**
+
 ### 2026-09-08 — timed sets reach the wrist (F1's watch half, F7's alerts)
 
 #41 made the clock the only way to end a timed set, and refused `CompleteSet`
