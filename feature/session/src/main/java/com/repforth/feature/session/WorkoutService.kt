@@ -7,8 +7,9 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -243,33 +244,69 @@ class WorkoutService : Service() {
     /**
      * The sound, generated rather than shipped.
      *
-     * [ToneGenerator] means no audio file, which means no asset to license --
-     * §6 keeps unlicensed media out of the default build, and a bundled sound
-     * would be one more thing with a provenance to track for two short beeps.
+     * No audio file, which means no asset to license -- §6 keeps media with
+     * someone else's provenance out of this repository, and a bundled sound
+     * would be one more thing to track for a noise that plays twice a set. The
+     * samples come from [Chime], which computes them.
      *
-     * **On the media stream.** That is the volume someone training has already
-     * set, because it is the one their music is on -- so the beep lands at a
-     * level they chose, next to what they are listening to, and the volume keys
-     * adjust it without a trip into Settings. The alarm stream would be louder
-     * and would also play through a phone deliberately silenced, which is a
-     * decision the user has already made and this has no business overriding.
+     * **This was a `ToneGenerator` beep and is not any more.** Its tones are
+     * telephony signals: a flat sine, held, then cut. That is a fine "attention"
+     * noise and it is not a bell, because the part that makes a bell is the
+     * decay and `ToneGenerator` has no way to express one. Asked for a ring
+     * rather than a beep, the choice was between shipping an audio file and
+     * doing the arithmetic; the arithmetic keeps the property the beep was
+     * chosen for in the first place.
+     *
+     * **On the media stream**, via `USAGE_MEDIA`. That is the volume someone
+     * training has already set, because it is the one their music is on -- so
+     * this lands at a level they chose, next to what they are listening to, and
+     * the volume keys adjust it without a trip into Settings. The alarm stream
+     * would be louder and would also play through a phone deliberately silenced,
+     * which is a decision the user has already made and this has no business
+     * overriding.
      *
      * The notification stream was the other candidate and is the wrong one: it
      * is silent on a phone set to vibrate, which is most phones in a gym, and
      * the haptic above already covers that case on its own.
      *
-     * Released after the tone rather than kept: a held `ToneGenerator` owns an
-     * audio track for the length of a workout to make a noise twice a set.
+     * Released after it finishes rather than kept: a held [AudioTrack] owns an
+     * output buffer for the length of a workout to make a noise twice a set.
      */
     private suspend fun playTone() {
-        val tone = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, TONE_VOLUME) }
-            .getOrNull() ?: return
+        val samples = Chime.samples
+        val track = runCatching {
+            AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        // What it is, rather than where it goes: a short
+                        // non-musical cue. Usage picks the stream; this tells
+                        // the system what kind of thing is on it.
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(Chime.SAMPLE_RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build(),
+                )
+                .setBufferSizeInBytes(samples.size * Short.SIZE_BYTES)
+                // The whole sound is known before it starts, so it is handed
+                // over once rather than streamed.
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+        }.getOrNull() ?: return
+
         runCatching {
-            tone.startTone(ToneGenerator.TONE_PROP_BEEP2, TONE_MS.toInt())
-            // Long enough for the tone to finish; releasing under it cuts it off.
-            delay(TONE_MS + TONE_RELEASE_GRACE_MS)
+            track.write(samples, 0, samples.size)
+            track.play()
+            // Long enough to finish; releasing under it cuts the tail off, and
+            // the tail is the part that was asked for.
+            delay(Chime.DURATION_MS + TONE_RELEASE_GRACE_MS)
         }
-        tone.release()
+        track.release()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -528,9 +565,13 @@ class WorkoutService : Service() {
         /** Long enough to feel through a pocket, short enough not to nag. */
         private const val REST_OVER_VIBRATION_MS = 400L
 
-        /** Loud enough to carry over gym music; not so loud it is a shock. */
-        private const val TONE_VOLUME = 80
-        private const val TONE_MS = 500L
+        /**
+         * Slack after the chime's own length, before the track is released.
+         *
+         * The loudness constant that used to sit here went with the
+         * `ToneGenerator`: the level is now the media volume the user has set,
+         * and the length is `Chime.DURATION_MS`.
+         */
         private const val TONE_RELEASE_GRACE_MS = 100L
 
         fun start(context: Context) {
