@@ -582,10 +582,25 @@ class BuilderFlowTest {
         /** Consecutive identical readings before the layout counts as settled. */
         const val STABLE_FRAMES = 3
 
-        /** A name that exists in the pinned catalog and is unambiguous. */
-        const val CATALOG_EXERCISE = "barbell bench press"
+        /**
+         * A name that exists in the pinned catalog and is unambiguous.
+         *
+         * **As displayed, not as stored.** The dataset holds all 1,324 names in
+         * lower case and `exerciseDisplayName` title-cases them on the way to a
+         * domain object, so this is what a row actually draws. It read
+         * "barbell bench press" until that landed, and the failure was a
+         * sixty-second wait reporting that the picker "neither found anything
+         * nor said it had found nothing" — which reads like the device being
+         * slow and was a matcher that could no longer match.
+         */
+        const val CATALOG_EXERCISE = "Barbell Bench Press"
 
-        /** A prefix of it, so the search field's own text is not a match. */
+        /**
+         * A prefix of it, so the search field's own text is not a match.
+         *
+         * Lower case, because this is what the user types and the query runs
+         * against the stored value. The two constants differ in case on purpose.
+         */
         const val CATALOG_QUERY = "barbell bench pr"
 
         /** `coach_default_name`, used when the field is left empty. */
