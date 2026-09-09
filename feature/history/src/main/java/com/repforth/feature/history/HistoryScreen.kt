@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.component.RfSegmentedBar
 import com.repforth.core.exercisedata.labelRes
+import com.repforth.core.designsystem.component.effortLabel
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
@@ -279,10 +280,31 @@ private fun WorkoutRow(workout: WorkoutSummary) {
                     append(" · ")
                     append(stringResource(R.string.progress_abandoned))
                 }
+                // §3's effort, on the same line as the other figures because
+                // that is what it is -- one number about the workout, beside the
+                // sets and the duration rather than competing with them.
+                workout.effort?.let {
+                    append(" · ")
+                    append(stringResource(effortLabel(it)))
+                }
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        // §3's note, which is the only thing on this row the user wrote
+        // themselves -- everything above it is derived from the sets. Rendered
+        // in the body style rather than the caption one for that reason, and
+        // given room to wrap: a note truncated to one line is a note nobody can
+        // read back, which is the whole point of having written it.
+        workout.note?.let { note ->
+            Text(
+                text = note,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = Space.s1),
+            )
+        }
     }
 }
 

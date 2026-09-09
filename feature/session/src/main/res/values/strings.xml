@@ -22,6 +22,17 @@
     <string name="session_log_set">Log set</string>
     <string name="session_skip_set">Skip set</string>
     <string name="session_next_exercise">Next exercise</string>
+<!--
+        §3's perceived effort, asked once about the whole workout. Optional.
+
+        Five sentences rather than a number out of ten: 6 and 7 differ by nothing
+        anybody could describe, and the middle one here is what a well-judged
+        session lands on, which is the answer worth having.
+    -->
+    <string name="session_effort">How hard was it? (optional)</string>
+    <!-- §3's workout note, offered once the last set is done. -->
+    <string name="session_note">Workout note (optional)</string>
+    <string name="session_note_hint">How did it go?</string>
 
     <string name="session_resting">Rest</string>
     <string name="session_skip_rest">Skip rest</string>

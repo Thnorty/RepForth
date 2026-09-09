@@ -1,5 +1,12 @@
 package com.repforth.core.designsystem.component
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Card
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -136,3 +143,89 @@ internal fun Float.toStepValue(range: IntRange, step: Int): Int {
     val steps = ((this - range.first) / step).roundToInt()
     return (range.first + steps * step).coerceIn(range.first, range.last)
 }
+
+/**
+ * One answer, chosen from a short list of sentences.
+ *
+ * Rows rather than [RfChoiceChips] because the options are phrases, not words.
+ * A chip row wraps by width and gives no reading order; five sentences want a
+ * column, where the eye runs down one scale from one end to the other.
+ *
+ * Written first inside onboarding, which asks for a goal and an experience
+ * level this way. The session screen's "how hard was it?" is the second caller,
+ * and a second copy of it would have been a second answer to card padding,
+ * selected-state colour and what happens to the detail line's contrast when the
+ * card turns into `primaryContainer`.
+ *
+ * Radio semantics and card-sized targets: the whole row is the target, which is
+ * what makes this usable at the end of a workout.
+ */
+@Composable
+fun <T> RfChoiceRows(
+    options: List<T>,
+    selected: T?,
+    labelOf: @Composable (T) -> String,
+    onSelected: (T) -> Unit,
+    detailOf: (@Composable (T) -> String)? = null,
+) {
+    Column(
+        modifier = Modifier.selectableGroup(),
+        verticalArrangement = Arrangement.spacedBy(Space.s2),
+    ) {
+        options.forEach { option ->
+            val isSelected = option == selected
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Target.session)
+                    .selectable(
+                        selected = isSelected,
+                        role = Role.RadioButton,
+                        onClick = { onSelected(option) },
+                    ),
+                colors = if (isSelected) {
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                } else {
+                    CardDefaults.cardColors()
+                },
+            ) {
+                Column(
+                    modifier = Modifier.padding(Space.s4),
+                    verticalArrangement = Arrangement.spacedBy(Space.s1),
+                ) {
+                    Text(
+                        text = labelOf(option),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    detailOf?.let { detail ->
+                        Text(
+                            text = detail(option),
+                            style = MaterialTheme.typography.bodySmall,
+                            // Inherits the card's content colour rather than
+                            // taking onSurfaceVariant, which does not contrast
+                            // against primaryContainer when selected.
+                            color = LocalContentColor.current.copy(alpha = DETAIL_ALPHA),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * How far the detail line sits behind its title.
+ *
+ * A ratio rather than `onSurfaceVariant`, which does not contrast against
+ * `primaryContainer` once a row is selected.
+ *
+ * 0.75, which is the value this component was written with. Moving it out of
+ * onboarding, it was retyped as 0.8 — a change nobody asked for, invisible in
+ * review, and caught by four onboarding goldens going red. A component lifted
+ * into the design system has to arrive identical or it is a redesign wearing a
+ * refactor's clothes.
+ */
+private const val DETAIL_ALPHA = 0.75f

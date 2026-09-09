@@ -137,6 +137,8 @@ internal fun SessionSnapshot.toDto() = SessionDto(
     phase = phase.name,
     startedAt = startedAt,
     endedAt = endedAt,
+    note = note,
+    effort = effort,
     exercises = exercises.map { exercise ->
         val reps = exercise.target as? ExerciseTarget.Reps
         val duration = exercise.target as? ExerciseTarget.Duration
@@ -190,6 +192,8 @@ internal fun SessionDto.toDomain() = SessionSnapshot(
     },
     startedAt = startedAt,
     endedAt = endedAt,
+    note = note,
+    effort = effort,
 )
 
 /**

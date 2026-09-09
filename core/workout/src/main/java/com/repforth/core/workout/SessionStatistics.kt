@@ -26,6 +26,18 @@ data class WorkoutSummary(
     val exerciseCount: Int,
     /** Kilograms lifted: reps times weight, summed. Zero for bodyweight work. */
     val volumeKg: Double,
+
+    /**
+     * What the user wrote about the workout (§3), or null.
+     *
+     * The one field here that is not derived from the sets. It is stored, so it
+     * is carried rather than recomputed — the class doc above is about the
+     * totals, and a sentence somebody typed cannot be derived from anything.
+     */
+    val note: String? = null,
+
+    /** How hard the workout felt (§3), 1-10, or null. Stored, like [note]. */
+    val effort: Int? = null,
 ) {
     val durationMs: Long? get() = endedAt?.let { it - startedAt }
 }
@@ -68,6 +80,8 @@ fun SessionSnapshot.toSummary(): WorkoutSummary {
         volumeKg = outcomes
             .filterNot { it.skipped }
             .sumOf { (it.reps ?: 0) * (it.weightKg ?: 0.0) },
+        note = note,
+        effort = effort,
     )
 }
 

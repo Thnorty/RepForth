@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The five answers to "how hard was it?" (§3).
+
+    Here rather than in `feature:session` because two features render them: the
+    session screen asks the question at the end of a workout, and history shows
+    what was answered. One wording, one translation, one place — a second copy
+    would be a second thing to keep in step across two languages.
+
+    Its own file rather than `strings.xml`, which is explicitly for strings owned
+    by reusable components. These are not a component's wording; they are the
+    scale's, and the scale happens to be drawn with `RfChoiceRows`.
+
+    Five sentences rather than a number out of ten. Six and seven differ by
+    nothing anybody could describe, and two people — or the same person in
+    February — do not mean the same thing by either. The middle one here is what
+    a well-judged session lands on, which is the signal worth recording.
+-->
+<resources>
+    <string name="rf_effort_1">Too easy</string>
+    <string name="rf_effort_2">A little easy</string>
+    <string name="rf_effort_3">Just right</string>
+    <string name="rf_effort_4">A little hard</string>
+    <string name="rf_effort_5">Too hard</string>
+</resources>

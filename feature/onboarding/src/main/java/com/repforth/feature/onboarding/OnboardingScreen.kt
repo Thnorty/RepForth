@@ -60,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Radius
+import com.repforth.core.designsystem.component.RfChoiceRows
 import com.repforth.core.designsystem.component.RfValueSlider
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Stroke
@@ -157,7 +158,7 @@ internal fun OnboardingScreen(
             verticalArrangement = Arrangement.spacedBy(Space.s2),
         ) {
             when (state.step) {
-                OnboardingStep.GOAL -> SingleChoice(
+                OnboardingStep.GOAL -> RfChoiceRows(
                     options = TrainingGoal.entries,
                     selected = state.goal,
                     labelOf = { stringResource(it.labelRes) },
@@ -165,7 +166,7 @@ internal fun OnboardingScreen(
                     onSelected = onGoalSelected,
                 )
 
-                OnboardingStep.EXPERIENCE -> SingleChoice(
+                OnboardingStep.EXPERIENCE -> RfChoiceRows(
                     options = ExperienceLevel.entries,
                     selected = state.experience,
                     labelOf = { stringResource(it.labelRes) },
@@ -351,63 +352,6 @@ private fun StepFooter(
                     if (state.isLastStep) R.string.onboarding_finish else R.string.onboarding_next,
                 ),
             )
-        }
-    }
-}
-
-/** One answer, chosen from a short list. Radio semantics, card-sized targets. */
-@Composable
-private fun <T> SingleChoice(
-    options: List<T>,
-    selected: T?,
-    labelOf: @Composable (T) -> String,
-    onSelected: (T) -> Unit,
-    detailOf: (@Composable (T) -> String)? = null,
-) {
-    Column(
-        modifier = Modifier.selectableGroup(),
-        verticalArrangement = Arrangement.spacedBy(Space.s2),
-    ) {
-        options.forEach { option ->
-            val isSelected = option == selected
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = Target.session)
-                    .selectable(
-                        selected = isSelected,
-                        role = Role.RadioButton,
-                        onClick = { onSelected(option) },
-                    ),
-                colors = if (isSelected) {
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                } else {
-                    CardDefaults.cardColors()
-                },
-            ) {
-                Column(
-                    modifier = Modifier.padding(Space.s4),
-                    verticalArrangement = Arrangement.spacedBy(Space.s1),
-                ) {
-                    Text(
-                        text = labelOf(option),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    detailOf?.let { detail ->
-                        Text(
-                            text = detail(option),
-                            style = MaterialTheme.typography.bodySmall,
-                            // Inherits the card's content colour rather than
-                            // taking onSurfaceVariant, which does not contrast
-                            // against primaryContainer when selected.
-                            color = LocalContentColor.current.copy(alpha = DETAIL_ALPHA),
-                        )
-                    }
-                }
-            }
         }
     }
 }

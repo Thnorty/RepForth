@@ -77,7 +77,7 @@ abstract class RepForthDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
 
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
 
         /** Also the asset filename once the import task prepackages the catalog. */
         const val NAME = "repforth.db"
@@ -189,6 +189,24 @@ abstract class RepForthDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `set_deadline_at` INTEGER")
                 db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `set_remaining_ms` INTEGER")
+            }
+        }
+
+        /**
+         * §3's workout note and perceived effort.
+         *
+         * Both nullable and with no backfill, because there is nothing to
+         * backfill to: a workout finished before these existed had neither, and
+         * inventing an empty string or a middling 5 would make "the user did not
+         * say" and "there was nowhere to say it" the same value.
+         *
+         * One migration for both because they are one feature, written at one
+         * moment by one command.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `note` TEXT")
+                db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `effort` INTEGER")
             }
         }
     }

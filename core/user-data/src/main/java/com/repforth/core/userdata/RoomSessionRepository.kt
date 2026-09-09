@@ -68,6 +68,8 @@ internal class RoomSessionRepository @Inject constructor(
                 currentSetIndex = snapshot.currentSetIndex,
                 startedAt = snapshot.startedAt,
                 endedAt = snapshot.endedAt,
+                note = snapshot.note,
+                effort = snapshot.effort,
                 revision = snapshot.revision,
                 createdAt = createdAt,
                 updatedAt = now,
@@ -150,6 +152,8 @@ private fun SessionWithDetails.toSnapshot(): SessionSnapshot {
         setRemainingMs = session.setRemainingMs,
         startedAt = session.startedAt,
         endedAt = session.endedAt,
+        note = session.note,
+        effort = session.effort,
         revision = session.revision,
     )
 }

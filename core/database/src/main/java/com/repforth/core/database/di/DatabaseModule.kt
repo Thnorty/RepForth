@@ -45,6 +45,7 @@ object DatabaseModule {
                 RepForthDatabase.MIGRATION_1_2,
                 RepForthDatabase.MIGRATION_2_3,
                 RepForthDatabase.MIGRATION_3_4,
+                RepForthDatabase.MIGRATION_4_5,
             )
             .build()
 

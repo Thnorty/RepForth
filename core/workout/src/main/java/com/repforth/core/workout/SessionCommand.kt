@@ -103,6 +103,29 @@ sealed interface SessionCommand {
     data class Finish(
         override val commandId: String,
         override val expectedRevision: Long? = null,
+        /**
+         * §3's workout note, written once as the workout closes.
+         *
+         * Carried on this command rather than set by one of its own, because a
+         * note is typed a character at a time and a command per keystroke would
+         * be a revision, a database write and a watch publish per letter. What
+         * is lost is a note that survives the process dying between typing and
+         * pressing Finish, which is a few seconds.
+         *
+         * Blank is null: "the user wrote nothing" and "there was nowhere to
+         * write" should not be different values in the history.
+         */
+        val note: String? = null,
+
+        /**
+         * §3's perceived effort for the whole workout, 1-10, or null.
+         *
+         * Per session and not per set. `SetOutcome.rpe` and this command's
+         * sibling `CompleteSet.rpe` are a different question — how hard one set
+         * was — and remain unwritten; asking it eight times a workout is how it
+         * stops being answered honestly.
+         */
+        val effort: Int? = null,
     ) : SessionCommand
 
     /** Give up. Everything recorded so far is kept. */

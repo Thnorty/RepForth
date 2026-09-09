@@ -110,6 +110,27 @@ data class WorkoutSessionEntity(
     @ColumnInfo(name = "ended_at")
     val endedAt: Long?,
 
+    /**
+     * What the user wrote about this workout, or null.
+     *
+     * On the session rather than on each exercise, which is the smaller of the
+     * two shapes §3's "notes" could have taken and the one chosen: a note about
+     * one exercise says so in its own words. It is written once, when the
+     * workout is finished, so there is no per-keystroke write here.
+     */
+    @ColumnInfo(name = "note")
+    val note: String?,
+
+    /**
+     * How hard the whole workout felt (§3), 1-10, or null.
+     *
+     * Beside [note] because it is the same question asked two ways and written
+     * at the same moment. `set_record.rpe` is a *different* question — how hard
+     * one set was — and stays unwritten; it is reserved rather than forgotten.
+     */
+    @ColumnInfo(name = "effort")
+    val effort: Int?,
+
     @ColumnInfo(name = "revision")
     val revision: Long,
 
