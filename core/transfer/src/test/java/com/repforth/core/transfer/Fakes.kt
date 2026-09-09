@@ -4,11 +4,11 @@ import com.repforth.core.ai.ProviderRepository
 import com.repforth.core.datastore.ProviderSettingsDataSource
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.testing.FakePreferencesStore
+import com.repforth.core.testing.FakeProfiles
 import com.repforth.core.testing.InMemorySecretStore
 import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
-import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.userdata.UserDataTransaction
@@ -23,26 +23,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
  * Real enough to be worth testing against: they replace by id the way the Room
  * implementations do, so "import a plan that already exists" behaves here as it
  * will on a device.
+ *
+ * The profile repository is not among them: it is `core:testing`'s shared
+ * `FakeProfiles`, which this file used to duplicate.
  */
-
-internal class FakeProfiles : ProfileRepository {
-    var stored: UserProfile? = null
-    private val flow = MutableStateFlow<UserProfile?>(null)
-
-    override fun observeProfile(): Flow<UserProfile?> = flow
-
-    override suspend fun getProfile(): UserProfile? = stored
-
-    override suspend fun save(profile: UserProfile) {
-        stored = profile
-        flow.value = profile
-    }
-
-    override suspend fun deleteAll() {
-        stored = null
-        flow.value = null
-    }
-}
 
 internal class FakeTemplates : TemplateRepository {
     val stored = mutableListOf<WorkoutTemplate>()

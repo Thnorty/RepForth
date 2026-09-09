@@ -10,7 +10,7 @@ import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutTemplate
-import com.repforth.core.userdata.ProfileRepository
+import com.repforth.core.testing.FakeProfiles
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.workout.SessionPhase
@@ -121,7 +121,7 @@ class TodayViewModelTest {
 
     @Test
     fun `the training goal from onboarding reaches the week card`() = runTest(dispatcher) {
-        profiles.profile.value = profile(daysPerWeek = 4)
+        profiles.profile = profile(daysPerWeek = 4)
 
         val state = state()
 
@@ -214,7 +214,7 @@ class TodayViewModelTest {
     @Test
     fun `the week card counts against the active week, not the profile`() =
         runTest(dispatcher) {
-            profiles.profile.value = profile(daysPerWeek = 3)
+            profiles.profile = profile(daysPerWeek = 3)
             weeks.active.value = TrainingWeek(
                 id = "w1",
                 name = "Seven",
@@ -230,7 +230,7 @@ class TodayViewModelTest {
     @Test
     fun `the week card falls back to the profile when no week is active`() =
         runTest(dispatcher) {
-            profiles.profile.value = profile(daysPerWeek = 4)
+            profiles.profile = profile(daysPerWeek = 4)
 
             assertEquals(4, state().weeklyTarget)
         }
@@ -303,18 +303,6 @@ private class FakeTemplates : TemplateRepository {
     override suspend fun save(template: WorkoutTemplate) = Unit
 
     override suspend fun delete(id: String) = Unit
-
-    override suspend fun deleteAll() = Unit
-}
-
-private class FakeProfiles : ProfileRepository {
-    val profile = MutableStateFlow<UserProfile?>(null)
-
-    override fun observeProfile(): Flow<UserProfile?> = profile
-
-    override suspend fun getProfile(): UserProfile? = profile.value
-
-    override suspend fun save(profile: UserProfile) = Unit
 
     override suspend fun deleteAll() = Unit
 }

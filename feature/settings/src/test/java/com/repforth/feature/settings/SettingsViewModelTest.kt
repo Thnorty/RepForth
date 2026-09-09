@@ -10,13 +10,14 @@ import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.testing.FakePreferencesStore
+import com.repforth.core.testing.FakeProfiles
+import com.repforth.core.testing.sampleProfile
 import com.repforth.core.transfer.DataTransfer
 import com.repforth.core.transfer.ExportDocument
 import com.repforth.core.transfer.ImportFailure
 import com.repforth.core.transfer.ImportOutcome
 import com.repforth.core.transfer.ImportPreview
 import com.repforth.core.transfer.ImportResult
-import com.repforth.core.userdata.ProfileRepository
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,7 +61,7 @@ class SettingsViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var preferences: UserPreferencesDataSource
-    private lateinit var profileRepository: FakeProfileRepository
+    private lateinit var profileRepository: FakeProfiles
     private lateinit var transfer: RecordingTransfer
     private lateinit var mediaCache: MediaCacheManager
     private lateinit var exercises: FakeExercises
@@ -71,7 +72,15 @@ class SettingsViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
-        profileRepository = FakeProfileRepository()
+        profileRepository = FakeProfiles(
+            sampleProfile(
+                availableEquipment = setOf(
+                    Equipment.BODY_WEIGHT,
+                    Equipment.BARBELL,
+                    Equipment.DUMBBELL,
+                ),
+            ),
+        )
         transfer = RecordingTransfer()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "repforth_test_media_${System.currentTimeMillis()}")
         cacheDir.mkdirs()
@@ -509,32 +518,6 @@ class SettingsViewModelTest {
     )
 }
 
-private class FakeProfileRepository : ProfileRepository {
-    private val profileFlow = MutableStateFlow<UserProfile?>(
-        UserProfile(
-            id = "user-1",
-            goal = TrainingGoal.STRENGTH,
-            experience = ExperienceLevel.INTERMEDIATE,
-            trainingDaysPerWeek = 4,
-            sessionLengthMs = 45 * 60_000L,
-            availableEquipment = setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL, Equipment.DUMBBELL),
-            preferredMuscles = emptySet(),
-            exclusions = emptySet(),
-        ),
-    )
-
-    override fun observeProfile(): Flow<UserProfile?> = profileFlow
-
-    override suspend fun getProfile(): UserProfile? = profileFlow.value
-
-    override suspend fun save(profile: UserProfile) {
-        profileFlow.value = profile
-    }
-
-    override suspend fun deleteAll() {
-        profileFlow.value = null
-    }
-}
 
 private class RecordingTransfer : DataTransfer {
     val imported = mutableListOf<ExportDocument>()

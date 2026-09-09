@@ -2,7 +2,6 @@ package com.repforth.feature.builder
 
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.testing.FakePreferencesStore
-import com.repforth.core.ai.AI_WORKOUT_SCHEMA_VERSION
 import com.repforth.core.ai.AiGenerationFailureReason
 import com.repforth.core.ai.AiPlannedDay
 import com.repforth.core.ai.AiPlannedExercise
@@ -32,11 +31,11 @@ import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
 import com.repforth.core.model.TrainingGoal
-import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.model.TrainingWeek
-import com.repforth.core.userdata.ProfileRepository
+import com.repforth.core.testing.FakeProfiles
+import com.repforth.core.testing.sampleProfile
 import com.repforth.core.userdata.TemplateRepository
 import com.repforth.core.userdata.WeekRepository
 import com.repforth.core.rules.GenerationRequest
@@ -84,7 +83,18 @@ class BuilderViewModelTest {
         templates = RecordingTemplateRepository()
         weeks = RecordingWeekRepository()
         catalog = FakeExercises()
-        profiles = FakeProfiles()
+        // The shape this module's tests were written against: bodyweight
+        // only, three days, and the session ceiling they assert on. Spelled out
+        // now that the fake no longer carries a default of its own -- which is
+        // the point, since each of the six copies used to carry a different one.
+        profiles = FakeProfiles(
+            sampleProfile(
+                id = "p",
+                trainingDaysPerWeek = 3,
+                sessionLengthMinutes = FAKE_CEILING_MINUTES.toInt(),
+                availableEquipment = setOf(Equipment.BODY_WEIGHT),
+            ),
+        )
         generator = FakeWorkoutGenerator()
         viewModel = newViewModel()
     }
@@ -1388,7 +1398,7 @@ class BuilderExerciseDetailTest {
         viewModel = BuilderViewModel(
             RecordingTemplateRepository(),
             catalog,
-            FakeProfiles(),
+            FakeProfiles(sampleProfile(id = "p")),
             FakeWorkoutGenerator(),
             AlwaysConfigured,
             RecordingWeekRepository(),
@@ -1494,37 +1504,6 @@ private class FakeWorkoutGenerator : AiWorkoutGenerationService {
             },
             attempts = if (failure == null) 0 else 1,
             providerFailure = failure,
-        )
-    }
-}
-
-private class FakeProfiles : ProfileRepository {
-    /** Null models someone who has not finished onboarding. */
-    var profile: UserProfile? = DEFAULT_PROFILE
-
-    override fun observeProfile(): Flow<UserProfile?> = MutableStateFlow(profile)
-
-    override suspend fun getProfile(): UserProfile? = profile
-
-    val saved = mutableListOf<UserProfile>()
-
-    override suspend fun save(profile: UserProfile) {
-        saved += profile
-        this.profile = profile
-    }
-
-    override suspend fun deleteAll() = Unit
-
-    private companion object {
-        val DEFAULT_PROFILE = UserProfile(
-            id = "p",
-            goal = com.repforth.core.model.TrainingGoal.STRENGTH,
-            experience = com.repforth.core.model.ExperienceLevel.INTERMEDIATE,
-            trainingDaysPerWeek = 3,
-            sessionLengthMs = FAKE_CEILING_MINUTES * 60_000L,
-            availableEquipment = setOf(Equipment.BODY_WEIGHT),
-            preferredMuscles = emptySet(),
-            exclusions = emptySet(),
         )
     }
 }

@@ -20,6 +20,7 @@ import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.testing.FakeProfiles
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
@@ -79,7 +80,7 @@ class DataTransferTest {
     )
 
     private suspend fun seed() {
-        profiles.save(sampleProfile())
+        profiles.save(roundTripProfile())
         templates.save(sampleTemplate("plan-1", "Push day"))
         templates.save(sampleTemplate("plan-2", "Pull day"))
         weeks.save(
@@ -141,8 +142,8 @@ class DataTransferTest {
 
         assertEquals(
             "The profile must survive the file, field for field",
-            sampleProfile(),
-            restoredProfiles.stored,
+            roundTripProfile(),
+            restoredProfiles.profile,
         )
         assertEquals(
             templates.stored.sortedBy { it.id },
@@ -294,13 +295,13 @@ class DataTransferTest {
     @Test
     fun `the preview counts what arrives and what goes`() = runTest {
         templates.save(sampleTemplate("plan-1", "Existing"))
-        profiles.save(sampleProfile())
+        profiles.save(roundTripProfile())
 
         val other = emptyTransfer()
         other.import(
             ExportDocument(
                 exportedAt = 0,
-                profile = sampleProfile().toDto(),
+                profile = roundTripProfile().toDto(),
                 templates = listOf(
                     sampleTemplate("plan-1", "Incoming").toDto(),
                     sampleTemplate("plan-9", "Brand new").toDto(),
@@ -369,7 +370,7 @@ class DataTransferTest {
         )
         assertTrue("A week the file does not contain must go", weeks.stored.isEmpty())
         assertTrue("History the file does not contain must go", sessions.stored.isEmpty())
-        assertEquals("And a profile the file does not carry", null, profiles.stored)
+        assertEquals("And a profile the file does not carry", null, profiles.profile)
     }
 
     /** Twice is the same as once, which is what makes replacement predictable. */
@@ -379,18 +380,18 @@ class DataTransferTest {
         other.import(
             ExportDocument(
                 exportedAt = 0,
-                profile = sampleProfile().toDto(),
+                profile = roundTripProfile().toDto(),
                 templates = listOf(sampleTemplate("p1", "Legs").toDto()),
             ),
         )
         val file = other.export()
 
         transfer.import((transfer.read(file) as ImportOutcome.Ready).document)
-        val afterFirst = templates.stored.toList() to profiles.stored
+        val afterFirst = templates.stored.toList() to profiles.profile
         transfer.import((transfer.read(file) as ImportOutcome.Ready).document)
 
         assertEquals(afterFirst.first, templates.stored.toList())
-        assertEquals(afterFirst.second, profiles.stored)
+        assertEquals(afterFirst.second, profiles.profile)
     }
 
     /**
@@ -413,7 +414,7 @@ class DataTransferTest {
             templates.stored.toList(),
             weeks.stored.toList(),
             sessions.stored.toList(),
-            profiles.stored,
+            profiles.profile,
         )
 
         val failing = DefaultDataTransfer(
@@ -433,7 +434,7 @@ class DataTransferTest {
         assertEquals("Plans must be untouched", before.templates, templates.stored.toList())
         assertEquals("Weeks must be untouched", before.weeks, weeks.stored.toList())
         assertEquals("History must be untouched", before.sessions, sessions.stored.toList())
-        assertEquals("The profile must be untouched", before.profile, profiles.stored)
+        assertEquals("The profile must be untouched", before.profile, profiles.profile)
     }
 
     // ---- What the file as a whole has to be, beyond one record at a time ----
@@ -571,7 +572,7 @@ class DataTransferTest {
 
         transfer.deleteWorkoutData()
 
-        assertEquals(null, profiles.stored)
+        assertEquals(null, profiles.profile)
         assertTrue(templates.stored.isEmpty())
         assertTrue(weeks.stored.isEmpty())
         assertTrue(sessions.stored.isEmpty())
@@ -589,7 +590,7 @@ class DataTransferTest {
 
         transfer.resetApp()
 
-        assertEquals(null, profiles.stored)
+        assertEquals(null, profiles.profile)
         assertTrue(templates.stored.isEmpty())
         assertTrue(weeks.stored.isEmpty())
         assertTrue(sessions.stored.isEmpty())
@@ -670,7 +671,16 @@ class DataTransferTest {
 private fun jsonOf(document: ExportDocument): String =
     Json { encodeDefaults = true }.encodeToString(document)
 
-private fun sampleProfile() = UserProfile(
+/**
+ * A profile with something in every field worth carrying.
+ *
+ * Deliberately not `core:testing`'s `sampleProfile`, and renamed away from it so
+ * the two cannot be confused: this one exists to make an export/import round
+ * trip prove something. Preferred muscles and an exclusion are populated because
+ * a fixture of empty sets round-trips perfectly whether or not the code carries
+ * them.
+ */
+private fun roundTripProfile() = UserProfile(
     id = "profile-1",
     goal = TrainingGoal.HYPERTROPHY,
     experience = ExperienceLevel.INTERMEDIATE,

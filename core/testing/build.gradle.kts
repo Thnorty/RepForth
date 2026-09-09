@@ -22,6 +22,18 @@ dependencies {
     // their own fixtures for exactly this reason.
     api(project(":core:secrets"))
 
+    // FakeProfiles implements ProfileRepository, so consumers see those types.
+    //
+    // This is the heaviest dependency here -- it brings `core:database` and
+    // therefore Room onto every test classpath that uses this module, including
+    // ones with nothing to do with profiles. Accepted because the alternative,
+    // a Gradle test fixture on `core:user-data`, produces no Kotlin compilation
+    // in this AGP pairing and so does not work at all.
+    //
+    // `core:user-data` must never depend on this module, or the two form a
+    // cycle. Its own tests use plain fakes for that reason.
+    api(project(":core:user-data"))
+
     // `api` so the shared RoborazziOptions below is usable by the modules that
     // consume it. Roborazzi is a test library and this module is a test
     // fixture, so it goes no further than test classpaths -- and like JUnit
@@ -36,4 +48,11 @@ dependencies {
     // take their version from it.
     api(platform(libs.androidx.compose.bom))
     api(libs.androidx.compose.ui.test.junit4)
+
+    // This module has tests of its own, which is unusual for a fixture and is
+    // deliberate: FakeProfiles replaced six copies, two of which were weaker
+    // than the repository they stood in for, so its contract is asserted here
+    // rather than trusted. `testImplementation`, because a consumer needs the
+    // fake and not the tests of it.
+    testImplementation(libs.kotlinx.coroutines.test)
 }
