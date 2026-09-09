@@ -2,6 +2,7 @@ package com.repforth.wear
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -92,6 +93,32 @@ class RestScreenComposeTest {
         assertEquals(emptyList<WearAction>(), sent)
     }
 
+    /**
+     * A paused rest offers the way out of the pause, not a skip.
+     *
+     * The engine refuses a `SkipRest` during a pause, so the button that was
+     * here would have done nothing — and resuming is the only way forward. This
+     * is the screen half of the paused-rest defect found on hardware; the other
+     * half was that the wrist never reached this screen at all.
+     */
+    @Test
+    fun `a paused rest offers resume rather than skip`() {
+        render(remainingSeconds = 25, paused = true)
+
+        assertEquals(0, compose.onAllNodesWithText(SKIP_REST).fetchSemanticsNodes().size)
+        compose.onNodeWithText(RESUME).performClick()
+
+        assertEquals(listOf(WearAction.Resume), sent)
+    }
+
+    /** And the countdown is still shown, frozen at what is owed. */
+    @Test
+    fun `a paused rest still shows what it owes`() {
+        render(remainingSeconds = 25, paused = true)
+
+        compose.onNodeWithText("25").assertIsDisplayed()
+    }
+
     @Test
     fun `every control is still reachable at 200 percent font scale`() {
         render(remainingSeconds = 45, fontScale = 2f)
@@ -106,6 +133,7 @@ class RestScreenComposeTest {
         remainingSeconds: Int?,
         enabled: Boolean = true,
         fontScale: Float = 1f,
+        paused: Boolean = false,
     ) {
         RuntimeEnvironment.setQualifiers("+$ENGLISH")
         RuntimeEnvironment.setFontScale(fontScale)
@@ -113,7 +141,7 @@ class RestScreenComposeTest {
         compose.setContent {
             MaterialTheme {
                 RestScreen(
-                    state = state(),
+                    state = state(paused),
                     remainingSeconds = remainingSeconds,
                     enabled = enabled,
                     onAction = { sent += it },
@@ -122,10 +150,10 @@ class RestScreenComposeTest {
         }
     }
 
-    private fun state() = WearWorkoutState(
+    private fun state(paused: Boolean = false) = WearWorkoutState(
         sessionId = "today",
         revision = 7,
-        phase = WearPhase.Rest,
+        phase = if (paused) WearPhase.Paused else WearPhase.Rest,
         exerciseId = "0025",
         exerciseName = "front plank",
         setNumber = 1,
@@ -139,6 +167,7 @@ class RestScreenComposeTest {
 
     private companion object {
         const val SKIP_REST = "Skip rest"
+        const val RESUME = "Resume"
         const val NEXT = "Next exercise"
     }
 }

@@ -1,6 +1,7 @@
 package com.repforth.feature.session
 
 import android.content.Context
+import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import com.google.android.gms.wearable.Asset
@@ -116,6 +117,38 @@ class WearBridge @Inject constructor(
             // watch is doing, and a failure here means one device is out of
             // range -- not that the set the user just finished should be lost.
             Log.w(TAG, "Could not publish workout state to the watch", e)
+        }
+    }
+
+    /**
+     * Take the workout off the watch, because there is no longer one.
+     *
+     * **The Data Layer keeps the last value, which is the whole reason state
+     * goes over it — and the reason something has to remove that value.** A data
+     * item is not a message: once written it stays until it is overwritten or
+     * deleted, so a watch whose phone finished a workout an hour ago still finds
+     * it there on the next cold start and shows it as live.
+     *
+     * Found on hardware. The wrist was showing a paused workout from four days
+     * earlier, and pressing its buttons did nothing — correctly, since the phone
+     * refuses commands for a session it is not running, but from the outside it
+     * is a remote that has stopped working.
+     *
+     * The watch has always expected this: `WearStateListenerService` handles
+     * `TYPE_DELETED` and `WearWorkoutStore.onDataItem` treats an empty payload as
+     * "the phone deleted it". Both were written against a deletion nobody
+     * performed — the same shape as the exclusions with no editor and the watch
+     * action with no button, one layer down.
+     */
+    suspend fun clear() {
+        try {
+            dataClient.deleteDataItems(Uri.parse("wear://*$PATH")).await()
+            Log.d(TAG, "Cleared the published workout")
+        } catch (e: Exception) {
+            // Never fatal, like publish. §15: the phone's workout does not
+            // depend on the watch hearing about it, and this runs as a session
+            // ends -- the least useful moment to take anything down.
+            Log.w(TAG, "Could not clear the published workout", e)
         }
     }
 

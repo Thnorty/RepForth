@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.repforth.core.wearprotocol.WearAction
 import com.repforth.core.wearprotocol.WearPhase
 import com.repforth.core.wearprotocol.WearWorkoutState
+import com.repforth.core.wearprotocol.restRemainingMs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -44,6 +45,19 @@ data class WearUiState(
             !phoneReachable -> WearScreen.Disconnected
             workout == null -> WearScreen.NoWorkout
             workout.phase == WearPhase.Rest -> WearScreen.Rest
+            // A paused rest is still a rest.
+            //
+            // `Paused` used to fall through to the exercise screen, so pausing
+            // during a rest sent the wrist to a set that was not happening —
+            // with a Resume button on it, which made it read as a paused
+            // *exercise*. Seen on hardware and reported as exactly that.
+            //
+            // The snapshot already knows which clock was running: the phone
+            // keeps what a paused rest still owes, and the projection sends it.
+            // So no new field was needed to tell them apart — only for this to
+            // ask.
+            workout.phase == WearPhase.Paused && workout.restRemainingMs() != null ->
+                WearScreen.Rest
             workout.phase == WearPhase.Finished -> WearScreen.Finished
             workout.phase == WearPhase.Abandoned -> WearScreen.Finished
             else -> WearScreen.Exercise

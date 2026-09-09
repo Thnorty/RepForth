@@ -3747,6 +3747,66 @@ scales: a five-row list plus a multi-line field is the densest thing this screen
 draws, and Turkish runs 15-30% longer. The active-screen goldens came back
 byte-identical, which is what says the logging path really is untouched.
 
+### 2026-09-09 — the watch on hardware: four defects, none of them findable on the JVM
+
+The Wear feature set ran on a real wrist for the first time. Most of it worked —
+thumbnail, attribution, timed countdown, the zero-time buzz with the app closed,
+every control, the disconnected screen, the watch-face entry. Four things did
+not, and **three of them are the same bug wearing different clothes: the watch
+showing something that is not happening.**
+
+That is the class §11's design is meant to make impossible. The watch has no
+engine precisely so it cannot be wrong about the workout, only out of date. These
+were a third thing — wrong about the workout while perfectly up to date.
+
+**1. A workout that ended stayed on the wrist, for days.** Reported as "it was
+stuck on an old workout"; the log showed `revision 6, phase Paused` from four
+days earlier, re-read on every app open. `WorkoutService` reaches a terminal
+phase, calls `stopSelf()`, and **nothing ever removes the published item**. The
+Data Layer keeps the last value — that is the entire reason state goes over it,
+and the reason something has to delete it.
+
+The sharp part: the watch has always expected that deletion.
+`WearStateListenerService` had a `TYPE_DELETED` branch and `WearWorkoutStore`
+treats an empty payload as "the phone deleted it". Both were written against a
+deletion nobody performed — the exclusions-with-no-editor shape, one layer down.
+
+**2. The deletion was then ignored.** `TYPE_DELETED -> Unit`, on the reasoning
+that a terminal phase had already been published so the finish was already shown.
+Half true, wrong conclusion: the wrist kept "Workout finished" until the app was
+closed and reopened, and an **abandoned** workout — which publishes no terminal
+phase at all, it just stops — left the exercise screen up with live-looking
+buttons. Reported as "End without finishing doesn't end the workout on the
+watch".
+
+**3. A paused rest drew a set.** `WearPhase.Paused` fell through to the exercise
+screen, so pausing during a rest showed a set that was not happening, with a
+Resume button that made it read as a paused *exercise*. This was backlog 14's
+screen half, left open on 2026-09-08 with the note that it needed a §11 screen
+decision. It needed no protocol field either: **the answer was already on the
+wire.** A pause has no end, so the phone drops the deadline and keeps what was
+owed — of the two clocks, only the one that was running has a remainder. Nothing
+had asked.
+
+**4. The round display clipped the ends of the column.** 12dp of vertical padding
+is not enough on a circle: the thumbnail at the top came back cut, and so did the
+first and last buttons. The middle of the screen is 240dp wide and the last rows
+are not. 28dp now, which costs nothing but scroll travel.
+
+**What the goldens could and could not do.** Fifteen of them, across three watch
+shapes, and they caught none of this. Every one renders a screen that has
+*already been chosen*, so a `when` picking the wrong screen is invisible to all
+of them — and the clipping is a property of a real round display that a square
+render with round qualifiers does not reproduce. `WearScreenChoiceTest` now
+covers the choice itself, including the pair that stops the fix over-reaching: a
+paused *set* is still a set.
+
+**And one thing that was right.** The four-day-old watch build read the new
+phone's payload with no "unreadable state" warning anywhere in the log, including
+three fields it has never heard of. That is the split-version promise §11 makes,
+holding on hardware — the reason the rest deadline's wire key was deliberately
+not renamed in #43. That test is spent now; the watch has been updated.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3813,12 +3873,10 @@ byte-identical, which is what says the logging path really is untouched.
 13. ~~**The watch knows nothing about a timed set.**~~ Done 2026-09-08. The
    countdown, the duration target and the zero-time haptic all cross now, and
    the Complete button the phone would have refused is gone.
-14. ~~**The watch shows no remainder on a paused rest.**~~ Mostly done
-   2026-09-08: the remainder crosses, because the projection rebuilds both
-   deadlines from the phase-aware remainder rather than the raw field. What is
-   left is a screen question, not a protocol one — `WearPhase.Paused` falls
-   through to the exercise screen, so a paused rest is right on the wire and
-   invisible on the display. A paused timed *set* is right in both.
+14. ~~**The watch shows no remainder on a paused rest.**~~ Done. The wire half
+   landed 2026-09-08; the screen half landed 2026-09-09 after it was seen on
+   hardware. No protocol field was needed — the phone keeps only the clock that
+   was running, so the snapshot already said which, and nothing had asked.
 15. **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a

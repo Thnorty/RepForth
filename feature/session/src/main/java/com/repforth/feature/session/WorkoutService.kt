@@ -40,6 +40,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
 
 /**
  * Keeps a running workout alive while the app is not on screen (§10).
@@ -132,6 +134,18 @@ class WorkoutService : Service() {
             controller.restore()
             controller.state.collect { snapshot ->
                 if (snapshot == null || snapshot.phase.isTerminal) {
+                    // The watch is told the workout is over by the snapshot
+                    // going away, which is what its listener has always expected
+                    // and what nothing used to do. Without this the Data Layer
+                    // keeps the last value indefinitely and a wrist shows a
+                    // finished workout as live -- seen on hardware, four days
+                    // stale.
+                    //
+                    // `NonCancellable` because `stopSelf()` below leads to
+                    // `onDestroy`, which cancels this scope. A delete that is
+                    // cancelled halfway leaves exactly the item it was removing.
+                    withContext(NonCancellable) { bridge.clear() }
+
                     // §10: do not keep a service alive when no workout is
                     // active. Stopping here rather than waiting to be told
                     // means the only way to leak one is to never reach a

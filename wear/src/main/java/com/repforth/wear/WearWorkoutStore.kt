@@ -156,6 +156,22 @@ class WearWorkoutStore @Inject constructor(
         }
     }
 
+    /**
+     * The phone removed the workout, so the watch has none.
+     *
+     * Clears the snapshot, the thumbnail and the watch-face chip together —
+     * three things that were all about a session that no longer exists. Leaving
+     * any of them is the stale-state failure this whole path exists to avoid:
+     * a chip that reopens a finished workout, or an exercise screen whose
+     * buttons the phone will refuse.
+     */
+    fun onWorkoutGone() {
+        Log.d(TAG, "The phone cleared the workout")
+        _state.value = null
+        onThumbnailAsset(null)
+        ongoing.update(null)
+    }
+
     /** Read whatever is already there, for a screen opening cold. */
     suspend fun refresh() {
         try {
