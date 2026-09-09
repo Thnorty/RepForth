@@ -95,7 +95,11 @@ class BatchSummaryTest {
             .summaries(listOf(ExerciseId("a"), ExerciseId("b")))
 
         assertEquals(setOf(ExerciseId("a"), ExerciseId("b")), result.keys)
-        assertEquals("Exercise a", result[ExerciseId("a")]?.name)
+        // "Exercise a" in the row, "Exercise A" out: names are title-cased on
+        // the way to a domain object, because the dataset stores all 1,324 of
+        // them in lower case. The stored value is untouched -- see
+        // `exerciseDisplayName`.
+        assertEquals("Exercise A", result[ExerciseId("a")]?.name)
     }
 
     /**

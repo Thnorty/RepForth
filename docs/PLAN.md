@@ -3807,6 +3807,30 @@ three fields it has never heard of. That is the split-version promise §11 makes
 holding on hardware — the reason the rest deadline's wire key was deliberately
 not renamed in #43. That test is spent now; the watch has been updated.
 
+### 2026-09-09 — exercise names read as names
+
+All 1,324 upstream names are lower case — "barbell decline wide-grip press" —
+which is fine as data and looks like a mistake in a heading. Title-cased on the
+way to a domain object, which is the one place the catalog, the planner's
+candidates and the session's summaries all pass through. The stored value is
+untouched, so search still matches what the database holds, and the watch gets
+it for free because its names come from the phone's projection.
+
+Two details, both measured against the data rather than guessed:
+
+**Hyphens and brackets start words.** 163 of the names are hyphenated and 143
+carry a parenthesised qualifier, so a rule that broke only on spaces would have
+left "Wide-grip" and "(male)" half-capitalised. There are **no apostrophes** in
+any of the 1,324, which is what makes that rule safe — `'` as a word break gives
+"Farmer'S".
+
+**`Char.uppercaseChar`, never `String.uppercase()`.** The string form is
+locale-sensitive: in Turkish, which this app ships, "i" upper-cases to "İ". The
+names are English, so "incline" would have read as "İncline" for half the app's
+users and for nobody testing in English. The character form is locale-invariant.
+`ExerciseNameTest` sets the default locale to Turkish and asserts it, because
+that is the only way this failure is visible from a test machine.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

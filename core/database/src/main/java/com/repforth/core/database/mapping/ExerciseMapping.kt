@@ -10,6 +10,7 @@ import com.repforth.core.model.Language
 import com.repforth.core.model.LocalizedInstructions
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.exerciseDisplayName
 
 /**
  * Entity to domain. The only direction that exists — nothing outside this module
@@ -25,7 +26,7 @@ fun ExerciseWithDetails.toDomain(
     animation: MediaRef = MediaRef.Unavailable,
 ): Exercise = Exercise(
     id = ExerciseId(exercise.id),
-    name = exercise.name,
+    name = exerciseDisplayName(exercise.name),
     bodyPart = exercise.bodyPart.toEnum(BodyPart::fromSlug, "body part"),
     target = exercise.target.toEnum(Muscle::fromSlug, "muscle"),
     muscleGroup = exercise.muscleGroup.toEnum(Muscle::fromSlug, "muscle"),

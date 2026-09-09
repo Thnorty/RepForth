@@ -11,6 +11,7 @@ import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.exerciseDisplayName
 import com.repforth.core.media.MediaResolver
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -107,7 +108,7 @@ internal class RoomExerciseRepository @Inject constructor(
  */
 private fun ExerciseSummaryRow.toSummary() = ExerciseSummary(
     id = ExerciseId(id),
-    name = name,
+    name = exerciseDisplayName(name),
     bodyPart = BodyPart.fromSlug(bodyPart) ?: error("Unknown body part '$bodyPart'"),
     target = Muscle.fromSlug(target) ?: error("Unknown muscle '$target'"),
     equipment = Equipment.fromSlug(equipment) ?: error("Unknown equipment '$equipment'"),
@@ -115,7 +116,7 @@ private fun ExerciseSummaryRow.toSummary() = ExerciseSummary(
 
 private fun ExerciseCandidateRow.toCandidate(secondary: List<Muscle>) = ExerciseCandidate(
     id = ExerciseId(id),
-    name = name,
+    name = exerciseDisplayName(name),
     bodyPart = BodyPart.fromSlug(bodyPart) ?: error("Unknown body part '$bodyPart'"),
     target = Muscle.fromSlug(target) ?: error("Unknown muscle '$target'"),
     muscleGroup = Muscle.fromSlug(muscleGroup) ?: error("Unknown muscle '$muscleGroup'"),
