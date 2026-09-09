@@ -209,7 +209,11 @@ class SessionScreenshotTest {
                 id = "e0",
                 exerciseId = ExerciseId("0025"),
                 position = 0,
-                target = ExerciseTarget.Reps(sets = 4, reps = 12, weightKg = 60.0),
+                // A half-kilo on purpose. Whole weights format identically in
+                // every language, so a fixture of 60.0 rendered the same picture
+                // in English and Turkish and proved nothing about §13's decimal
+                // separator -- which is exactly what these two goldens are for.
+                target = ExerciseTarget.Reps(sets = 4, reps = 12, weightKg = 62.5),
                 restMs = 90_000L,
             ),
             SessionExercise(

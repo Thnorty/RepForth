@@ -2,6 +2,11 @@ package com.repforth.core.designsystem.theme
 
 import androidx.compose.runtime.compositionLocalOf
 import com.repforth.core.model.UnitSystem
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
@@ -45,17 +50,45 @@ fun UnitSystem.toKilograms(value: Double): Double = when (this) {
 }
 
 /**
- * A weight as text, without the unit.
+ * A weight as text, without the unit, written the way the reader writes numbers.
  *
  * Whole numbers lose the decimal: nobody writes their bench as 60.0, and a
  * trailing zero in a field the user is about to edit is one more character to
  * delete.
+ *
+ * **The separator follows [locale].** §13 makes Turkish first-class, and Turkish
+ * writes twelve and a half as `12,5`. Reading it back was fixed first — a comma
+ * typed on a Turkish keyboard used to become `125` and get logged without a word
+ * — and this is the other half: the app accepted a comma and then answered with
+ * a period.
+ *
+ * [locale] is a parameter rather than [java.util.Locale.getDefault], which would
+ * be wrong here in a way that is hard to see. `LocalizedContent` scopes the
+ * chosen language to the composition and deliberately does *not* set the JVM
+ * default — doing that from inside composition is a global mutation on a shared
+ * process. So the default reports the **device's** locale, and a Turkish user on
+ * an English phone would get a period back for the comma they had just typed.
  */
-fun UnitSystem.formatWeight(kg: Double): String {
+fun UnitSystem.formatWeight(kg: Double, locale: Locale): String {
     val shown = fromKilograms(kg)
     val rounded = (shown * 10).roundToInt() / 10.0
-    return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
+    if (rounded % 1.0 == 0.0) return rounded.toInt().toString()
+
+    // `0.#` rather than the default pattern, because the default groups: a gym
+    // weight is three digits at most, and "1.000" for a thousand would read as
+    // one in the very locale this exists for.
+    return DecimalFormat("0.#", DecimalFormatSymbols.getInstance(locale)).format(rounded)
 }
+
+/**
+ * The same, in the language the composition is being drawn in.
+ *
+ * `LocalConfiguration` is what `LocalizedContent` overrides, so this follows the
+ * app's own language setting rather than the device's.
+ */
+@Composable
+fun UnitSystem.formatWeight(kg: Double): String =
+    formatWeight(kg, LocalConfiguration.current.locales[0])
 
 /**
  * What a weight field currently holds.

@@ -1,6 +1,7 @@
 package com.repforth.core.designsystem.theme
 
 import com.repforth.core.model.UnitSystem
+import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -115,13 +116,70 @@ class WeightInputTest {
         assertEquals(0.9979, (entry as WeightEntry.Value).kg, 0.0001)
     }
 
+    // ---- The display half, which speaks the reader's language ----
+
+    /**
+     * §13's other half, and the one that took longer to land.
+     *
+     * A comma typed on a Turkish keyboard used to become `125` and get logged
+     * without a word. That was fixed in the parser; the app then went on
+     * *answering* with a period, so a Turkish user typed `12,5`, had it accepted,
+     * and was shown `12.5` back.
+     */
+    @Test
+    fun `Turkish writes the decimal with a comma`() {
+        assertEquals("12,5", UnitSystem.METRIC.formatWeight(12.5, TURKISH))
+    }
+
+    @Test
+    fun `English writes it with a period`() {
+        assertEquals("12.5", UnitSystem.METRIC.formatWeight(12.5, ENGLISH))
+    }
+
+    /** A whole weight has no separator to argue about, in either language. */
+    @Test
+    fun `a whole number is the same in both`() {
+        assertEquals("60", UnitSystem.METRIC.formatWeight(60.0, TURKISH))
+        assertEquals("60", UnitSystem.METRIC.formatWeight(60.0, ENGLISH))
+    }
+
+    /**
+     * No digit grouping, which is the trap in using a locale formatter at all.
+     *
+     * Turkish groups with a period, so a default format would write a thousand
+     * kilograms as "1.000" — which reads as *one* in exactly the locale this
+     * exists for. The pattern has no grouping for that reason.
+     */
+    @Test
+    fun `a large weight is not grouped`() {
+        assertEquals("1000", UnitSystem.METRIC.formatWeight(1000.0, TURKISH))
+        assertEquals("1000", UnitSystem.METRIC.formatWeight(1000.0, ENGLISH))
+    }
+
+    /**
+     * And the round trip holds in Turkish, which is what makes the pair safe.
+     *
+     * The parser accepts either separator, so a comma written here is read back
+     * as the same number. If it did not, a weight loaded into a field would be
+     * rewritten the moment it was displayed.
+     */
+    @Test
+    fun `a Turkish weight reads back as itself`() {
+        val text = UnitSystem.METRIC.formatWeight(12.5, TURKISH)
+        val read = UnitSystem.METRIC.readWeight(text)
+
+        assertEquals(12.5, (read as WeightEntry.Value).kg, 0.0001)
+    }
+
     @Test
     fun `what the display writes is what the parser reads back`() {
         // The two halves of the round trip live in this file and have to agree,
-        // or a weight loaded into a field would be rewritten on sight.
+        // or a weight loaded into a field would be rewritten on sight. Both
+        // languages, because the display half now differs between them.
         listOf(UnitSystem.METRIC, UnitSystem.IMPERIAL).forEach { units ->
             listOf(0.0, 2.5, 20.0, 60.0, 142.5).forEach { kg ->
-                val text = units.formatWeight(kg)
+                listOf(ENGLISH, TURKISH).forEach { locale ->
+                val text = units.formatWeight(kg, locale)
                 val read = units.readWeight(text)
                 assertEquals(
                     "$units round trip of $kg through \"$text\"",
@@ -131,7 +189,13 @@ class WeightInputTest {
                     // which is a tenth of a pound at worst.
                     0.05,
                 )
+                }
             }
         }
+    }
+
+    private companion object {
+        val ENGLISH: Locale = Locale.forLanguageTag("en")
+        val TURKISH: Locale = Locale.forLanguageTag("tr")
     }
 }
