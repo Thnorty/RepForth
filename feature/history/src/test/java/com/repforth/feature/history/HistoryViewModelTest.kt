@@ -12,7 +12,7 @@ import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.UserProfile
-import com.repforth.core.userdata.ProfileRepository
+import com.repforth.core.testing.FakeProfiles
 import com.repforth.core.userdata.SessionRepository
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -320,17 +319,4 @@ private class FakeExercises : ExerciseRepository {
                 equipment = Equipment.BARBELL,
             )
         }
-}
-
-/**
- * The fifth copy of this in the repo, which is four too many — the other four
- * are in `core:transfer`, `feature:builder`, `feature:home` and
- * `feature:settings`. Consolidating them into `core:testing` is worth doing and
- * is not this change.
- */
-private class FakeProfiles(private val profile: UserProfile?) : ProfileRepository {
-    override fun observeProfile(): Flow<UserProfile?> = flowOf(profile)
-    override suspend fun getProfile(): UserProfile? = profile
-    override suspend fun save(profile: UserProfile) = Unit
-    override suspend fun deleteAll() = Unit
 }

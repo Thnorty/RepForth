@@ -3909,6 +3909,47 @@ The limit that follows is now written into §8: the app checks that a plan is
 well-formed, legal against the user's exclusions, and not absurd. It does not
 check that the programming is good.
 
+### 2026-09-09 — one fake profile repository, not six (backlog 7)
+
+The backlog said five. There were **six**: it missed `FakeProfileRepository` in
+`feature:settings`, which had drifted far enough to be missed by a search for
+the name everything else used.
+
+**Two of them were weaker than the repository they stood in for**, which is the
+part that mattered — a fake that is more permissive than the real thing cannot
+fail a test wrongly, but it can let one pass that should not have:
+
+- one returned a **new** `MutableStateFlow` from every `observeProfile()` call,
+  so a collector never saw a later save. A view model that ignored a profile
+  change had nothing downstream to reveal it;
+- two made `save` a no-op, so a profile written during a test was not the
+  profile read back.
+
+Nothing was found broken behind them. That is not the same as nothing being
+broken behind them, and it is why this was worth doing rather than tidying.
+
+**Gradle test fixtures do not work here, and the failure is silent.** The tight
+answer was `testFixtures` on `core:user-data`, so only the modules that asked
+would pay for Room on their test classpath. In this AGP and Kotlin pairing the
+plugin creates no compilation for a `testFixtures` source set — no
+`compileDebugTestFixturesKotlin` task, no class file, and every import of it
+fails to resolve with nothing saying why. Measured, then backed out. The fake
+lives in `core:testing` beside `FakePreferencesStore` and `InMemorySecretStore`,
+and the cost is written down where it is paid: `core:testing` now carries
+`core:user-data`, which is the heaviest thing on that classpath.
+
+**`core:testing` has tests of its own now**, which is unusual for a fixture
+module and is the point: the two weaknesses above are asserted rather than
+trusted. Both were re-introduced and watched failing — the per-call flow fails
+one test, the no-op `save` fails three.
+
+`core:transfer` kept its own populated profile and it is now called
+`roundTripProfile`. It is not a duplicate: an export/import test needs every
+field carrying something, and a fixture of empty sets round-trips perfectly
+whether or not the code carries them. Renaming it was not cosmetic — the shared
+`sampleProfile` had been imported into that file and silently shadowed by the
+local one, so the import was doing nothing and reading as though it were.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3944,12 +3985,10 @@ check that the programming is good.
    of measured noise. It holds for Windows and this Ubuntu runner; a third
    platform, a Robolectric bump or a font change could close the gap, and the
    answer then is to re-measure rather than raise the number.
-7. **`FakeProfiles` exists five times, and they have drifted.** Measured while
-   adding the fifth: 21, 21, 6 and 11 lines, so they are no longer the same
-   fixture with the same name. Consolidating into `core:testing` means
-   reconciling four shapes, which is a change of its own rather than a rename —
-   this note previously said "nothing is wrong today", and that is no longer
-   quite true.
+7. ~~**`FakeProfiles` exists five times, and they have drifted.**~~ Done
+   2026-09-09, and there were six. See above — two of them were weaker than the
+   real repository, and the count was wrong because the sixth had drifted as far
+   as a different name.
 8. ~~**Nothing tests that the shell reaches the start gate.**~~ Done in D.3, as
    an instrumentation test on the managed emulator rather than the Robolectric
    one guessed at here — `:app` already had a working Hilt test graph, so no

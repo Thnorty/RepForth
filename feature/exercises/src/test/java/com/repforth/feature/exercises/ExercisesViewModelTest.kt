@@ -26,13 +26,10 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.MovementExclusion
-import com.repforth.core.model.UserProfile
-import com.repforth.core.userdata.ProfileRepository
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.repforth.core.testing.FakeProfiles
+import com.repforth.core.testing.sampleProfile
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -54,7 +51,7 @@ class ExercisesViewModelTest {
         Dispatchers.setMain(dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
         repository = FakeExerciseRepository()
-        profiles = FakeProfiles()
+        profiles = FakeProfiles(sampleProfile(availableEquipment = setOf(Equipment.BARBELL)))
         viewModel = ExercisesViewModel(repository, preferences, profiles)
     }
 
@@ -208,38 +205,3 @@ private class FakeExerciseRepository : ExerciseRepository {
         if (testSummary.id in ids) mapOf(testSummary.id to testSummary) else emptyMap()
 }
 
-
-/**
- * A profile in memory, for the exclude action.
- *
- * The fifth copy of this in the repo, and they have already drifted — 21, 21, 6
- * and 11 lines. Consolidating them into `core:testing` is real work rather than
- * a rename, because reconciling four different shapes is the job; it is recorded
- * in the plan as its own change rather than smuggled into this one.
- */
-internal class FakeProfiles(initial: UserProfile? = SAMPLE_PROFILE) : ProfileRepository {
-    private val flow = MutableStateFlow(initial)
-
-    override fun observeProfile(): Flow<UserProfile?> = flow
-
-    override suspend fun getProfile(): UserProfile? = flow.value
-
-    override suspend fun save(profile: UserProfile) {
-        flow.value = profile
-    }
-
-    override suspend fun deleteAll() {
-        flow.value = null
-    }
-}
-
-private val SAMPLE_PROFILE = UserProfile(
-    id = "user-1",
-    goal = TrainingGoal.STRENGTH,
-    experience = ExperienceLevel.INTERMEDIATE,
-    trainingDaysPerWeek = 4,
-    sessionLengthMs = 45 * 60_000L,
-    availableEquipment = setOf(Equipment.BARBELL),
-    preferredMuscles = emptySet(),
-    exclusions = emptySet(),
-)
