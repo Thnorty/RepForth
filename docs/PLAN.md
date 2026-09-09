@@ -3831,6 +3831,37 @@ users and for nobody testing in English. The character form is locale-invariant.
 `ExerciseNameTest` sets the default locale to Turkish and asserts it, because
 that is the only way this failure is visible from a test machine.
 
+### 2026-09-09 — a weight reads the way it was typed (backlog 11)
+
+R4 fixed reading a comma: `12,5` typed on a Turkish keyboard used to become
+`125` and get logged without a word. The display half was deferred, so the app
+accepted a comma and then answered with a period — and this closes it.
+
+**The trap is `Locale.getDefault()`, and it would have looked right.**
+`LocalizedContent` scopes the chosen language to the composition and deliberately
+does *not* set the JVM default, because doing that from inside composition is a
+global mutation on a shared process — its own kdoc says so. So the default
+reports the **device's** locale, and a Turkish user on an English phone would
+have got a period back for the comma they had just typed. The locale is a
+parameter, taken from `LocalConfiguration`, which is what `LocalizedContent`
+overrides.
+
+Two smaller things that only show up on contact with the data:
+
+- **No digit grouping.** Turkish groups with a period, so a default number
+  format writes a thousand kilograms as "1.000" — which reads as *one* in
+  exactly the locale this exists for.
+- **The builder compared formatted text with itself.** Its field normalised the
+  separator on the typed side only, which was enough while the formatter always
+  wrote a period. Once it writes what the locale writes, `12.5` versus a produced
+  `12,5` disagrees on every recomposition and rewrites the field forever. Both
+  sides now, or neither.
+
+The goldens caught none of this until the fixture was changed: whole weights
+format identically in every language, so `60.0` rendered the same picture in
+English and Turkish and proved nothing. It is `62.5` now, and the Turkish golden
+reads "62,5 kg".
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -3885,7 +3916,8 @@ that is the only way this failure is visible from a test machine.
    later service or watch command may write its old snapshot back. Source-derived
    from the review; nobody has made it happen yet. Unrelated to the transfer
    work — the mechanism is the live controller, not the file format.
-11. **Weights are displayed with a period in Turkish too.** §13 asks for
+11. ~~**Weights are displayed with a period in Turkish too.**~~ Done
+   2026-09-09. See above. Superseded text follows: §13 asks for
    locale-aware numbers; `formatWeight` writes `12.5` whatever the locale, and
    `formatVolume` does the same. Input accepts both separators as of R4, so
    nothing is recorded wrongly — this is display only. Doing it means
@@ -3978,6 +4010,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Deleting a week deletes its workouts | An orphan named "Day 3 — Pull" is litter; sessions performed from it still survive | `TemplateEntity.kt`, `WEEKLY_PLANS.md` |
 | Days are ordinal; weekdays are optional | The profile knows how many days, not which; inventing them is a guess presented as a plan | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
 | No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
+| Replacing an exercise mid-workout is out of scope | Asked for by §3 and by the review as F2, and declined by the owner on 2026-09-09 as unnecessary. Skipping a set and leaving an exercise already cover stopping; replacement would need a new command and a decision about sets already recorded against the old exercise | Guideline §3, F2 |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 | Every build downloads the upstream exercise media | Decided by the owner 2026-09-08. The `media` flavours never gated it, so the choice was between implementing a safeguard nobody had relied on and saying plainly what the app does. The licence question is unchanged and unmitigated by the build | Guideline §6, `PRIVACY.md`, `NOTICE.md` |
 | One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |

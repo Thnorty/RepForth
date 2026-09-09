@@ -646,17 +646,25 @@ private fun DecimalField(
     modifier: Modifier = Modifier,
 ) {
     val units = LocalUnitSystem.current
-    fun shown(kg: Double?) = kg?.let { units.formatWeight(it) } ?: ""
+    // Read once, here, so the local function below stays an ordinary function:
+    // the no-locale `formatWeight` is composable, and a plain `fun` cannot call
+    // one. The value is the same either way -- this is where it comes from.
+    val locale = LocalConfiguration.current.locales[0]
+    fun shown(kg: Double?) = kg?.let { units.formatWeight(it, locale) } ?: ""
 
     var text by remember { mutableStateOf(TextFieldValue(shown(value))) }
 
     // Pulls the field back in line when the weight changes from outside it.
-    // Separator-insensitive, because `formatWeight` always writes a period: a
-    // plain string comparison decided that a typed `12,5` disagreed with the
-    // 12.5 it had just produced, and rewrote the comma under the cursor while
-    // someone was still typing the number.
+    //
+    // Separator-insensitive on **both** sides. A plain comparison decided that a
+    // typed `12,5` disagreed with the 12.5 it had just produced, and rewrote the
+    // comma under the cursor while someone was still typing. Normalising only
+    // the typed side was enough while `formatWeight` always wrote a period; now
+    // that it writes what the locale writes, comparing `12.5` against a produced
+    // `12,5` would disagree on every recomposition and rewrite the field
+    // forever. Both sides, or neither.
     LaunchedEffect(value, units) {
-        if (text.text.replace(',', '.') != shown(value)) {
+        if (text.text.replace(',', '.') != shown(value).replace(',', '.')) {
             text = TextFieldValue(shown(value), TextRange(shown(value).length))
         }
     }
