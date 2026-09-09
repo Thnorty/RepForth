@@ -3861,6 +3861,53 @@ The goldens caught none of this until the fixture was changed: whole weights
 format identically in every language, so `60.0` rendered the same picture in
 English and Turkish and proved nothing. It is `62.5` now, and the Turkish golden
 reads "62,5 kg".
+### 2026-09-09 — F6 closed without being built, and the specification corrected
+
+F6 was the last P1 in the review: §8 promised compound-before-isolation
+ordering, a redundancy rule and conservative volume, and nothing enforced any of
+them. It is closed, unimplemented, by the owner's decision — and §8 is corrected
+so it stops promising them.
+
+**That correction is the actual work here.** A document claiming a safeguard the
+code does not have is the exact failure this repo hit with the media flavours,
+where four documents agreed with each other and none agreed with the app.
+
+**Most of what was first asked for was the wrong question.** The owner was asked
+for a table of sets, repetitions and rest per experience level and goal. Their
+reply — "aren't reps different per exercise?", "wouldn't the AI struggle?" — was
+right on both counts, and reading the code showed the app already had the right
+shape: `WorkoutLimits` enforces 1-10 sets, 1-100 repetitions, 0-600 seconds of
+rest. Those are absurdity bounds, not prescriptions. Asking for prescriptions
+would have produced a validator that rejected good plans for a living.
+
+**The cheap version of the compound rule was measured, not assumed.** Before
+offering "two or more secondary muscles means compound" as a shortcut, it was
+tested against the catalog:
+
+| secondaries | exercises | share |
+|---|---|---|
+| 1 | 338 | 25% |
+| **2** | **753** | **57%** |
+| 3 or more | 233 | 18% |
+
+Over half the catalog sits on exactly two, so the rule calls three quarters of it
+compound — including a seated calf raise, which scores the same as a bench press.
+The shortcut does not work, and finding that out cost one query. The only honest
+version is a curated classification of 1,324 exercises.
+
+Redundancy died the same way: it needs a movement pattern the dataset does not
+have, and target alone would flag a bench press followed by an incline press,
+which is how chest days are written.
+
+Volume and cross-day recovery were both **possible** — `Muscle.canonical`
+already normalises the upstream synonyms, so counting sets per muscle per week is
+straightforward. They were declined on design grounds: a validator that rejects a
+generated plan has to explain itself to the user, and a beginner-shaped recovery
+rule is wrong for a push/pull/legs split.
+
+The limit that follows is now written into §8: the app checks that a plan is
+well-formed, legal against the user's exclusions, and not absurd. It does not
+check that the programming is good.
 
 ### Earlier polish and maintenance backlog
 
@@ -4011,6 +4058,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Days are ordinal; weekdays are optional | The profile knows how many days, not which; inventing them is a guess presented as a plan | `TrainingWeek.kt`, `WEEKLY_PLANS.md` |
 | No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
 | Replacing an exercise mid-workout is out of scope | Asked for by §3 and by the review as F2, and declined by the owner on 2026-09-09 as unnecessary. Skipping a set and leaving an exercise already cover stopping; replacement would need a new command and a decision about sets already recorded against the old exercise | Guideline §3, F2 |
+| Coach's plans are validated for legality, not for quality | The app enforces exclusions, equipment, session length, `WorkoutLimits` and target types. Ordering, redundancy and volume rules were declined 2026-09-09: two need catalog metadata that does not exist, and two would make a validator reject plans it cannot explain | Guideline §8, F6 |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 | Every build downloads the upstream exercise media | Decided by the owner 2026-09-08. The `media` flavours never gated it, so the choice was between implementing a safeguard nobody had relied on and saying plainly what the app does. The licence question is unchanged and unmitigated by the build | Guideline §6, `PRIVACY.md`, `NOTICE.md` |
 | One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |
