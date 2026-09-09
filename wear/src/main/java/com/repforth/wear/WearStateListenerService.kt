@@ -41,11 +41,20 @@ class WearStateListenerService : WearableListenerService() {
             when (event.type) {
                 DataEvent.TYPE_CHANGED -> store.onDataItem(event.dataItem)
 
-                // The phone deleting the item means the workout is over and it
-                // said so by removing the state rather than publishing an empty
-                // one. Nothing to do here: the phone publishes a terminal phase
-                // first, so the screen has already shown the finish.
-                DataEvent.TYPE_DELETED -> Unit
+                // The phone deleting the item means the workout is over.
+                //
+                // **This used to do nothing**, on the reasoning that a terminal
+                // phase had already been published so the screen had shown the
+                // finish. Half of that is true and the conclusion was not: the
+                // wrist then kept showing "Workout finished" until the app was
+                // closed and reopened, and an *abandoned* workout — which never
+                // publishes a terminal phase at all, it just stops — left the
+                // exercise screen up with live-looking buttons. Both seen on
+                // hardware.
+                //
+                // Clearing is what the phone is saying. There is no workout, and
+                // §11's answer to that is the absence of a snapshot.
+                DataEvent.TYPE_DELETED -> store.onWorkoutGone()
 
                 else -> Unit
             }

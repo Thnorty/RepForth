@@ -282,12 +282,20 @@ fun RestScreen(
             )
         }
 
+        // Resume while paused, skip while running. The engine refuses a
+        // `SkipRest` during a pause, so offering it here would be a button that
+        // does nothing — and the only way out of a paused rest is to resume it.
+        val paused = state.phase == WearPhase.Paused
         Button(
-            onClick = { onAction(WearAction.SkipRest) },
+            onClick = { onAction(if (paused) WearAction.Resume else WearAction.SkipRest) },
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(stringResource(R.string.wear_skip_rest))
+            Text(
+                stringResource(
+                    if (paused) R.string.wear_resume else R.string.wear_skip_rest,
+                ),
+            )
         }
 
         NextExerciseButton(enabled = enabled, onAction = onAction)
@@ -424,5 +432,16 @@ private fun Scrollable(modifier: Modifier = Modifier, content: @Composable Colum
 private val THUMBNAIL_SIZE = 56.dp
 
 private val PADDING_H = 20.dp
-private val PADDING_V = 12.dp
+
+/**
+ * Deep, because a round display narrows towards the top and bottom.
+ *
+ * 12dp was not enough and it showed: the thumbnail at the top of the exercise
+ * screen came back clipped on the real watch, and so did the first and last
+ * buttons. The middle of a circle is 240dp wide and the last few rows are not,
+ * so a column that starts at the very edge starts inside the curve.
+ *
+ * The screen scrolls, so this costs nothing but a little travel.
+ */
+private val PADDING_V = 28.dp
 private val SPACING = 6.dp
