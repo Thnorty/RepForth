@@ -412,18 +412,53 @@ The response contains only dataset exercise IDs, sets, one exact repetition targ
 
 ### Local constraint and validation rules
 
-Hard rules:
+Hard rules, all of them enforced:
 
 - Never select excluded movements, muscles, or unavailable equipment.
 - Every exercise ID must exist in the pinned dataset.
 - Respect session length using a deterministic duration estimator.
-- Warm-up work precedes primary compound work; isolation work follows compounds.
-- Avoid redundant consecutive exercises with the same primary target and movement pattern when alternatives exist.
-- Apply beginner-safe set/repetition/rest ranges and conservative volume.
+- Keep sets, repetitions, duration and rest inside `WorkoutLimits`.
 - Timed and repetition-based exercises must use the correct target type.
+- No duplicate exercise IDs within a day.
 
 These rules filter the catalog before a provider call and validate the returned
 plan afterward. They do not arrange or prescribe a local substitute workout.
+
+`WorkoutLimits` is deliberately wide — 1-10 sets, 1-100 repetitions, 0-600
+seconds of rest. It exists to reject the absurd, not to prescribe the sensible:
+the right number of repetitions depends on the exercise, and a validator that
+knew better than the model about that would reject good plans for a living.
+
+### Three rules this document used to promise, and the app does not have
+
+Earlier versions listed compound-before-isolation ordering, a redundancy rule,
+and "conservative volume" as hard rules. **None of them was ever implemented**,
+and after the alternatives were measured the owner decided on 2026-09-09 not to
+implement them. They are recorded here rather than deleted, because the reason
+each was dropped is more useful than the rule was.
+
+- **Warm-up and compound ordering.** The dataset has no compound/isolation
+  field, and the obvious substitute does not work: counting secondary muscles
+  puts 57% of the catalog on exactly two, so a "two or more means compound" rule
+  classifies three quarters of it as compound — including a seated calf raise,
+  which scores the same as a bench press. The only honest version is a
+  hand-curated classification of 1,324 exercises, which is a data project rather
+  than a code one. Inferring it from English name substrings is specifically
+  ruled out.
+- **Redundancy.** "Same primary target *and movement pattern*" needs a movement
+  pattern, and the dataset has no such column either. Target alone is not a
+  substitute: a bench press followed by an incline press shares a target and is
+  how chest days are written.
+- **Aggregate and cross-day volume.** Both were possible — `Muscle.canonical`
+  already normalises the upstream synonyms, so counting sets per muscle per week
+  is straightforward. They were declined because a validator that rejects a
+  generated plan has to explain itself to the user, and a beginner-shaped
+  recovery rule is wrong for the push/pull/legs splits people actually run.
+
+What follows from this is a limit worth stating plainly: **the app checks that a
+generated plan is well-formed, legal against the user's exclusions, and not
+absurd. It does not check that the programming is good.** That judgement is the
+model's, and the user's.
 
 ### Coach safety
 
