@@ -3919,13 +3919,24 @@ that is the only way this failure is visible from a test machine.
    three watch shapes, both languages and both font scales. The screenshot plugin
    applied unchanged — the earlier move into the compose plugin had already made
    it application-safe.
-20. **The Wear work has still not run on hardware.** The phone-only half of
-   `docs/DEVICE_TESTS.md` passed on 2026-09-08 — timed sets, both alerts and
-   media are confirmed on the Galaxy S23 — and every item that needs the watch
-   is untouched, because the watch could not be reached that day. Sections 3–7,
-   plus §9's split-version check, which expires the moment the watch app is
-   updated.
-21. **No guard holds the documents to the media behaviour.** The claim that came
+20. ~~**The Wear work has still not run on hardware.**~~ Done. The phone-only
+   half passed 2026-09-08 and the watch half on 2026-09-09, on a paired Galaxy
+   Watch Ultra: thumbnail, attribution, timed countdown, the zero-time buzz with
+   the app closed, every control, the disconnected screen, and the watch-face
+   entry. It found four defects, all fixed the same day — see above. The
+   split-version check was run first and is spent.
+21. **The watch screens want a design pass, not more features.** §11 is
+   complete and every screen works, but they were laid out one control at a time
+   as the feature set grew — a column of full-width buttons on a round display,
+   with a scroll where a wrist would rather have a glance. The owner asked for
+   this to be recorded rather than started.
+
+   What it is not: a missing capability. What it probably is: reading `§12`
+   again with 240dp in mind, deciding what a wrist actually needs *during* a set
+   versus what it only needs between them, and letting the round shape drive the
+   layout instead of being padded around. The fifteen goldens make it safe to
+   try — a redesign that changes something it did not mean to will say so.
+22. **No guard holds the documents to the media behaviour.** The claim that came
    apart was asserted in `PRIVACY.md`, `NOTICE.md`, `README.md`,
    `PROJECT_GUIDELINE.md`, `AGENTS.md` and two kdocs, and nothing could fail when
    it stopped being true. A test that asserts *what the app fetches* — rather

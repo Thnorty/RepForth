@@ -24,11 +24,11 @@ up whatever the hardware in front of you allows.
 |---|---|
 | 1. Timed sets | **Phone only** — done 2026-09-08 |
 | 2. Both timers make a noise | **Phone only** — done 2026-09-08 |
-| 3. The watch, first light | Phone + watch |
-| 4. The watch's controls | Phone + watch |
-| 5. Return from the watch face | Phone + watch |
-| 6. Disconnection | Phone + watch |
-| 7. Shapes and sizes | Phone + watch |
+| 3. The watch, first light | Phone + watch — done 2026-09-09 |
+| 4. The watch's controls | Phone + watch — done 2026-09-09 |
+| 5. Return from the watch face | Phone + watch — done 2026-09-09 |
+| 6. Disconnection | Phone + watch — done 2026-09-09 |
+| 7. Shapes and sizes | Phone + watch — done 2026-09-09 |
 | 8. Media | **Phone only** — done 2026-09-08 |
 
 **The watch does not need adb for any of these.** It needs the watch APK
@@ -145,9 +145,12 @@ clicks and clipping and cannot tell you whether it sounds right.
 
 ---
 
-## 3. The watch, first light — needs the watch
+## 3. The watch, first light — needs the watch — ✅ passed 2026-09-09
 
-Everything in this section has only ever run in Robolectric.
+Passed on a paired Galaxy Watch Ultra, after two defects found here were fixed:
+a paused rest drew the exercise screen, and "End without finishing" left the
+workout on the wrist. Both are covered by tests now; this section is the
+regression list for the next change to the Wear projection.
 
 - [ ] **A workout on the phone appears on the wrist**, with the exercise name and
       set count.
@@ -170,7 +173,7 @@ Everything in this section has only ever run in Robolectric.
 
 ---
 
-## 4. The watch's controls — needs the watch
+## 4. The watch's controls — needs the watch — ✅ passed 2026-09-09
 
 - [ ] **Complete set** on the wrist advances the phone.
 - [ ] **Skip set** records a skip.
@@ -183,7 +186,11 @@ Everything in this section has only ever run in Robolectric.
 
 ---
 
-## 5. Return from the watch face (#45) — needs the watch
+## 5. Return from the watch face (#45) — needs the watch — ✅ passed 2026-09-09
+
+"The watch face" is the chip in the ongoing-activity slot — on this watch it
+appears at the bottom of the home page. That wording confused the first run, so
+it is spelled out here.
 
 - [ ] **A chip appears on the watch face** while a workout runs, showing the
       exercise name.
@@ -198,7 +205,7 @@ Everything in this section has only ever run in Robolectric.
 
 ---
 
-## 6. Disconnection (§11, §20) — needs the watch
+## 6. Disconnection (§11, §20) — needs the watch — ✅ passed 2026-09-09
 
 The disconnected path is the one most likely to be wrong, because reaching it is
 awkward.
@@ -213,7 +220,12 @@ awkward.
 
 ---
 
-## 7. Shapes and sizes — needs the watch
+## 7. Shapes and sizes — needs the watch — ◐ passed 2026-09-09, with a caveat
+
+The clipping found here was fixed (12dp of vertical padding became 28dp). What
+remains is not a defect but a judgement: the screens are a column of full-width
+buttons on a circle, and they want a design pass rather than more padding. See
+backlog 21 in `docs/PLAN.md`.
 
 The goldens render 240dp round, 180dp round and 200dp square. They cannot tell
 you how it feels.
@@ -244,7 +256,16 @@ decision made 2026-09-08. The three items below are still open.
 
 ---
 
-## 9. If an older watch build is still installed — a free test that expires
+## 9. ~~If an older watch build is still installed~~ — spent 2026-09-09
+
+Run before the watch was updated, and it passed: a four-day-old build read the
+new phone's payload with no "unreadable state" warning anywhere in the log,
+including three fields it had never heard of. That is §11's split-version promise
+holding on hardware, and the reason the rest deadline's wire key was deliberately
+not renamed. **Delete this section** — the opportunity is gone until some future
+build is left stale on purpose.
+
+<details><summary>What it checked</summary>
 
 The watch app has been installed before: the 591092-second rest bug in
 `docs/PLAN.md` was found on real hardware. If that build is still on the watch and
@@ -273,7 +294,7 @@ opportunity:
       phone afterwards — and remember a background crash can land tens of
       seconds late.
 
-Once you update the watch, delete this section.
+</details>
 
 ---
 
