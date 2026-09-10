@@ -3985,6 +3985,77 @@ publishing, so the watch has never seen "barbell decline wide-grip press". The
 goldens showed it anyway, which made every wear render slightly narrower than
 reality — capitals are wider, and width is the entire point of a 226dp render.
 
+### 2026-09-10 — the watch design pass (backlog 21)
+
+Asked for after wearing it. The screens worked and looked like a feature list:
+a column of full-width buttons on a circle, in stock Wear lavender, that a wrist
+had to scroll to reach the control that abandons your remaining sets.
+
+**Three pages instead of one scroll.** Page 0 is the set or the rest — one
+number, one action, and nothing else. Page 1 is pause, skip and next exercise,
+which are between-set decisions that were competing with the number during one.
+Page 2 is the picture. Wear reserves only the *left edge* for dismissal, so
+horizontal paging costs nothing, and `HorizontalPagerScaffold` is the platform's
+own answer.
+
+The media page is reachable **during a set**, not only while resting, at the
+owner's request: someone unsure of a movement is unsure of it with the bar in
+their hands.
+
+**The rim was empty and it is the biggest thing a round display has.** It now
+carries a progress arc — how far through the workout during a set, how much rest
+is left during a rest. The second of those is §11's "large circular countdown",
+asked for since the specification was written and never built, because the
+protocol carried a rest *deadline* and never the rest's length: a remainder with
+no whole to measure against. `restTotalMs` fixes that. Workout progress needed
+`setsCompleted`/`setsTotal`, counted in **sets rather than exercises** so the
+sweep steps evenly — four exercises move an exercise-counted arc in four jumps,
+and a five-set exercise and a two-set one would advance it identically.
+
+All four fields default to zero or null, so an old watch reading a new payload
+is unaffected and a new watch reading an old one draws no arc rather than a
+wrong one.
+
+**`core:designtokens`, so the watch can use the app's design system.** It never
+had: the watch ran on bare `MaterialTheme {}` while §12 asks for charcoal, one
+lime accent and numerals as the hero. It could not simply depend on
+`core:designsystem`, which exposes phone Material 3 with `api` — that would put
+two clashing `MaterialTheme`s on one classpath and the phone's Material in the
+watch APK. The palette, the faces, `rfUiStyle` and the numeric scale moved to a
+module both can read; `RepForthShapes` and `RepForthTypography` stayed behind
+because they are phone Material 3 types.
+
+The palette had been carrying `ambientBackground`, `ambientForeground`,
+`ambientQuiet` and `ambientOutline` for Wear since it was written, with no
+caller.
+
+**Two costs of that split, both now guarded** by `DesignTokenBoundaryTest`:
+
+- The halves **share the package** `com.repforth.core.designsystem.theme`, which
+  kept fifty files from being rewritten for an import. Kotlin compiles top-level
+  declarations into a facade class named after the *file*, so `Type.kt` in both
+  modules is one class name twice and one silently shadows the other. That
+  happened: `feature:home` failed on `Unresolved reference 'RepForthNumeric'`
+  over a symbol it had a perfectly good `api` path to. The survivors in
+  `core:designsystem` are `PhoneTypography.kt` and `PhoneShapes.kt` now, which is
+  also what they contain.
+- `Tone` was `internal` and had to become public, because `internal` is
+  per-module and the watch assembles its own `ColorScheme`. The guard replaces
+  the compiler.
+
+Both were broken deliberately and watched failing before being left in.
+
+**Four things the pictures caught that the code looked fine for**, each fixed:
+the edge button drew over the last line of the page; a 72sp numeral left no room
+for a name and two labels on a 226dp circle; the exercise name lost its first
+and last letters to the curve, being the topmost line where a circle is
+narrowest; and the rest ring came out amber on an *olive* track, because Wear's
+default track is a dimmed copy of the accent and the palette has a neutral role
+for exactly this.
+
+Pause and Skip are outlined rather than filled, matching the phone's hierarchy —
+the filled control is the one that logs a set, and it is the edge button.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -4078,7 +4149,9 @@ reality — capitals are wider, and width is the entire point of a 226dp render.
    the app closed, every control, the disconnected screen, and the watch-face
    entry. It found four defects, all fixed the same day — see above. The
    split-version check was run first and is spent.
-21. **The watch screens want a design pass, not more features.** §11 is
+21. ~~**The watch screens want a design pass, not more features.**~~ Done
+   2026-09-10. See above. Superseded text follows: **The watch screens want a
+   design pass, not more features.** §11 is
    complete and every screen works, but they were laid out one control at a time
    as the feature set grew — a column of full-width buttons on a round display,
    with a scroll where a wrist would rather have a glance. The owner asked for

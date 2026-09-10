@@ -9,7 +9,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.MaterialTheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_COMPARISON
@@ -98,6 +97,57 @@ class WearScreenshotTest {
         Exercise(thumbnail = swatch())
     }
 
+    // ---- The pages the design pass added ----
+
+    /**
+     * The between-sets decisions, which used to crowd the set itself.
+     */
+    @Test
+    fun controls() = capture("controls") {
+        ControlsPage(state = state(), enabled = true, onAction = {})
+    }
+
+    /** The same page during a rest, where skipping a *set* is meaningless. */
+    @Test
+    fun controls_resting() = capture("controls-resting") {
+        ControlsPage(state = state(WearPhase.Rest), enabled = true, onAction = {})
+    }
+
+    /** Paused, which is the only state that renames the primary control. */
+    @Test
+    fun controls_paused() = capture("controls-paused") {
+        ControlsPage(state = state(WearPhase.Paused), enabled = true, onAction = {})
+    }
+
+    /**
+     * The picture at the size a picture is worth sending at.
+     *
+     * §6's notice rides on it, so this is also the golden that would notice the
+     * attribution disappearing from the one screen that shows the imagery.
+     */
+    @Test
+    fun media() = capture("media") {
+        MediaPage(state = state(attributed = true), thumbnail = swatch())
+    }
+
+    /**
+     * The whole thing assembled, for the page indicator and the edge button.
+     *
+     * The only capture that goes through the pager. What it is here to catch is
+     * the frame -- that there are three dots and a button hugging the bottom
+     * curve -- rather than the content, which the page captures above own.
+     */
+    @Test
+    fun pager() = capture("pager") {
+        ExerciseScreen(
+            state = state(attributed = true),
+            remainingSeconds = null,
+            enabled = true,
+            onAction = {},
+            thumbnail = swatch(),
+        )
+    }
+
     // ---- Turkish, which is longer ----
 
     @Test
@@ -130,24 +180,27 @@ class WearScreenshotTest {
 
     // ---- Fixtures ----
 
+    /**
+     * Page 0 of a set, drawn directly rather than through the pager.
+     *
+     * A golden of the pager photographs page 0 and says nothing about the other
+     * two, so each page is captured on its own and the pager gets one picture of
+     * its own for the indicator. That also keeps these stable: a page rendered
+     * inside a pager is offset and scaled by whatever the pager is doing.
+     */
     @Composable
     private fun Exercise(timed: Boolean = false, thumbnail: ImageBitmap? = null) {
-        ExerciseScreen(
+        ExercisePage(
             state = state(timed = timed, attributed = thumbnail != null),
             remainingSeconds = if (timed) 42 else null,
-            enabled = true,
-            onAction = {},
-            thumbnail = thumbnail,
         )
     }
 
     @Composable
     private fun Rest() {
-        RestScreen(
-            state = state(next = "Barbell Squat"),
+        RestPage(
+            state = state(WearPhase.Rest, next = "Barbell Squat"),
             remainingSeconds = 45,
-            enabled = true,
-            onAction = {},
         )
     }
 
@@ -210,6 +263,14 @@ class WearScreenshotTest {
         setDeadlineElapsedRealtimeMs = null,
         nextExerciseName = next,
         mediaAttribution = "© Gym visual — https://gymvisual.com/".takeIf { attributed },
+        // Nine sets in, of twenty-two: far enough round for the arc to be
+        // unmistakably a fraction rather than empty or full, which is what a
+        // golden of a ring has to be able to fail on.
+        setsCompleted = 9,
+        setsTotal = 22,
+        exerciseNumber = 3,
+        exerciseCount = 6,
+        restTotalMs = if (phase == WearPhase.Rest) 60_000L else null,
     )
 
     private fun capture(
@@ -240,7 +301,7 @@ class WearScreenshotTest {
         // passed. And a clock in a golden is a golden that fails at the next
         // minute anyway.
         compose.setContent {
-            MaterialTheme {
+            RepForthWearTheme {
                 AppScaffold(timeText = {}) { content() }
             }
         }

@@ -19,9 +19,24 @@ import androidx.compose.ui.graphics.Color
  * re-declared, exactly as colors.css requires.
  */
 
+/*
+ * This file lives in `core:designtokens`, and keeps the
+ * `com.repforth.core.designsystem.theme` package it has always had.
+ *
+ * A package spanning two Gradle modules is normally a smell. Here it is the
+ * point: this is one design system that two Material implementations read, not
+ * two design systems. Keeping the package means the split is invisible to the
+ * fifty files that import these names, so the diff that created it shows the
+ * actual change rather than fifty rewritten import lines.
+ *
+ * `Tone` is public here and was `internal` before. That is a real loss --
+ * Kotlin scopes `internal` to a module, and the watch needs the raw tones to
+ * build a Wear `ColorScheme`. `ToneReachTest` in :app replaces the compiler as
+ * the thing that stops product code reaching past the semantic roles.
+ */
 // ---------------------------------------------------------------- raw tones
 
-internal object Tone {
+object Tone {
     // Lime — the single accent.
     val Lime10 = Color(0xFF182100)
     val Lime20 = Color(0xFF2F4000)
@@ -137,7 +152,7 @@ data class RepForthColors(
     val ambientOutline: Color,
 )
 
-internal val DarkRepForthColors = RepForthColors(
+val DarkRepForthColors = RepForthColors(
     info = Tone.Sky80,
     onInfo = Tone.Sky10,
     infoContainer = Tone.Sky30,
@@ -152,7 +167,7 @@ internal val DarkRepForthColors = RepForthColors(
     ambientOutline = Color(0xFF4A4F42),
 )
 
-internal val LightRepForthColors = RepForthColors(
+val LightRepForthColors = RepForthColors(
     info = Tone.Sky30,
     onInfo = Tone.N100,
     infoContainer = Tone.Sky90,

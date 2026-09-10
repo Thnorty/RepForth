@@ -9,8 +9,9 @@
     <string name="wear_no_workout_title">Antrenman yok</string>
     <string name="wear_no_workout_detail">Telefonundan bir tane başlat.</string>
 
-    <string name="wear_set_of">%1$d / %2$d</string>
-    <string name="wear_target_reps">%1$d tekrar</string>
+    <string name="wear_set_of">Set %1$d / %2$d</string>
+    <string name="wear_reps_label">Tekrar</string>
+    <string name="wear_exercise_of">Egzersiz %1$d / %2$d</string>
     <string name="wear_seconds">Saniye</string>
     <string name="wear_complete_set">Tamamla</string>
     <string name="wear_skip_set">Atla</string>

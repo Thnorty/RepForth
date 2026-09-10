@@ -17,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.AppScaffold
 import dagger.hilt.android.AndroidEntryPoint
 import com.repforth.core.wearprotocol.WearWorkoutState
@@ -72,7 +71,7 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
         }
     }
 
-    MaterialTheme {
+    RepForthWearTheme {
         AppScaffold {
             when (state.screen) {
                 WearScreen.Disconnected -> DisconnectedScreen(lastSeen = state.workout)
@@ -97,6 +96,10 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Rest -> state.workout?.let { workout ->
                     RestScreen(
                         state = workout,
+                        // The picture rides through the rest too. It is of the
+                        // exercise being worked, and a rest is when there is
+                        // most time to look at one.
+                        thumbnail = state.thumbnail?.asImageBitmap(),
                         remainingSeconds = rememberCountdownSeconds(
                             workout,
                             workout.restRemainingMs(),
