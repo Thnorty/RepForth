@@ -281,10 +281,19 @@ data class WearWorkoutState(
  *
  * One member per phone command, with nothing duplicated and nothing
  * unreachable. §11 originally listed `SkipExercise` alongside `NextExercise`;
- * they were one action under two names — the engine has a single command for
- * "leave this exercise, abandoning the sets left on it" — and having spent a
- * member on the duplicate, the set had no way to skip a single *set*, which the
- * phone has always been able to do. §11 has been corrected to match.
+ * they were one action under two names, and having spent a member on the
+ * duplicate the set had no way to skip a single *set*, which the phone has
+ * always been able to do.
+ *
+ * **`NextExercise` is gone entirely as of 2026-09-10**, from the phone as well
+ * as the wire. Declining work has one shape now and it is skipping a set. See
+ * `SessionCommand` for the reasoning.
+ *
+ * An older watch can still send it, and that is handled rather than guarded
+ * against: the member no longer exists, so the phone's decoder throws, and
+ * `WearCommandService` already drops anything it cannot parse with a log. There
+ * is no partial reading of a command that is safe to apply, and a removed
+ * command is the clearest case of that.
  */
 @Serializable
 enum class WearAction {
@@ -299,9 +308,6 @@ enum class WearAction {
 
     /** End the rest early. */
     SkipRest,
-
-    /** Leave this exercise, abandoning whatever sets remain on it. */
-    NextExercise,
 }
 
 /**

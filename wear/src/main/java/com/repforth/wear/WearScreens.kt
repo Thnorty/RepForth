@@ -31,7 +31,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.OutlinedButton
-import androidx.wear.compose.material3.ChildButton
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ProgressIndicatorDefaults
@@ -363,7 +362,10 @@ fun ControlsPage(
             }
         }
 
-        NextExerciseButton(enabled = enabled, onAction = onAction)
+        // "Next exercise" was the third control here and is gone as of
+        // 2026-09-10. Declining work has one shape now, and it is Skip.
+        // Leaving a whole exercise means skipping the sets left on it,
+        // which records each one instead of erasing them.
     }
 }
 
@@ -419,37 +421,6 @@ fun MediaPage(
                     .padding(horizontal = NOTICE_PADDING_H, vertical = NOTICE_PADDING_V),
             )
         }
-    }
-}
-
-/**
- * Leave this exercise, abandoning whatever sets remain on it.
- *
- * **It had no button at all, on either screen.** `WearAction.NextExercise` has
- * existed since the protocol was written, maps to a phone command, and §3 lists
- * it in the watch MVP — and nothing could send it. The protocol's own standard
- * for the action set is "nothing duplicated and nothing unreachable"; this was
- * the unreachable half.
- *
- * A [ChildButton] rather than a filled one, and last, because that is the
- * emphasis the phone gives it: Log set is filled, Pause and Skip set are
- * outlined, and Next exercise sits below both as a text button. The hierarchy is
- * not decoration on a wrist — this is the control that throws away the sets you
- * have not done yet, and it should be the hardest of the three to hit by
- * accident while out of breath.
- *
- * On the last exercise this finishes the workout rather than being refused —
- * `SessionEngine.nextExercise` moves to `COMPLETING` — so there is no state in
- * which it is offered and does nothing.
- */
-@Composable
-private fun NextExerciseButton(enabled: Boolean, onAction: (WearAction) -> Unit) {
-    ChildButton(
-        onClick = { onAction(WearAction.NextExercise) },
-        enabled = enabled,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        CentredLabel(R.string.wear_next_exercise)
     }
 }
 

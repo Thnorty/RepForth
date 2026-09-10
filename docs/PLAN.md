@@ -4056,6 +4056,50 @@ for exactly this.
 Pause and Skip are outlined rather than filled, matching the phone's hierarchy —
 the filled control is the one that logs a set, and it is the edge button.
 
+### 2026-09-10 — there is no way to leave an exercise any more
+
+Asked for while reviewing the watch design pass, and the question that produced
+it was better than the answer I had given: what is the difference between
+"Complete" and "Next exercise"? They sat one swipe apart and both read as
+"move on".
+
+They were genuinely different. Complete recorded the set and advanced. Next
+exercise abandoned every set left on the exercise and recorded **nothing** for
+them. The owner's decision is that the second should not exist: the app offers
+one way to decline work, and it is skipping a set.
+
+**The removal is total** — phone, watch, wire and specification. `SkipSet` was
+always the honest version of the same intent, and the pair invited the wrong
+one. Four skips are four rows in the history; the jump left four sets that never
+happened, which made "left this exercise early" and "never started it" the same
+shape in the data.
+
+Normal progression never used the command, so nothing was stranded: `recordSet`
+finishes the workout on `isFinalSet` and `advance` moves between exercises on
+its own. Abandoning the whole workout is a different question and still has an
+answer.
+
+**An older watch can still send it, and that path was already correct.** The
+enum member is gone, so the phone's decoder throws — and `WearCommandService`
+has always dropped anything it cannot parse with a log, because there is no
+partial reading of a command that is safe to apply. Nothing new was needed.
+
+Three tests changed shape rather than being deleted, which is the part worth
+recording:
+
+- the engine test that jumped between exercises now skips every set to get
+  there, and asserts the two skipped sets are **rows** — the assertion the old
+  one could not make;
+- `TimedSetTest` reached a new exercise's clock by the jump and now reaches it
+  the way every real workout does, which is a better test of the same thing;
+- `SessionRecoveryTest` covered a real recovery bug where the cursor walked back
+  to an exercise that recorded nothing. That exact state is now unreachable, so
+  it travels by skipping instead — where the risk is the same in kind, because a
+  skipped set is a row with no reps and no weight.
+
+The watch tests assert the control's **absence** rather than trusting it. It was
+three lines of code, and its absence is what the decision actually is.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -4206,6 +4250,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
 | Replacing an exercise mid-workout is out of scope | Asked for by §3 and by the review as F2, and declined by the owner on 2026-09-09 as unnecessary. Skipping a set and leaving an exercise already cover stopping; replacement would need a new command and a decision about sets already recorded against the old exercise | Guideline §3, F2 |
 | Coach's plans are validated for legality, not for quality | The app enforces exclusions, equipment, session length, `WorkoutLimits` and target types. Ordering, redundancy and volume rules were declined 2026-09-09: two need catalog metadata that does not exist, and two would make a validator reject plans it cannot explain | Guideline §8, F6 |
+| Declining work has exactly one shape, and it is skipping a set | "Next exercise" jumped past the sets left on an exercise and recorded none of them, so an exercise left early was indistinguishable from one that never started. Skipping them one at a time reaches the same place and leaves a row for each. Removed 2026-09-10 from the phone, the watch and the wire; abandoning the whole workout is a separate question and still answered | Guideline §3, §11, `SessionCommand.kt` |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 | Every build downloads the upstream exercise media | Decided by the owner 2026-09-08. The `media` flavours never gated it, so the choice was between implementing a safeguard nobody had relied on and saying plainly what the app does. The licence question is unchanged and unmitigated by the build | Guideline §6, `PRIVACY.md`, `NOTICE.md` |
 | One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |

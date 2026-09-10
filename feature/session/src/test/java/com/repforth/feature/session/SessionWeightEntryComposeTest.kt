@@ -177,7 +177,6 @@ class SessionWeightEntryComposeTest {
                         },
                         onSkipSet = {},
                         onSkipRest = {},
-                        onNextExercise = {},
                         onPause = {},
                         onResume = {},
                         onFinish = { _, _ -> },

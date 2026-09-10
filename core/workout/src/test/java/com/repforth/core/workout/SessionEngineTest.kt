@@ -326,19 +326,44 @@ class SessionEngineTest {
         assertNull("a skipped set has no reps", outcome.reps)
     }
 
+/**
+     * **Leaving an exercise means skipping its sets, one at a time.**
+     *
+     * There was a `NextExercise` command that jumped straight here and left the
+     * abandoned sets out of the history entirely. It was removed on 2026-09-10:
+     * the app offers one way to decline work, and this is it. The difference is
+     * the assertion at the end — two skipped sets are two rows, where the jump
+     * left an exercise that recorded nothing at all.
+     */
     @Test
-    fun `skipping to the next exercise abandons the sets left on this one`() {
-        val session = started().applying(SessionCommand.NextExercise(id()))
+    fun `skipping every set of an exercise reaches the next one`() {
+        val session = started()
+            .applying(SessionCommand.SkipSet(id()))
+            .applying(SessionCommand.SkipRest(id()))
+            .applying(SessionCommand.SkipSet(id()))
+            .applying(SessionCommand.SkipRest(id()))
+
         assertEquals(1, session.currentExerciseIndex)
         assertEquals(0, session.currentSetIndex)
-        assertTrue(session.exercises.first().sets.isEmpty())
+        assertEquals(
+            "Both skipped sets must still be rows: 'none of two' is a fact worth keeping",
+            2,
+            session.exercises.first().sets.size,
+        )
+        assertTrue(session.exercises.first().sets.all { it.skipped })
     }
 
     @Test
-    fun `skipping past the last exercise completes the session`() {
-        val session = started()
-            .applying(SessionCommand.NextExercise(id()))
-            .applying(SessionCommand.NextExercise(id()))
+    fun `skipping every set of every exercise completes the session`() {
+        var session = started()
+        repeat(2) { exercise ->
+            repeat(2) { set ->
+                session = session.applying(SessionCommand.SkipSet(id()))
+                val last = exercise == 1 && set == 1
+                if (!last) session = session.applying(SessionCommand.SkipRest(id()))
+            }
+        }
+
         assertEquals(SessionPhase.COMPLETING, session.phase)
     }
 

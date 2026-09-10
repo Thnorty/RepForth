@@ -40,7 +40,7 @@ RepForth is a local-first, AI-assisted exercise planner and workout tracker. The
 
 The model never invents exercises. Normal Kotlin code selects an eligible set from the bundled dataset, the model arranges or explains those candidates, and Kotlin validation rejects any invalid result.
 
-The watch is a focused remote for an active phone workout. It shows the current exercise, target repetitions or duration, set count, rest timer, and next exercise. It sends complete, pause/resume, skip, and next commands to the phone.
+The watch is a focused remote for an active phone workout. It shows the current exercise, target repetitions or duration, set count, rest timer, and next exercise. It sends complete, pause/resume, and skip commands to the phone.
 
 ## 3. MVP scope
 
@@ -63,12 +63,19 @@ The watch is a focused remote for an active phone workout. It shows the current 
 - Current exercise name and compact static thumbnail.
 - Current set/total sets and repetitions or duration.
 - Rest countdown with skip-rest action.
-- Complete set, skip set, pause/resume, and next exercise (leave the current
-  exercise, abandoning whatever sets remain on it).
+- Complete set, skip set, and pause/resume.
 - Haptic signal when a timed set or rest reaches zero.
 - Ongoing activity entry so the user can return from the watch face.
 
-The action list above previously read "skip exercise (abandon its remaining sets
+**There is deliberately no way to leave an exercise.** The list above carried
+one until 2026-09-10 — "next exercise", which jumped past whatever sets remained
+and recorded none of them. It is gone from the phone, the watch and the wire.
+Declining work has exactly one shape now, and it is skipping a set: four skips
+are four rows in the history, where the jump left four sets that never existed.
+Leaving the whole workout early is a different question and still has an answer,
+which is abandoning it.
+
+The action list previously read "skip exercise (abandon its remaining sets
 and advance), and next exercise (advance after the final set is completed)".
 Those were one command under two names — the same mistake §11 records and
 corrects — and the pair between them left no room for skipping a single *set*,
@@ -512,7 +519,7 @@ stateDiagram-v2
     Resting --> Paused: pause
     Paused --> Resting: resume
     Resting --> Active: rest elapsed or skipped
-    Active --> Active: skip or next exercise
+    Active --> Active: set skipped
     Active --> Completing: final set completed
     Resting --> Completing: final rest elapsed
     Completing --> Completed
@@ -591,12 +598,14 @@ data class WearCommand(
 )
 
 @Serializable
-enum class WearAction { CompleteSet, SkipSet, Pause, Resume, SkipRest, NextExercise }
+enum class WearAction { CompleteSet, SkipSet, Pause, Resume, SkipRest }
 ```
 
 The command set is forward-only in MVP, which is why the state snapshot carries no `canGoPrevious` flag.
 
-`SkipSet` replaces an earlier `SkipExercise`, which was a mistake in this document rather than a design. `NextExercise` already means "leave this exercise, abandoning the sets left on it" — the phone engine has exactly one command for that — so the two were one action under two names, and the pair between them left no way for the watch to skip a *single set*, which the phone has always been able to do. The corrected set is one watch action per phone command, with nothing duplicated and nothing unreachable.
+`SkipSet` replaces an earlier `SkipExercise`, which was a mistake in this document rather than a design: `NextExercise` already meant "leave this exercise, abandoning the sets left on it", so the two were one action under two names, and the pair between them left no way for the watch to skip a *single set*.
+
+`NextExercise` itself was then removed on 2026-09-10, from this document, the wire and the phone, for the reason given in §3. An older watch can still send it; the member no longer exists, so the phone's decoder throws and `WearCommandService` drops the message with a log, which is what it already did for anything it could not parse. The set is one watch action per phone command, with nothing duplicated and nothing unreachable.
 
 Every watch command includes the last observed revision. The phone applies it, persists the result, and publishes a newer snapshot. If the revision is stale, the phone returns the current snapshot rather than guessing.
 

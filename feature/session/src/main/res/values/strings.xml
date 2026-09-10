@@ -21,7 +21,6 @@
     <string name="session_weight_invalid">Enter a number, like 12.5</string>
     <string name="session_log_set">Log set</string>
     <string name="session_skip_set">Skip set</string>
-    <string name="session_next_exercise">Next exercise</string>
 <!--
         §3's perceived effort, asked once about the whole workout. Optional.
 

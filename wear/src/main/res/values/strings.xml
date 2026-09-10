@@ -28,7 +28,6 @@
         the same thing; two words for one command is how the protocol ended up
         with a duplicate action in the first place.
     -->
-    <string name="wear_next_exercise">Next exercise</string>
     <string name="wear_resume">Resume</string>
 
     <string name="wear_resting">Rest</string>

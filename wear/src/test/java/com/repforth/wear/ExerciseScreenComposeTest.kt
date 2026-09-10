@@ -203,38 +203,39 @@ class ExerciseScreenComposeTest {
     // ---- Leaving the exercise, which had no button at all ----
 
     /**
-     * `WearAction.NextExercise` was unreachable.
+     * **There is no way to leave an exercise, and that is deliberate.**
      *
-     * It has been in the protocol since it was written, maps to a phone command,
-     * and §3 lists it in the watch MVP — and no screen offered it. The protocol's
-     * own standard for the action set is "nothing duplicated and nothing
-     * unreachable"; a member nothing can send fails the second half, and nothing
-     * in the suite could notice because every test asked about the buttons that
-     * *were* drawn.
+     * A "Next exercise" control stood here and jumped past whatever sets were
+     * left, recording none of them. It was removed on 2026-09-10, from the wire
+     * and the phone as well: declining work has one shape and it is Skip.
+     *
+     * Asserted rather than assumed, because the button is three lines of code
+     * and its absence is what the decision actually is. A skipped set is a row;
+     * an abandoned one was nothing at all.
      */
     @Test
-    fun `next exercise can be sent from a running set`() {
+    fun `the controls page offers no way to leave the exercise`() {
         renderControls(timed = false)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
-
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(
+            "Leaving an exercise means skipping its sets, which records them",
+            0,
+            compose.onAllNodesWithText(NEXT).fetchSemanticsNodes().size,
+        )
     }
 
     @Test
-    fun `next exercise can be sent from a timed set too`() {
+    fun `a timed set has no way to leave the exercise either`() {
         renderControls(timed = true)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
-
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(0, compose.onAllNodesWithText(NEXT).fetchSemanticsNodes().size)
     }
 
     @Test
-    fun `a disconnected watch cannot leave the exercise`() {
+    fun `a disconnected watch cannot skip a set`() {
         renderControls(timed = false, enabled = false)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(SKIP).performScrollTo().performClick()
 
         assertEquals(emptyList<WearAction>(), sent)
     }
@@ -298,17 +299,17 @@ class ExerciseScreenComposeTest {
      * `setContent` per method — a second call throws "has already set content"
      * rather than replacing it, which is how this was found.
      *
-     * Pressed rather than merely located: three full-width buttons do not fit a
-     * 226dp circle at double size, and a layout that clipped the last one would
-     * still have it in the tree.
+     * Pressed rather than merely located: two full-width buttons and a label do
+     * not fit a 226dp circle at double size, and a layout that clipped the last
+     * one would still have it in the tree.
      */
     @Test
     fun `the last control is still reachable at 200 percent font scale`() {
         renderControls(fontScale = 2f)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(SKIP).performScrollTo().performClick()
 
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(listOf(WearAction.SkipSet), sent)
     }
 
     /** A 1x1 bitmap: this asserts what the screen does with one, not how it looks. */
@@ -395,6 +396,7 @@ class ExerciseScreenComposeTest {
         const val COMPLETE = "Complete"
         const val SKIP = "Skip"
         const val PAUSE = "Pause"
+/** The control that was removed. Named so its absence can be asserted. */
         const val NEXT = "Next exercise"
         const val SECONDS = "Seconds"
 /** The number is the hero and the word only names it, so they are two nodes. */

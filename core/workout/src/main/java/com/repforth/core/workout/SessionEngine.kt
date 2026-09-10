@@ -104,7 +104,6 @@ class SessionEngine(private val time: TimeSource) {
             is SessionCommand.SkipRest -> endRest(state, command, skipped = true)
             is SessionCommand.RestElapsed -> endRest(state, command, skipped = false)
             is SessionCommand.SetElapsed -> endTimedSet(state, command)
-            is SessionCommand.NextExercise -> nextExercise(state, command)
             is SessionCommand.Pause -> pause(state, command)
             is SessionCommand.Resume -> resume(state, command)
             is SessionCommand.Finish -> finish(state, command)
@@ -296,35 +295,6 @@ class SessionEngine(private val time: TimeSource) {
         } else {
             result
         }
-    }
-
-    private fun nextExercise(state: SessionSnapshot, command: SessionCommand): CommandResult {
-        if (state.phase != SessionPhase.ACTIVE && state.phase != SessionPhase.RESTING) {
-            return CommandResult.Rejected(state, "no exercise in progress")
-        }
-        if (state.isLastExercise) {
-            val next = state.withCommand(command.commandId).copy(
-                phase = SessionPhase.COMPLETING,
-                restEndsAtElapsed = null,
-                setEndsAtElapsed = null,
-            )
-            return CommandResult.Applied(
-                next,
-                listOf(SessionEvent.PhaseChanged(state.phase, SessionPhase.COMPLETING)),
-            )
-        }
-        val moved = state.withCommand(command.commandId).copy(
-            phase = SessionPhase.ACTIVE,
-            currentExerciseIndex = state.currentExerciseIndex + 1,
-            currentSetIndex = 0,
-            restEndsAtElapsed = null,
-            setEndsAtElapsed = null,
-        )
-        val events = mutableListOf(
-            SessionEvent.PhaseChanged(state.phase, SessionPhase.ACTIVE),
-            SessionEvent.ExerciseChanged(moved.currentExerciseIndex),
-        )
-        return CommandResult.Applied(armTimedSet(moved, events), events)
     }
 
     /**

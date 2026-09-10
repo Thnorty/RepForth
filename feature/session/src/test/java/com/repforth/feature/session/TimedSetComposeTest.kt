@@ -126,7 +126,6 @@ class TimedSetComposeTest {
                     },
                     onSkipSet = { skips++ },
                     onSkipRest = {},
-                    onNextExercise = {},
                     onPause = {},
                     onResume = {},
                     onFinish = { _, _ -> },

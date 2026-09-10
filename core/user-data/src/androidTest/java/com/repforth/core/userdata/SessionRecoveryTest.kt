@@ -168,17 +168,32 @@ class SessionRecoveryTest {
         assertTrue("A skipped set is stored as skipped", restored.exercises[0].sets[0].skipped)
     }
 
+    /**
+     * The cursor must not walk back to an exercise whose sets were all skipped.
+     *
+     * This used to travel by `NextExercise`, which recorded nothing at all — so
+     * the old derivation looked for the first exercise still owed sets and found
+     * the one the user had just left. That command was removed on 2026-09-10 and
+     * the route here is skipping every set instead, which is now the only way to
+     * leave an exercise.
+     *
+     * The derivation is still the thing under test and the risk is the same in
+     * kind: a skipped set is a row, but it is a row with no reps and no weight,
+     * and anything counting *performed* work would still read this exercise as
+     * unfinished.
+     */
     @Test
-    fun restoring_after_skipping_an_exercise_stays_on_the_new_one() = runTest {
-        // Next exercise records nothing — there is no outcome for a set that was
-        // never performed — so the old derivation looked for the first exercise
-        // still owed sets and found the one the user had just left.
-        val moved = begun() + SessionCommand.NextExercise(id())
+    fun restoring_after_skipping_every_set_stays_on_the_new_exercise() = runTest {
+        var moved = begun(exercises = 2, sets = 2)
+        repeat(2) {
+            moved += SessionCommand.SkipSet(id())
+            moved += SessionCommand.SkipRest(id())
+        }
         assertEquals(1, moved.currentExerciseIndex)
 
         val restored = restart(moved)
 
-        assertEquals("A skipped exercise stays skipped", 1, restored.currentExerciseIndex)
+        assertEquals("A skipped exercise stays behind", 1, restored.currentExerciseIndex)
         assertEquals(0, restored.currentSetIndex)
     }
 

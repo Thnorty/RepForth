@@ -72,14 +72,18 @@ class RestScreenComposeTest {
         assertEquals(listOf(WearAction.SkipRest), sent)
     }
 
-    /** The half of `isActive || isResting` that the exercise screen does not cover. */
+    /**
+     * Nor is there one here.
+     *
+     * The removed control was offered while resting as well as during a set, so
+     * its absence has to be asserted in both places — a rest is exactly when
+     * someone would reach for it.
+     */
     @Test
-    fun `next exercise can be sent while resting`() {
+    fun `resting offers no way to leave the exercise`() {
         renderControls()
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
-
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(0, compose.onAllNodesWithText(NEXT).fetchSemanticsNodes().size)
     }
 
     /** §11: disconnected means read-only, and that includes the primary action. */
@@ -94,10 +98,10 @@ class RestScreenComposeTest {
 
     /** And the same on the controls page, which is a separate composition. */
     @Test
-    fun `a disconnected watch cannot leave the exercise while resting`() {
+    fun `a disconnected watch cannot pause while resting`() {
         renderControls(enabled = false)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(PAUSE).performScrollTo().performClick()
 
         assertEquals(emptyList<WearAction>(), sent)
     }
@@ -139,12 +143,12 @@ class RestScreenComposeTest {
 
     /** One `setContent` per test method, so the controls page gets its own. */
     @Test
-    fun `leaving the exercise is still reachable at 200 percent font scale`() {
+    fun `pausing is still reachable at 200 percent font scale`() {
         renderControls(fontScale = 2f)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(PAUSE).performScrollTo().performClick()
 
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(listOf(WearAction.Pause), sent)
     }
 
     /** Page 0: the countdown and the one action the phase allows. */
@@ -207,6 +211,8 @@ class RestScreenComposeTest {
     private companion object {
         const val SKIP_REST = "Skip rest"
         const val RESUME = "Resume"
+        /** Removed on 2026-09-10. Kept so its absence can be asserted. */
         const val NEXT = "Next exercise"
+        const val PAUSE = "Pause"
     }
 }
