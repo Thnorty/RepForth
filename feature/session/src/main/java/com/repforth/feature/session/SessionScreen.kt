@@ -420,6 +420,15 @@ private fun NextUpPanel(next: NextUpPreview, reducedMotion: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
+        // Above the picture rather than below it: the name says what you are
+        // looking at, and a caption underneath makes the reader check back.
+        Text(
+            text = stringResource(R.string.session_next_up, next.name),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+
         Box(
             // Smaller than the active set's media, which is 92% of the width:
             // this is what comes next, not what is happening, and the countdown
@@ -445,12 +454,6 @@ private fun NextUpPanel(next: NextUpPreview, reducedMotion: Boolean) {
             )
         }
 
-        Text(
-            text = stringResource(R.string.session_next_up, next.name),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
 
         if (next.nextSetNumber != null && next.totalSets != null) {
             Text(
