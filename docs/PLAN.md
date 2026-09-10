@@ -4272,6 +4272,43 @@ set and the target - the whole of what it exists for. §13 requires text to
 survive that scale. The column scrolls now, centred while it fits, and the guard
 was watched failing with the scroll removed.
 
+### 2026-09-10 - Settings drew preferences it had not read
+
+Reported from a phone, with a screenshot. Vibration and Sound were off, and
+reopening Settings drew both switches with the thumb over at the "on" side and
+the "off" colours - a control saying two things at once.
+
+**The state defaulted to `UserPreferences.Default`.** Its vibration and sound
+are `true`, so the screen drew a guess and corrected it a frame later. A
+Material switch resolves its colours from the new value immediately and
+*animates* its thumb and its size to match: the colours arrived and the movement
+did not.
+
+The three preferences whose default happened to equal what was stored looked
+right the whole time, which is what made it read as a bug about vibration and
+sound. It was a bug about guessing, and those two were simply the ones the guess
+got wrong.
+
+Measuring the screenshot is what settled it, rather than reading it. Sampling a
+row of pixels across each switch gave a *large* thumb on the right - checked
+geometry - against a dark track, which is unchecked colour. Position and size
+are animated and colour is not, so the shape of the evidence named the cause.
+
+`preferences` is nullable now and every row that would have to guess is simply
+not drawn until the stored values arrive.
+
+**Three of the four new tests could not have caught it**, and that is worth
+keeping in view: they render the screen with a value passed in, so they never
+exercise what the state does when it has none. The one that holds the fix
+asserts the initial state carries no preferences at all. It was watched failing
+with the default put back; the other three passed throughout.
+
+**The goldens could not have caught it either and still cannot.** The settings
+screenshot stops at "Appearance" - every switch is below the fold of a
+`LazyColumn`, so it is never composed, never photographed, and absent from the
+semantics tree as well. The new test uses a 3000dp-tall qualifier so the whole
+list composes, because a test on a realistic screen would pass either way.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

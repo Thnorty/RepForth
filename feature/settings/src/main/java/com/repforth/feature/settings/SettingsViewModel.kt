@@ -59,7 +59,23 @@ sealed interface SettingsMessage {
 }
 
 data class SettingsUiState(
-    val preferences: UserPreferences = UserPreferences.Default,
+    /**
+     * Null until the stored preferences arrive, and never a guess.
+     *
+     * **This defaulted to `UserPreferences.Default` and it was visibly wrong.**
+     * Reported from a phone: with vibration and sound turned off, reopening
+     * Settings drew both switches with the thumb over at the "on" side and the
+     * "off" colours. Their defaults are `true`, so the screen drew a switch it
+     * had guessed, then corrected it a frame later -- and a Material switch
+     * resolves its colours from the new value immediately while animating its
+     * thumb and its size to match. The colours arrived and the movement did
+     * not, leaving a control that said two things at once.
+     *
+     * The three preferences whose default happened to match what was stored
+     * looked fine throughout, which is what made it read as a bug about
+     * vibration and sound rather than about guessing.
+     */
+    val preferences: UserPreferences? = null,
     val profile: UserProfile? = null,
     val cacheSizeBytes: Long = 0L,
     /** Set when a file has been read and is waiting to be confirmed. */

@@ -177,13 +177,13 @@ class SettingsViewModelTest {
     @Test
     fun `preferences reflect changes from the view model`() = runTest(dispatcher) {
         activate()
-        assertEquals(ThemeMode.SYSTEM, state().preferences.themeMode)
+        assertEquals(ThemeMode.SYSTEM, state().preferences!!.themeMode)
 
         viewModel.onThemeChange(ThemeMode.DARK)
         testScheduler.advanceUntilIdle()
 
-        assertEquals(ThemeMode.DARK, state().preferences.themeMode)
-        assertEquals(ThemeMode.DARK, preferences.preferences.first().themeMode)
+        assertEquals(ThemeMode.DARK, state().preferences!!.themeMode)
+        assertEquals(ThemeMode.DARK, preferences.preferences!!.first().themeMode)
     }
 
     @Test
@@ -331,12 +331,12 @@ class SettingsViewModelTest {
     @Test
     fun `toggling media wifi only setting updates preferences`() = runTest(dispatcher) {
         activate()
-        assertEquals(true, state().preferences.mediaWifiOnly)
+        assertEquals(true, state().preferences!!.mediaWifiOnly)
 
         viewModel.onMediaWifiOnlyChange(false)
         testScheduler.advanceUntilIdle()
 
-        assertEquals(false, state().preferences.mediaWifiOnly)
+        assertEquals(false, state().preferences!!.mediaWifiOnly)
     }
 
     // ---- Editable exclusions (§3, §8) ----
