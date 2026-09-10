@@ -83,11 +83,22 @@ sealed interface SessionCommand {
         override val expectedRevision: Long? = null,
     ) : SessionCommand
 
-    /** Jump to the next exercise, abandoning any sets left on this one. */
-    data class NextExercise(
-        override val commandId: String,
-        override val expectedRevision: Long? = null,
-    ) : SessionCommand
+    /*
+     * There is deliberately no "next exercise" command.
+     *
+     * One existed: it jumped to the next exercise and abandoned whatever sets
+     * were left on this one. The owner removed it on 2026-09-10, from the phone
+     * and the watch at once, on the grounds that the app should offer exactly
+     * one way to decline work and that way is skipping a set.
+     *
+     * Skipping the remaining sets one at a time reaches the same place and
+     * records what happened on the way: four skips are four rows in the history,
+     * where the jump left four sets that simply never existed. `SkipSet` was
+     * always the honest version of it, and the pair invited the wrong one.
+     *
+     * Leaving the whole workout early is a different question and still has an
+     * answer, which is `Abandon`.
+     */
 
     data class Pause(
         override val commandId: String,

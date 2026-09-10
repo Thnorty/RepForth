@@ -61,6 +61,22 @@ fun SessionSnapshot.toWearState(
             ?.let { nowElapsedRealtimeMs + it },
         publishedAtElapsedRealtimeMs = nowElapsedRealtimeMs,
         nextExerciseName = nextExerciseName(names),
+
+        // Workout-level position, for the rim arc and the controls page.
+        // Counted in sets because an arc wants even steps: four exercises move
+        // it in four jumps, and a five-set exercise and a two-set one would
+        // advance it identically.
+        setsCompleted = exercises.take(currentExerciseIndex).sumOf { it.target.sets } +
+            currentSetIndex,
+        setsTotal = exercises.sumOf { it.target.sets },
+        exerciseNumber = currentExerciseIndex + 1,
+        exerciseCount = exercises.size,
+
+        // What the rest ring measures its remainder against. Published
+        // whenever a rest clock is running, which is the only time it means
+        // anything -- and null the rest of the time rather than a stale figure
+        // from the exercise being worked.
+        restTotalMs = current.restMs.takeIf { restRemaining(nowElapsedRealtimeMs) != null },
     )
 }
 

@@ -21,7 +21,6 @@
     <string name="session_weight_invalid">Bir sayı girin, örneğin 12,5</string>
     <string name="session_log_set">Seti kaydet</string>
     <string name="session_skip_set">Seti atla</string>
-    <string name="session_next_exercise">Sonraki egzersiz</string>
     <string name="session_effort">Ne kadar zorlandın? (isteğe bağlı)</string>
     <string name="session_note">Antrenman notu (isteğe bağlı)</string>
     <string name="session_note_hint">Nasıl geçti?</string>

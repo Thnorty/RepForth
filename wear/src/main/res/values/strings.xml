@@ -12,19 +12,28 @@
     <string name="wear_no_workout_title">No workout</string>
     <string name="wear_no_workout_detail">Start one on your phone.</string>
 
-    <string name="wear_set_of">%1$d / %2$d</string>
-    <string name="wear_target_reps">%1$d reps</string>
+    <!-- Which set of how many, under the rep target on the set page. -->
+    <string name="wear_set_of">Set %1$d of %2$d</string>
+    <!-- The unit under a rep target. The number is the hero; this only names it. -->
+    <string name="wear_reps_label">Reps</string>
+    <!-- Position in the workout, on the controls page where there is room to read it. -->
+    <string name="wear_exercise_of">Exercise %1$d of %2$d</string>
     <!-- The unit under a timed set's countdown. Same word the phone uses. -->
     <string name="wear_seconds">Seconds</string>
-    <string name="wear_complete_set">Complete</string>
-    <string name="wear_skip_set">Skip</string>
+    <!--
+      The phone's words, not shorter ones. "Complete" and "Skip" dropped the
+      noun, and without it "Complete" reads as finishing the exercise rather
+      than recording a set - which is exactly how it was misread when it sat a
+      swipe away from a control that did leave the exercise. Both fit.
+    -->
+    <string name="wear_complete_set">Log set</string>
+    <string name="wear_skip_set">Skip set</string>
     <string name="wear_pause">Pause</string>
     <!--
         Leaves the exercise, abandoning the sets left on it. The phone calls it
         the same thing; two words for one command is how the protocol ended up
         with a duplicate action in the first place.
     -->
-    <string name="wear_next_exercise">Next exercise</string>
     <string name="wear_resume">Resume</string>
 
     <string name="wear_resting">Rest</string>

@@ -154,7 +154,6 @@ fun SessionRoute(
         onCompleteSet = viewModel::onCompleteSet,
         onSkipSet = viewModel::onSkipSet,
         onSkipRest = viewModel::onSkipRest,
-        onNextExercise = viewModel::onNextExercise,
         onPause = viewModel::onPause,
         onResume = viewModel::onResume,
         onFinish = viewModel::onFinish,
@@ -173,7 +172,6 @@ internal fun SessionScreen(
     onDiscardRunningAndStart: () -> Unit,
     onSkipSet: () -> Unit,
     onSkipRest: () -> Unit,
-    onNextExercise: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: (String?, Int?) -> Unit,
@@ -245,7 +243,6 @@ internal fun SessionScreen(
             onCompleteSet = onCompleteSet,
             onSkipSet = onSkipSet,
             onSkipRest = onSkipRest,
-            onNextExercise = onNextExercise,
             onPause = onPause,
             onResume = onResume,
             onFinish = onFinish,
@@ -555,7 +552,6 @@ private fun SessionControls(
     onCompleteSet: (Int?, Double?, Long?) -> Unit,
     onSkipSet: () -> Unit,
     onSkipRest: () -> Unit,
-    onNextExercise: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onFinish: (String?, Int?) -> Unit,
@@ -720,15 +716,12 @@ private fun SessionControls(
             }
         }
 
+        // "Next exercise" stood here until 2026-09-10. It jumped past whatever
+        // sets were left on the current exercise, and the owner removed it so
+        // that declining work has exactly one shape: skip the set. Skipping the
+        // remaining sets one at a time reaches the same exercise and leaves a
+        // row for each, where the jump left sets that never happened at all.
         Row(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
-            if (state.isActive || state.isResting) {
-                TextButton(
-                    onClick = onNextExercise,
-                    modifier = Modifier.weight(1f).heightIn(min = Target.min),
-                ) {
-                    Text(stringResource(R.string.session_next_exercise))
-                }
-            }
             // Not offered once every set is done. §10 allows abandoning from
             // COMPLETING, but the only thing left to do there is finish, and a
             // second way out beside it just asks the user to decide between two

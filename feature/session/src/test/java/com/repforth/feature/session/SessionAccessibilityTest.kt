@@ -63,7 +63,6 @@ class SessionAccessibilityTest {
                     onCompleteSet = { _, _, _ -> },
                     onSkipSet = {},
                     onSkipRest = {},
-                    onNextExercise = {},
                     onPause = {},
                     onResume = {},
                     onFinish = { _, _ -> },
@@ -100,7 +99,7 @@ class SessionAccessibilityTest {
         const val JANUARY_2026 = 1_767_225_600_000L
 
         val SUMMARIES = mapOf(
-            "0025" to summary("0025", "barbell decline wide-grip press"),
+            "0025" to summary("0025", "Barbell Decline Wide-Grip Press"),
             "0043" to summary("0043", "dumbbell incline hammer curl"),
         )
 

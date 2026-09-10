@@ -122,7 +122,6 @@ class SessionConflictComposeTest {
                     onCompleteSet = { _, _, _ -> },
                     onSkipSet = {},
                     onSkipRest = {},
-                    onNextExercise = {},
                     onPause = {},
                     onResume = {},
                     onFinish = { _, _ -> },

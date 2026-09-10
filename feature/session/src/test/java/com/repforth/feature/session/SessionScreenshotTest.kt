@@ -155,7 +155,6 @@ class SessionScreenshotTest {
                     onCompleteSet = { _, _, _ -> },
                     onSkipSet = {},
                     onSkipRest = {},
-                    onNextExercise = {},
                     onPause = {},
                     onResume = {},
                     onFinish = { _, _ -> },
@@ -200,7 +199,12 @@ class SessionScreenshotTest {
          * one large enough to read across a gym.
          */
         val SUMMARIES = mapOf(
-            "0025" to summary("0025", "barbell decline wide-grip press"),
+            // Capitalised, because that is what the app draws. The dataset
+            // stores lower case and `RoomExerciseRepository.summaries` applies
+            // `exerciseDisplayName` before any screen sees it, so a lower-case
+            // fixture photographed text the app has not produced since #54 --
+            // and capitals are wider, so the goldens were narrower than life.
+            "0025" to summary("0025", "Barbell Decline Wide-Grip Press"),
             "0043" to summary("0043", "dumbbell incline hammer curl"),
         )
 

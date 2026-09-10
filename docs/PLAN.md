@@ -3985,6 +3985,219 @@ publishing, so the watch has never seen "barbell decline wide-grip press". The
 goldens showed it anyway, which made every wear render slightly narrower than
 reality — capitals are wider, and width is the entire point of a 226dp render.
 
+### 2026-09-10 — the watch design pass (backlog 21)
+
+Asked for after wearing it. The screens worked and looked like a feature list:
+a column of full-width buttons on a circle, in stock Wear lavender, that a wrist
+had to scroll to reach the control that abandons your remaining sets.
+
+**Three pages instead of one scroll.** Page 0 is the set or the rest — one
+number, one action, and nothing else. Page 1 is pause, skip and next exercise,
+which are between-set decisions that were competing with the number during one.
+Page 2 is the picture. Wear reserves only the *left edge* for dismissal, so
+horizontal paging costs nothing, and `HorizontalPagerScaffold` is the platform's
+own answer.
+
+The media page is reachable **during a set**, not only while resting, at the
+owner's request: someone unsure of a movement is unsure of it with the bar in
+their hands.
+
+**The rim was empty and it is the biggest thing a round display has.** It now
+carries a progress arc — how far through the workout during a set, how much rest
+is left during a rest. The second of those is §11's "large circular countdown",
+asked for since the specification was written and never built, because the
+protocol carried a rest *deadline* and never the rest's length: a remainder with
+no whole to measure against. `restTotalMs` fixes that. Workout progress needed
+`setsCompleted`/`setsTotal`, counted in **sets rather than exercises** so the
+sweep steps evenly — four exercises move an exercise-counted arc in four jumps,
+and a five-set exercise and a two-set one would advance it identically.
+
+All four fields default to zero or null, so an old watch reading a new payload
+is unaffected and a new watch reading an old one draws no arc rather than a
+wrong one.
+
+**`core:designtokens`, so the watch can use the app's design system.** It never
+had: the watch ran on bare `MaterialTheme {}` while §12 asks for charcoal, one
+lime accent and numerals as the hero. It could not simply depend on
+`core:designsystem`, which exposes phone Material 3 with `api` — that would put
+two clashing `MaterialTheme`s on one classpath and the phone's Material in the
+watch APK. The palette, the faces, `rfUiStyle` and the numeric scale moved to a
+module both can read; `RepForthShapes` and `RepForthTypography` stayed behind
+because they are phone Material 3 types.
+
+The palette had been carrying `ambientBackground`, `ambientForeground`,
+`ambientQuiet` and `ambientOutline` for Wear since it was written, with no
+caller.
+
+**Two costs of that split, both now guarded** by `DesignTokenBoundaryTest`:
+
+- The halves **share the package** `com.repforth.core.designsystem.theme`, which
+  kept fifty files from being rewritten for an import. Kotlin compiles top-level
+  declarations into a facade class named after the *file*, so `Type.kt` in both
+  modules is one class name twice and one silently shadows the other. That
+  happened: `feature:home` failed on `Unresolved reference 'RepForthNumeric'`
+  over a symbol it had a perfectly good `api` path to. The survivors in
+  `core:designsystem` are `PhoneTypography.kt` and `PhoneShapes.kt` now, which is
+  also what they contain.
+- `Tone` was `internal` and had to become public, because `internal` is
+  per-module and the watch assembles its own `ColorScheme`. The guard replaces
+  the compiler.
+
+Both were broken deliberately and watched failing before being left in.
+
+**The exercise name needed two lines, and one was a measured mistake.** The
+first version gave it one, arguing that a name is identity rather than
+instruction. The catalog disagrees: the median name is **26 characters** and
+**69% are over 20**, so a single line truncates the ordinary exercise, not the
+long one. It also truncates from the wrong end — these names lead with equipment
+and distinguish themselves later, so cutting at 20 characters leaves **one name
+in five** identical to another. "bodyweight standing…" is seven different
+exercises. Two lines reach about forty characters, where that falls to two names
+in 1,318.
+
+Three things followed from the extra line, and each is worth keeping:
+
+- **The edge button's reserved room was guessed and wrong.** A medium
+  `EdgeButton` is documented as 52dp of pill and occupies **73dp** of the
+  display, because it grows downward into the curve. The set position landed
+  underneath "Complete" — visibly, and only once the name pushed it down there.
+  Measured off a render rather than adjusted by eye.
+- **The unit moved beside the number instead of under it.** §12 says which way
+  to sacrifice: "if a figure will not fit, cut the label instead". Inline keeps
+  both facts for the cost of neither, and without it "12" and "42" are the same
+  picture — one a rep count, one a countdown.
+- **Page 0 scrolls again, and at ordinary sizes never moves.** Forbidding it was
+  the wrong reading of the pass's own goal. What the design promises is that the
+  *primary action* is never behind a scroll, and the edge button is pinned
+  outside the scrolling content. At 200% font scale four lines do not fit a
+  226dp circle, and without a scroll the set position was cut off with no way to
+  reach it — worse than the scroll that was removed, and what §13 forbids.
+
+**A guard that was watched failing, and had to be fixed to fail.** The
+reachability test above passed with the scroll deliberately deleted, because its
+fixture name was `front plank` — one line at any size, so nothing overflowed. A
+guard is not known to work until it has been seen to fail, and this one was not
+until the fixture used a name of ordinary length.
+
+**Four things the pictures caught that the code looked fine for**, each fixed:
+the edge button drew over the last line of the page; a 72sp numeral left no room
+for a name and two labels on a 226dp circle; the exercise name lost its first
+and last letters to the curve, being the topmost line where a circle is
+narrowest; and the rest ring came out amber on an *olive* track, because Wear's
+default track is a dimmed copy of the accent and the palette has a neutral role
+for exactly this.
+
+Pause and Skip are outlined rather than filled, matching the phone's hierarchy —
+the filled control is the one that logs a set, and it is the edge button.
+
+### 2026-09-10 — there is no way to leave an exercise any more
+
+Asked for while reviewing the watch design pass, and the question that produced
+it was better than the answer I had given: what is the difference between
+"Complete" and "Next exercise"? They sat one swipe apart and both read as
+"move on".
+
+They were genuinely different. Complete recorded the set and advanced. Next
+exercise abandoned every set left on the exercise and recorded **nothing** for
+them. The owner's decision is that the second should not exist: the app offers
+one way to decline work, and it is skipping a set.
+
+**The removal is total** — phone, watch, wire and specification. `SkipSet` was
+always the honest version of the same intent, and the pair invited the wrong
+one. Four skips are four rows in the history; the jump left four sets that never
+happened, which made "left this exercise early" and "never started it" the same
+shape in the data.
+
+Normal progression never used the command, so nothing was stranded: `recordSet`
+finishes the workout on `isFinalSet` and `advance` moves between exercises on
+its own. Abandoning the whole workout is a different question and still has an
+answer.
+
+**An older watch can still send it, and that path was already correct.** The
+enum member is gone, so the phone's decoder throws — and `WearCommandService`
+has always dropped anything it cannot parse with a log, because there is no
+partial reading of a command that is safe to apply. Nothing new was needed.
+
+Three tests changed shape rather than being deleted, which is the part worth
+recording:
+
+- the engine test that jumped between exercises now skips every set to get
+  there, and asserts the two skipped sets are **rows** — the assertion the old
+  one could not make;
+- `TimedSetTest` reached a new exercise's clock by the jump and now reaches it
+  the way every real workout does, which is a better test of the same thing;
+- `SessionRecoveryTest` covered a real recovery bug where the cursor walked back
+  to an exercise that recorded nothing. That exact state is now unreachable, so
+  it travels by skipping instead — where the risk is the same in kind, because a
+  skipped set is a row with no reps and no weight.
+
+The watch tests assert the control's **absence** rather than trusting it. It was
+three lines of code, and its absence is what the decision actually is.
+
+### 2026-09-10 — the watch on hardware: a real bug, and a false one
+
+The design pass was tested on the paired Ultra. Two things were reported: the
+rest ring "looks always full", and the app "lags a lot".
+
+**The ring was real, and it was the component.** The data was right — the probe
+showed a 30,000ms total against 29,966ms remaining — and so was the arithmetic.
+Wear's `CircularProgressIndicator` *animates* a change in progress: a ring told
+to move from 30 seconds to 3 had travelled 16% of the way and was still short
+after five seconds. A countdown changes every second and never arrives. The
+workout arc hid it by changing once per set, in steps large enough to finish.
+The rim is two `drawArc` calls now, with no animation and no state.
+
+**The test that found it had to be written twice.** The first version captured
+three separate compositions at three remainders and they were all correct: a
+fresh composition starts at its target. Only changing the value inside a live
+composition reproduces it, which is what the watch does every second.
+
+**The lag was a debug build**, and it took far too long to ask. Same device,
+same interactions, only the build type differing:
+
+| | Debug | Release |
+|---|---|---|
+| Median frame | 57ms | 19ms |
+| 90th percentile | 350ms | 40ms |
+| Janky frames | 70% | 20% |
+
+Three experiments were built and thrown away first — the full-screen image, the
+page count, the fonts — and the picture was suspect for two rounds against a
+counter that said `Number Slow bitmap uploads: 0` the whole time. It is written
+into AGENTS.md as the first question to ask.
+
+**And most of the measurement was worthless.** `adb shell input swipe` does not
+reach the Wear pager; it reports `Total frames rendered: 0` rather than failing,
+so several rounds of frame numbers were noise from unrelated redraws. What works
+is resetting `gfxinfo`, a person using the watch for fifteen seconds, then
+reading it back.
+
+**Two fixes survive the false alarm, because both were real regardless.** The
+thumbnail was re-wrapped by `asImageBitmap()` on every recomposition, so a new
+image object reached the screen once a second — Compose cannot know it is the
+same picture. And every composed page asked for the crown as it appeared, so
+rotary could be driving a page nobody was looking at; that is
+`rememberActiveFocusRequester` and a focus group per page now.
+
+### 2026-09-10 — the watch says what the phone says
+
+The question that started it was a good one: what do "Complete" and "Next
+exercise" do differently? They sat one swipe apart and both read as "move on".
+
+Half the answer was that one of them should not exist, and it no longer does.
+The other half is that the watch had been shortening the phone's labels. "Log
+set" and "Skip set" became "Complete" and "Skip", and both lost the noun that
+said what they act on — so "Complete" read as finishing the *exercise*. The
+watch now uses the phone's words in both languages. They fit: "Seti kaydet" is
+the longest label the app has and there is a golden of it on the edge button.
+
+**And the phone's goldens had been photographing text the app does not
+produce.** Names are stored lower case and `RoomExerciseRepository.summaries`
+applies `exerciseDisplayName` before any screen sees one, so the phone has drawn
+"Barbell Decline Wide-Grip Press" since #54 while its own pictures said
+otherwise. The same gap was closed on the watch on 2026-09-10; this is the other
+half of it. Capitals are wider, so the goldens were narrower than life.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -4078,7 +4291,9 @@ reality — capitals are wider, and width is the entire point of a 226dp render.
    the app closed, every control, the disconnected screen, and the watch-face
    entry. It found four defects, all fixed the same day — see above. The
    split-version check was run first and is spent.
-21. **The watch screens want a design pass, not more features.** §11 is
+21. ~~**The watch screens want a design pass, not more features.**~~ Done
+   2026-09-10. See above. Superseded text follows: **The watch screens want a
+   design pass, not more features.** §11 is
    complete and every screen works, but they were laid out one control at a time
    as the feature set grew — a column of full-width buttons on a round display,
    with a scroll where a wrist would rather have a glance. The owner asked for
@@ -4133,6 +4348,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | No local rules-based planner; Coach needs a provider | `RulesEngine` filters and validates candidates and has never had a planning caller — which is the shape that invites one. Coach says what it needs before the form instead | `ProviderAvailability`, A.3 |
 | Replacing an exercise mid-workout is out of scope | Asked for by §3 and by the review as F2, and declined by the owner on 2026-09-09 as unnecessary. Skipping a set and leaving an exercise already cover stopping; replacement would need a new command and a decision about sets already recorded against the old exercise | Guideline §3, F2 |
 | Coach's plans are validated for legality, not for quality | The app enforces exclusions, equipment, session length, `WorkoutLimits` and target types. Ordering, redundancy and volume rules were declined 2026-09-09: two need catalog metadata that does not exist, and two would make a validator reject plans it cannot explain | Guideline §8, F6 |
+| Declining work has exactly one shape, and it is skipping a set | "Next exercise" jumped past the sets left on an exercise and recorded none of them, so an exercise left early was indistinguishable from one that never started. Skipping them one at a time reaches the same place and leaves a row for each. Removed 2026-09-10 from the phone, the watch and the wire; abandoning the whole workout is a separate question and still answered | Guideline §3, §11, `SessionCommand.kt` |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 | Every build downloads the upstream exercise media | Decided by the owner 2026-09-08. The `media` flavours never gated it, so the choice was between implementing a safeguard nobody had relied on and saying plainly what the app does. The licence question is unchanged and unmitigated by the build | Guideline §6, `PRIVACY.md`, `NOTICE.md` |
 | One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |

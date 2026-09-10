@@ -34,7 +34,4 @@ fun WearCommand.toSessionCommand(): SessionCommand = when (action) {
     WearAction.SkipRest -> SessionCommand.SkipRest(commandId, expectedRevision)
 
     WearAction.SkipSet -> SessionCommand.SkipSet(commandId, expectedRevision)
-
-    // Abandons whatever sets remain on the current exercise.
-    WearAction.NextExercise -> SessionCommand.NextExercise(commandId, expectedRevision)
 }

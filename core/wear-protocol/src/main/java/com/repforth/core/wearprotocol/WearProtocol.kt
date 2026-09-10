@@ -229,6 +229,51 @@ data class WearWorkoutState(
      * it never received, or an image with no notice.
      */
     val mediaAttribution: String? = null,
+
+    /**
+     * Sets finished so far in the whole workout, and how many there are.
+     *
+     * The rim arc on the watch is drawn from these. §11 gave the wrist the
+     * position *within* an exercise ([setNumber] of [totalSets]) and nothing at
+     * all about the workout, so "how much of this is left" was a question the
+     * watch could not answer and the phone never sent.
+     *
+     * **Sets rather than exercises, because an arc wants even steps.** A
+     * workout of four exercises moves an exercise-counted arc in four large
+     * jumps, and one of five sets and one of two advance it identically. Sets
+     * are the unit the work is actually done in and there are enough of them
+     * for the sweep to read as progress.
+     *
+     * A skipped set counts as done. The arc describes position in the workout,
+     * not effort spent, and a skip moves you along it.
+     *
+     * Both default to zero so an older watch reading a newer payload is
+     * unaffected, and a newer watch reading an older one draws no arc rather
+     * than a wrong one. §11 promises exactly that, and it has been watched
+     * holding on hardware.
+     */
+    val setsCompleted: Int = 0,
+    val setsTotal: Int = 0,
+
+    /**
+     * Which exercise of how many, one-based, or zero when unknown.
+     *
+     * Not what the arc is drawn from -- see above -- but what the controls page
+     * says in words, where there is room to be specific and a moment to read
+     * it. Between sets "3 of 6" answers a different question from a swept arc.
+     */
+    val exerciseNumber: Int = 0,
+    val exerciseCount: Int = 0,
+
+    /**
+     * The rest this exercise prescribes, or null when nothing is resting.
+     *
+     * A deadline says when rest ends; it does not say how long the rest was, and
+     * a ring needs both to know how much of it is left. §11 asks the rest screen
+     * for "a large circular countdown" and the watch could not draw one: it had
+     * a remainder and no whole to measure it against.
+     */
+    val restTotalMs: Long? = null,
 )
 
 /**
@@ -236,10 +281,19 @@ data class WearWorkoutState(
  *
  * One member per phone command, with nothing duplicated and nothing
  * unreachable. §11 originally listed `SkipExercise` alongside `NextExercise`;
- * they were one action under two names — the engine has a single command for
- * "leave this exercise, abandoning the sets left on it" — and having spent a
- * member on the duplicate, the set had no way to skip a single *set*, which the
- * phone has always been able to do. §11 has been corrected to match.
+ * they were one action under two names, and having spent a member on the
+ * duplicate the set had no way to skip a single *set*, which the phone has
+ * always been able to do.
+ *
+ * **`NextExercise` is gone entirely as of 2026-09-10**, from the phone as well
+ * as the wire. Declining work has one shape now and it is skipping a set. See
+ * `SessionCommand` for the reasoning.
+ *
+ * An older watch can still send it, and that is handled rather than guarded
+ * against: the member no longer exists, so the phone's decoder throws, and
+ * `WearCommandService` already drops anything it cannot parse with a log. There
+ * is no partial reading of a command that is safe to apply, and a removed
+ * command is the clearest case of that.
  */
 @Serializable
 enum class WearAction {
@@ -254,9 +308,6 @@ enum class WearAction {
 
     /** End the rest early. */
     SkipRest,
-
-    /** Leave this exercise, abandoning whatever sets remain on it. */
-    NextExercise,
 }
 
 /**

@@ -7,7 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.wear.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.WATCH_SCREENSHOT_DEVICE
@@ -72,23 +72,36 @@ class RestScreenComposeTest {
         assertEquals(listOf(WearAction.SkipRest), sent)
     }
 
-    /** The half of `isActive || isResting` that the exercise screen does not cover. */
+    /**
+     * Nor is there one here.
+     *
+     * The removed control was offered while resting as well as during a set, so
+     * its absence has to be asserted in both places — a rest is exactly when
+     * someone would reach for it.
+     */
     @Test
-    fun `next exercise can be sent while resting`() {
-        render(remainingSeconds = 45)
+    fun `resting offers no way to leave the exercise`() {
+        renderControls()
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
-
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(0, compose.onAllNodesWithText(NEXT).fetchSemanticsNodes().size)
     }
 
-    /** §11: disconnected means read-only, and that includes the new control. */
+    /** §11: disconnected means read-only, and that includes the primary action. */
     @Test
-    fun `a disconnected watch can do neither`() {
+    fun `a disconnected watch cannot skip the rest`() {
         render(remainingSeconds = 45, enabled = false)
 
-        compose.onNodeWithText(SKIP_REST).performScrollTo().performClick()
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(SKIP_REST).performClick()
+
+        assertEquals(emptyList<WearAction>(), sent)
+    }
+
+    /** And the same on the controls page, which is a separate composition. */
+    @Test
+    fun `a disconnected watch cannot pause while resting`() {
+        renderControls(enabled = false)
+
+        compose.onNodeWithText(PAUSE).performScrollTo().performClick()
 
         assertEquals(emptyList<WearAction>(), sent)
     }
@@ -120,34 +133,57 @@ class RestScreenComposeTest {
     }
 
     @Test
-    fun `every control is still reachable at 200 percent font scale`() {
+    fun `skip rest is still reachable at 200 percent font scale`() {
         render(remainingSeconds = 45, fontScale = 2f)
 
-        compose.onNodeWithText(SKIP_REST).performScrollTo().performClick()
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(SKIP_REST).performClick()
 
-        assertEquals(listOf(WearAction.SkipRest, WearAction.NextExercise), sent)
+        assertEquals(listOf(WearAction.SkipRest), sent)
     }
 
+    /** One `setContent` per test method, so the controls page gets its own. */
+    @Test
+    fun `pausing is still reachable at 200 percent font scale`() {
+        renderControls(fontScale = 2f)
+
+        compose.onNodeWithText(PAUSE).performScrollTo().performClick()
+
+        assertEquals(listOf(WearAction.Pause), sent)
+    }
+
+    /** Page 0: the countdown and the one action the phase allows. */
     private fun render(
         remainingSeconds: Int?,
         enabled: Boolean = true,
         fontScale: Float = 1f,
         paused: Boolean = false,
-    ) {
+    ) = host(fontScale) {
+        RestScreen(
+            state = state(paused),
+            remainingSeconds = remainingSeconds,
+            enabled = enabled,
+            onAction = { sent += it },
+        )
+    }
+
+    /** Page 1, where leaving the exercise lives during a rest as during a set. */
+    private fun renderControls(
+        enabled: Boolean = true,
+        fontScale: Float = 1f,
+        paused: Boolean = false,
+    ) = host(fontScale) {
+        ControlsPage(
+            state = state(paused),
+            enabled = enabled,
+            onAction = { sent += it },
+        )
+    }
+
+    private fun host(fontScale: Float, content: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers("+$ENGLISH")
         RuntimeEnvironment.setFontScale(fontScale)
 
-        compose.setContent {
-            MaterialTheme {
-                RestScreen(
-                    state = state(paused),
-                    remainingSeconds = remainingSeconds,
-                    enabled = enabled,
-                    onAction = { sent += it },
-                )
-            }
-        }
+        compose.setContent { RepForthWearTheme { content() } }
     }
 
     private fun state(paused: Boolean = false) = WearWorkoutState(
@@ -163,11 +199,20 @@ class RestScreenComposeTest {
         restDeadlineElapsedRealtimeMs = null,
         setDeadlineElapsedRealtimeMs = null,
         nextExerciseName = "Barbell Squat",
+        // A rest that knows how long it is, so the ring has a whole to measure
+        // its remainder against.
+        restTotalMs = 60_000L,
+        setsCompleted = 4,
+        setsTotal = 12,
+        exerciseNumber = 2,
+        exerciseCount = 4,
     )
 
     private companion object {
         const val SKIP_REST = "Skip rest"
         const val RESUME = "Resume"
+        /** Removed on 2026-09-10. Kept so its absence can be asserted. */
         const val NEXT = "Next exercise"
+        const val PAUSE = "Pause"
     }
 }

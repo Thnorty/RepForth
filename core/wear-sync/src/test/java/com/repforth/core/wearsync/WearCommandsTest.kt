@@ -72,11 +72,20 @@ class WearCommandsTest {
         )
     }
 
+    /**
+     * There is no way for the watch to leave an exercise, and that is the point.
+     *
+     * `NextExercise` was removed from the wire and from the phone on 2026-09-10:
+     * declining work has one shape, and it is skipping a set. This asserts the
+     * absence rather than trusting it, because a member creeping back into the
+     * enum would compile, map, and quietly reintroduce the control on both
+     * devices.
+     */
     @Test
-    fun `leaving the exercise moves on rather than skipping one set`() {
-        assertTrue(
-            command(action = WearAction.NextExercise).toSessionCommand()
-                is SessionCommand.NextExercise,
+    fun `no action leaves an exercise`() {
+        assertEquals(
+            emptyList<String>(),
+            WearAction.entries.map { it.name }.filter { "Exercise" in it },
         )
     }
 

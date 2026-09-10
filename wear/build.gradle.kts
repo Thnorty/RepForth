@@ -32,6 +32,12 @@ dependencies {
     // reason to see core:user-data, core:ai or core:secrets.
     implementation(project(":core:wear-protocol"))
 
+    // The app's palette, faces and numeric scale. Not `core:designsystem`:
+    // that module exposes phone Material 3 with `api`, which would put a
+    // second, clashing MaterialTheme on this classpath and the phone's
+    // Material into the watch APK. The tokens were split out for this.
+    implementation(project(":core:designtokens"))
+
     implementation(libs.androidx.wear.compose.material3)
     implementation(libs.androidx.wear.compose.foundation)
     implementation(libs.androidx.activity.compose)

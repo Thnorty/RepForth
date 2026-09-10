@@ -210,7 +210,6 @@ class EffortAndNoteComposeTest {
                     onCompleteSet = { _, _, _ -> logged++ },
                     onSkipSet = {},
                     onSkipRest = {},
-                    onNextExercise = {},
                     onPause = {},
                     onResume = {},
                     onFinish = { note, effort ->

@@ -102,12 +102,24 @@ class TimedSetTest {
         assertEquals(HOLD_MS, state.remaining())
     }
 
+    /**
+     * Arriving at a new exercise arms its clock, however you arrived.
+     *
+     * This used to travel by `NextExercise`, which was removed on 2026-09-10.
+     * The route is now the ordinary one — finish the last set of an exercise and
+     * end the rest — which is a better test of the same thing: that is the path
+     * every workout actually takes, and the jump was the exception.
+     */
     @Test
-    fun `moving to the next exercise starts its timer`() {
-        val moved = begun() + SessionCommand.NextExercise(id())
+    fun `arriving at the next exercise starts its timer`() {
+        var state = begun()
+        repeat(2) {
+            state += SessionCommand.SetElapsed(id())
+            state += SessionCommand.SkipRest(id())
+        }
 
-        assertEquals(1, moved.currentExerciseIndex)
-        assertEquals(HOLD_MS, moved.remaining())
+        assertEquals(1, state.currentExerciseIndex)
+        assertEquals(HOLD_MS, state.remaining())
     }
 
     @Test

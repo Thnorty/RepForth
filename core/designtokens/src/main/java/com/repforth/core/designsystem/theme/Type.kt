@@ -1,6 +1,5 @@
 package com.repforth.core.designsystem.theme
 
-import androidx.compose.material3.Typography
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -10,7 +9,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.repforth.core.designsystem.R
+import com.repforth.core.designtokens.R
 
 /*
  * Ported from design-system/tokens/typography.css.
@@ -45,12 +44,19 @@ val RepForthUi: FontFamily = FontFamily(
     Font(R.font.manrope_bold, FontWeight.Bold),
 )
 
-private val Tight = LineHeightStyle(
+val RfTightLeading = LineHeightStyle(
     alignment = LineHeightStyle.Alignment.Center,
     trim = LineHeightStyle.Trim.None,
 )
 
-private fun ui(
+/**
+ * One quiet UI text style.
+ *
+ * Public because two Material scales are built from it now: the phone's
+ * `Typography` in `core:designsystem`, and the watch's in `:wear`. It was a
+ * private helper while there was only one.
+ */
+fun rfUiStyle(
     size: TextUnit,
     weight: FontWeight,
     lineHeight: TextUnit,
@@ -61,31 +67,7 @@ private fun ui(
     fontWeight = weight,
     lineHeight = lineHeight,
     letterSpacing = tracking,
-    lineHeightStyle = Tight,
-)
-
-/** Material 3 scale. Deliberately quiet — labels never outrank the numeral they describe. */
-val RepForthTypography = Typography(
-    displayLarge = ui(57.sp, FontWeight.Bold, 66.sp).copy(fontFamily = RepForthDisplay),
-    displayMedium = ui(45.sp, FontWeight.Bold, 52.sp).copy(fontFamily = RepForthDisplay),
-    displaySmall = ui(36.sp, FontWeight.Bold, 42.sp).copy(fontFamily = RepForthDisplay),
-
-    // Screen titles use the display face for their weight (typography.css .rf-headline).
-    headlineLarge = ui(32.sp, FontWeight.Bold, 37.sp, (-0.01).em).copy(fontFamily = RepForthDisplay),
-    headlineMedium = ui(28.sp, FontWeight.ExtraBold, 32.sp, (-0.02).em).copy(fontFamily = RepForthDisplay),
-    headlineSmall = ui(24.sp, FontWeight.Bold, 28.sp, (-0.01).em).copy(fontFamily = RepForthDisplay),
-
-    titleLarge = ui(22.sp, FontWeight.Bold, 29.sp),
-    titleMedium = ui(16.sp, FontWeight.SemiBold, 21.sp),
-    titleSmall = ui(14.sp, FontWeight.SemiBold, 18.sp),
-
-    bodyLarge = ui(16.sp, FontWeight.Normal, 23.sp),
-    bodyMedium = ui(14.sp, FontWeight.Normal, 20.sp),
-    bodySmall = ui(12.sp, FontWeight.Normal, 17.sp),
-
-    labelLarge = ui(14.sp, FontWeight.SemiBold, 18.sp, 0.01.em),
-    labelMedium = ui(12.sp, FontWeight.SemiBold, 16.sp, 0.01.em),
-    labelSmall = ui(11.sp, FontWeight.Bold, 15.sp, 0.08.em),
+    lineHeightStyle = RfTightLeading,
 )
 
 /**
@@ -111,7 +93,7 @@ private fun numeric(size: TextUnit) = TextStyle(
     fontSize = size,
     lineHeight = size * 0.92f,
     letterSpacing = (-0.02).em,
-    lineHeightStyle = Tight,
+    lineHeightStyle = RfTightLeading,
     // Tabular figures: every digit gets the same advance width, so a running
     // countdown does not shift as its digits change. Verified present in Archivo.
     fontFeatureSettings = "tnum",

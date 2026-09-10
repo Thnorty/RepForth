@@ -285,7 +285,6 @@ class SessionViewModel @Inject constructor(
 
     fun onSkipRest() = dispatch(SessionCommand.SkipRest(controller.newCommandId()))
 
-    fun onNextExercise() = dispatch(SessionCommand.NextExercise(controller.newCommandId()))
 
     fun onPause() = dispatch(SessionCommand.Pause(controller.newCommandId()))
 

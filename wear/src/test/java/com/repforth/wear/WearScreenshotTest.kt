@@ -3,13 +3,15 @@ package com.repforth.wear
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.MaterialTheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_COMPARISON
@@ -98,6 +100,134 @@ class WearScreenshotTest {
         Exercise(thumbnail = swatch())
     }
 
+    /**
+     * **The rest ring after a second has passed, which is the bug this caught.**
+     *
+     * Reported from a wrist: the rest ring "looks always full". The data was
+     * right — a 30,000ms total and 29,966ms remaining — and so was the
+     * arithmetic. Wear's `CircularProgressIndicator` *animates* a change in
+     * progress, and a ring told to go from 30 seconds to 3 had moved 16% of the
+     * way and was still short five seconds later. A countdown changes every
+     * second and never arrives.
+     *
+     * The workout arc hid it: it changes once per set, in steps large enough
+     * for the animation to finish before the next one.
+     *
+     * **This has to recompose rather than render fresh.** A first attempt
+     * captured three separate compositions at three remainders, and they were
+     * all correct — a fresh composition starts at its target. Only changing the
+     * value inside a live composition reproduces it, which is what the device
+     * does every second.
+     */
+    @Test
+    fun rest_ring_after_a_tick() {
+        RuntimeEnvironment.setQualifiers("+$ENGLISH")
+        RuntimeEnvironment.setFontScale(1f)
+
+        var left by mutableIntStateOf(30)
+        compose.setContent {
+            RepForthWearTheme {
+                AppScaffold(timeText = {}) {
+                    RestPage(state = state(WearPhase.Rest), remainingSeconds = left)
+                }
+            }
+        }
+
+        left = 3
+        compose.waitForIdle()
+
+        compose.onRoot().captureRoboImage(screenshotPath("rest-ring-ticked"), SCREENSHOT_COMPARISON)
+    }
+
+    // ---- The pages the design pass added ----
+
+    /**
+     * The between-sets decisions, which used to crowd the set itself.
+     */
+    @Test
+    fun controls() = capture("controls") {
+        ControlsPage(state = state(), enabled = true, onAction = {})
+    }
+
+    /** The same page during a rest, where skipping a *set* is meaningless. */
+    @Test
+    fun controls_resting() = capture("controls-resting") {
+        ControlsPage(state = state(WearPhase.Rest), enabled = true, onAction = {})
+    }
+
+    /** Paused, which is the only state that renames the primary control. */
+    @Test
+    fun controls_paused() = capture("controls-paused") {
+        ControlsPage(state = state(WearPhase.Paused), enabled = true, onAction = {})
+    }
+
+    /**
+     * The picture at the size a picture is worth sending at.
+     *
+     * §6's notice rides on it, so this is also the golden that would notice the
+     * attribution disappearing from the one screen that shows the imagery.
+     */
+    @Test
+    fun media() = capture("media") {
+        MediaPage(state = state(attributed = true), thumbnail = swatch())
+    }
+
+    /**
+     * The whole thing assembled, for the page indicator and the edge button.
+     *
+     * The only capture that goes through the pager. What it is here to catch is
+     * the frame -- that there are three dots and a button hugging the bottom
+     * curve -- rather than the content, which the page captures above own.
+     */
+    @Test
+    fun pager() = capture("pager") {
+        ExerciseScreen(
+            state = state(attributed = true),
+            remainingSeconds = null,
+            enabled = true,
+            onAction = {},
+            thumbnail = swatch(),
+        )
+    }
+
+    /**
+     * The worst case this layout has, and the one that was missing.
+     *
+     * Every other 200% capture is a page on its own, with the whole circle to
+     * itself. Only here does the tallest possible text compete with the 73dp the
+     * edge button takes — and the button is what the page has to be centred
+     * around. The two-line exercise name was landing under "Complete" before
+     * the reserved room was measured rather than guessed, and no golden could
+     * have shown it.
+     */
+    @Test
+    fun pager_large_text() = capture("pager-2x", fontScale = 2f) {
+        ExerciseScreen(
+            state = state(),
+            remainingSeconds = null,
+            enabled = true,
+            onAction = {},
+        )
+    }
+
+    /**
+     * The primary action in Turkish, which is the longest label on any screen.
+     *
+     * "Log set" is seven characters and "Seti kaydet" is eleven, on a button
+     * whose width is fixed by the curve it sits in. The label only got that
+     * long on 2026-09-10, when the watch stopped saying "Complete" and started
+     * saying what the phone says.
+     */
+    @Test
+    fun pager_turkish() = capture("pager-tr", locale = TURKISH) {
+        ExerciseScreen(
+            state = state(),
+            remainingSeconds = null,
+            enabled = true,
+            onAction = {},
+        )
+    }
+
     // ---- Turkish, which is longer ----
 
     @Test
@@ -130,24 +260,27 @@ class WearScreenshotTest {
 
     // ---- Fixtures ----
 
+    /**
+     * Page 0 of a set, drawn directly rather than through the pager.
+     *
+     * A golden of the pager photographs page 0 and says nothing about the other
+     * two, so each page is captured on its own and the pager gets one picture of
+     * its own for the indicator. That also keeps these stable: a page rendered
+     * inside a pager is offset and scaled by whatever the pager is doing.
+     */
     @Composable
     private fun Exercise(timed: Boolean = false, thumbnail: ImageBitmap? = null) {
-        ExerciseScreen(
+        ExercisePage(
             state = state(timed = timed, attributed = thumbnail != null),
             remainingSeconds = if (timed) 42 else null,
-            enabled = true,
-            onAction = {},
-            thumbnail = thumbnail,
         )
     }
 
     @Composable
     private fun Rest() {
-        RestScreen(
-            state = state(next = "Barbell Squat"),
+        RestPage(
+            state = state(WearPhase.Rest, next = "Barbell Squat"),
             remainingSeconds = 45,
-            enabled = true,
-            onAction = {},
         )
     }
 
@@ -210,6 +343,14 @@ class WearScreenshotTest {
         setDeadlineElapsedRealtimeMs = null,
         nextExerciseName = next,
         mediaAttribution = "© Gym visual — https://gymvisual.com/".takeIf { attributed },
+        // Nine sets in, of twenty-two: far enough round for the arc to be
+        // unmistakably a fraction rather than empty or full, which is what a
+        // golden of a ring has to be able to fail on.
+        setsCompleted = 9,
+        setsTotal = 22,
+        exerciseNumber = 3,
+        exerciseCount = 6,
+        restTotalMs = if (phase == WearPhase.Rest) 60_000L else null,
     )
 
     private fun capture(
@@ -240,7 +381,7 @@ class WearScreenshotTest {
         // passed. And a clock in a golden is a golden that fails at the next
         // minute anyway.
         compose.setContent {
-            MaterialTheme {
+            RepForthWearTheme {
                 AppScaffold(timeText = {}) { content() }
             }
         }

@@ -11,7 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.wear.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.WATCH_SCREENSHOT_DEVICE
@@ -84,7 +84,7 @@ class ExerciseScreenComposeTest {
     /** Stopping early is still allowed, and is still a skip. */
     @Test
     fun `skip is still offered while a timed set runs`() {
-        render(timed = true, remainingSeconds = 42)
+        renderControls(timed = true)
 
         compose.onNodeWithText(SKIP).performClick()
 
@@ -93,7 +93,7 @@ class ExerciseScreenComposeTest {
 
     @Test
     fun `pause is still offered while a timed set runs`() {
-        render(timed = true, remainingSeconds = 42)
+        renderControls(timed = true)
 
         compose.onNodeWithText(PAUSE).performClick()
 
@@ -121,7 +121,7 @@ class ExerciseScreenComposeTest {
      */
     @Test
     fun `a disconnected watch cannot skip a timed set`() {
-        render(timed = true, remainingSeconds = 42, enabled = false)
+        renderControls(timed = true, enabled = false)
 
         compose.onNodeWithText(SKIP).performClick()
 
@@ -159,9 +159,9 @@ class ExerciseScreenComposeTest {
      */
     @Test
     fun `a thumbnail brings its attribution with it`() {
-        render(timed = false, remainingSeconds = null, thumbnail = image())
+        renderMedia(image())
 
-        compose.onNodeWithText(NOTICE).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(NOTICE).assertIsDisplayed()
     }
 
     /**
@@ -172,6 +172,14 @@ class ExerciseScreenComposeTest {
      * asset, and the screen only draws it with a decoded bitmap — so a transfer
      * that arrived and failed to decode shows neither, rather than the notice
      * alone.
+     */
+    /**
+     * And this is the half that is easy to get wrong, now structural.
+     *
+     * With no picture there is no media page at all, so the notice has nowhere
+     * to be drawn — the page count drops from three to two. That is a stronger
+     * guarantee than the old one, which relied on a null check inside a screen
+     * that was drawing the notice a few lines below the image either way.
      */
     @Test
     fun `no thumbnail means no attribution, even when the phone sent one`() {
@@ -184,64 +192,102 @@ class ExerciseScreenComposeTest {
         )
     }
 
+    /** A timed set gets the picture too: it is the movement, not the counting. */
     @Test
     fun `a timed set shows its thumbnail too`() {
         render(timed = true, remainingSeconds = 42, thumbnail = image())
 
         compose.onNodeWithText("42").assertIsDisplayed()
-        compose.onNodeWithText(NOTICE).performScrollTo().assertIsDisplayed()
     }
 
     // ---- Leaving the exercise, which had no button at all ----
 
     /**
-     * `WearAction.NextExercise` was unreachable.
+     * **There is no way to leave an exercise, and that is deliberate.**
      *
-     * It has been in the protocol since it was written, maps to a phone command,
-     * and §3 lists it in the watch MVP — and no screen offered it. The protocol's
-     * own standard for the action set is "nothing duplicated and nothing
-     * unreachable"; a member nothing can send fails the second half, and nothing
-     * in the suite could notice because every test asked about the buttons that
-     * *were* drawn.
+     * A "Next exercise" control stood here and jumped past whatever sets were
+     * left, recording none of them. It was removed on 2026-09-10, from the wire
+     * and the phone as well: declining work has one shape and it is Skip.
+     *
+     * Asserted rather than assumed, because the button is three lines of code
+     * and its absence is what the decision actually is. A skipped set is a row;
+     * an abandoned one was nothing at all.
      */
     @Test
-    fun `next exercise can be sent from a running set`() {
-        render(timed = false, remainingSeconds = null)
+    fun `the controls page offers no way to leave the exercise`() {
+        renderControls(timed = false)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
-
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(
+            "Leaving an exercise means skipping its sets, which records them",
+            0,
+            compose.onAllNodesWithText(NEXT).fetchSemanticsNodes().size,
+        )
     }
 
     @Test
-    fun `next exercise can be sent from a timed set too`() {
-        render(timed = true, remainingSeconds = 42)
+    fun `a timed set has no way to leave the exercise either`() {
+        renderControls(timed = true)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
-
-        assertEquals(listOf(WearAction.NextExercise), sent)
+        assertEquals(0, compose.onAllNodesWithText(NEXT).fetchSemanticsNodes().size)
     }
 
     @Test
-    fun `a disconnected watch cannot leave the exercise`() {
-        render(timed = false, remainingSeconds = null, enabled = false)
+    fun `a disconnected watch cannot skip a set`() {
+        renderControls(timed = false, enabled = false)
 
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(SKIP).performScrollTo().performClick()
 
         assertEquals(emptyList<WearAction>(), sent)
     }
 
     /**
-     * The third control does not fit, and that is why the screen scrolls.
+     * **Nothing on the set page is behind a scroll, which is the real claim.**
      *
-     * The exercise screen already spent about 194 of the watch's 216dp before
-     * this. A fixed container would simply have cut the new button off the
-     * bottom with no way to reach it — which is the failure this asserts is
-     * gone, rather than the presence of a scrollbar for its own sake.
+     * The first version of this asserted the page had no scroll action at all,
+     * and that was the wrong assertion twice over. The pager around it scrolls
+     * horizontally by construction — that is what a swipe between pages is — and
+     * at 200% font scale four lines of text do not fit a 226dp circle, so
+     * forbidding a scroll meant clipping the set position with no way to reach
+     * it. §13 forbids exactly that, and the screen this pass replaced could
+     * scroll to it.
+     *
+     * What the design actually promises is that the *primary action* is never
+     * behind a scroll: the edge button is pinned outside the scrolling content.
+     * That is what this asserts, by pressing it without scrolling first.
      */
     @Test
-    fun `the screen scrolls`() {
-        render(timed = true, remainingSeconds = 42)
+    fun `the primary action needs no scrolling to reach`() {
+        render(timed = false, remainingSeconds = null)
+
+        compose.onNodeWithText(COMPLETE).performClick()
+
+        assertEquals(listOf(WearAction.CompleteSet), sent)
+    }
+
+    /**
+     * And at 200% the rest of the page is still reachable rather than clipped.
+     *
+     * **With a long name, because a short one does not reproduce it.** The first
+     * version of this test used the class fixture, `front plank`, which is one
+     * line at any size — so nothing overflowed, and the test passed with the
+     * scroll deliberately deleted. Watching a guard fail is the only way to know
+     * it guards, and this one did not until the name got longer.
+     *
+     * 31 characters is not a pathological case either: the catalog's median name
+     * is 26 and 69% are over 20, so this is the ordinary exercise rather than the
+     * worst one.
+     */
+    @Test
+    fun `the set position is reachable at 200 percent font scale`() {
+        render(timed = false, remainingSeconds = null, fontScale = 2f, name = LONG_NAME)
+
+        compose.onNodeWithText(SET_OF).performScrollTo().assertIsDisplayed()
+    }
+
+    /** And the controls page does, because three buttons do not fit at 200%. */
+    @Test
+    fun `the controls page scrolls`() {
+        renderControls()
 
         compose.onNode(hasScrollAction()).assertExists()
     }
@@ -256,19 +302,45 @@ class ExerciseScreenComposeTest {
      * clipped layout would fail.
      */
     @Test
-    fun `every control is still reachable at 200 percent font scale`() {
+    fun `the primary action is still reachable at 200 percent font scale`() {
         render(timed = false, remainingSeconds = null, fontScale = 2f)
 
-        compose.onNodeWithText(COMPLETE).performScrollTo().performClick()
-        compose.onNodeWithText(NEXT).performScrollTo().performClick()
+        compose.onNodeWithText(COMPLETE).performClick()
 
-        assertEquals(listOf(WearAction.CompleteSet, WearAction.NextExercise), sent)
+        assertEquals(listOf(WearAction.CompleteSet), sent)
+    }
+
+    /**
+     * The last control on the controls page, at 200%, reached by scrolling.
+     *
+     * Two tests rather than one because a `ComposeTestRule` hosts a single
+     * `setContent` per method — a second call throws "has already set content"
+     * rather than replacing it, which is how this was found.
+     *
+     * Pressed rather than merely located: two full-width buttons and a label do
+     * not fit a 226dp circle at double size, and a layout that clipped the last
+     * one would still have it in the tree.
+     */
+    @Test
+    fun `the last control is still reachable at 200 percent font scale`() {
+        renderControls(fontScale = 2f)
+
+        compose.onNodeWithText(SKIP).performScrollTo().performClick()
+
+        assertEquals(listOf(WearAction.SkipSet), sent)
     }
 
     /** A 1x1 bitmap: this asserts what the screen does with one, not how it looks. */
     private fun image(): ImageBitmap =
         Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888).asImageBitmap()
 
+    /**
+     * Page 0: the set itself, through the real pager.
+     *
+     * The pager rather than [ExercisePage] alone, because the primary action is
+     * the edge button the pager places — and whether that button exists for a
+     * given phase is exactly what half of these assert.
+     */
     private fun render(
         timed: Boolean,
         remainingSeconds: Int?,
@@ -276,32 +348,61 @@ class ExerciseScreenComposeTest {
         fontScale: Float = 1f,
         thumbnail: ImageBitmap? = null,
         attributed: Boolean = thumbnail != null,
-    ) {
+        name: String = NAME,
+    ) = host(fontScale) {
+        ExerciseScreen(
+            state = state(timed, attributed, name),
+            remainingSeconds = remainingSeconds,
+            enabled = enabled,
+            onAction = { sent += it },
+            thumbnail = thumbnail,
+        )
+    }
+
+    /**
+     * Page 1: pause, skip and next exercise.
+     *
+     * These used to be stacked under the number on the one screen there was, and
+     * the design pass moved them a swipe away. The behaviour did not change, so
+     * the assertions did not either — only which composable is hosted.
+     */
+    private fun renderControls(
+        timed: Boolean = false,
+        enabled: Boolean = true,
+        fontScale: Float = 1f,
+    ) = host(fontScale) {
+        ControlsPage(
+            state = state(timed),
+            enabled = enabled,
+            onAction = { sent += it },
+        )
+    }
+
+    /** Page 2: the picture, and §6's notice. Present only when there is one. */
+    private fun renderMedia(thumbnail: ImageBitmap, attributed: Boolean = true) = host(1f) {
+        MediaPage(state = state(timed = false, attributed = attributed), thumbnail = thumbnail)
+    }
+
+    private fun host(fontScale: Float, content: @Composable () -> Unit) {
         // Both, always, even at their defaults: Robolectric carries these across
         // test methods in one JVM, so a test that set only what it changed would
         // run in whatever the previous one left behind.
         RuntimeEnvironment.setQualifiers("+$ENGLISH")
         RuntimeEnvironment.setFontScale(fontScale)
 
-        compose.setContent {
-            MaterialTheme {
-                ExerciseScreen(
-                    state = state(timed, attributed),
-                    remainingSeconds = remainingSeconds,
-                    enabled = enabled,
-                    onAction = { sent += it },
-                    thumbnail = thumbnail,
-                )
-            }
-        }
+        compose.setContent { RepForthWearTheme { content() } }
     }
 
-    private fun state(timed: Boolean, attributed: Boolean = false) = WearWorkoutState(
+    private fun state(
+        timed: Boolean,
+        attributed: Boolean = false,
+        name: String = NAME,
+    ) = WearWorkoutState(
         sessionId = "today",
         revision = 7,
         phase = WearPhase.Exercise,
         exerciseId = "0025",
-        exerciseName = NAME,
+        exerciseName = name,
         setNumber = 1,
         totalSets = 3,
         targetReps = if (timed) null else 12,
@@ -315,11 +416,17 @@ class ExerciseScreenComposeTest {
     private companion object {
         const val NAME = "front plank"
         const val NOTICE = "© Gym visual — https://gymvisual.com/"
-        const val COMPLETE = "Complete"
-        const val SKIP = "Skip"
+        const val COMPLETE = "Log set"
+        const val SKIP = "Skip set"
         const val PAUSE = "Pause"
+/** The control that was removed. Named so its absence can be asserted. */
         const val NEXT = "Next exercise"
         const val SECONDS = "Seconds"
-        const val REPS = "12 reps"
+/** The number is the hero and the word only names it, so they are two nodes. */
+        const val REPS = "Reps"
+        const val SET_OF = "Set 1 of 3"
+
+        /** An ordinary catalog name, not a long one: the median is 26 characters. */
+        const val LONG_NAME = "Barbell Decline Wide-Grip Press"
     }
 }
