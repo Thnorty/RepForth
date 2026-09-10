@@ -4179,6 +4179,25 @@ same picture. And every composed page asked for the crown as it appeared, so
 rotary could be driving a page nobody was looking at; that is
 `rememberActiveFocusRequester` and a focus group per page now.
 
+### 2026-09-10 — the watch says what the phone says
+
+The question that started it was a good one: what do "Complete" and "Next
+exercise" do differently? They sat one swipe apart and both read as "move on".
+
+Half the answer was that one of them should not exist, and it no longer does.
+The other half is that the watch had been shortening the phone's labels. "Log
+set" and "Skip set" became "Complete" and "Skip", and both lost the noun that
+said what they act on — so "Complete" read as finishing the *exercise*. The
+watch now uses the phone's words in both languages. They fit: "Seti kaydet" is
+the longest label the app has and there is a golden of it on the edge button.
+
+**And the phone's goldens had been photographing text the app does not
+produce.** Names are stored lower case and `RoomExerciseRepository.summaries`
+applies `exerciseDisplayName` before any screen sees one, so the phone has drawn
+"Barbell Decline Wide-Grip Press" since #54 while its own pictures said
+otherwise. The same gap was closed on the watch on 2026-09-10; this is the other
+half of it. Capitals are wider, so the goldens were narrower than life.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

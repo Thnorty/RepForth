@@ -210,6 +210,24 @@ class WearScreenshotTest {
         )
     }
 
+    /**
+     * The primary action in Turkish, which is the longest label on any screen.
+     *
+     * "Log set" is seven characters and "Seti kaydet" is eleven, on a button
+     * whose width is fixed by the curve it sits in. The label only got that
+     * long on 2026-09-10, when the watch stopped saying "Complete" and started
+     * saying what the phone says.
+     */
+    @Test
+    fun pager_turkish() = capture("pager-tr", locale = TURKISH) {
+        ExerciseScreen(
+            state = state(),
+            remainingSeconds = null,
+            enabled = true,
+            onAction = {},
+        )
+    }
+
     // ---- Turkish, which is longer ----
 
     @Test

@@ -13,8 +13,8 @@
     <string name="wear_reps_label">Tekrar</string>
     <string name="wear_exercise_of">Egzersiz %1$d / %2$d</string>
     <string name="wear_seconds">Saniye</string>
-    <string name="wear_complete_set">Tamamla</string>
-    <string name="wear_skip_set">Atla</string>
+    <string name="wear_complete_set">Seti kaydet</string>
+    <string name="wear_skip_set">Seti atla</string>
     <string name="wear_pause">Duraklat</string>
     <string name="wear_resume">Devam</string>
 

@@ -20,8 +20,14 @@
     <string name="wear_exercise_of">Exercise %1$d of %2$d</string>
     <!-- The unit under a timed set's countdown. Same word the phone uses. -->
     <string name="wear_seconds">Seconds</string>
-    <string name="wear_complete_set">Complete</string>
-    <string name="wear_skip_set">Skip</string>
+    <!--
+      The phone's words, not shorter ones. "Complete" and "Skip" dropped the
+      noun, and without it "Complete" reads as finishing the exercise rather
+      than recording a set - which is exactly how it was misread when it sat a
+      swipe away from a control that did leave the exercise. Both fit.
+    -->
+    <string name="wear_complete_set">Log set</string>
+    <string name="wear_skip_set">Skip set</string>
     <string name="wear_pause">Pause</string>
     <!--
         Leaves the exercise, abandoning the sets left on it. The phone calls it

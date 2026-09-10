@@ -416,8 +416,8 @@ class ExerciseScreenComposeTest {
     private companion object {
         const val NAME = "front plank"
         const val NOTICE = "© Gym visual — https://gymvisual.com/"
-        const val COMPLETE = "Complete"
-        const val SKIP = "Skip"
+        const val COMPLETE = "Log set"
+        const val SKIP = "Skip set"
         const val PAUSE = "Pause"
 /** The control that was removed. Named so its absence can be asserted. */
         const val NEXT = "Next exercise"
