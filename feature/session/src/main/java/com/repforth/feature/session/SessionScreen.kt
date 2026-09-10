@@ -10,8 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,13 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,9 +40,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.component.EFFORT_SCALE
@@ -59,12 +53,9 @@ import com.repforth.core.designsystem.theme.LocalUnitSystem
 import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
-import com.repforth.core.designsystem.theme.WeightEntry
 import com.repforth.core.designsystem.theme.formatWeight
 import com.repforth.core.designsystem.theme.rfHaptic
 import com.repforth.core.designsystem.theme.rfPopOnChange
-import com.repforth.core.designsystem.theme.readWeight
-import com.repforth.core.designsystem.theme.sanitizeWeightInput
 import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
@@ -636,14 +627,10 @@ private fun SessionControls(
     // performing one during composition would fire it again on every
     // recomposition -- of which this screen has one a second while resting.
     val confirm = rfHaptic()
-    var reps by rememberSaveable { mutableStateOf("") }
-    var weight by rememberSaveable { mutableStateOf("") }
     // Null is "not answered", which is different from any number on the scale
     // and is what an ordinary one-tap log records.
     var effort by rememberSaveable { mutableStateOf<Int?>(null) }
     var note by rememberSaveable { mutableStateOf("") }
-    val units = LocalUnitSystem.current
-    val weightEntry = units.readWeight(weight)
 
     Column(
         modifier = Modifier
@@ -651,49 +638,6 @@ private fun SessionControls(
             .padding(bottom = Space.s4),
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
-        if (state.isActive && state.target is ExerciseTarget.Reps) {
-            val targetReps = (state.target as? ExerciseTarget.Reps)?.reps
-            val targetWeight = state.target?.weightKg
-            Row(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
-                OutlinedTextField(
-                    value = reps,
-                    onValueChange = { reps = it.filter(Char::isDigit).take(MAX_DIGITS) },
-                    label = { Text(stringResource(R.string.session_reps)) },
-                    placeholder = {
-                        targetReps?.let { Text(it.toString()) }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = weight,
-                    // One parser, one editor, shared with the builder's field.
-                    // A comma is a decimal point here, because on a Turkish
-                    // keyboard it is the decimal key -- and dropping it turned
-                    // 12,5 into 125 and logged it without a word.
-                    onValueChange = { weight = sanitizeWeightInput(it) },
-                    label = {
-                        Text(stringResource(R.string.session_weight, units.symbol))
-                    },
-                    placeholder = {
-                        targetWeight?.takeIf { it > 0.0 }?.let {
-                            Text(units.formatWeight(it))
-                        }
-                    },
-                    isError = weightEntry is WeightEntry.Invalid,
-                    supportingText = if (weightEntry is WeightEntry.Invalid) {
-                        { Text(stringResource(R.string.session_weight_invalid)) }
-                    } else {
-                        null
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
         // §3's two optional questions, asked once, at the one moment the whole
         // workout is in view and nothing is waiting on the user.
         //
@@ -745,10 +689,7 @@ private fun SessionControls(
 
             else -> PrimaryAction(
                 text = stringResource(R.string.session_log_set),
-                // A weight nobody can read is not a weight to record. Blank is
-                // still "as prescribed"; this is the case that used to become
-                // blank on its way through toDoubleOrNull.
-                enabled = weightEntry !is WeightEntry.Invalid,
+                enabled = true,
                 onClick = {
                     // §12 asks for a haptic here, and the setting for it
                     // controlled nothing until now. This is the moment in a
@@ -756,18 +697,17 @@ private fun SessionControls(
                     // screen -- the set has just finished and the phone is
                     // being put down.
                     confirm()
-                    // Blank means "as prescribed": the target is what was
-                    // planned, and typing it again to confirm it is friction
-                    // during the one activity where typing is hardest.
+                    // Always as prescribed. The screen offered a reps field
+                    // and a weight field to record a set that differed from its
+                    // target, and the owner removed them on 2026-09-10: a set is
+                    // logged in one tap and the plan is what was done. Nulls
+                    // here are what the engine already reads as "the target",
+                    // which is the path a blank field always took.
                     onCompleteSet(
-                        reps.toIntOrNull(),
-                        // Already in kilograms: the field's parser converts, so
-                        // no screen decides what unit a stored number is in.
-                        (weightEntry as? WeightEntry.Value)?.kg,
+                        null,
+                        null,
                         (state.target as? ExerciseTarget.Duration)?.durationMs,
                     )
-                    reps = ""
-                    weight = ""
                 },
             )
         }

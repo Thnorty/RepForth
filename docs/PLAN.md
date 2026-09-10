@@ -4375,6 +4375,39 @@ changed and no collector will fire.
 a named function in `core:wear-sync` now, with four cases, watched failing
 against the old always-publish behaviour.
 
+### 2026-09-10 - the watch named the wrong exercise, and the phone stopped asking
+
+**"Next" is usually this exercise again.** Reported from a wrist: resting after
+the first of four sets, the watch named the *next exercise*. `WearProjection`
+read `exercises[currentExerciseIndex + 1]` whatever the set index was, so the
+rest screen promised something three sets away.
+
+The phone has always been right — its own preview asks `isLastSetOfExercise`
+first — so this was one device answering a question the other had already
+answered correctly. The projection asks the same question in the same order now.
+
+**The old test asserted the bug and passed**, which is the part worth keeping in
+view: it was written from the code rather than from what the screen is for.
+"The next exercise is named while there is one" is exactly true of what the code
+did and says nothing about whether it should.
+
+**The reps and weight fields are gone from the phone's set screen**, at the
+owner's request. They existed to record a set that differed from its target; a
+set is logged in one tap now and the plan is what was done. `onCompleteSet`
+passes nulls, which is the path a blank field always took — the engine reads a
+null as "the target".
+
+`SessionWeightEntryComposeTest` went with them. Nothing about the parser is
+lost: `WeightInputTest` in `core:designsystem` covers the comma, the pounds
+conversion and the Turkish decimal in eighteen tests, and the builder still uses
+that parser. What the deleted class covered was the field itself.
+
+**Coach can already generate a single workout**, asked and answered without a
+change: "How many days?" runs 1 to 7 at the top of the sheet, and a one-day
+result is deliberately stored as a plain workout rather than a week of one — the
+summary line even says so. The default is seeded from the profile's training
+days, which is why it opens on a week for most people.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

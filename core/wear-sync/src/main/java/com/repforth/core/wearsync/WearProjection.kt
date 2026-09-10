@@ -81,13 +81,27 @@ fun SessionSnapshot.toWearState(
 }
 
 /**
- * The name of what comes after this exercise, or null at the end.
+ * The name of whatever comes next — which is usually this exercise again.
  *
- * §11 puts this on the rest screen, which is the only moment it is useful: it
- * is what someone decides whether to keep resting for.
+ * §11 puts this on the rest screen, the only moment it is useful: it is what
+ * someone decides whether to keep resting for.
+ *
+ * **It named the wrong exercise until 2026-09-10.** It read
+ * `exercises[currentExerciseIndex + 1]` unconditionally, so a rest between the
+ * first and second set of four announced the *next exercise* — and the wrist
+ * told you to expect something you would not reach for another three sets. The
+ * phone has always got this right; its own preview asks `isLastSetOfExercise`
+ * first, and this is the same question asked in the same order.
+ *
+ * Null only at the very end, where there is genuinely nothing after this.
  */
 private fun SessionSnapshot.nextExerciseName(names: Map<String, String>): String? {
-    val next = exercises.getOrNull(currentExerciseIndex + 1) ?: return null
+    val next = if (isLastSetOfExercise) {
+        exercises.getOrNull(currentExerciseIndex + 1) ?: return null
+    } else {
+        // Another set of what is already on the bar.
+        currentExercise ?: return null
+    }
     val id = next.exerciseId.value
     return names[id] ?: id
 }

@@ -4,21 +4,11 @@
     <string name="session_title">Antrenman</string>
     <string name="session_exercise_of">%2$d egzersizden %1$d.</string>
     <string name="session_set_of">%2$d setten %1$d.</string>
-    <plurals name="session_target_reps">
-        <item quantity="one">%1$d tekrar</item>
-        <item quantity="other">%1$d tekrar</item>
-    </plurals>
-    <plurals name="session_target_time">
-        <item quantity="one">%1$d saniye</item>
-        <item quantity="other">%1$d saniye</item>
-    </plurals>
     <string name="session_target_weight">%1$s %2$s</string>
     <string name="session_target_bodyweight">Vücut ağırlığı</string>
 
     <string name="session_seconds">Saniye</string>
     <string name="session_reps">Tekrar</string>
-    <string name="session_weight">Ağırlık (%1$s)</string>
-    <string name="session_weight_invalid">Bir sayı girin, örneğin 12,5</string>
     <string name="session_log_set">Seti kaydet</string>
     <string name="session_skip_set">Seti atla</string>
     <string name="session_effort">Ne kadar zorlandın? (isteğe bağlı)</string>
