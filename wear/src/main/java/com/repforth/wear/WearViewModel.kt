@@ -1,6 +1,5 @@
 package com.repforth.wear
 
-import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.wearprotocol.WearAction
@@ -29,7 +28,13 @@ data class WearUiState(
     val workout: WearWorkoutState? = null,
     val phoneReachable: Boolean = true,
     /** The current exercise's still image (§3), or null when there is none. */
-    val thumbnail: Bitmap? = null,
+    /**
+     * The current exercise's picture, as the bytes it arrived as.
+     *
+     * Undecoded on purpose: the phone sends an animation, and only the
+     * screen drawing it knows whether it is playing.
+     */
+    val media: ByteArray? = null,
 ) {
     /**
      * Which of §11's five screens this is.
@@ -83,10 +88,10 @@ class WearViewModel @Inject constructor(
     val uiState: StateFlow<WearUiState> = combine(
         store.state,
         store.phoneReachable,
-        store.thumbnail,
+        store.media,
         pollReachability(),
-    ) { workout, reachable, thumbnail, _ ->
-        WearUiState(workout = workout, phoneReachable = reachable, thumbnail = thumbnail)
+    ) { workout, reachable, media, _ ->
+        WearUiState(workout = workout, phoneReachable = reachable, media = media)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),

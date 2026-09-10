@@ -7,7 +7,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.wear.compose.foundation.HierarchicalFocusCoordinator
 import androidx.wear.compose.foundation.pager.rememberPagerState
@@ -55,13 +54,13 @@ fun ExerciseScreen(
     enabled: Boolean,
     onAction: (WearAction) -> Unit,
     modifier: Modifier = Modifier,
-    thumbnail: ImageBitmap? = null,
+    media: ByteArray? = null,
 ) {
     WorkoutPages(
         state = state,
         enabled = enabled,
         onAction = onAction,
-        thumbnail = thumbnail,
+        media = media,
         modifier = modifier,
         // A timed set has no Complete button at all, and that is the engine's
         // rule rather than this screen's taste: `CompleteSet` is refused for a
@@ -91,7 +90,7 @@ fun RestScreen(
     enabled: Boolean,
     onAction: (WearAction) -> Unit,
     modifier: Modifier = Modifier,
-    thumbnail: ImageBitmap? = null,
+    media: ByteArray? = null,
 ) {
     val paused = state.phase == WearPhase.Paused
 
@@ -99,7 +98,7 @@ fun RestScreen(
         state = state,
         enabled = enabled,
         onAction = onAction,
-        thumbnail = thumbnail,
+        media = media,
         modifier = modifier,
         primaryAction = if (paused) {
             PrimaryAction(R.string.wear_resume, WearAction.Resume)
@@ -119,12 +118,12 @@ private fun WorkoutPages(
     state: WearWorkoutState,
     enabled: Boolean,
     onAction: (WearAction) -> Unit,
-    thumbnail: ImageBitmap?,
+    media: ByteArray?,
     primaryAction: PrimaryAction?,
     modifier: Modifier = Modifier,
     mainPage: @Composable (bottomInset: Dp) -> Unit,
 ) {
-    val pageCount = if (thumbnail != null) 3 else 2
+    val pageCount = if (media != null) 3 else 2
     val pager = rememberPagerState { pageCount }
 
     HorizontalPagerScaffold(
@@ -162,8 +161,15 @@ private fun WorkoutPages(
 
                         1 -> ControlsPage(state = state, enabled = enabled, onAction = onAction)
 
-                        else -> thumbnail?.let { image ->
-                            MediaPage(state = state, thumbnail = image)
+                        // Playing only while this is the page being looked
+                        // at. §3 asked for an animation that stops when it is
+                        // not being watched, and the pager already knows.
+                        else -> media?.let { bytes ->
+                            MediaPage(
+                                state = state,
+                                media = bytes,
+                                playing = page == pager.currentPage,
+                            )
                         }
                     }
                     }

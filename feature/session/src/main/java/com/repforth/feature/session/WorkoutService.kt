@@ -22,7 +22,7 @@ import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.media.download.DEFAULT_MEDIA_VERSION
 import com.repforth.core.media.download.MediaDownloader
-import com.repforth.core.media.download.THUMBNAIL_MEDIA_TYPE
+import com.repforth.core.media.download.ANIMATION_MEDIA_TYPE
 import com.repforth.core.media.manifest.MediaManifestRepository
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.wearprotocol.WearAlert
@@ -415,7 +415,7 @@ class WorkoutService : Service() {
             snapshot.exercises.forEach { planned ->
                 val id = planned.exerciseId.value
                 if (thumbnails.containsKey(id)) return@forEach
-                val bytes = loadThumbnail(id) ?: return@forEach
+                val bytes = loadAnimation(id) ?: return@forEach
                 thumbnails[id] = bytes
 
                 // Only if the wrist is still on this exercise. By the time a
@@ -432,13 +432,29 @@ class WorkoutService : Service() {
         }
     }
 
-    private suspend fun loadThumbnail(exerciseId: String): ByteArray? {
-        val ref = summaries[exerciseId]?.thumbnail ?: return null
+    /**
+     * The moving version, which is also the still one.
+     *
+     * The watch was sent the JPEG thumbnail until 2026-09-10 and now gets the
+     * GIF. One asset rather than two: a watch that is not playing it draws the
+     * first frame, so the animation serves both jobs and there is one code path
+     * for both.
+     *
+     * It costs about fourteen times the bytes — 94KB against 6.6KB at the
+     * catalog's median, 233KB at its worst. That is well inside what a Data
+     * Layer asset carries, and it is warmed for the whole plan at the start of
+     * the workout rather than fetched when the wrist asks, so the transfer has a
+     * set's worth of time rather than a swipe's. On a pairing with no Wi-Fi the
+     * warm-up is the slow part; nothing waits on it and a missing picture is not
+     * a reason to interrupt a set.
+     */
+    private suspend fun loadAnimation(exerciseId: String): ByteArray? {
+        val ref = summaries[exerciseId]?.animation ?: return null
         if (!ref.isAvailable) return null
         val file = media.download(
             mediaVersion = DEFAULT_MEDIA_VERSION,
             exerciseId = exerciseId,
-            mediaType = THUMBNAIL_MEDIA_TYPE,
+            mediaType = ANIMATION_MEDIA_TYPE,
             mediaRef = ref,
         ).getOrNull() ?: return null
         return runCatching { file.readBytes() }.getOrNull()

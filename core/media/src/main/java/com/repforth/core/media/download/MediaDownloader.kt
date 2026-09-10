@@ -45,6 +45,9 @@ const val DEFAULT_MEDIA_VERSION: Int = 1
 /** The `mediaType` segment of that key for a still image. */
 const val THUMBNAIL_MEDIA_TYPE: String = "thumbnail"
 
+/** The same for the moving version. Must match the manifest's key. */
+const val ANIMATION_MEDIA_TYPE: String = "animation"
+
 /**
  * Describes a piece of exercise media to prefetch in the background (§9).
  */

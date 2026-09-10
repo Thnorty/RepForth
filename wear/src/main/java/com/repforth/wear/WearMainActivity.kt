@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.wear.compose.material3.AppScaffold
@@ -71,15 +70,6 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
         }
     }
 
-    // Wrapped once per bitmap, not once per recomposition.
-    //
-    // `asImageBitmap()` allocates a new wrapper every time it is called, and
-    // calling it inline meant a *different* ImageBitmap reached the screen on
-    // every recomposition -- once a second while a clock is running, and once
-    // per publish otherwise. Compose has no way to know it is the same picture,
-    // so a full-circle image was re-uploaded each time. Found on hardware as
-    // "it feels laggy when I press Complete".
-    val thumbnail = remember(state.thumbnail) { state.thumbnail?.asImageBitmap() }
 
     RepForthWearTheme {
         AppScaffold {
@@ -91,7 +81,7 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Exercise -> state.workout?.let { workout ->
                     ExerciseScreen(
                         state = workout,
-                        thumbnail = thumbnail,
+                        media = state.media,
                         // Null for anything counted in repetitions, which is
                         // what makes the screen draw a set number instead.
                         remainingSeconds = rememberCountdownSeconds(
@@ -109,7 +99,7 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                         // The picture rides through the rest too. It is of the
                         // exercise being worked, and a rest is when there is
                         // most time to look at one.
-                        thumbnail = thumbnail,
+                        media = state.media,
                         remainingSeconds = rememberCountdownSeconds(
                             workout,
                             workout.restRemainingMs(),

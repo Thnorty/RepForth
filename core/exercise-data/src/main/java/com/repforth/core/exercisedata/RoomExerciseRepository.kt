@@ -74,7 +74,10 @@ internal class RoomExerciseRepository @Inject constructor(
             .flatMap { chunk -> dao.summariesFor(chunk) }
             .associate { row ->
                 val id = ExerciseId(row.id)
-                id to row.toSummary().copy(thumbnail = mediaResolver.resolveThumbnail(id))
+                id to row.toSummary().copy(
+                    thumbnail = mediaResolver.resolveThumbnail(id),
+                    animation = mediaResolver.resolveAnimation(id),
+                )
             }
     }
 

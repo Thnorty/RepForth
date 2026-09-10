@@ -1,8 +1,6 @@
 package com.repforth.wear
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.util.Log
 import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
@@ -71,20 +69,25 @@ class WearWorkoutStore @Inject constructor(
     /** The last snapshot the phone published, or null when it has said nothing. */
     val state: StateFlow<WearWorkoutState?> = _state.asStateFlow()
 
-    private val _thumbnail = MutableStateFlow<Bitmap?>(null)
+    private val _media = MutableStateFlow<ByteArray?>(null)
 
     /**
-     * The current exercise's still image (§3, §11), or null when there is none.
+     * The current exercise's picture as it arrived, or null when there is none.
+     *
+     * **Bytes rather than a decoded `Bitmap`, since 2026-09-10.** The phone sends
+     * the animation now, and only the thing that draws it can know whether it is
+     * being played — a `Bitmap` throws the other frames away before that question
+     * is asked. Decoding belongs with the screen for the same reason.
      *
      * Null covers every reason at once — the phone has not cached it, the
      * manifest has no entry, the user restricted downloads to Wi-Fi — because
      * the screen does the same thing for all of them, which is the same thing
-     * the phone does: draw an icon.
+     * the phone does: draw nothing and let the name carry it.
      */
-    val thumbnail: StateFlow<Bitmap?> = _thumbnail.asStateFlow()
+    val media: StateFlow<ByteArray?> = _media.asStateFlow()
 
-    /** The asset already fetched, so a snapshot per second is not a decode per second. */
-    private var thumbnailRef: String? = null
+    /** The asset already fetched, so a snapshot per second is not a read per second. */
+    private var mediaRef: String? = null
 
     private val _phoneReachable = MutableStateFlow(true)
 
@@ -130,29 +133,29 @@ class WearWorkoutStore @Inject constructor(
      * one exercise costs one decode rather than one per publish.
      */
     private fun onThumbnailAsset(assetId: String?) {
-        if (assetId == thumbnailRef) return
-        thumbnailRef = assetId
+        if (assetId == mediaRef) return
+        mediaRef = assetId
 
         if (assetId == null) {
-            _thumbnail.value = null
+            _media.value = null
             return
         }
         scope.launch {
-            val decoded = try {
+            val bytes = try {
                 val response = dataClient.getFdForAsset(Asset.createFromRef(assetId)).await()
-                val bitmap = response.inputStream?.use { BitmapFactory.decodeStream(it) }
+                val read = response.inputStream?.use { it.readBytes() }
                 response.release()
-                bitmap
+                read
             } catch (e: Exception) {
                 // A picture is the one thing on this screen that can be missing
                 // without the screen being wrong, so this is a log and nothing
                 // else. The name, the set and the countdown are all still true.
-                Log.w(TAG, "Could not read the exercise thumbnail", e)
+                Log.w(TAG, "Could not read the exercise media", e)
                 null
             }
-            // Only if it is still the one being asked for -- a slow decode must
+            // Only if it is still the one being asked for -- a slow read must
             // not overwrite a newer exercise's picture with an older one.
-            if (thumbnailRef == assetId) _thumbnail.value = decoded
+            if (mediaRef == assetId) _media.value = bytes
         }
     }
 
