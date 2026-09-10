@@ -53,8 +53,6 @@ class SchemaExportTest {
                 // User data — the only copy that exists anywhere.
                 "user_profile",
                 "profile_equipment",
-                "profile_preferred_muscle",
-                "movement_exclusion",
                 "training_week",
                 "workout_template",
                 "template_exercise",

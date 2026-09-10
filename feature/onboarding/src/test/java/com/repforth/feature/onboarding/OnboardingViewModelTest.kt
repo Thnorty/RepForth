@@ -142,20 +142,6 @@ class OnboardingViewModelTest {
     }
 
     /**
-     * Optional means Next works without an answer, not that a second button
-     * exists to say so.
-     */
-    @Test
-    fun `an optional question can be passed without answering it`() {
-        advanceTo(OnboardingStep.MUSCLES)
-
-        viewModel.onNext()
-
-        assertEquals(OnboardingStep.AVOID, state.step)
-        assertTrue("Moving on must not invent an answer", state.preferredMuscles.isEmpty())
-    }
-
-    /**
      * Review is last so that the last thing before committing is a look at what
      * is being committed. If a question is ever added after it, the flow ends on
      * a question again and the review stops being a review.
@@ -254,41 +240,6 @@ class OnboardingViewModelTest {
         assertEquals(OnboardingUiState.SESSION_MINUTES_RANGE.last, state.sessionLengthMinutes)
     }
 
-    /**
-     * The synonym rule, which is the same one the catalog filters use: selecting
-     * a muscle selects every upstream name for it, or the profile is written
-     * half-applied and the rules engine honours half of it.
-     */
-    @Test
-    fun `selecting a muscle selects its whole synonym group`() {
-        val withSynonyms = Muscle.entries.first { muscle ->
-            Muscle.entries.count { it.canonical == muscle.canonical } > 1
-        }
-        val group = Muscle.entries.filter { it.canonical == withSynonyms.canonical }.toSet()
-
-        viewModel.onPreferredMuscleToggled(withSynonyms)
-        assertEquals(group, state.preferredMuscles)
-
-        viewModel.onPreferredMuscleToggled(withSynonyms)
-        assertTrue(state.preferredMuscles.isEmpty())
-    }
-
-    @Test
-    fun `avoiding a muscle removes it from the preferred ones`() {
-        val muscle = Muscle.entries.first()
-
-        viewModel.onPreferredMuscleToggled(muscle)
-        assertTrue(state.preferredMuscles.isNotEmpty())
-
-        viewModel.onAvoidedMuscleToggled(muscle)
-
-        assertTrue(
-            "A muscle cannot be both favoured and forbidden",
-            state.preferredMuscles.isEmpty(),
-        )
-        assertTrue(state.avoidedMuscles.isNotEmpty())
-    }
-
     @Test
     fun `finishing writes a profile built from the answers`() = runTest(dispatcher) {
         viewModel.onGoalSelected(TrainingGoal.ENDURANCE)
@@ -307,58 +258,6 @@ class OnboardingViewModelTest {
         assertEquals("60 minutes must be stored as milliseconds", 3_600_000L, saved.sessionLengthMs)
         assertEquals(setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL), saved.availableEquipment)
         assertTrue(saved.id.isNotBlank())
-    }
-
-    @Test
-    fun `avoided muscles become exclusions the rules engine can read back`() = runTest(dispatcher) {
-        val muscle = Muscle.entries.first()
-        answerRequiredQuestions()
-        viewModel.onAvoidedMuscleToggled(muscle)
-
-        viewModel.onFinish()
-        testScheduler.advanceUntilIdle()
-
-        val saved = profiles.saved.single()
-        assertTrue(
-            "The exclusion must survive the round trip through UserProfile",
-            muscle.canonical in saved.excludedMuscles.map { it.canonical },
-        )
-    }
-
-    /**
-     * Found by an audit, not by the tests: the exclusion was one-way.
-     *
-     * Avoiding a muscle dropped it from preferred, but preferring one did not
-     * drop it from avoided — and the Back button makes that reachable in about
-     * four taps. The profile then asked the rules engine to favour and forbid
-     * the same muscle.
-     */
-    @Test
-    fun `preferring a muscle removes it from the avoided ones`() {
-        val muscle = Muscle.entries.first()
-
-        viewModel.onAvoidedMuscleToggled(muscle)
-        assertTrue(state.avoidedMuscles.isNotEmpty())
-
-        viewModel.onPreferredMuscleToggled(muscle)
-
-        assertTrue(
-            "Preferring must clear the avoidance, the same way avoiding clears the preference",
-            state.avoidedMuscles.isEmpty(),
-        )
-        assertTrue(state.preferredMuscles.isNotEmpty())
-    }
-
-    @Test
-    fun `the two muscle sets can never overlap, whichever order they are answered in`() {
-        val region = BodyRegion.entries.first { it.muscles.isNotEmpty() }
-
-        viewModel.onAvoidedRegionToggled(region)
-        viewModel.onPreferredRegionToggled(region)
-        assertTrue(state.preferredMuscles.intersect(state.avoidedMuscles).isEmpty())
-
-        viewModel.onAvoidedRegionToggled(region)
-        assertTrue(state.preferredMuscles.intersect(state.avoidedMuscles).isEmpty())
     }
 
     /**

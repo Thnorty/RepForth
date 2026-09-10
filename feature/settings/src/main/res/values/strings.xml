@@ -12,47 +12,11 @@
     <string name="settings_profile_equipment_fewer">Fewer options</string>
     <string name="settings_profile_schedule">Schedule</string>
     <string name="settings_profile_schedule_sub">%1$d days / week · %2$d min</string>
-    <string name="settings_profile_avoid_muscles">Muscles to avoid</string>
-    <string name="settings_profile_avoid_muscles_none">Nothing avoided</string>
-    <plurals name="settings_profile_avoid_muscles_sub">
-        <item quantity="one">%1$d muscle avoided</item>
-        <item quantity="other">%1$d muscles avoided</item>
-    </plurals>
-    <string name="settings_profile_avoid_muscles_dialog">Which muscles should plans avoid?</string>
-    <string name="settings_profile_avoid_muscles_help">Nothing here will be programmed for you. You can still add these by hand.</string>
-    <string name="settings_profile_preferred_muscles">Muscles to favour</string>
-    <string name="settings_profile_preferred_muscles_none">No preference</string>
-    <plurals name="settings_profile_preferred_muscles_sub">
-        <item quantity="one">%1$d muscle favoured</item>
-        <item quantity="other">%1$d muscles favoured</item>
-    </plurals>
-    <string name="settings_profile_preferred_muscles_dialog">Which muscles should plans favour?</string>
-    <string name="settings_profile_preferred_muscles_help">Plans will lean towards these when there is a choice.</string>
-    <string name="settings_profile_avoid_movements">Movements to avoid</string>
-    <string name="settings_profile_avoid_movements_none">Nothing avoided</string>
-    <plurals name="settings_profile_avoid_movements_sub">
-        <item quantity="one">%1$d movement avoided</item>
-        <item quantity="other">%1$d movements avoided</item>
-    </plurals>
-    <string name="settings_profile_avoid_movements_dialog">Movements to avoid</string>
-    <string name="settings_profile_avoid_movements_help">Matched against exercise names, so a short word rules out a lot. The count tells you how many before you add it.</string>
-    <string name="settings_profile_avoid_movements_hint">For example, overhead pressing</string>
-    <string name="settings_profile_avoid_movements_add">Add</string>
-    <string name="settings_profile_avoid_movements_remove">Stop avoiding %1$s</string>
     <plurals name="settings_profile_avoid_movements_count">
         <item quantity="one">excludes %1$d exercise</item>
         <item quantity="other">excludes %1$d exercises</item>
     </plurals>
     <string name="settings_profile_avoid_movements_none_match">matches nothing in the catalog</string>
-    <string name="settings_profile_excluded_exercises">Excluded exercises</string>
-    <string name="settings_profile_excluded_exercises_none">None excluded</string>
-    <plurals name="settings_profile_excluded_exercises_sub">
-        <item quantity="one">%1$d exercise excluded</item>
-        <item quantity="other">%1$d exercises excluded</item>
-    </plurals>
-    <string name="settings_profile_excluded_exercises_dialog">Excluded exercises</string>
-    <string name="settings_profile_excluded_exercises_help">Excluded from the exercise page. Plans will not use them.</string>
-    <string name="settings_profile_excluded_exercises_remove">Stop excluding %1$s</string>
 
     <string name="settings_profile_schedule_dialog_title">Training schedule</string>
     <string name="settings_profile_schedule_days">Days a week</string>

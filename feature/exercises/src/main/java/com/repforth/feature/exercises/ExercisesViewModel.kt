@@ -24,10 +24,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.model.Exercise
-import com.repforth.core.model.ExclusionKind
-import com.repforth.core.model.ExerciseId
-import com.repforth.core.model.MovementExclusion
-import com.repforth.core.userdata.ProfileRepository
 import com.repforth.core.model.Language
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -41,13 +37,7 @@ data class ExercisesUiState(
     val reducedMotion: Boolean = false,
     val language: Language? = null,
     val loading: Boolean = true,
-    /** Exercise ids this user has ruled out; §8 keeps them out of every plan. */
-    val excludedIds: Set<String> = emptySet(),
 ) {
-    /** Whether the exercise on screen is one of them. */
-    val isSelectedExcluded: Boolean
-        get() = selectedExercise?.id?.value in excludedIds
-
     /** Distinguishes "still loading" from "nothing matches", which look alike. */
     val isEmptyResult: Boolean get() = !loading && results.isEmpty()
 }
@@ -56,7 +46,6 @@ data class ExercisesUiState(
 class ExercisesViewModel @Inject constructor(
     private val repository: ExerciseRepository,
     private val preferences: UserPreferencesDataSource,
-    private val profiles: ProfileRepository,
 ) : ViewModel() {
 
     private val filter = MutableStateFlow(CatalogFilter())
@@ -79,8 +68,7 @@ class ExercisesViewModel @Inject constructor(
             results,
             selectedExercise,
             preferences.preferences,
-            profiles.observeProfile(),
-        ) { currentFilter, matches, selected, userPrefs, profile ->
+        ) { currentFilter, matches, selected, userPrefs ->
             ExercisesUiState(
                 filter = currentFilter,
                 results = matches,
@@ -88,11 +76,6 @@ class ExercisesViewModel @Inject constructor(
                 reducedMotion = userPrefs.reducedMotion,
                 language = userPrefs.language,
                 loading = false,
-                // Observed rather than read once, so the sheet's button flips
-                // the moment the write lands instead of on the next open.
-                excludedIds = profile?.exclusions.orEmpty()
-                    .filter { it.kind == ExclusionKind.EXERCISE }
-                    .mapTo(mutableSetOf()) { it.value },
             )
         }.stateIn(
             scope = viewModelScope,
@@ -157,35 +140,6 @@ class ExercisesViewModel @Inject constructor(
         filter.value = CatalogFilter()
     }
 
-    /**
-     * Excluding an exercise, from the page where the user is looking at it.
-     *
-     * §8 makes an exclusion a hard constraint on everything the app programmes,
-     * and the model has carried [ExclusionKind.EXERCISE] since the beginning —
-     * enforced by the rules engine and written by nothing at all. This is the
-     * screen where somebody meets the exercise they want to rule out.
-     *
-     * It does not hide anything. The picker still lists it and it can still be
-     * added by hand: an exclusion says what the app may programme *for* you, and
-     * choosing it yourself is you overriding yourself, which is allowed.
-     */
-    fun onToggleExcluded(id: ExerciseId) {
-        viewModelScope.launch {
-            val profile = profiles.getProfile() ?: return@launch
-            val existing = profile.exclusions.firstOrNull {
-                it.kind == ExclusionKind.EXERCISE && it.value == id.value
-            }
-            profiles.save(
-                profile.copy(
-                    exclusions = if (existing != null) {
-                        profile.exclusions - existing
-                    } else {
-                        profile.exclusions + MovementExclusion(ExclusionKind.EXERCISE, id.value)
-                    },
-                ),
-            )
-        }
-    }
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 250L

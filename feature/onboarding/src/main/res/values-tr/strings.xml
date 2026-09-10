@@ -30,10 +30,6 @@
         <item quantity="other">%1$d dakika</item>
     </plurals>
 
-    <string name="onboarding_muscles_title">Odaklanmak istediğin bir bölge var mı?</string>
-    <string name="onboarding_muscles_subtitle">İsteğe bağlı, daha sonra değiştirilebilir.</string>
-    <string name="onboarding_avoid_title">Kaçınmak istediğin bir hareket veya bölge var mı?</string>
-    <string name="onboarding_avoid_subtitle">Sakatlıklar veya atladığın hareketler; asla programa dahil edilmez.</string>
 
     <string name="onboarding_privacy">Her şey bu telefonda kalır. Hesap yok, yükleme yok.</string>
     <string name="onboarding_equipment_more">%1$d tane daha göster</string>
@@ -47,8 +43,6 @@
     <string name="onboarding_review_equipment">Ekipman</string>
     <string name="onboarding_review_days">Haftalık gün</string>
     <string name="onboarding_review_length">Antrenman süresi</string>
-    <string name="onboarding_review_focus">Odak</string>
-    <string name="onboarding_review_avoid">Kaçınılanlar</string>
     <string name="onboarding_review_none">Seçim yok</string>
     <string name="onboarding_notifications_title">Sayaç çalışmaya devam etsin</string>
     <string name="onboarding_notifications_subtitle">Yalnızca antrenman sürerken tek bir bildirim.</string>

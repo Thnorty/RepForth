@@ -2,12 +2,10 @@ package com.repforth.core.ai
 
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
@@ -36,8 +34,6 @@ class AiWorkoutContractTest {
         assertEquals(3, request.days)
         assertEquals(40, request.sessionDurationMinutes)
         assertEquals(listOf("pectorals"), request.primaryMuscles)
-        assertEquals(listOf("triceps"), request.secondaryMuscles)
-        assertEquals(listOf("overhead press"), request.excludedMovements)
     }
 
     /**
@@ -188,12 +184,6 @@ class AiWorkoutContractTest {
         trainingDaysPerWeek = 3,
         sessionLengthMs = 40 * 60_000L,
         availableEquipment = setOf(Equipment.DUMBBELL, Equipment.BODY_WEIGHT),
-        preferredMuscles = setOf(Muscle.TRICEPS),
-        exclusions = setOf(
-            MovementExclusion(ExclusionKind.MUSCLE, Muscle.CALVES.slug),
-            MovementExclusion(ExclusionKind.EXERCISE, "blocked-id"),
-            MovementExclusion(ExclusionKind.MOVEMENT, " overhead press "),
-        ),
     )
 
     private fun candidate(id: String, name: String, muscle: Muscle) = ExerciseCandidate(

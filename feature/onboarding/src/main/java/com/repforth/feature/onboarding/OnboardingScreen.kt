@@ -43,7 +43,6 @@ import com.repforth.core.exercisedata.detailRes
 import androidx.compose.runtime.getValue
 import com.repforth.core.model.BodyView
 import com.repforth.core.model.BodyRegion
-import com.repforth.core.designsystem.component.MuscleSelector
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
@@ -97,10 +96,6 @@ fun OnboardingRoute(
         onEquipmentToggled = viewModel::onEquipmentToggled,
         onDaysChanged = viewModel::onDaysChanged,
         onSessionLengthChanged = viewModel::onSessionLengthChanged,
-        onPreferredMuscleToggled = viewModel::onPreferredMuscleToggled,
-        onPreferredRegionToggled = viewModel::onPreferredRegionToggled,
-        onAvoidedMuscleToggled = viewModel::onAvoidedMuscleToggled,
-        onAvoidedRegionToggled = viewModel::onAvoidedRegionToggled,
         onJumpTo = viewModel::onJumpTo,
         onBack = viewModel::onBack,
         onNext = viewModel::onNext,
@@ -118,10 +113,6 @@ internal fun OnboardingScreen(
     onEquipmentToggled: (Equipment) -> Unit,
     onDaysChanged: (Int) -> Unit,
     onSessionLengthChanged: (Int) -> Unit,
-    onPreferredMuscleToggled: (Muscle) -> Unit,
-    onPreferredRegionToggled: (BodyRegion) -> Unit,
-    onAvoidedMuscleToggled: (Muscle) -> Unit,
-    onAvoidedRegionToggled: (BodyRegion) -> Unit,
     onJumpTo: (OnboardingStep) -> Unit,
     onBack: () -> Unit,
     onNext: () -> Unit,
@@ -252,26 +243,6 @@ internal fun OnboardingScreen(
                     ),
                     onValueChange = onSessionLengthChanged,
                 )
-
-                OnboardingStep.MUSCLES -> MuscleSelector(
-                    selected = state.preferredMuscles,
-                    view = bodyView,
-                    onViewChange = { bodyView = it },
-                    onMuscleToggled = onPreferredMuscleToggled,
-                    onRegionToggled = onPreferredRegionToggled,
-                    labelOf = { stringResource(it.labelRes) },
-                )
-
-                OnboardingStep.AVOID -> {
-                    MuscleSelector(
-                        selected = state.avoidedMuscles,
-                        view = bodyView,
-                        onViewChange = { bodyView = it },
-                        onMuscleToggled = onAvoidedMuscleToggled,
-                        onRegionToggled = onAvoidedRegionToggled,
-                        labelOf = { stringResource(it.labelRes) },
-                    )
-                }
 
                 OnboardingStep.NOTIFICATIONS -> NotificationPermission()
 
@@ -461,16 +432,6 @@ private fun ReviewList(state: OnboardingUiState, onJumpTo: (OnboardingStep) -> U
                 state.sessionLengthMinutes,
             ),
             onClick = { onJumpTo(OnboardingStep.LENGTH) },
-        )
-        ReviewRow(
-            label = stringResource(R.string.onboarding_review_focus),
-            value = state.preferredMuscles.muscleSummary(),
-            onClick = { onJumpTo(OnboardingStep.MUSCLES) },
-        )
-        ReviewRow(
-            label = stringResource(R.string.onboarding_review_avoid),
-            value = state.avoidedMuscles.muscleSummary(),
-            onClick = { onJumpTo(OnboardingStep.AVOID) },
         )
     }
 }

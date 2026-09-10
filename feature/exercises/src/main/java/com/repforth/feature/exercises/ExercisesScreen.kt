@@ -80,7 +80,6 @@ fun ExercisesRoute(
         onClearFilters = viewModel::onClearFilters,
         onSelectExercise = viewModel::onSelectExercise,
         onDismissDetail = viewModel::onDismissDetail,
-        onToggleExcluded = viewModel::onToggleExcluded,
         modifier = modifier,
     )
 }
@@ -99,7 +98,6 @@ internal fun ExercisesScreen(
     onClearFilters: () -> Unit,
     onSelectExercise: (ExerciseSummary) -> Unit,
     onDismissDetail: () -> Unit,
-    onToggleExcluded: (ExerciseId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Hoisted above the LazyColumn deliberately. Held inside the filters item,
@@ -155,35 +153,6 @@ internal fun ExercisesScreen(
             equipmentLabel = stringResource(exercise.equipment.labelRes),
             secondaryMuscleLabels = exercise.secondaryMuscles.map { stringResource(it.labelRes) },
             onDismiss = onDismissDetail,
-            // §8's hard constraint, from the page where the user is looking at
-            // the thing they want to rule out. It hides nothing: the picker
-            // still lists it and it can still be chosen by hand, because an
-            // exclusion says what the app may programme *for* you.
-            bottomAction = {
-                val excluded = state.isSelectedExcluded
-                OutlinedButton(
-                    onClick = { onToggleExcluded(exercise.id) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
-                ) {
-                    Text(
-                        stringResource(
-                            if (excluded) {
-                                R.string.exercises_include
-                            } else {
-                                R.string.exercises_exclude
-                            },
-                        ),
-                    )
-                }
-                if (excluded) {
-                    Text(
-                        text = stringResource(R.string.exercises_excluded_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = Space.s1),
-                    )
-                }
-            },
         )
     }
 }

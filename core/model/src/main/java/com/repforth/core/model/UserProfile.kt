@@ -7,6 +7,13 @@ package com.repforth.core.model
  * the rules engine reads, not a cosmetic preference — display settings live in
  * [UserPreferences], and the split matters: changing your theme should not change
  * what the app programmes for you.
+ *
+ * **Preferred muscles and movement exclusions were here and are gone**, removed
+ * on 2026-09-10 as more complication than they earned. They let a user favour
+ * muscles, avoid muscles, avoid a free-text movement, and exclude an exercise
+ * outright — four settings, four editors, a rule in the engine, a clause in the
+ * AI contract and two tables. What is left is the shape of the training: the
+ * goal, the experience, the week, the session ceiling and the equipment.
  */
 data class UserProfile(
     val id: String,
@@ -17,33 +24,11 @@ data class UserProfile(
     val sessionLengthMs: Long,
     /** What the user can actually train with. Empty means "unknown", not "none". */
     val availableEquipment: Set<Equipment>,
-    val preferredMuscles: Set<Muscle>,
-    val exclusions: Set<MovementExclusion>,
 ) {
     init {
         require(trainingDaysPerWeek in 1..7) { "trainingDaysPerWeek must be 1..7" }
         require(sessionLengthMs > 0) { "A session must have a positive length" }
     }
-
-    /** Exercise ids this user must never be programmed, whatever else matches. */
-    val excludedExerciseIds: Set<ExerciseId>
-        get() = exclusions.filter { it.kind == ExclusionKind.EXERCISE }
-            .mapTo(mutableSetOf()) { ExerciseId(it.value) }
-
-    /**
-     * Muscles to avoid, expanded across synonyms.
-     *
-     * Excluding `abs` has to also exclude records upstream labels `abdominals`,
-     * or the exclusion is half-applied — and a half-applied exclusion is worse
-     * than none, because the user believes it worked.
-     */
-    val excludedMuscles: Set<Muscle>
-        get() {
-            val named = exclusions.filter { it.kind == ExclusionKind.MUSCLE }
-                .mapNotNull { Muscle.fromSlug(it.value)?.canonical }
-                .toSet()
-            return Muscle.entries.filterTo(mutableSetOf()) { it.canonical in named }
-        }
 }
 
 /** Why the user is training. Drives set and rep ranges in the rules engine. */
@@ -61,52 +46,3 @@ enum class ExperienceLevel {
     ADVANCED,
 }
 
-/**
- * Something never to programme for this user (§7).
- *
- * A hard constraint: §8 requires that no generated plan can violate one, whether
- * it came from the rules engine or from a provider.
- */
-data class MovementExclusion(
-    val kind: ExclusionKind,
-    /** An exercise id, a muscle slug, or a movement name, per [kind]. */
-    val value: String,
-) {
-    init {
-        require(value.isNotBlank()) { "An exclusion must name something" }
-    }
-}
-
-/**
- * Whether a free-text movement phrase rules out an exercise.
- *
- * Here rather than inside the rules engine because two callers need the same
- * answer and they must not each have their own. The engine applies it when it
- * decides what may be programmed; Settings applies it to tell the user how many
- * exercises a phrase they are typing would remove. A count computed by a second
- * copy of this rule is a count that can disagree with the thing it describes,
- * which is worse than no count at all.
- *
- * Coarse on purpose, and the coarseness is the reason the count exists: the
- * dataset has no vocabulary for movement patterns, so "overhead press" matches
- * every name containing it — which is what the user meant — and "press" matches
- * several hundred, which is not, and which they can now see before saving it.
- */
-fun movementExcludes(exerciseName: String, movement: String): Boolean =
-    movement.isNotBlank() && exerciseName.contains(movement.trim(), ignoreCase = true)
-
-enum class ExclusionKind {
-    /** A specific catalog exercise, by upstream id. */
-    EXERCISE,
-
-    /** A muscle, by upstream slug. Expanded across synonyms when applied. */
-    MUSCLE,
-
-    /**
-     * A movement pattern the catalog does not enumerate — "overhead pressing",
-     * "deep knee flexion". Free text, because the dataset has no vocabulary for
-     * it and inventing one would be guessing at what a physiotherapist told the
-     * user.
-     */
-    MOVEMENT,
-}

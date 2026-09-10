@@ -1,7 +1,6 @@
 package com.repforth.core.rules
 
 import com.repforth.core.model.Equipment
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Muscle
@@ -72,31 +71,6 @@ data class GenerationRequest(
 
     val availableEquipment: Set<Equipment>
         get() = equipmentOverride ?: profile.availableEquipment
-
-    val excludedExerciseIds: Set<ExerciseId>
-        get() = profile.excludedExerciseIds
-
-    val excludedMuscles: Set<Muscle>
-        get() = profile.excludedMuscles
-
-    /**
-     * Free-text movement patterns to avoid, trimmed and non-empty.
-     *
-     * The catalog has no vocabulary for these, so they are matched against the
-     * exercise name. That is coarse — "press" would take out several hundred
-     * exercises — but it is what the user asked for and what they would expect,
-     * and until this existed the field was decorative: it was sent to the
-     * provider as advice and checked by nothing on the way back.
-     */
-    val excludedMovements: List<String>
-        get() = profile.exclusions
-            .asSequence()
-            .filter { it.kind == ExclusionKind.MOVEMENT }
-            .map { it.value.trim() }
-            .filter { it.isNotEmpty() }
-            .distinct()
-            .sorted()
-            .toList()
 }
 
 /**
@@ -107,11 +81,6 @@ data class GenerationRequest(
  * of the catalog without realising.
  */
 enum class RejectionReason {
-    EXCLUDED_EXERCISE,
-    EXCLUDED_MUSCLE,
-
-    /** Its name matches a movement pattern the user excluded. */
-    EXCLUDED_MOVEMENT,
     EQUIPMENT_UNAVAILABLE,
     WRONG_MUSCLE,
     /** Would have pushed the plan past the session-length ceiling. */

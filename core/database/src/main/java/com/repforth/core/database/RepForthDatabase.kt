@@ -12,9 +12,7 @@ import com.repforth.core.database.dao.WeekDao
 import com.repforth.core.database.entity.ExerciseEntity
 import com.repforth.core.database.entity.ExerciseInstructionStepEntity
 import com.repforth.core.database.entity.ExerciseSecondaryMuscleEntity
-import com.repforth.core.database.entity.MovementExclusionEntity
 import com.repforth.core.database.entity.ProfileEquipmentEntity
-import com.repforth.core.database.entity.ProfilePreferredMuscleEntity
 import com.repforth.core.database.entity.SessionExerciseEntity
 import com.repforth.core.database.entity.SetRecordEntity
 import com.repforth.core.database.entity.TemplateExerciseEntity
@@ -54,8 +52,6 @@ import com.repforth.core.database.entity.WorkoutTemplateEntity
         // User data: the only copy that exists anywhere.
         UserProfileEntity::class,
         ProfileEquipmentEntity::class,
-        ProfilePreferredMuscleEntity::class,
-        MovementExclusionEntity::class,
         TrainingWeekEntity::class,
         WorkoutTemplateEntity::class,
         TemplateExerciseEntity::class,
@@ -77,7 +73,7 @@ abstract class RepForthDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
 
     companion object {
-        const val VERSION = 5
+        const val VERSION = 6
 
         /** Also the asset filename once the import task prepackages the catalog. */
         const val NAME = "repforth.db"
@@ -207,6 +203,29 @@ abstract class RepForthDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `note` TEXT")
                 db.execSQL("ALTER TABLE `workout_session` ADD COLUMN `effort` INTEGER")
+            }
+        }
+
+        /**
+         * Migration from v5 to v6: the muscle and movement filters are gone.
+         *
+         * Four settings were removed on 2026-09-10 — favour a muscle, avoid a
+         * muscle, avoid a free-text movement, exclude an exercise — as more
+         * complication than they earned. These two tables held all four, and
+         * nothing reads them now.
+         *
+         * **This deletes what those users typed, and there is no way back.**
+         * Keeping the tables would have been the cautious move and the wrong
+         * one: an unread table is a promise the app is no longer keeping, and
+         * the next person to find it would have to work out whether it was
+         * live. An export taken before this build still contains the values;
+         * importing it drops them, because the importer no longer has anywhere
+         * to put them.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `profile_preferred_muscle`")
+                db.execSQL("DROP TABLE IF EXISTS `movement_exclusion`")
             }
         }
     }

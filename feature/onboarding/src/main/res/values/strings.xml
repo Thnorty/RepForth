@@ -30,10 +30,6 @@
         <item quantity="other">%1$d minutes</item>
     </plurals>
 
-    <string name="onboarding_muscles_title">Anything to focus on?</string>
-    <string name="onboarding_muscles_subtitle">Optional, can be changed later.</string>
-    <string name="onboarding_avoid_title">Anything to avoid?</string>
-    <string name="onboarding_avoid_subtitle">Injuries or movements you skip; never programmed.</string>
 
     <string name="onboarding_privacy">Everything stays on this phone. No account, nothing uploaded.</string>
     <string name="onboarding_equipment_more">Show %1$d more</string>
@@ -47,8 +43,6 @@
     <string name="onboarding_review_equipment">Equipment</string>
     <string name="onboarding_review_days">Days a week</string>
     <string name="onboarding_review_length">Session length</string>
-    <string name="onboarding_review_focus">Focus on</string>
-    <string name="onboarding_review_avoid">Avoiding</string>
     <string name="onboarding_review_none">Nothing chosen</string>
     <string name="onboarding_notifications_title">Keep the timer running</string>
     <string name="onboarding_notifications_subtitle">One notification, only while a workout is on.</string>

@@ -7,24 +7,22 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
-import com.repforth.core.database.entity.MovementExclusionEntity
 import com.repforth.core.database.entity.ProfileEquipmentEntity
-import com.repforth.core.database.entity.ProfilePreferredMuscleEntity
 import com.repforth.core.database.entity.UserProfileEntity
 import kotlinx.coroutines.flow.Flow
 
-/** A profile with the three membership sets that belong to it. */
+/**
+ * A profile with the membership set that belongs to it.
+ *
+ * There were three. Preferred muscles and movement exclusions were removed on
+ * 2026-09-10 along with the settings that filled them; equipment is the one
+ * that remains.
+ */
 data class ProfileWithDetails(
     @Embedded val profile: UserProfileEntity,
 
     @Relation(parentColumn = "id", entityColumn = "profile_id")
     val equipment: List<ProfileEquipmentEntity>,
-
-    @Relation(parentColumn = "id", entityColumn = "profile_id")
-    val preferredMuscles: List<ProfilePreferredMuscleEntity>,
-
-    @Relation(parentColumn = "id", entityColumn = "profile_id")
-    val exclusions: List<MovementExclusionEntity>,
 )
 
 @Dao
@@ -46,26 +44,20 @@ interface ProfileDao {
     suspend fun findProfile(): ProfileWithDetails?
 
     /**
-     * Replaces the profile and all three membership sets in one transaction.
+     * Replaces the profile and its membership in one transaction.
      *
-     * Membership is deleted and re-inserted rather than diffed: the sets are
-     * tens of rows, a diff would be more code than it saves, and a half-applied
+     * Membership is deleted and re-inserted rather than diffed: the set is tens
+     * of rows, a diff would be more code than it saves, and a half-applied
      * profile is a wrong constraint rather than a slow one.
      */
     @Transaction
     suspend fun replaceProfile(
         profile: UserProfileEntity,
         equipment: List<ProfileEquipmentEntity>,
-        preferredMuscles: List<ProfilePreferredMuscleEntity>,
-        exclusions: List<MovementExclusionEntity>,
     ) {
         upsertProfile(profile)
         clearEquipment(profile.id)
-        clearPreferredMuscles(profile.id)
-        clearExclusions(profile.id)
         insertEquipment(equipment)
-        insertPreferredMuscles(preferredMuscles)
-        insertExclusions(exclusions)
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -74,20 +66,8 @@ interface ProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEquipment(rows: List<ProfileEquipmentEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPreferredMuscles(rows: List<ProfilePreferredMuscleEntity>)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertExclusions(rows: List<MovementExclusionEntity>)
-
     @Query("DELETE FROM profile_equipment WHERE profile_id = :profileId")
     suspend fun clearEquipment(profileId: String)
-
-    @Query("DELETE FROM profile_preferred_muscle WHERE profile_id = :profileId")
-    suspend fun clearPreferredMuscles(profileId: String)
-
-    @Query("DELETE FROM movement_exclusion WHERE profile_id = :profileId")
-    suspend fun clearExclusions(profileId: String)
 
     /** Used by "reset app" (§7). The catalog is untouched. */
     @Query("DELETE FROM user_profile")

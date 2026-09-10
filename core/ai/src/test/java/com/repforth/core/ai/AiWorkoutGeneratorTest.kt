@@ -219,8 +219,6 @@ class AiWorkoutGeneratorTest {
             trainingDaysPerWeek = days,
             sessionLengthMs = 60 * 60_000L,
             availableEquipment = emptySet(),
-            preferredMuscles = emptySet(),
-            exclusions = emptySet(),
         ),
         targetMuscles = targetMuscles,
     )

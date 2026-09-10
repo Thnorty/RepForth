@@ -307,7 +307,6 @@ class ProviderGenerationTest {
             sessionDurationMinutes = 40,
             primaryMuscles = listOf("pectorals"),
             secondaryMuscles = listOf("triceps"),
-            excludedMovements = emptyList(),
             candidates = listOf(
                 AiExerciseCandidate(
                     id = "exercise-a",

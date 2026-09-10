@@ -12,47 +12,11 @@
     <string name="settings_profile_equipment_fewer">Daha az seçenek</string>
     <string name="settings_profile_schedule">Program</string>
     <string name="settings_profile_schedule_sub">Haftada %1$d gün · %2$d dk</string>
-    <string name="settings_profile_avoid_muscles">Kaçınılacak kaslar</string>
-    <string name="settings_profile_avoid_muscles_none">Hiçbiri</string>
-    <plurals name="settings_profile_avoid_muscles_sub">
-        <item quantity="one">%1$d kastan kaçınılıyor</item>
-        <item quantity="other">%1$d kastan kaçınılıyor</item>
-    </plurals>
-    <string name="settings_profile_avoid_muscles_dialog">Planlar hangi kaslardan kaçınsın?</string>
-    <string name="settings_profile_avoid_muscles_help">Buradakiler sana program yapılırken kullanılmaz. Elle yine de ekleyebilirsin.</string>
-    <string name="settings_profile_preferred_muscles">Öncelikli kaslar</string>
-    <string name="settings_profile_preferred_muscles_none">Tercih yok</string>
-    <plurals name="settings_profile_preferred_muscles_sub">
-        <item quantity="one">%1$d kasa öncelik</item>
-        <item quantity="other">%1$d kasa öncelik</item>
-    </plurals>
-    <string name="settings_profile_preferred_muscles_dialog">Planlar hangi kaslara öncelik versin?</string>
-    <string name="settings_profile_preferred_muscles_help">Seçenek olduğunda planlar bunlara yönelir.</string>
-    <string name="settings_profile_avoid_movements">Kaçınılacak hareketler</string>
-    <string name="settings_profile_avoid_movements_none">Hiçbiri</string>
-    <plurals name="settings_profile_avoid_movements_sub">
-        <item quantity="one">%1$d hareketten kaçınılıyor</item>
-        <item quantity="other">%1$d hareketten kaçınılıyor</item>
-    </plurals>
-    <string name="settings_profile_avoid_movements_dialog">Kaçınılacak hareketler</string>
-    <string name="settings_profile_avoid_movements_help">Egzersiz adlarıyla eşleştirilir, bu yüzden kısa bir kelime çok şeyi eler. Sayı, eklemeden önce kaç tanesini elediğini gösterir.</string>
-    <string name="settings_profile_avoid_movements_hint">Örneğin, baş üstü itiş</string>
-    <string name="settings_profile_avoid_movements_add">Ekle</string>
-    <string name="settings_profile_avoid_movements_remove">%1$s hareketinden kaçınmayı bırak</string>
     <plurals name="settings_profile_avoid_movements_count">
         <item quantity="one">%1$d egzersizi eler</item>
         <item quantity="other">%1$d egzersizi eler</item>
     </plurals>
     <string name="settings_profile_avoid_movements_none_match">katalogda eşleşen yok</string>
-    <string name="settings_profile_excluded_exercises">Elenen egzersizler</string>
-    <string name="settings_profile_excluded_exercises_none">Elenen yok</string>
-    <plurals name="settings_profile_excluded_exercises_sub">
-        <item quantity="one">%1$d egzersiz elendi</item>
-        <item quantity="other">%1$d egzersiz elendi</item>
-    </plurals>
-    <string name="settings_profile_excluded_exercises_dialog">Elenen egzersizler</string>
-    <string name="settings_profile_excluded_exercises_help">Egzersiz sayfasından elendi. Planlar bunları kullanmaz.</string>
-    <string name="settings_profile_excluded_exercises_remove">%1$s egzersizini elemeyi bırak</string>
 
     <string name="settings_profile_schedule_dialog_title">Antrenman programı</string>
     <string name="settings_profile_schedule_days">Haftada kaç gün</string>

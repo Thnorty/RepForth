@@ -82,8 +82,6 @@ internal object BuilderFixtures {
         trainingDaysPerWeek = 3,
         sessionLengthMs = 45 * 60_000L,
         availableEquipment = setOf(Equipment.BARBELL),
-        preferredMuscles = emptySet(),
-        exclusions = emptySet(),
     )
 
     /**

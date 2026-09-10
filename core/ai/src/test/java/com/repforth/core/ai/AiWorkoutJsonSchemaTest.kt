@@ -25,7 +25,6 @@ class AiWorkoutJsonSchemaTest {
         sessionDurationMinutes = 45,
         primaryMuscles = listOf("pectorals"),
         secondaryMuscles = emptyList(),
-        excludedMovements = emptyList(),
         candidates = emptyList(),
     )
 

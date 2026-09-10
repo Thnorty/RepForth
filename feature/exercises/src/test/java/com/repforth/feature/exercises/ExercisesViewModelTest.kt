@@ -26,10 +26,6 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import com.repforth.core.model.ExclusionKind
-import com.repforth.core.model.MovementExclusion
-import com.repforth.core.testing.FakeProfiles
-import com.repforth.core.testing.sampleProfile
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -43,7 +39,6 @@ class ExercisesViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private lateinit var preferences: UserPreferencesDataSource
     private lateinit var repository: FakeExerciseRepository
-    private lateinit var profiles: FakeProfiles
     private lateinit var viewModel: ExercisesViewModel
 
     @Before
@@ -51,8 +46,7 @@ class ExercisesViewModelTest {
         Dispatchers.setMain(dispatcher)
         preferences = UserPreferencesDataSource(FakePreferencesStore())
         repository = FakeExerciseRepository()
-        profiles = FakeProfiles(sampleProfile(availableEquipment = setOf(Equipment.BARBELL)))
-        viewModel = ExercisesViewModel(repository, preferences, profiles)
+        viewModel = ExercisesViewModel(repository, preferences)
     }
 
     @After
@@ -97,69 +91,6 @@ class ExercisesViewModelTest {
     }
 
     // ---- Excluding from the page where the user is looking at it ----
-
-    /**
-     * §8 has enforced [ExclusionKind.EXERCISE] since the beginning, and until
-     * now nothing in the app could write one — the constraint was real and
-     * unreachable, the same shape as the haptics switch that controlled nothing.
-     */
-    @Test
-    fun `excluding an exercise records it and toggling again removes it`() = runTest(dispatcher) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
-
-        viewModel.onToggleExcluded(ExerciseId("ex-1"))
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(
-            setOf("ex-1"),
-            profiles.getProfile()!!.exclusions
-                .filter { it.kind == ExclusionKind.EXERCISE }.map { it.value }.toSet(),
-        )
-        assertEquals("The state follows the write", setOf("ex-1"), viewModel.uiState.value.excludedIds)
-
-        viewModel.onToggleExcluded(ExerciseId("ex-1"))
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(emptySet<String>(), viewModel.uiState.value.excludedIds)
-    }
-
-    /** The kinds share one field, so this must not take the others with it. */
-    @Test
-    fun `excluding an exercise leaves muscle and movement exclusions alone`() = runTest(dispatcher) {
-        profiles.save(
-            profiles.getProfile()!!.copy(
-                exclusions = setOf(
-                    MovementExclusion(ExclusionKind.MUSCLE, Muscle.PECTORALS.slug),
-                    MovementExclusion(ExclusionKind.MOVEMENT, "overhead pressing"),
-                ),
-            ),
-        )
-
-        viewModel.onToggleExcluded(ExerciseId("ex-1"))
-        testScheduler.advanceUntilIdle()
-
-        val stored = profiles.getProfile()!!.exclusions
-        assertEquals(3, stored.size)
-        assertEquals(1, stored.count { it.kind == ExclusionKind.MUSCLE })
-        assertEquals(1, stored.count { it.kind == ExclusionKind.MOVEMENT })
-    }
-
-    /**
-     * Excluding does not hide it: the owner's decision is that an exclusion
-     * says what the app may programme *for* you, and choosing it by hand is you
-     * overriding yourself.
-     */
-    @Test
-    fun `an excluded exercise is still listed`() = runTest(dispatcher) {
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect() }
-        testScheduler.advanceUntilIdle()
-        val before = viewModel.uiState.value.results.size
-
-        viewModel.onToggleExcluded(ExerciseId(viewModel.uiState.value.results.first().id.value))
-        testScheduler.advanceUntilIdle()
-
-        assertEquals("The catalog is not filtered by exclusions", before, viewModel.uiState.value.results.size)
-    }
 
 }
 

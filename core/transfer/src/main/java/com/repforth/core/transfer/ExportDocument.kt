@@ -62,12 +62,14 @@ data class ProfileDto(
     val trainingDaysPerWeek: Int,
     val sessionLengthMs: Long,
     val equipment: List<String> = emptyList(),
-    val preferredMuscles: List<String> = emptyList(),
-    val exclusions: List<ExclusionDto> = emptyList(),
 )
 
-@Serializable
-data class ExclusionDto(val kind: String, val value: String)
+/*
+ * `preferredMuscles` and `exclusions` were written here until 2026-09-10, when
+ * the settings that filled them were removed. A file exported before that still
+ * carries both, and still imports: the reader is configured to ignore keys it
+ * does not know, so the values are dropped rather than the file refused.
+ */
 
 @Serializable
 data class TemplateDto(

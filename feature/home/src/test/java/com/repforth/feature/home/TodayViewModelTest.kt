@@ -256,8 +256,6 @@ class TodayViewModelTest {
         trainingDaysPerWeek = daysPerWeek,
         sessionLengthMs = 45 * 60_000L,
         availableEquipment = setOf(Equipment.BODY_WEIGHT),
-        preferredMuscles = emptySet(),
-        exclusions = emptySet(),
     )
 }
 

@@ -96,7 +96,6 @@ class GenerationDeadlineReachesSocketTest {
         sessionDurationMinutes = 40,
         primaryMuscles = listOf("pectorals"),
         secondaryMuscles = emptyList(),
-        excludedMovements = emptyList(),
         candidates = listOf(
             AiExerciseCandidate(
                 id = "exercise-a",

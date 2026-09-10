@@ -3,7 +3,6 @@ package com.repforth.core.rules
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.WorkoutTemplate
-import com.repforth.core.model.movementExcludes
 
 /** The local hard-rule boundary shared by provider input and output validation. */
 data class CandidateFilterOutcome(
@@ -44,26 +43,17 @@ class RulesEngine {
     }
 
     /**
-     * Order matters only for the audit: an explicitly excluded candidate is
-     * reported as excluded even when another constraint would also reject it.
+     * The candidate-level hard constraints, in the order they are reported.
+     *
+     * Three of these are gone as of 2026-09-10: an exercise the user excluded,
+     * a muscle they avoided, and a free-text movement they described. Those
+     * settings were removed as more complication than they earned, and with
+     * them the only reason this engine had to know about a profile's exclusions.
      */
     private fun disqualify(
         candidate: ExerciseCandidate,
         request: GenerationRequest,
     ): RejectionReason? {
-        if (candidate.id in request.excludedExerciseIds) return RejectionReason.EXCLUDED_EXERCISE
-
-        if (candidate.allMuscles.any { it in request.excludedMuscles }) {
-            return RejectionReason.EXCLUDED_MUSCLE
-        }
-
-        // `movementExcludes` rather than the comparison written out here, so
-        // that Settings' "excludes 312 exercises" counter and this decision are
-        // the same rule. They were about to be two.
-        if (request.excludedMovements.any { movementExcludes(candidate.name, it) }) {
-            return RejectionReason.EXCLUDED_MOVEMENT
-        }
-
         // An empty equipment set means "not stated", not "has nothing".
         val available = request.availableEquipment
         if (available.isNotEmpty() && candidate.equipment !in available) {

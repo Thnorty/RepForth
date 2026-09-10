@@ -49,8 +49,6 @@ class OnboardingAccessibilityTest {
     @Test
     fun equipment_turkish() = check(TURKISH, equipment())
 
-    @Test
-    fun muscles_english() = check(ENGLISH, muscles())
 
     @Test
     fun days_english() = check(ENGLISH, days())
@@ -71,10 +69,6 @@ class OnboardingAccessibilityTest {
                     onEquipmentToggled = {},
                     onDaysChanged = {},
                     onSessionLengthChanged = {},
-                    onPreferredMuscleToggled = {},
-                    onPreferredRegionToggled = {},
-                    onAvoidedMuscleToggled = {},
-                    onAvoidedRegionToggled = {},
                     onJumpTo = {},
                     onBack = {},
                     onNext = {},
@@ -99,13 +93,6 @@ class OnboardingAccessibilityTest {
 
     private fun equipment() = OnboardingUiState(
         step = OnboardingStep.EQUIPMENT,
-        goal = TrainingGoal.GENERAL_FITNESS,
-        experience = ExperienceLevel.ADVANCED,
-        equipment = setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL),
-    )
-
-    private fun muscles() = OnboardingUiState(
-        step = OnboardingStep.MUSCLES,
         goal = TrainingGoal.GENERAL_FITNESS,
         experience = ExperienceLevel.ADVANCED,
         equipment = setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL),
