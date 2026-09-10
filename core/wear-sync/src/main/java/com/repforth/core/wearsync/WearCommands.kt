@@ -35,3 +35,29 @@ fun WearCommand.toSessionCommand(): SessionCommand = when (action) {
 
     WearAction.SkipSet -> SessionCommand.SkipSet(commandId, expectedRevision)
 }
+
+/**
+ * Whether the phone must answer a watch command itself, rather than letting the
+ * ordinary state publish do it.
+ *
+ * **One command used to produce two publishes, and the second one was worse than
+ * redundant.** `WearCommandService` published after applying a command, and
+ * `WorkoutService`'s collector published again the moment the state changed — but
+ * only the collector has the exercise's picture and §6's notice to attach. The
+ * command service's publish therefore put out a snapshot with *no asset*, and the
+ * watch does what it is told: it dropped the image, then fetched and decoded it
+ * again when the collector's publish arrived a few milliseconds later. Every tap
+ * on the wrist threw away the animation and re-read it over the Data Layer.
+ *
+ * So an accepted command publishes nothing here: changing the state is the
+ * publish. What still needs answering is a command the engine *refused* — a
+ * duplicate id, or a phase that does not allow it. Nothing changed, so no
+ * collector will fire, and a watch left waiting would sit on a stale snapshot
+ * until something else happened to move.
+ *
+ * [revisionAfter] is null when the workout ended underneath the command, which
+ * needs no answer either: the service clears the item and the watch is told that
+ * way.
+ */
+fun wearCommandNeedsDirectAnswer(revisionBefore: Long, revisionAfter: Long?): Boolean =
+    revisionAfter != null && revisionAfter == revisionBefore

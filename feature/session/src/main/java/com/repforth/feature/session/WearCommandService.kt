@@ -8,6 +8,7 @@ import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.wearprotocol.WearAdmission
 import com.repforth.core.wearprotocol.WearCommand
 import com.repforth.core.wearsync.toSessionCommand
+import com.repforth.core.wearsync.wearCommandNeedsDirectAnswer
 import com.repforth.core.wearsync.toWearState
 import com.repforth.core.wearprotocol.admit
 import dagger.hilt.android.AndroidEntryPoint
@@ -84,10 +85,15 @@ class WearCommandService : WearableListenerService() {
                 Log.i(TAG, "Applying ${command.action} at revision ${command.expectedRevision}")
                 val updated = controller.dispatch(command.toSessionCommand())
                 Log.i(TAG, "Applied ${command.action}; revision is now ${updated?.revision}")
-                // Republish either way. The engine may also have refused it --
-                // for a duplicate id, or a phase that does not allow it -- and
-                // the watch learns that the same way it learns everything else.
-                bridge.publish(updated, names)
+
+                // Only when the engine refused it. An accepted command changes
+                // the state, and `WorkoutService` publishes that change with the
+                // picture and the notice attached -- neither of which this call
+                // can reach. See `wearCommandNeedsDirectAnswer`.
+                if (wearCommandNeedsDirectAnswer(current.revision, updated?.revision)) {
+                    Log.i(TAG, "Engine refused ${command.action}; answering with the current state")
+                    bridge.publish(updated, names)
+                }
             }
         }
     }

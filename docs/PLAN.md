@@ -4344,6 +4344,37 @@ refused.
 **What is left deciding a plan**: the goal, the experience, the week, the
 session ceiling, and the equipment.
 
+### 2026-09-10 - one publish per command, and it was not about waste
+
+Backlog item 2 said one command produced several publishes, that the writes were
+idempotent, and that nothing was wrong — it was only more Data Layer traffic than
+the state changes justified. Two of those three claims were true.
+
+`WearCommandService` published after applying a command, and `WorkoutService`'s
+collector published again the moment the state changed. **Only the collector has
+the exercise's picture and §6's notice to attach.** So the command service put
+out a snapshot with *no asset*, and the watch believed it: it dropped the image,
+then fetched and decoded it again when the collector's publish landed a few
+milliseconds later. Every tap on the wrist threw the picture away and read it
+back — and since 2026-09-10 that picture is an animation, so each tap discarded a
+decoded GIF and re-read up to 233KB over the Data Layer.
+
+That is a plausible part of "it feels laggy when I press Complete", reported
+during the watch hardware session and never fully explained. It was measured to
+be a debug build then, and it was; this was underneath it.
+
+**The way to have seen it was to look at what the two publishes differed by**,
+rather than at how many there were. Counting them said "wasteful". Comparing them
+said "one of these is lying about the media".
+
+An accepted command publishes nothing directly now: changing the state *is* the
+publish. A command the engine refuses still gets a direct answer, because nothing
+changed and no collector will fire.
+
+**Neither publish path had a test, which is why this survived.** The decision is
+a named function in `core:wear-sync` now, with four cases, watched failing
+against the old always-publish behaviour.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -4352,10 +4383,8 @@ session ceiling, and the equipment.
    ```
    ./gradlew :app:pixel6Api34PlaceholderDebugAndroidTest
    ```
-2. **One command produces three publishes.** `WorkoutService`'s collector and
-   `WearCommandService` both publish, and a refusal republishes as well. The
-   writes are idempotent so nothing is wrong; it is simply more Data Layer
-   traffic than the state changes justify.
+2. ~~**One command produces three publishes.**~~ Done 2026-09-10, and it was
+   not what this note said it was. See above.
 3. **The AI provider screen has no golden.** Accessibility coverage was added
    in A.4 (`AiSettingsAccessibilityTest`), including Advanced settings. The
    two Settings dialogs did not either, and are now covered — see D.2, which
@@ -4387,7 +4416,7 @@ session ceiling, and the equipment.
    an instrumentation test on the managed emulator rather than the Robolectric
    one guessed at here — `:app` already had a working Hilt test graph, so no
    Hilt-free route was needed.
-9. **An import does not report unknown catalog ids.** Deliberately not a
+9. ~~**An import does not report unknown catalog ids.**~~ Not wanted; the owner closed it on 2026-09-10. Superseded text follows: **An import does not report unknown catalog ids.** Deliberately not a
    refusal — §7 has no foreign key from user data to `exercise`, and a missing
    exercise is handled at display time — but a preview line saying "3 exercises
    in this file are not in the catalog" would be honest and cheap. See Slice 2.
@@ -4413,7 +4442,7 @@ session ceiling, and the equipment.
    landed 2026-09-08; the screen half landed 2026-09-09 after it was seen on
    hardware. No protocol field was needed — the phone keeps only the clock that
    was running, so the snapshot already said which, and nothing had asked.
-15. **The rest ring pauses on any device with a reduced animator scale.** Known
+15. ~~**The rest ring pauses on any device with a reduced animator scale.**~~ Not wanted; the owner closed it on 2026-09-10. Superseded text follows: **The rest ring pauses on any device with a reduced animator scale.** Known
    and accepted — see U.2 — but it is a real visual artefact on the owner's own
    phone, not a hypothetical. If it ever becomes unacceptable, the fix is not a
    longer tween.
