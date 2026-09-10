@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.wear.compose.foundation.rotary.rotaryScrollable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -198,10 +200,20 @@ fun ExercisePage(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            // One line, because the name is identity rather than instruction:
-            // the person holding the bar knows what they picked up. Two lines
-            // of it pushed the number that matters off centre.
-            maxLines = 1,
+            // **Two lines, because one is not enough for this catalog.**
+            //
+            // The first version used one, on the argument that a name is
+            // identity rather than instruction. The catalog disagrees: the
+            // median name is 26 characters and 69% are over 20, so a single
+            // line truncates the normal case rather than the long one.
+            //
+            // Worse, it truncates from the wrong end. These names lead with
+            // equipment and distinguish themselves later, so cutting at 20
+            // characters leaves one name in five identical to another --
+            // "bodyweight standing..." is seven different exercises. Two lines
+            // reach about forty characters, where that falls to two names in
+            // 1,318.
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             // Its own inset, on top of the column's. This is the topmost line
             // on the page and therefore the one nearest the curve, where the
@@ -211,31 +223,22 @@ fun ExercisePage(
             modifier = Modifier.padding(horizontal = NAME_INSET),
         )
 
-        if (timed) {
-            // The clock takes the big slot, exactly as it does on the phone.
-            // During a plank the only number worth that space is how long is
-            // left; the prescription is merely what the seconds started at.
-            Text(
-                text = (remainingSeconds ?: (state.targetDurationMs!! / 1000L).toInt()).toString(),
-                style = RepForthNumeric.lg,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = stringResource(R.string.wear_seconds),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Text(
-                text = state.targetReps?.toString() ?: "—",
-                style = RepForthNumeric.lg,
-            )
-            Text(
-                text = stringResource(R.string.wear_reps_label),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        // The clock takes the big slot for timed work, exactly as it does on
+        // the phone. During a plank the only number worth that space is how long
+        // is left; the prescription is merely what the seconds started at.
+        HeroNumber(
+            value = if (timed) {
+                (remainingSeconds ?: (state.targetDurationMs!! / 1000L).toInt()).toString()
+            } else {
+                state.targetReps?.toString() ?: "—"
+            },
+            unit = if (timed) R.string.wear_seconds else R.string.wear_reps_label,
+            colour = if (timed) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
 
         Text(
             text = stringResource(R.string.wear_set_of, state.setNumber, state.totalSets),
@@ -455,7 +458,7 @@ private fun RowScope.CentredLabel(label: Int) {
 @Composable
 private fun ArcFrame(
     progress: Float?,
-    colour: androidx.compose.ui.graphics.Color,
+    colour: Color,
     bottomInset: Dp = 0.dp,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
@@ -482,8 +485,29 @@ private fun ArcFrame(
         // centring then moved everything up by half the inset, which pushed the
         // exercise name off the top of the circle while still leaving the last
         // line under the button. The arc is outside this box and keeps the rim.
+        // Top padding as well as the edge button's. Content centred in a box
+        // that starts at the very top of the circle sits where the circle is
+        // narrowest, and the first line came back clipped by the glass even
+        // though the layout had room for it.
+        //
+        // **Scrollable, and at ordinary sizes it never moves.** The design pass
+        // set out to stop the wrist scrolling for its controls, and it does --
+        // they are a page away now, and the primary action is an edge button
+        // pinned outside this box, so neither is ever behind a scroll. What is
+        // inside is text, and at 200% font scale on a 226dp circle four lines of
+        // it do not fit. Without this the set position was simply cut off with
+        // no way to reach it, which is worse than the scroll that was removed
+        // and is exactly what §13 forbids.
+        val scroll = rememberScrollState()
+        val focus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { focus.requestFocus() }
+
         Box(
-            modifier = Modifier.fillMaxSize().padding(bottom = bottomInset),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = ARC_TOP_INSET, bottom = bottomInset)
+                .rotaryScrollable(RotaryScrollableDefaults.behavior(scroll), focus)
+                .verticalScroll(scroll),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -493,6 +517,32 @@ private fun ArcFrame(
                 content = content,
             )
         }
+    }
+}
+
+/**
+ * The number, with its unit beside it rather than under it.
+ *
+ * §12 is explicit about the order to sacrifice things in: "Nothing numeric
+ * renders below xs (20sp); if a figure will not fit, cut the label instead."
+ * Once the exercise name needed two lines, a stacked unit was the line that had
+ * to go — and putting it alongside keeps both facts for the cost of neither.
+ * Without it "12" and "42" are the same picture, one a rep count and one a
+ * countdown.
+ *
+ * The unit sits on the bottom edge, which is where a unit belongs against a
+ * numeral whose leading is tight.
+ */
+@Composable
+private fun HeroNumber(value: String, unit: Int, colour: Color) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(text = value, style = RepForthNumeric.lg, color = colour)
+        Text(
+            text = stringResource(unit),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = UNIT_GAP, bottom = UNIT_BASELINE),
+        )
     }
 }
 
@@ -602,6 +652,13 @@ private val ARC_CONTENT_INSET = 30.dp
 
 /** Extra for the line that sits highest, where the circle is narrowest. */
 private val NAME_INSET = 16.dp
+
+/** Keeps the topmost line out of the curve. */
+private val ARC_TOP_INSET = 20.dp
+
+/** The unit against the numeral: close, and sitting on its baseline. */
+private val UNIT_GAP = 4.dp
+private val UNIT_BASELINE = 8.dp
 
 private val PADDING_H = 20.dp
 

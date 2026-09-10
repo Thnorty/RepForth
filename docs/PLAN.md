@@ -4045,6 +4045,40 @@ caller.
 
 Both were broken deliberately and watched failing before being left in.
 
+**The exercise name needed two lines, and one was a measured mistake.** The
+first version gave it one, arguing that a name is identity rather than
+instruction. The catalog disagrees: the median name is **26 characters** and
+**69% are over 20**, so a single line truncates the ordinary exercise, not the
+long one. It also truncates from the wrong end — these names lead with equipment
+and distinguish themselves later, so cutting at 20 characters leaves **one name
+in five** identical to another. "bodyweight standing…" is seven different
+exercises. Two lines reach about forty characters, where that falls to two names
+in 1,318.
+
+Three things followed from the extra line, and each is worth keeping:
+
+- **The edge button's reserved room was guessed and wrong.** A medium
+  `EdgeButton` is documented as 52dp of pill and occupies **73dp** of the
+  display, because it grows downward into the curve. The set position landed
+  underneath "Complete" — visibly, and only once the name pushed it down there.
+  Measured off a render rather than adjusted by eye.
+- **The unit moved beside the number instead of under it.** §12 says which way
+  to sacrifice: "if a figure will not fit, cut the label instead". Inline keeps
+  both facts for the cost of neither, and without it "12" and "42" are the same
+  picture — one a rep count, one a countdown.
+- **Page 0 scrolls again, and at ordinary sizes never moves.** Forbidding it was
+  the wrong reading of the pass's own goal. What the design promises is that the
+  *primary action* is never behind a scroll, and the edge button is pinned
+  outside the scrolling content. At 200% font scale four lines do not fit a
+  226dp circle, and without a scroll the set position was cut off with no way to
+  reach it — worse than the scroll that was removed, and what §13 forbids.
+
+**A guard that was watched failing, and had to be fixed to fail.** The
+reachability test above passed with the scroll deliberately deleted, because its
+fixture name was `front plank` — one line at any size, so nothing overflowed. A
+guard is not known to work until it has been seen to fail, and this one was not
+until the fixture used a name of ordinary length.
+
 **Four things the pictures caught that the code looked fine for**, each fixed:
 the edge button drew over the last line of the page; a 72sp numeral left no room
 for a name and two labels on a 226dp circle; the exercise name lost its first

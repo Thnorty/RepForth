@@ -148,6 +148,26 @@ class WearScreenshotTest {
         )
     }
 
+    /**
+     * The worst case this layout has, and the one that was missing.
+     *
+     * Every other 200% capture is a page on its own, with the whole circle to
+     * itself. Only here does the tallest possible text compete with the 73dp the
+     * edge button takes — and the button is what the page has to be centred
+     * around. The two-line exercise name was landing under "Complete" before
+     * the reserved room was measured rather than guessed, and no golden could
+     * have shown it.
+     */
+    @Test
+    fun pager_large_text() = capture("pager-2x", fontScale = 2f) {
+        ExerciseScreen(
+            state = state(),
+            remainingSeconds = null,
+            enabled = true,
+            onAction = {},
+        )
+    }
+
     // ---- Turkish, which is longer ----
 
     @Test

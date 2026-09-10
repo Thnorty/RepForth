@@ -240,30 +240,48 @@ class ExerciseScreenComposeTest {
         assertEquals(emptyList<WearAction>(), sent)
     }
 
-/**
-     * **The set does not scroll, and that is the point of the design pass.**
+    /**
+     * **Nothing on the set page is behind a scroll, which is the real claim.**
      *
-     * It used to. Every control was stacked in one column that ran off the
-     * bottom, so the number the screen exists for shared a scroll with the
-     * button that throws away your remaining sets. A glance that moves is not a
-     * glance. The controls page scrolls instead — see below — which is where
-     * scrolling belongs.
+     * The first version of this asserted the page had no scroll action at all,
+     * and that was the wrong assertion twice over. The pager around it scrolls
+     * horizontally by construction — that is what a swipe between pages is — and
+     * at 200% font scale four lines of text do not fit a 226dp circle, so
+     * forbidding a scroll meant clipping the set position with no way to reach
+     * it. §13 forbids exactly that, and the screen this pass replaced could
+     * scroll to it.
+     *
+     * What the design actually promises is that the *primary action* is never
+     * behind a scroll: the edge button is pinned outside the scrolling content.
+     * That is what this asserts, by pressing it without scrolling first.
      */
     @Test
-    fun `the set page does not scroll`() {
-        // The page itself, not the pager around it. The pager is horizontally
-        // scrollable by construction -- that is what a swipe between pages is --
-        // so asserting this through the pager finds its scroll action and says
-        // nothing about the content. Asserting it here is the actual claim.
-        host(fontScale = 1f) {
-            ExercisePage(state = state(timed = true), remainingSeconds = 42)
-        }
+    fun `the primary action needs no scrolling to reach`() {
+        render(timed = false, remainingSeconds = null)
 
-        assertEquals(
-            "A glance must not move",
-            0,
-            compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size,
-        )
+        compose.onNodeWithText(COMPLETE).performClick()
+
+        assertEquals(listOf(WearAction.CompleteSet), sent)
+    }
+
+    /**
+     * And at 200% the rest of the page is still reachable rather than clipped.
+     *
+     * **With a long name, because a short one does not reproduce it.** The first
+     * version of this test used the class fixture, `front plank`, which is one
+     * line at any size — so nothing overflowed, and the test passed with the
+     * scroll deliberately deleted. Watching a guard fail is the only way to know
+     * it guards, and this one did not until the name got longer.
+     *
+     * 31 characters is not a pathological case either: the catalog's median name
+     * is 26 and 69% are over 20, so this is the ordinary exercise rather than the
+     * worst one.
+     */
+    @Test
+    fun `the set position is reachable at 200 percent font scale`() {
+        render(timed = false, remainingSeconds = null, fontScale = 2f, name = LONG_NAME)
+
+        compose.onNodeWithText(SET_OF).performScrollTo().assertIsDisplayed()
     }
 
     /** And the controls page does, because three buttons do not fit at 200%. */
@@ -330,9 +348,10 @@ class ExerciseScreenComposeTest {
         fontScale: Float = 1f,
         thumbnail: ImageBitmap? = null,
         attributed: Boolean = thumbnail != null,
+        name: String = NAME,
     ) = host(fontScale) {
         ExerciseScreen(
-            state = state(timed, attributed),
+            state = state(timed, attributed, name),
             remainingSeconds = remainingSeconds,
             enabled = enabled,
             onAction = { sent += it },
@@ -374,12 +393,16 @@ class ExerciseScreenComposeTest {
         compose.setContent { RepForthWearTheme { content() } }
     }
 
-    private fun state(timed: Boolean, attributed: Boolean = false) = WearWorkoutState(
+    private fun state(
+        timed: Boolean,
+        attributed: Boolean = false,
+        name: String = NAME,
+    ) = WearWorkoutState(
         sessionId = "today",
         revision = 7,
         phase = WearPhase.Exercise,
         exerciseId = "0025",
-        exerciseName = NAME,
+        exerciseName = name,
         setNumber = 1,
         totalSets = 3,
         targetReps = if (timed) null else 12,
@@ -401,5 +424,9 @@ class ExerciseScreenComposeTest {
         const val SECONDS = "Seconds"
 /** The number is the hero and the word only names it, so they are two nodes. */
         const val REPS = "Reps"
+        const val SET_OF = "Set 1 of 3"
+
+        /** An ordinary catalog name, not a long one: the median is 26 characters. */
+        const val LONG_NAME = "Barbell Decline Wide-Grip Press"
     }
 }

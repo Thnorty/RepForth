@@ -172,9 +172,14 @@ private fun WorkoutPages(
 /**
  * How much of the bottom the edge button claims.
  *
- * A medium `EdgeButton` is 52dp of pill plus the curve it sits in. The page
- * above it is told to stop here rather than being centred in the whole circle
- and drawn under the button, which is what happened first: the set's own
- * position, the last line on the page, came out underneath "Complete".
+ * **Measured off a render, not read off the API.** A medium `EdgeButton` is
+ * documented as 52dp of pill, and it occupies 73dp of the display: it is a
+ * shape that grows downward into the curve, so the pill height is not the
+ * space it takes. 56dp was guessed from the documented figure and left the
+ * last line of the page underneath "Complete" — visibly, and only once the
+ * exercise name went to two lines and pushed it down there.
+ *
+ * If the button size changes, measure again rather than adjusting by eye:
+ * find the topmost row of the golden that is a wide band of the accent.
  */
-private val EDGE_BUTTON_ROOM = 56.dp
+private val EDGE_BUTTON_ROOM = 76.dp
