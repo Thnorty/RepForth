@@ -6,11 +6,9 @@ import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ThemeMode
 import com.repforth.core.model.UserPreferences
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.ProviderId
@@ -687,8 +685,6 @@ private fun roundTripProfile() = UserProfile(
     trainingDaysPerWeek = 4,
     sessionLengthMs = 45 * 60_000L,
     availableEquipment = setOf(Equipment.BODY_WEIGHT, Equipment.DUMBBELL),
-    preferredMuscles = setOf(Muscle.entries.first()),
-    exclusions = setOf(MovementExclusion(ExclusionKind.MUSCLE, "abs")),
 )
 
 private fun sampleTemplate(id: String, name: String) = WorkoutTemplate(

@@ -2,11 +2,9 @@ package com.repforth.core.ai
 
 import com.repforth.core.model.BodyPart
 import com.repforth.core.model.Equipment
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
@@ -176,14 +174,18 @@ class AiWorkoutValidatorTest {
 
     @Test
     fun `hard constraints are delegated to the rules engine`() {
-        val excluded = request(
-            days = 1,
-            exclusions = setOf(MovementExclusion(ExclusionKind.EXERCISE, press.id.value)),
+        // Equipment, since the exclusions this used to use were removed on
+        // 2026-09-10. The point is unchanged: the validator does not decide
+        // what is allowed, it asks the engine and reports what comes back.
+        val barbellOnly = request(days = 1, equipment = setOf(Equipment.BARBELL))
+
+        val result = validator.validate(
+            response(listOf(reps("press"))),
+            barbellOnly,
+            listOf(press),
         )
 
-        val result = validator.validate(response(listOf(reps("press"))), excluded, listOf(press))
-
-        assertEquals(RejectionReason.EXCLUDED_EXERCISE, result.ruleViolations.single().reason)
+        assertEquals(RejectionReason.EQUIPMENT_UNAVAILABLE, result.ruleViolations.single().reason)
         assertFalse(result.isValid)
     }
 
@@ -451,8 +453,8 @@ class AiWorkoutValidatorTest {
 
     private fun request(
         days: Int = 3,
-        exclusions: Set<MovementExclusion> = emptySet(),
         sessionMinutes: Long = 60,
+        equipment: Set<Equipment> = emptySet(),
     ) = GenerationRequest(
         profile = UserProfile(
             id = "p",
@@ -460,9 +462,7 @@ class AiWorkoutValidatorTest {
             experience = ExperienceLevel.INTERMEDIATE,
             trainingDaysPerWeek = days,
             sessionLengthMs = sessionMinutes * 60_000L,
-            availableEquipment = emptySet(),
-            preferredMuscles = emptySet(),
-            exclusions = exclusions,
+            availableEquipment = equipment,
         ),
     )
 }

@@ -2,8 +2,6 @@ package com.repforth.core.testing
 
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
-import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
 import com.repforth.core.userdata.ProfileRepository
@@ -79,8 +77,6 @@ fun sampleProfile(
     trainingDaysPerWeek: Int = 4,
     sessionLengthMinutes: Int = 45,
     availableEquipment: Set<Equipment> = setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL),
-    preferredMuscles: Set<Muscle> = emptySet(),
-    exclusions: Set<MovementExclusion> = emptySet(),
 ): UserProfile = UserProfile(
     id = id,
     goal = goal,
@@ -88,6 +84,4 @@ fun sampleProfile(
     trainingDaysPerWeek = trainingDaysPerWeek,
     sessionLengthMs = sessionLengthMinutes * 60_000L,
     availableEquipment = availableEquipment,
-    preferredMuscles = preferredMuscles,
-    exclusions = exclusions,
 )

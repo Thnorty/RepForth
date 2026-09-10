@@ -480,19 +480,79 @@ class MigrationTest {
         migrated.close()
     }
 
+    /**
+     * The muscle and movement filters are dropped, and a profile survives it.
+     *
+     * The tables held four removed settings and go entirely. What must not go is
+     * the profile itself: the rows being dropped hang off it by foreign key, and
+     * a migration that took the parent with the children would silently delete
+     * everything the user told the app about how they train.
+     */
+    @Test
+    fun migrating_5_to_6_drops_the_filters_and_keeps_the_profile() {
+        helper.createDatabase(TEST_DB, 5).apply {
+            execSQL(
+                """
+                INSERT INTO user_profile
+                    (id, goal, experience, training_days_per_week,
+                     session_length_ms, created_at, updated_at)
+                VALUES ('p1', 'HYPERTROPHY', 'INTERMEDIATE', 4, 2700000, 100, 200)
+                """.trimIndent(),
+            )
+            execSQL("INSERT INTO profile_equipment (profile_id, equipment) VALUES ('p1', 'barbell')")
+            execSQL(
+                "INSERT INTO profile_preferred_muscle (profile_id, muscle) VALUES ('p1', 'pectorals')",
+            )
+            execSQL(
+                """
+                INSERT INTO movement_exclusion (profile_id, kind, value, created_at)
+                VALUES ('p1', 'MUSCLE', 'calves', 100)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            6,
+            true,
+            RepForthDatabase.MIGRATION_5_6,
+        )
+
+        migrated.query("SELECT goal, training_days_per_week FROM user_profile").use { cursor ->
+            assertTrue("The profile must survive", cursor.moveToFirst())
+            assertEquals("HYPERTROPHY", cursor.getString(0))
+            assertEquals(4, cursor.getInt(1))
+        }
+        migrated.query("SELECT COUNT(*) FROM profile_equipment").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("Equipment is the membership that stays", 1, cursor.getInt(0))
+        }
+        migrated.query(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' " +
+                "AND name IN ('profile_preferred_muscle', 'movement_exclusion')",
+        ).use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("Both tables must be gone, not merely empty", 0, cursor.getInt(0))
+        }
+
+        migrated.close()
+    }
+
     /** And the whole chain, which is what a v1 install runs. */
     @Test
-    fun migrating_from_1_to_5_produces_the_schema_room_expects() {
+    fun migrating_from_1_to_6_produces_the_schema_room_expects() {
         helper.createDatabase(TEST_DB, 1).close()
 
         helper.runMigrationsAndValidate(
             TEST_DB,
-            5,
+            6,
             true,
             RepForthDatabase.MIGRATION_1_2,
             RepForthDatabase.MIGRATION_2_3,
             RepForthDatabase.MIGRATION_3_4,
             RepForthDatabase.MIGRATION_4_5,
+            RepForthDatabase.MIGRATION_5_6,
         ).close()
     }
 

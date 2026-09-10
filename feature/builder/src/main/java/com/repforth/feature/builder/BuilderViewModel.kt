@@ -18,7 +18,6 @@ import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.ExperienceLevel
 import com.repforth.core.model.Language
 import com.repforth.core.model.MediaRef
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
@@ -271,9 +270,6 @@ data class BuilderUiState(
      * rather than pre-formatted: this class has no resources, and a summary
      * assembled here would be English on a Turkish phone.
      */
-    val excludedMuscles: Set<Muscle> = emptySet(),
-    val excludedMovements: List<String> = emptyList(),
-    val excludedExerciseCount: Int = 0,
     /**
      * How many days to ask for. Seeded from the profile's training days.
      *
@@ -380,10 +376,6 @@ data class BuilderUiState(
 
     /** §7: a plan needs a name and something to do. */
     val canSave: Boolean get() = name.isNotBlank() && exercises.isNotEmpty() && !saving
-    /** Whether there is anything to report above the generate button. */
-    val hasConstraints: Boolean
-        get() = excludedMuscles.isNotEmpty() || excludedMovements.isNotEmpty() ||
-            excludedExerciseCount > 0
 
     val canSaveWeek: Boolean get() = name.isNotBlank() && weekDays.isNotEmpty() && weekDays.all { it.exercises.isNotEmpty() } && !saving
 
@@ -459,28 +451,6 @@ class BuilderViewModel @Inject constructor(
                 coachDays = profile?.trainingDaysPerWeek?.coerceIn(WorkoutLimits.days)
                     ?: _uiState.value.coachDays,
             )
-        }
-        // Observed rather than read once with the profile above: exclusions are
-        // editable in Settings and on the exercise page now, so a summary read
-        // at construction would be stale by the time Coach was opened again.
-        viewModelScope.launch {
-            profiles.observeProfile().collect { profile ->
-                val exclusions = profile?.exclusions.orEmpty()
-                update {
-                    copy(
-                        excludedMuscles = exclusions
-                            .filter { it.kind == ExclusionKind.MUSCLE }
-                            .mapNotNullTo(mutableSetOf()) { Muscle.fromSlug(it.value) },
-                        excludedMovements = exclusions
-                            .filter { it.kind == ExclusionKind.MOVEMENT }
-                            .map { it.value }
-                            .sorted(),
-                        excludedExerciseCount = exclusions.count {
-                            it.kind == ExclusionKind.EXERCISE
-                        },
-                    )
-                }
-            }
         }
         // Asked before the form rather than after the last tap. Coach offered
         // itself unconditionally and answered "No AI provider configured" only

@@ -13,11 +13,8 @@ import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UnitSystem
 import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.model.UserPreferences
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseId
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
-import com.repforth.core.model.movementExcludes
 import com.repforth.core.exercisedata.ExerciseRepository
 import com.repforth.core.model.UserProfile
 import com.repforth.core.userdata.ProfileRepository
@@ -82,55 +79,7 @@ data class SettingsUiState(
     val pendingImport: PendingImport? = null,
     val message: SettingsMessage? = null,
     val busy: Boolean = false,
-    /**
-     * Every catalog name, loaded only when the movement editor opens.
-     *
-     * There so a free-text exclusion can say how much it takes away before it is
-     * saved. The rule doing the counting is `movementExcludes`, the same one the
-     * rules engine applies — see [movementMatches].
-     */
-    val catalogNames: List<String> = emptyList(),
-    /**
-     * Names for the exercises this user has excluded one at a time.
-     *
-     * Resolved when that list is opened. An id the catalog no longer has is
-     * absent here and shown as its id — a dataset update can retire an exercise,
-     * and an exclusion that becomes unreadable must still be removable.
-     */
-    val excludedExerciseNames: Map<String, String> = emptyMap(),
-) {
-    /** Muscles this user will not be programmed, as the editor reads them. */
-    val excludedMuscles: Set<Muscle>
-        get() = profile?.exclusions.orEmpty()
-            .filter { it.kind == ExclusionKind.MUSCLE }
-            .mapNotNullTo(mutableSetOf()) { Muscle.fromSlug(it.value) }
-
-    /** Free-text movement patterns, in the order they will be shown. */
-    val excludedMovements: List<String>
-        get() = profile?.exclusions.orEmpty()
-            .filter { it.kind == ExclusionKind.MOVEMENT }
-            .map { it.value }
-            .sorted()
-
-    /** Exercise ids this user has ruled out one at a time, oldest first. */
-    val excludedExerciseIds: List<String>
-        get() = profile?.exclusions.orEmpty()
-            .filter { it.kind == ExclusionKind.EXERCISE }
-            .map { it.value }
-
-    /** How many, for the row that reports without opening. */
-    val excludedExerciseCount: Int get() = excludedExerciseIds.size
-
-    /**
-     * How many catalog exercises a movement phrase would exclude.
-     *
-     * Zero before the catalog has loaded, which reads as "no answer yet" rather
-     * than "excludes nothing" because the editor only draws a count once
-     * [catalogNames] is populated.
-     */
-    fun movementMatches(phrase: String): Int =
-        catalogNames.count { movementExcludes(it, phrase) }
-}
+)
 
 /**
  * A file that has been read but not applied.
@@ -213,75 +162,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val current = profileRepository.getProfile() ?: return@launch
             profileRepository.save(current.copy(availableEquipment = equipment))
-        }
-    }
-
-    /**
-     * Replaces the muscles this user will not be programmed.
-     *
-     * §3 gathers these at onboarding and, until now, nothing could change them —
-     * so a shoulder that healed stayed excluded for the life of the install, and
-     * the only way out was to reset the app and lose every workout with it.
-     *
-     * Written as a whole set rather than added and removed one at a time,
-     * because the other two kinds share the field: [MovementExclusion] carries
-     * its kind, so a save that forgot to keep the others would silently delete
-     * every excluded exercise the moment a muscle was ticked.
-     */
-    fun onExcludedMusclesChange(muscles: Set<Muscle>) = editProfile { profile ->
-        profile.copy(exclusions = profile.exclusions.replacingKind(ExclusionKind.MUSCLE) {
-            muscles.map { MovementExclusion(ExclusionKind.MUSCLE, it.slug) }
-        })
-    }
-
-    fun onPreferredMusclesChange(muscles: Set<Muscle>) = editProfile { profile ->
-        profile.copy(preferredMuscles = muscles)
-    }
-
-    /** Replaces the free-text movement patterns. See [SettingsUiState.movementMatches]. */
-    fun onMovementExclusionsChange(movements: List<String>) = editProfile { profile ->
-        profile.copy(exclusions = profile.exclusions.replacingKind(ExclusionKind.MOVEMENT) {
-            movements.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
-                .map { MovementExclusion(ExclusionKind.MOVEMENT, it) }
-        })
-    }
-
-    /**
-     * Loads the catalog names the movement editor counts against.
-     *
-     * Only when that editor opens: it is 1,324 rows, and every other row on this
-     * screen has no use for them. Kept once loaded, because the catalog is
-     * read-only and cannot change while Settings is open.
-     */
-    /** Resolves names for the excluded-exercise list, when it is opened. */
-    fun onExcludedExercisesOpened() {
-        viewModelScope.launch {
-            // From the repository, not from `local`: the profile arrives through
-            // the combine and is never written into the local state, so reading
-            // it there would find null and resolve nothing.
-            val ids = profileRepository.getProfile()?.exclusions.orEmpty()
-                .filter { it.kind == ExclusionKind.EXERCISE }
-                .map { ExerciseId(it.value) }
-            if (ids.isEmpty()) return@launch
-            val names = exercises.summaries(ids)
-                .entries.associate { (id, summary) -> id.value to summary.name }
-            local.value = local.value.copy(excludedExerciseNames = names)
-        }
-    }
-
-    /** Removes one excluded exercise, leaving every other constraint alone. */
-    fun onExcludedExerciseRemoved(exerciseId: String) = editProfile { profile ->
-        profile.copy(
-            exclusions = profile.exclusions.filterNotTo(mutableSetOf()) {
-                it.kind == ExclusionKind.EXERCISE && it.value == exerciseId
-            },
-        )
-    }
-
-    fun onMovementEditorOpened() {
-        if (local.value.catalogNames.isNotEmpty()) return
-        viewModelScope.launch {
-            local.value = local.value.copy(catalogNames = exercises.candidates().map { it.name })
         }
     }
 
@@ -505,14 +385,3 @@ internal const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
 /** Thrown while reading, so the size shows up in the refusal. */
 private class FileTooLarge(val bytes: Long) : Exception("file is $bytes bytes")
 
-/**
- * Swaps out every exclusion of one kind, leaving the other kinds alone.
- *
- * The three kinds share one set, so an editor that wrote only what it knows
- * about would delete the rest. That is not hypothetical — the muscle editor and
- * the catalog's exclude action write the same field from two different screens.
- */
-private fun Set<MovementExclusion>.replacingKind(
-    kind: ExclusionKind,
-    replacement: () -> List<MovementExclusion>,
-): Set<MovementExclusion> = filterNotTo(mutableSetOf()) { it.kind == kind } + replacement()

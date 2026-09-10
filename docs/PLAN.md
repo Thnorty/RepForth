@@ -4309,6 +4309,41 @@ screenshot stops at "Appearance" - every switch is below the fold of a
 semantics tree as well. The new test uses a 3000dp-tall qualifier so the whole
 list composes, because a test on a realistic screen would pass either way.
 
+### 2026-09-10 - the muscle and movement filters are gone
+
+Four settings removed at the owner's request, on the grounds that they made the
+app unnecessarily complicated: favour a muscle, avoid a muscle, avoid a
+free-text movement, and exclude an exercise from the catalog page.
+
+**They were not four settings.** They were two onboarding steps, four editors in
+Settings, an action on the exercise detail sheet, a constraint summary on the
+Coach screen, three rules in the rules engine, three rejection reasons, a clause
+in the AI request and its prompt, two fields on `UserProfile`, two entities, two
+DAO relations, and two database tables. Twelve modules, 39 strings in two
+languages, and the compiler walked the whole way.
+
+**The database was the sharp part.** The catalog and the user's data share one
+Room database, so dropping two entities changes the identity hash — and the
+prepackaged catalog asset carries that hash. `tools/import-dataset.py` rebuilds
+it, and without that Room refuses the asset at runtime rather than reading a
+mismatched table. Verified after the fact: the rebuilt asset's
+`room_master_table` matches the exported v6 schema exactly, and neither dropped
+table survives in it.
+
+Migration 5→6 drops both tables. **It deletes what those users typed and there
+is no way back**, which is the honest cost of the decision rather than an
+oversight: the rows hang off the profile by foreign key, so the migration test
+asserts the *profile* survives — a migration that took the parent with the
+children would silently delete everything the user had said about how they
+train. Run on the emulator, not assumed: fourteen tests, no failures.
+
+**An export written before today still imports.** The reader ignores keys it
+does not know, so the two dropped fields are skipped rather than the file
+refused.
+
+**What is left deciding a plan**: the goal, the experience, the week, the
+session ceiling, and the equipment.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
@@ -4460,6 +4495,7 @@ Closed. Reopen only with a reason, and update the guideline in the same change.
 | Replacing an exercise mid-workout is out of scope | Asked for by §3 and by the review as F2, and declined by the owner on 2026-09-09 as unnecessary. Skipping a set and leaving an exercise already cover stopping; replacement would need a new command and a decision about sets already recorded against the old exercise | Guideline §3, F2 |
 | Coach's plans are validated for legality, not for quality | The app enforces exclusions, equipment, session length, `WorkoutLimits` and target types. Ordering, redundancy and volume rules were declined 2026-09-09: two need catalog metadata that does not exist, and two would make a validator reject plans it cannot explain | Guideline §8, F6 |
 | Declining work has exactly one shape, and it is skipping a set | "Next exercise" jumped past the sets left on an exercise and recorded none of them, so an exercise left early was indistinguishable from one that never started. Skipping them one at a time reaches the same place and leaves a row for each. Removed 2026-09-10 from the phone, the watch and the wire; abandoning the whole workout is a separate question and still answered | Guideline §3, §11, `SessionCommand.kt` |
+| The app filters plans by equipment, and by nothing else about the body | Favour a muscle, avoid a muscle, avoid a free-text movement, exclude an exercise: four settings, four editors, two onboarding steps, three rules in the engine, a clause in the AI contract and two database tables. Removed 2026-09-10 as more complication than they earned. Migration 5→6 drops the tables and the data with them | Guideline §3, §8, `UserProfile.kt` |
 | One week is active, by stored flag | Today is believed, and an inferred wrong answer is worse than none | `WeekDao.kt`, `WEEKLY_PLANS.md` |
 | Every build downloads the upstream exercise media | Decided by the owner 2026-09-08. The `media` flavours never gated it, so the choice was between implementing a safeguard nobody had relied on and saying plainly what the app does. The licence question is unchanged and unmitigated by the build | Guideline §6, `PRIVACY.md`, `NOTICE.md` |
 | One haptics switch governs both devices | §11 gives the watch no settings and no storage, so the preference exists in exactly one place; "haptics off" is honoured on the wrist by the phone not sending the alert at all | `WorkoutService.alert`, 2026-09-08 |

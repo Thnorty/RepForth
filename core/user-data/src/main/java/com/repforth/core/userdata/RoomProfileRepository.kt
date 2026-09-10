@@ -3,14 +3,10 @@ package com.repforth.core.userdata
 import com.repforth.core.common.time.TimeSource
 import com.repforth.core.database.dao.ProfileDao
 import com.repforth.core.database.dao.ProfileWithDetails
-import com.repforth.core.database.entity.MovementExclusionEntity
 import com.repforth.core.database.entity.ProfileEquipmentEntity
-import com.repforth.core.database.entity.ProfilePreferredMuscleEntity
 import com.repforth.core.database.entity.UserProfileEntity
 import com.repforth.core.model.Equipment
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.TrainingGoal
 import com.repforth.core.model.UserProfile
@@ -47,12 +43,6 @@ internal class RoomProfileRepository @Inject constructor(
             equipment = profile.availableEquipment.map {
                 ProfileEquipmentEntity(profile.id, it.slug)
             },
-            preferredMuscles = profile.preferredMuscles.map {
-                ProfilePreferredMuscleEntity(profile.id, it.slug)
-            },
-            exclusions = profile.exclusions.map {
-                MovementExclusionEntity(profile.id, it.kind.name, it.value, now)
-            },
         )
     }
 
@@ -74,11 +64,6 @@ private fun ProfileWithDetails.toDomain() = UserProfile(
     trainingDaysPerWeek = profile.trainingDaysPerWeek,
     sessionLengthMs = profile.sessionLengthMs,
     availableEquipment = equipment.mapNotNullTo(mutableSetOf()) { Equipment.fromSlug(it.equipment) },
-    preferredMuscles = preferredMuscles.mapNotNullTo(mutableSetOf()) { Muscle.fromSlug(it.muscle) },
-    exclusions = exclusions.mapNotNullTo(mutableSetOf()) { row ->
-        ExclusionKind.entries.firstOrNull { it.name == row.kind }
-            ?.let { MovementExclusion(it, row.value) }
-    },
 )
 
 private inline fun <reified T : Enum<T>> enumOrDefault(name: String, fallback: T): T =

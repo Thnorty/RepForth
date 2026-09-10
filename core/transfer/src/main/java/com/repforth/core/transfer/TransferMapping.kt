@@ -1,11 +1,9 @@
 package com.repforth.core.transfer
 
 import com.repforth.core.model.Equipment
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
@@ -36,9 +34,6 @@ internal fun UserProfile.toDto() = ProfileDto(
     trainingDaysPerWeek = trainingDaysPerWeek,
     sessionLengthMs = sessionLengthMs,
     equipment = availableEquipment.map { it.name }.sorted(),
-    preferredMuscles = preferredMuscles.map { it.name }.sorted(),
-    exclusions = exclusions.map { ExclusionDto(it.kind.name, it.value) }
-        .sortedBy { it.kind + it.value },
 )
 
 internal fun ProfileDto.toDomain() = UserProfile(
@@ -48,10 +43,6 @@ internal fun ProfileDto.toDomain() = UserProfile(
     trainingDaysPerWeek = trainingDaysPerWeek,
     sessionLengthMs = sessionLengthMs,
     availableEquipment = equipment.mapTo(mutableSetOf()) { enumOf<Equipment>(it, "equipment") },
-    preferredMuscles = preferredMuscles.mapTo(mutableSetOf()) { enumOf<Muscle>(it, "muscle") },
-    exclusions = exclusions.mapTo(mutableSetOf()) {
-        MovementExclusion(enumOf<ExclusionKind>(it.kind, "exclusion kind"), it.value)
-    },
 )
 
 internal fun WorkoutTemplate.toDto() = TemplateDto(

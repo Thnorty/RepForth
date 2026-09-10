@@ -212,63 +212,6 @@ internal fun CoachScreen(
                 )
             }
 
-            // What the plan is already forbidden from containing, said before
-            // the button rather than discovered afterwards in a plan that is
-            // quietly missing half a muscle group. Nothing here is editable on
-            // this screen on purpose -- Settings owns the constraints, and Coach
-            // reports them so that a surprising result has a visible cause.
-            if (state.hasConstraints) {
-                item(key = "constraints") {
-                    Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
-                        Text(
-                            text = stringResource(R.string.coach_constraints),
-                            style = MaterialTheme.typography.titleSmall,
-                        )
-                        // Built here rather than in the view model, which has no
-                        // resources and must not have any: a constraint summary
-                        // assembled there would be English on a Turkish phone.
-                        // Same rule as `onSaveWeek` taking its day titles in.
-                        val lines = buildList {
-                            if (state.excludedMuscles.isNotEmpty()) {
-                                add(
-                                    stringResource(
-                                        R.string.coach_constraints_muscles,
-                                        // `map` is inline so the label lookup is allowed inside
-                                        // it; `joinToString`'s transform is not.
-                                        state.excludedMuscles
-                                            .map { stringResource(it.labelRes) }
-                                            .joinToString(),
-                                    ),
-                                )
-                            }
-                            if (state.excludedMovements.isNotEmpty()) {
-                                add(
-                                    stringResource(
-                                        R.string.coach_constraints_movements,
-                                        state.excludedMovements.joinToString(),
-                                    ),
-                                )
-                            }
-                            if (state.excludedExerciseCount > 0) {
-                                add(
-                                    pluralStringResource(
-                                        R.plurals.coach_constraints_exercises,
-                                        state.excludedExerciseCount,
-                                        state.excludedExerciseCount,
-                                    ),
-                                )
-                            }
-                        }
-                        lines.forEach { line ->
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
 
             state.coachFailure?.let { failure ->
                 item(key = "failure") {

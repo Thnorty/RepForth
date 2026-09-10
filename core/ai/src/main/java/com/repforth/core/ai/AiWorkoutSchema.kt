@@ -132,12 +132,6 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
     if (secondaryMuscles.isNotEmpty()) {
         appendLine("- muscles this person also likes to train: ${secondaryMuscles.joinToString(", ")}")
     }
-    if (excludedMovements.isNotEmpty()) {
-        appendLine(
-            "- never program these movement patterns, whatever the catalog offers: " +
-                excludedMovements.joinToString("; "),
-        )
-    }
     appendLine("- write title and rationale in this language: $locale")
     appendLine()
 

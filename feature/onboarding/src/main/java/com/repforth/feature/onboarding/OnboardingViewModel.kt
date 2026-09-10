@@ -4,9 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.model.BodyRegion
 import com.repforth.core.model.Equipment
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.allMuscles
 import com.repforth.core.model.synonyms
@@ -41,8 +39,6 @@ enum class OnboardingStep {
     EQUIPMENT,
     DAYS,
     LENGTH,
-    MUSCLES,
-    AVOID,
 
     /**
      * Asks to show the workout notification.
@@ -95,8 +91,6 @@ data class OnboardingUiState(
     val equipment: Set<Equipment> = setOf(Equipment.BODY_WEIGHT),
     val trainingDaysPerWeek: Int = DEFAULT_DAYS,
     val sessionLengthMinutes: Int = DEFAULT_SESSION_MINUTES,
-    val preferredMuscles: Set<Muscle> = emptySet(),
-    val avoidedMuscles: Set<Muscle> = emptySet(),
     val saving: Boolean = false,
 ) {
     val stepNumber: Int get() = OnboardingStep.ordered.indexOf(step) + 1
@@ -176,55 +170,6 @@ class OnboardingViewModel @Inject constructor(
         copy(sessionLengthMinutes = minutes.coerceIn(OnboardingUiState.SESSION_MINUTES_RANGE))
     }
 
-    /**
-     * Toggles the muscle's whole synonym group, matching the catalog filters.
-     *
-     * `abs` and `abdominals` are one muscle under two upstream names. Selecting
-     * one and leaving the other would write a preference that is half-applied,
-     * and the rules engine would honour half of it.
-     */
-    fun onPreferredMuscleToggled(muscle: Muscle) = update {
-        copy(
-            preferredMuscles = preferredMuscles.toggleSynonyms(muscle),
-            avoidedMuscles = avoidedMuscles - muscle.synonyms,
-        )
-    }
-
-    /**
-     * A muscle cannot be both preferred and avoided, so choosing either side
-     * removes it from the other. Both directions, which is the whole point: it
-     * was one-way, and answering Avoid then walking Back to Focus produced
-     * exactly the profile this exists to prevent — one that asks the rules
-     * engine to favour and forbid the same muscle.
-     */
-    fun onAvoidedMuscleToggled(muscle: Muscle) = update {
-        copy(
-            avoidedMuscles = avoidedMuscles.toggleSynonyms(muscle),
-            preferredMuscles = preferredMuscles - muscle.synonyms,
-        )
-    }
-
-    /**
-     * Selecting a region is one action, not one action per muscle in it.
-     *
-     * Toggling each muscle individually could leave a region half-selected when
-     * some of its muscles were already chosen, which reads on the map as a
-     * region that will not turn off.
-     */
-    fun onPreferredRegionToggled(region: BodyRegion) = update {
-        copy(
-            preferredMuscles = preferredMuscles.toggleRegion(region),
-            avoidedMuscles = avoidedMuscles - region.allMuscles(),
-        )
-    }
-
-    fun onAvoidedRegionToggled(region: BodyRegion) = update {
-        copy(
-            avoidedMuscles = avoidedMuscles.toggleRegion(region),
-            preferredMuscles = preferredMuscles - region.allMuscles(),
-        )
-    }
-
     /** Jumps straight to a question, so the review can be edited in one tap. */
     fun onJumpTo(step: OnboardingStep) = update { copy(step = step) }
 
@@ -261,10 +206,6 @@ class OnboardingViewModel @Inject constructor(
                     trainingDaysPerWeek = state.trainingDaysPerWeek,
                     sessionLengthMs = state.sessionLengthMinutes * MS_PER_MINUTE,
                     availableEquipment = state.equipment,
-                    preferredMuscles = state.preferredMuscles,
-                    exclusions = state.avoidedMuscles
-                        .map { MovementExclusion(ExclusionKind.MUSCLE, it.slug) }
-                        .toSet(),
                 ),
             )
             // Cleared because the write is over. Leaving it true was harmless

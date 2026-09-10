@@ -166,9 +166,6 @@ private fun AiWorkoutIssue.explain(): String = when (this) {
  */
 private fun Violation.explain(): String {
     val sentence = when (reason) {
-        RejectionReason.EXCLUDED_EXERCISE -> "this person must never be given that exercise"
-        RejectionReason.EXCLUDED_MUSCLE -> "that exercise works a muscle this person excludes"
-        RejectionReason.EXCLUDED_MOVEMENT -> "that exercise is a movement pattern this person excludes"
         RejectionReason.EQUIPMENT_UNAVAILABLE -> "this person does not have that equipment"
         RejectionReason.WRONG_MUSCLE -> "that exercise is not in the catalog you were given"
         RejectionReason.NO_TIME_LEFT ->

@@ -46,7 +46,11 @@ The watch is a focused remote for an active phone workout. It shows the current 
 
 ### Phone MVP
 
-- First-run onboarding: goals, experience, available equipment, training days, normal session length, preferred and excluded muscles/movements.
+- First-run onboarding: goals, experience, available equipment, training days, normal session length.
+
+**Muscle and movement filters were removed on 2026-09-10.** Onboarding asked for preferred muscles and avoided muscles; Settings offered four more editors — muscles to favour, muscles to avoid, free-text movements to avoid, and exercises excluded from the catalog page. All of it is gone, on the owner's judgement that it made the app more complicated than it was worth. What shapes a plan now is the goal, the experience, the week, the session ceiling and the equipment.
+
+The two tables behind them are dropped by migration 5→6, which deletes what those users had entered. Keeping them would have left the app holding data it no longer reads.
 - Search and filter the full bundled catalog (1,324 records at the pinned commit) by name, body part, target muscle, secondary muscle, and equipment.
 - Exercise details with English/Turkish instructions, thumbnail, and tap-to-play GIF, downloaded on demand in every flavour. Until media is cached — or when it cannot be fetched — the full text instructions carry the screen and an icon stands in for the image.
 - Manual workout builder.
@@ -269,7 +273,6 @@ Room is the source of truth for structured app data. DataStore holds lightweight
 | `session_exercise` | Per-session ordered exercise state |
 | `set_record` | Completed/skipped set, reps, weight, duration, RPE |
 | `user_profile` | Goals, level, equipment, schedule, preferences |
-| `movement_exclusion` | Avoided exercise IDs, muscles, or movements |
 | `coach_conversation` | Optional local-only coach messages; user can disable/clear |
 | `generation_audit` | Constraints, provider/model, selected IDs, validation outcome; never API keys |
 
@@ -371,8 +374,8 @@ flowchart TD
 ```
 
 1. Build a typed `WorkoutIntent` from explicit UI controls. Natural language may fill missing values, but it never overrides explicit selections.
-2. Filter candidates locally by requested primary/secondary muscles, exclusions, equipment, experience, and exercise availability.
-3. Apply hard rules before AI: excluded IDs/muscles, unavailable equipment, session-duration ceiling, no duplicate exercise IDs, and minimum candidate diversity.
+2. Filter candidates locally by requested muscles, equipment, experience, and exercise availability.
+3. Apply hard rules before AI: unavailable equipment, session-duration ceiling, no duplicate exercise IDs, and minimum candidate diversity.
 4. Send only a compact candidate catalog (IDs and needed metadata), workout intent, and local safety constraints to the provider. **Exercise names are needed metadata.** They were withheld until version 4 as if they were private, which they are not — they are public catalog data, and the IDs already sent identify them exactly. Withholding them made 1,265 of the 1,324 catalog exercises indistinguishable from some other exercise on the wire, so selection inside a muscle/equipment bucket was arbitrary and no instruction about warm-ups, cool-downs or exercise ordering could be acted on. Nothing that identifies the *user* is ever sent: no profile ID, no stored settings, no history.
 5. Require structured output matching a versioned JSON Schema.
 
@@ -380,14 +383,14 @@ flowchart TD
 
 **Schema version 4 asks the model for less and tells it more.** Four response fields were removed because none of them could carry information: `schema_version` was a constant the app had just sent being echoed back, `day_index` and `order` restated array positions, and `tempo` was generated, validated and read by nothing. Each was a way for a whole week's generation to fail on a fact the JSON structure could not get wrong. Array position is the order, and always was.
 
-The request lost three fields for the opposite reason — they were already true. `excluded_exercise_ids`, `excluded_muscles` and `equipment` name constraints step 3 has already applied, so repeating them asked the model to avoid exercises it could not see. `excluded_movements` stays, because it is the one exclusion the catalog filter could not express by itself; it is now also applied locally by matching the exercise name, which is coarse but real — until version 4 it was advice sent to the provider and checked by nothing on the way back.
+The request lost `excluded_exercise_ids`, `excluded_muscles` and `equipment` for the opposite reason — they named constraints step 3 has already applied, so repeating them asked the model to avoid exercises it could not see. `excluded_movements` outlived them by one version and went with the settings that filled it on 2026-09-10.
 
 Both halves of that trade were measured. The catalog now travels as a delimited table rather than an array of JSON objects: over all 1,324 catalog exercises the old form was 112,110 characters carrying four fields each, the new one is 90,205 carrying six — around 5,500 tokens cheaper *and* strictly more informative, which is how names, secondary muscles and the repetition/timed marking could all be added without the request growing.
 
 Per-day validation is the version 2 validation, unchanged, applied to each day and including the session-length ceiling. Two rules are added at week level: the day count matches what was asked for, and **an exercise may repeat across days while remaining forbidden within one** — repeating a lift on two days is how programmes are written, not a violation.
 
 **The prompt states the duration formula, because the validator enforces it.** A day is rejected when `sets × (repetitions × secondsPerRepEstimate + rest_seconds)`, summed and counting the last set's rest, exceeds the session ceiling. The model was never told that formula and so was failing a check it had no way to pass, spending the single repair attempt on it.
-6. Validate exercise IDs, types, ranges, duration estimate, volume, and exclusions locally.
+6. Validate exercise IDs, types, ranges, duration estimate, and volume locally.
 7. Repair only safe mechanical issues locally; otherwise retry once with validation errors.
 8. If the provider is missing, unavailable, timed out, rate-limited, or still invalid, preserve the request and show an actionable error. Never silently substitute a locally generated plan.
 9. Show the plan as editable cards and require the user to start it explicitly.
@@ -421,7 +424,7 @@ The response contains only dataset exercise IDs, sets, one exact repetition targ
 
 Hard rules, all of them enforced:
 
-- Never select excluded movements, muscles, or unavailable equipment.
+- Never select unavailable equipment.
 - Every exercise ID must exist in the pinned dataset.
 - Respect session length using a deterministic duration estimator.
 - Keep sets, repetitions, duration and rest inside `WorkoutLimits`.
@@ -463,7 +466,7 @@ each was dropped is more useful than the rule was.
   recovery rule is wrong for the push/pull/legs splits people actually run.
 
 What follows from this is a limit worth stating plainly: **the app checks that a
-generated plan is well-formed, legal against the user's exclusions, and not
+generated plan is well-formed, legal against the user's equipment, and not
 absurd. It does not check that the programming is good.** That judgement is the
 model's, and the user's.
 
@@ -736,7 +739,7 @@ Use typed error categories and user-actionable messages. Do not expose raw provi
 
 ### Unit tests
 
-- Candidate filtering for muscle groups, equipment, exclusions, and experience.
+- Candidate filtering for muscle groups, equipment, and experience.
 - Candidate filtering plus AI response schema/range/ID, volume, order, and duration validation.
 - Provider timeout classification and retry-state preservation.
 - Timer calculations and every workout state transition.
@@ -865,7 +868,7 @@ require.
 Version 1 is ready when:
 
 - A new user can create, edit, perform, and review a workout without internet or AI.
-- Muscle-specific generation respects every explicit equipment and exclusion constraint.
+- Muscle-specific generation respects every explicit equipment constraint.
 - Gemini and a documented OpenAI-compatible test endpoint both produce validated plans using user-owned keys.
 - Provider failure never corrupts or blocks local workouts.
 - No generated plan can reference an unknown exercise ID.

@@ -20,8 +20,6 @@ internal val OnboardingStep.titleRes: Int
         OnboardingStep.EQUIPMENT -> R.string.onboarding_equipment_title
         OnboardingStep.DAYS -> R.string.onboarding_days_title
         OnboardingStep.LENGTH -> R.string.onboarding_length_title
-        OnboardingStep.MUSCLES -> R.string.onboarding_muscles_title
-        OnboardingStep.AVOID -> R.string.onboarding_avoid_title
         OnboardingStep.NOTIFICATIONS -> R.string.onboarding_notifications_title
         OnboardingStep.REVIEW -> R.string.onboarding_review_title
     }
@@ -34,8 +32,6 @@ internal val OnboardingStep.subtitleRes: Int
         OnboardingStep.EQUIPMENT -> R.string.onboarding_equipment_subtitle
         OnboardingStep.DAYS -> R.string.onboarding_days_subtitle
         OnboardingStep.LENGTH -> R.string.onboarding_length_subtitle
-        OnboardingStep.MUSCLES -> R.string.onboarding_muscles_subtitle
-        OnboardingStep.AVOID -> R.string.onboarding_avoid_subtitle
         OnboardingStep.NOTIFICATIONS -> R.string.onboarding_notifications_subtitle
         OnboardingStep.REVIEW -> R.string.onboarding_review_subtitle
     }

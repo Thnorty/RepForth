@@ -57,7 +57,6 @@ class ExercisesAccessibilityTest {
                     onClearFilters = {},
                     onSelectExercise = {},
                     onDismissDetail = {},
-                onToggleExcluded = {},
                 )
             }
         }

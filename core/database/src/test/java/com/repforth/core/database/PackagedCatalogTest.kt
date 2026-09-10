@@ -128,8 +128,8 @@ class PackagedCatalogTest {
         // ever non-empty in it, every fresh install would arrive carrying
         // somebody else's rows.
         listOf(
-            "user_profile", "profile_equipment", "profile_preferred_muscle",
-            "movement_exclusion", "workout_template", "template_exercise",
+            "user_profile", "profile_equipment",
+            "workout_template", "template_exercise",
             "workout_session", "session_exercise", "set_record",
         ).forEach { table ->
             assertEquals("$table must be empty in the packaged asset", 0, count("SELECT COUNT(*) FROM $table"))

@@ -5,9 +5,7 @@ import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseTarget
-import com.repforth.core.model.ExclusionKind
 import com.repforth.core.model.ExperienceLevel
-import com.repforth.core.model.MovementExclusion
 import com.repforth.core.model.Muscle
 import com.repforth.core.model.PlanSource
 import com.repforth.core.model.PlannedExercise
@@ -52,7 +50,6 @@ class RulesValidationTest {
 
     private fun profile(
         equipment: Set<Equipment> = emptySet(),
-        exclusions: Set<MovementExclusion> = emptySet(),
         sessionMinutes: Long = 60,
     ) = UserProfile(
         id = "p",
@@ -61,8 +58,6 @@ class RulesValidationTest {
         trainingDaysPerWeek = 3,
         sessionLengthMs = sessionMinutes * 60_000,
         availableEquipment = equipment,
-        preferredMuscles = emptySet(),
-        exclusions = exclusions,
     )
 
     private fun plan(vararg ids: String) = WorkoutTemplate(
@@ -97,24 +92,6 @@ class RulesValidationTest {
     }
 
     @Test
-    fun `an excluded exercise is rejected even when the plan is otherwise sound`() {
-        val request = GenerationRequest(
-            profile(exclusions = setOf(MovementExclusion(ExclusionKind.EXERCISE, "0001"))),
-        )
-        val violations = engine.validate(plan("0001"), request, catalog)
-        assertEquals(RejectionReason.EXCLUDED_EXERCISE, violations.single().reason)
-    }
-
-    @Test
-    fun `an exercise working an excluded muscle secondarily is rejected`() {
-        val request = GenerationRequest(
-            profile(exclusions = setOf(MovementExclusion(ExclusionKind.MUSCLE, "triceps"))),
-        )
-        val violations = engine.validate(plan("0001"), request, catalog)
-        assertEquals(RejectionReason.EXCLUDED_MUSCLE, violations.single().reason)
-    }
-
-    @Test
     fun `equipment the user does not have is rejected`() {
         val request = GenerationRequest(profile(equipment = setOf(Equipment.DUMBBELL)))
         val violations = engine.validate(plan("0001"), request, catalog)
@@ -142,11 +119,12 @@ class RulesValidationTest {
     fun `every violation is reported, not just the first`() {
         // A provider that gets one thing wrong usually got several wrong, and
         // fixing them one round-trip at a time is the slow path.
-        val request = GenerationRequest(
-            profile(exclusions = setOf(MovementExclusion(ExclusionKind.EXERCISE, "0001"))),
-        )
+        val request = GenerationRequest(profile())
         val violations = engine.validate(plan("0001", "9999", "0002", "0002"), request, catalog)
-        assertTrue("expected at least three, got $violations", violations.size >= 3)
+        // A plan naming an exercise the catalog does not have, and the same
+        // exercise twice. One exclusion used to be a third; that constraint was
+        // removed on 2026-09-10 and the point survives without it.
+        assertTrue("expected at least two, got $violations", violations.size >= 2)
     }
 
 }

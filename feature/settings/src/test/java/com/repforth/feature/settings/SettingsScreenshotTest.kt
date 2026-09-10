@@ -152,12 +152,6 @@ class SettingsScreenshotTest {
                     onUnitsChange = {},
                     onKeepScreenOnChange = {},
                     onHapticsChange = {},
-                    onExcludedMusclesChange = {},
-                    onPreferredMusclesChange = {},
-                    onMovementExclusionsChange = {},
-                    onMovementEditorOpened = {},
-                    onExcludedExercisesOpened = {},
-                    onExcludedExerciseRemoved = {},
                     onSoundChange = {},
                     onReducedMotionChange = {},
                     onMediaWifiOnlyChange = {},
@@ -195,8 +189,6 @@ class SettingsScreenshotTest {
             trainingDaysPerWeek = 4,
             sessionLengthMs = 45 * 60_000L,
             availableEquipment = setOf(Equipment.BODY_WEIGHT, Equipment.BARBELL),
-            preferredMuscles = emptySet(),
-            exclusions = emptySet(),
         )
     }
 }

@@ -126,11 +126,4 @@
         <item quantity="other">%1$d minutes</item>
     </plurals>
     <string name="coach_save_defaults">Save as default</string>
-    <string name="coach_constraints">Your plan will avoid</string>
-    <string name="coach_constraints_muscles">Muscles: %1$s</string>
-    <string name="coach_constraints_movements">Movements: %1$s</string>
-    <plurals name="coach_constraints_exercises">
-        <item quantity="one">%1$d excluded exercise</item>
-        <item quantity="other">%1$d excluded exercises</item>
-    </plurals>
 </resources>

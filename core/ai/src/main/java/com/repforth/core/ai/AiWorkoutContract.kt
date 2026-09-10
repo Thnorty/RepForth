@@ -64,13 +64,12 @@ object AiPlanFill {
  * payload rather than by taste:
  *
  * **Nothing the local filter already applied.** [com.repforth.core.rules.RulesEngine]
- * removes excluded exercises, excluded muscles and unavailable equipment from
- * the catalog before this is built, so listing them again told the model to
- * avoid things it could not see. Three fields left for that reason
- * (`excluded_exercise_ids`, `excluded_muscles`, `equipment`) and the request got
- * shorter and truer at the same time. [excludedMovements] stays precisely
- * because it is the one exclusion the catalog filter could not express — and it
- * is now enforced locally too, rather than only asked for.
+ * removes unavailable equipment from the catalog before this is built, so
+ * listing it again told the model to avoid things it could not see.
+ *
+ * There were exclusions here too — `excluded_exercise_ids`, `excluded_muscles`
+ * and a free-text `excluded_movements` — and the settings that filled them were
+ * removed on 2026-09-10. The request is shorter again.
  *
  * **Everything selection actually needs.** The earlier version carried no
  * exercise names, which read as a privacy measure and was not one: names are
@@ -93,15 +92,6 @@ data class AiWorkoutRequest(
     val sessionDurationMinutes: Int,
     val primaryMuscles: List<String>,
     val secondaryMuscles: List<String>,
-    /**
-     * Free-text movement patterns the user must not be programmed.
-     *
-     * Still sent, even though the catalog filter now applies it by name, because
-     * substring matching catches `overhead press` and not `push press`. Telling
-     * the model as well is the cheap half of a constraint that cannot be made
-     * exact.
-     */
-    val excludedMovements: List<String>,
     val candidates: List<AiExerciseCandidate>,
 ) {
     companion object {
@@ -122,10 +112,11 @@ data class AiWorkoutRequest(
                 days = request.days,
                 sessionDurationMinutes = (request.sessionLengthMs / 60_000L).toInt(),
                 primaryMuscles = primary,
-                secondaryMuscles = request.profile.preferredMuscles
-                    .canonicalSlugs()
-                    .filterNot(primary::contains),
-                excludedMovements = request.excludedMovements.sorted(),
+                // The muscles the plan is being built for, minus the ones
+                // already named as primary. This used to add the profile's
+                // preferred muscles as well; that setting was removed on
+                // 2026-09-10.
+                secondaryMuscles = emptyList(),
                 candidates = eligibleCandidates
                     .map(AiExerciseCandidate::from)
                     // Grouped by muscle, then by name. The filter sorts by id
