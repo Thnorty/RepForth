@@ -4239,6 +4239,39 @@ a copyright line under nothing. It follows the decoded picture now.
 bounded by the page being on screen, which is the structural half of the answer;
 what a long workout of swiping to it costs is not known.
 
+### 2026-09-10 - the rest screen says what is coming
+
+Asked for after the watch got its own media page: make the next exercise's
+picture bigger, and put its duration and weight on it.
+
+The preview was a 48dp still beside two lines of text, on a screen with a large
+ring and two blocks of empty space - and rest is the one moment in a workout
+with time to look at anything. It is the exercise **moving** now, at 58% of the
+width, with the name, the set and the prescription under it. The animation is
+chosen against the reduced-motion setting exactly as the active set's media is,
+so the switch that stops one stops both.
+
+The target line answers "what am I about to lift", which the preview could
+always have said and did not: it named the exercise, counted the sets, and
+stopped short of the work. It reads "12 reps · 62.5 kg", or "45 seconds ·
+Bodyweight" - bodyweight said rather than left blank, because a blank reads as
+unknown.
+
+**Two defects came out of doing it, and both predate the change.**
+
+`ExerciseMedia` at `FLUSH` takes its size from the modifier it is given and
+wraps its content without one. The caller reserved a square and the surface
+collapsed to the placeholder icon inside it, so an exercise with no cached media
+showed a speck floating in a large gap. It is given `fillMaxSize` now, and an
+icon proportionate to the box.
+
+**The session's content column never scrolled.** It sits between a fixed header
+and fixed controls, centred, so anything too tall was pushed off *both* ends
+with nothing to say so. At 200% font scale the new preview cost the name, the
+set and the target - the whole of what it exists for. §13 requires text to
+survive that scale. The column scrolls now, centred while it fits, and the guard
+was watched failing with the scroll removed.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
