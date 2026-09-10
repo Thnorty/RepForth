@@ -3,6 +3,9 @@ package com.repforth.wear
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -95,6 +98,45 @@ class WearScreenshotTest {
     @Test
     fun exercise_thumbnail() = capture("exercise-thumbnail") {
         Exercise(thumbnail = swatch())
+    }
+
+    /**
+     * **The rest ring after a second has passed, which is the bug this caught.**
+     *
+     * Reported from a wrist: the rest ring "looks always full". The data was
+     * right — a 30,000ms total and 29,966ms remaining — and so was the
+     * arithmetic. Wear's `CircularProgressIndicator` *animates* a change in
+     * progress, and a ring told to go from 30 seconds to 3 had moved 16% of the
+     * way and was still short five seconds later. A countdown changes every
+     * second and never arrives.
+     *
+     * The workout arc hid it: it changes once per set, in steps large enough
+     * for the animation to finish before the next one.
+     *
+     * **This has to recompose rather than render fresh.** A first attempt
+     * captured three separate compositions at three remainders, and they were
+     * all correct — a fresh composition starts at its target. Only changing the
+     * value inside a live composition reproduces it, which is what the device
+     * does every second.
+     */
+    @Test
+    fun rest_ring_after_a_tick() {
+        RuntimeEnvironment.setQualifiers("+$ENGLISH")
+        RuntimeEnvironment.setFontScale(1f)
+
+        var left by mutableIntStateOf(30)
+        compose.setContent {
+            RepForthWearTheme {
+                AppScaffold(timeText = {}) {
+                    RestPage(state = state(WearPhase.Rest), remainingSeconds = left)
+                }
+            }
+        }
+
+        left = 3
+        compose.waitForIdle()
+
+        compose.onRoot().captureRoboImage(screenshotPath("rest-ring-ticked"), SCREENSHOT_COMPARISON)
     }
 
     // ---- The pages the design pass added ----

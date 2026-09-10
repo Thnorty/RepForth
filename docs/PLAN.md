@@ -4134,6 +4134,51 @@ recording:
 The watch tests assert the control's **absence** rather than trusting it. It was
 three lines of code, and its absence is what the decision actually is.
 
+### 2026-09-10 — the watch on hardware: a real bug, and a false one
+
+The design pass was tested on the paired Ultra. Two things were reported: the
+rest ring "looks always full", and the app "lags a lot".
+
+**The ring was real, and it was the component.** The data was right — the probe
+showed a 30,000ms total against 29,966ms remaining — and so was the arithmetic.
+Wear's `CircularProgressIndicator` *animates* a change in progress: a ring told
+to move from 30 seconds to 3 had travelled 16% of the way and was still short
+after five seconds. A countdown changes every second and never arrives. The
+workout arc hid it by changing once per set, in steps large enough to finish.
+The rim is two `drawArc` calls now, with no animation and no state.
+
+**The test that found it had to be written twice.** The first version captured
+three separate compositions at three remainders and they were all correct: a
+fresh composition starts at its target. Only changing the value inside a live
+composition reproduces it, which is what the watch does every second.
+
+**The lag was a debug build**, and it took far too long to ask. Same device,
+same interactions, only the build type differing:
+
+| | Debug | Release |
+|---|---|---|
+| Median frame | 57ms | 19ms |
+| 90th percentile | 350ms | 40ms |
+| Janky frames | 70% | 20% |
+
+Three experiments were built and thrown away first — the full-screen image, the
+page count, the fonts — and the picture was suspect for two rounds against a
+counter that said `Number Slow bitmap uploads: 0` the whole time. It is written
+into AGENTS.md as the first question to ask.
+
+**And most of the measurement was worthless.** `adb shell input swipe` does not
+reach the Wear pager; it reports `Total frames rendered: 0` rather than failing,
+so several rounds of frame numbers were noise from unrelated redraws. What works
+is resetting `gfxinfo`, a person using the watch for fifteen seconds, then
+reading it back.
+
+**Two fixes survive the false alarm, because both were real regardless.** The
+thumbnail was re-wrapped by `asImageBitmap()` on every recomposition, so a new
+image object reached the screen once a second — Compose cannot know it is the
+same picture. And every composed page asked for the crown as it appeared, so
+rotary could be driving a page nobody was looking at; that is
+`rememberActiveFocusRequester` and a focus group per page now.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

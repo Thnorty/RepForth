@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.stringResource
+import androidx.wear.compose.foundation.HierarchicalFocusCoordinator
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.AnimatedPage
 import androidx.wear.compose.material3.EdgeButton
@@ -133,40 +134,42 @@ private fun WorkoutPages(
     ) {
         HorizontalPager(state = pager) { page ->
             AnimatedPage(pageIndex = page, pagerState = pager) {
-                when (page) {
-                    // The edge button is placed here rather than handed to
-                    // `ScreenScaffold`, whose slot exists to reserve room for
-                    // one even when there is none -- and a timed set has none.
-                    // An empty reserved strip on a 226dp circle is a real cost.
-                    // The button is placed here rather than handed to
-                    // `ScreenScaffold`, whose every overload wants a scroll
-                    // state to drive the button in and out -- and this page
-                    // deliberately does not scroll. The page is told how much
-                    // room to leave instead, which is the only thing the
-                    // scaffold would have done for it.
-                    0 -> Box(modifier = Modifier.fillMaxSize()) {
-                        mainPage(if (primaryAction == null) 0.dp else EDGE_BUTTON_ROOM)
-                        if (primaryAction != null) {
-                            EdgeButton(
-                                onClick = { onAction(primaryAction.action) },
-                                enabled = enabled,
-                                buttonSize = EdgeButtonSize.Medium,
-                                modifier = Modifier.align(Alignment.BottomCenter),
-                            ) {
-                                Text(stringResource(primaryAction.label), maxLines = 1)
+                // Which page owns the crown. Without this every composed page
+                // asked for focus as it appeared, so rotary could be driving a
+                // page nobody was looking at -- the pager keeps neighbours
+                // composed, which is what makes the swipe smooth.
+                HierarchicalFocusCoordinator(requiresFocus = { page == pager.currentPage }) {
+                    when (page) {
+                        // The button is placed here rather than handed to
+                        // `ScreenScaffold`, whose every overload wants a scroll
+                        // state to drive the button in and out -- and this page
+                        // deliberately does not scroll. The page is told how much
+                        // room to leave instead, which is the only thing the
+                        // scaffold would have done for it.
+                        0 -> Box(modifier = Modifier.fillMaxSize()) {
+                            mainPage(if (primaryAction == null) 0.dp else EDGE_BUTTON_ROOM)
+                            if (primaryAction != null) {
+                                EdgeButton(
+                                    onClick = { onAction(primaryAction.action) },
+                                    enabled = enabled,
+                                    buttonSize = EdgeButtonSize.Medium,
+                                    modifier = Modifier.align(Alignment.BottomCenter),
+                                ) {
+                                    Text(stringResource(primaryAction.label), maxLines = 1)
+                                }
                             }
                         }
+
+                        1 -> ControlsPage(state = state, enabled = enabled, onAction = onAction)
+
+                        else -> thumbnail?.let { image ->
+                            MediaPage(state = state, thumbnail = image)
+                        }
                     }
-
-                    1 -> ControlsPage(state = state, enabled = enabled, onAction = onAction)
-
-                    else -> thumbnail?.let { image ->
-                        MediaPage(state = state, thumbnail = image)
                     }
                 }
             }
         }
-    }
 }
 
 /**

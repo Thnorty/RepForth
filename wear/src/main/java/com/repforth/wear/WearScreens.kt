@@ -1,6 +1,7 @@
 package com.repforth.wear
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,13 +19,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.focus.FocusRequester
+import androidx.wear.compose.foundation.rememberActiveFocusRequester
 import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
 import androidx.wear.compose.foundation.rotary.rotaryScrollable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -33,9 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.OutlinedButton
-import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.MaterialTheme
-import androidx.wear.compose.material3.ProgressIndicatorDefaults
 import androidx.wear.compose.material3.Text
 import com.repforth.core.designsystem.theme.LocalRepForthColors
 import com.repforth.core.designsystem.theme.RepForthNumeric
@@ -465,19 +468,13 @@ private fun ArcFrame(
 ) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (progress != null) {
-            CircularProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxSize().padding(ARC_INSET),
-                colors = ProgressIndicatorDefaults.colors(
-                    indicatorColor = colour,
-                    // The palette has a role for the unfilled part of a rail,
-                    // and Wear's default is a dimmed copy of the accent -- so
-                    // an amber rest ring came out on an olive track, two
-                    // colours where §12 allows one. `track` is neutral by
-                    // construction and belongs to whatever is drawn on it.
-                    trackColor = LocalRepForthColors.current.track,
-                ),
-                strokeWidth = ARC_STROKE,
+            ProgressRim(
+                progress = progress,
+                colour = colour,
+                // The palette has a role for the unfilled part of a rail, and
+                // Wear's default was a dimmed copy of the accent -- an amber
+                // rest ring on an olive track, two colours where §12 allows one.
+                track = LocalRepForthColors.current.track,
             )
         }
         // The inset shrinks the box the content is centred *in*, rather than
@@ -499,8 +496,15 @@ private fun ArcFrame(
         // no way to reach it, which is worse than the scroll that was removed
         // and is exactly what §13 forbids.
         val scroll = rememberScrollState()
-        val focus = remember { FocusRequester() }
-        LaunchedEffect(Unit) { focus.requestFocus() }
+
+        // **The active page's requester, not one per page.** In a pager several
+        // pages are composed at once, and each of these used to call
+        // `requestFocus()` from its own `LaunchedEffect` the moment it appeared
+        // -- so the crown could end up driving a page nobody was looking at, and
+        // three composables competed for one focus on every page change.
+        // `rememberActiveFocusRequester` only requests when its focus group is
+        // the active one, which is what the pager below marks.
+        val focus = rememberActiveFocusRequester()
 
         Box(
             modifier = Modifier
@@ -519,6 +523,57 @@ private fun ArcFrame(
         }
     }
 }
+
+/**
+ * The arc on the rim, drawn rather than assembled from a component.
+ *
+ * **Wear's `CircularProgressIndicator` animates a change in progress, and that
+ * makes it useless for a countdown.** Found on hardware: the rest ring "looks
+ * always full". The data was correct all along — the watch had a 30,000ms total
+ * and 29,966ms remaining, exactly right — and so was the arithmetic. What was
+ * wrong was that a ring told to move from 30 seconds to 3 had travelled 16% of
+ * the way and was still short after five seconds of animation. A value that
+ * changes every second never arrives anywhere.
+ *
+ * The workout arc looked fine for the same reason it was fine: it changes once
+ * per set, in steps big enough that the animation finishes before the next one.
+ *
+ * Two arcs and no state, which is also the cheapest thing that can draw this.
+ * The sweep starts at twelve o'clock because that is where a wearer looks for
+ * the top of a dial.
+ */
+@Composable
+private fun ProgressRim(progress: Float, colour: Color, track: Color) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val width = ARC_STROKE.toPx()
+        val inset = ARC_INSET.toPx() + width / 2f
+        val stroke = Stroke(width = width, cap = StrokeCap.Round)
+        val topLeft = Offset(inset, inset)
+        val arc = Size(size.width - inset * 2f, size.height - inset * 2f)
+
+        drawArc(
+            color = track,
+            startAngle = TWELVE_OCLOCK,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arc,
+            style = stroke,
+        )
+        drawArc(
+            color = colour,
+            startAngle = TWELVE_OCLOCK,
+            sweepAngle = 360f * progress,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arc,
+            style = stroke,
+        )
+    }
+}
+
+/** `drawArc` measures from three o'clock, so the top of the dial is -90. */
+private const val TWELVE_OCLOCK = -90f
 
 /**
  * The number, with its unit beside it rather than under it.
@@ -558,9 +613,7 @@ private fun HeroNumber(value: String, unit: Int, colour: Color) {
 @Composable
 private fun Scrollable(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val scroll = rememberScrollState()
-    val focus = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    val focus = rememberActiveFocusRequester()
 
     Column(
         modifier = modifier
