@@ -150,18 +150,52 @@ class WearProjectionTest {
         assertNull("The set's clock stopped when the rest started", resting.setRemainingMs())
     }
 
+    /**
+     * **"Next" is usually this exercise again, and the watch said otherwise.**
+     *
+     * Reported from a wrist: resting after the first of four sets, the watch
+     * named the *next exercise*. This projection read
+     * `exercises[currentExerciseIndex + 1]` whatever the set index was, so the
+     * rest screen promised something three sets away.
+     *
+     * The old test asserted exactly that and passed, which is the part worth
+     * keeping in view: it was written from the code rather than from what the
+     * screen is for. The phone has always asked `isLastSetOfExercise` first.
+     */
     @Test
-    fun `the next exercise is named while there is one`() {
+    fun `with sets remaining, next is the same exercise`() {
+        // Set 1 of 4 on exercise one.
         assertEquals(
-            "dumbbell incline hammer curl",
+            "barbell decline wide-grip press",
             snapshot().toWearState(NAMES, PUBLISHED_AT)!!.nextExerciseName,
         )
     }
 
     @Test
-    fun `the last exercise has nothing after it`() {
-        val onTheLast = snapshot(currentExerciseIndex = 1)
+    fun `on the last set, next is the next exercise`() {
+        // Set 4 of 4, so the rest after it leads somewhere else.
+        val lastSet = snapshot(currentSetIndex = 3)
+        assertEquals(
+            "dumbbell incline hammer curl",
+            lastSet.toWearState(NAMES, PUBLISHED_AT)!!.nextExerciseName,
+        )
+    }
+
+    /** The final set of the final exercise: there is genuinely nothing after. */
+    @Test
+    fun `the last set of the last exercise has nothing after it`() {
+        val onTheLast = snapshot(currentExerciseIndex = 1, currentSetIndex = 2)
         assertNull(onTheLast.toWearState(NAMES, PUBLISHED_AT)!!.nextExerciseName)
+    }
+
+    /** And mid-exercise on the last exercise still points at itself. */
+    @Test
+    fun `the last exercise still names itself while it has sets left`() {
+        val midway = snapshot(currentExerciseIndex = 1, currentSetIndex = 0)
+        assertEquals(
+            "dumbbell incline hammer curl",
+            midway.toWearState(NAMES, PUBLISHED_AT)!!.nextExerciseName,
+        )
     }
 
     /**
