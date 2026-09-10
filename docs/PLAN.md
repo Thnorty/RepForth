@@ -4408,6 +4408,21 @@ result is deliberately stored as a plain workout rather than a week of one — t
 summary line even says so. The default is seeded from the profile's training
 days, which is why it opens on a week for most people.
 
+### 2026-09-10 - version 1.0.0
+
+Read "1.0" as `1.0.0`, keeping the three-part scheme the project already used
+(`0.1.0`). The tag is `v1.0.0`.
+
+**Named once now, in `build-logic/AppVersion.kt`.** The phone and the watch each
+declared `versionName` in their own `build.gradle.kts`, and §11 requires them to
+agree — two copies of a number that must match is a number that will eventually
+not match, which is the shape AGENTS.md opens by calling a bug. The version
+codes live there too, with the 1000 gap §11 asks for expressed as arithmetic
+rather than as a second literal.
+
+Version codes are unchanged: 1 and 1001. This is the first release, so there is
+nothing to be higher than.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
