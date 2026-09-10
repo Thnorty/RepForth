@@ -18,11 +18,11 @@ android {
         // established by that identity plus a shared signing identity.
         applicationId = "com.repforth"
 
-        // §11 also requires the two artifacts to have *different* version
-        // codes. 1000 apart rather than +1, so the watch's number cannot be
-        // mistaken for the next phone release.
-        versionCode = 1001
-        versionName = "0.1.0"
+        // Both declared in build-logic's AppVersion.kt: §11 requires the two
+        // artifacts to differ in code and agree on name, and a number that must
+        // match in two files is one that eventually will not.
+        versionCode = WEAR_VERSION_CODE
+        versionName = APP_VERSION_NAME
     }
 }
 

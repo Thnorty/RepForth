@@ -12,8 +12,8 @@ android {
     defaultConfig {
         // §21: final applicationId is still deferred. This is a placeholder.
         applicationId = "com.repforth"
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = PHONE_VERSION_CODE
+        versionName = APP_VERSION_NAME
     }
 
     buildTypes {
