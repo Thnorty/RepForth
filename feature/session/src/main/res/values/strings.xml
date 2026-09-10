@@ -56,6 +56,13 @@
     <string name="session_channel_name">Active workout</string>
     <string name="session_channel_description">Shows the current set and rest timer while a workout is running.</string>
     <string name="session_next_up">Next: %1$s</string>
+    <!--
+      What the next set asks for, under the preview on the rest screen. The
+      second argument is a weight or the word for having none, so these read
+      "12 reps · 62.5 kg" or "60 seconds · Bodyweight".
+    -->
+    <string name="session_next_target_reps">%1$d reps · %2$s</string>
+    <string name="session_next_target_seconds">%1$d seconds · %2$s</string>
     <string name="session_conflict_title">A workout is already running</string>
     <string name="session_conflict_message">%1$s is still in progress. Anything already recorded is kept, whichever you choose.</string>
     <!-- Stands in for the plan name when a workout was started without one. -->
