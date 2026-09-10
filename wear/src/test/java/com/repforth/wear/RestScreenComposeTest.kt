@@ -46,7 +46,7 @@ class RestScreenComposeTest {
         render(remainingSeconds = 45)
 
         compose.onNodeWithText("45").assertIsDisplayed()
-        compose.onNodeWithText("Next: barbell squat").assertIsDisplayed()
+        compose.onNodeWithText("Next: Barbell Squat").assertIsDisplayed()
     }
 
     /**
@@ -162,7 +162,7 @@ class RestScreenComposeTest {
         targetDurationMs = null,
         restDeadlineElapsedRealtimeMs = null,
         setDeadlineElapsedRealtimeMs = null,
-        nextExerciseName = "barbell squat",
+        nextExerciseName = "Barbell Squat",
     )
 
     private companion object {

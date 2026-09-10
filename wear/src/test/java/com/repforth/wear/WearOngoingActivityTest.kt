@@ -112,10 +112,10 @@ class WearOngoingActivityTest {
     @Test
     fun `updating replaces the chip rather than stacking another`() {
         notification.update(state(WearPhase.Exercise))
-        notification.update(state(WearPhase.Exercise, name = "barbell squat"))
+        notification.update(state(WearPhase.Exercise, name = "Barbell Squat"))
 
         val posted = shadowOf(manager).allNotifications.single()
-        assertEquals("barbell squat", posted.extras.getString("android.title"))
+        assertEquals("Barbell Squat", posted.extras.getString("android.title"))
     }
 
     /** A way back is not an alert; §3's alert is the haptic, with its own switch. */

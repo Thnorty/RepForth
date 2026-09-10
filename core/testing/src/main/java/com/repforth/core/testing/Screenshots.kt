@@ -40,32 +40,48 @@ const val SCREENSHOT_DEVICE =
     "w411dp-h891dp-normal-long-notround-any-420dpi-keyshidden-nonav"
 
 /**
- * A 240x240dp round watch at 320dpi — a Galaxy Watch Ultra, the paired device.
+ * A 226x226dp round watch at 340dpi — the paired Galaxy Watch Ultra, measured.
  *
  * `round` is the qualifier that matters and the reason this is not simply a
  * small phone: §11's screens are centred rather than start-aligned because a
  * round display clips its corners, and a square render would let a layout that
  * loses its edges pass. `small` and `notlong` come with the shape.
  *
- * The default of the three below: it is the watch this app has actually been
- * paired to.
+ * **This said 240dp at 320dpi until 2026-09-10, and no such watch exists.** The
+ * numbers were assumed from the model name rather than read off the device. The
+ * Ultra reports `DisplayMetrics{density=2.125, width=480, height=480}` at
+ * 340dpi, which is 480 / 2.125 = 225.9dp — so every wear golden was rendering
+ * about 6% wider than the wrist they were meant to describe. That is the margin
+ * the clipping found in the 2026-09-09 hardware session lived in, and it is why
+ * the goldens stayed green while the watch did not. Read it back with:
+ *
+ * ```
+ * adb shell dumpsys window displays | grep DisplayMetrics
+ * ```
+ *
+ * The two below are *not* measured devices — no watch of either description has
+ * been in hand. They are deliberate bounds, and their comments say so.
  */
 const val WATCH_SCREENSHOT_DEVICE =
-    "w240dp-h240dp-small-notlong-round-any-320dpi-keyshidden-nonav"
+    "w226dp-h226dp-small-notlong-round-any-340dpi-keyshidden-nonav"
 
 /**
- * A 180x180dp round watch — the smallest shape still sold.
+ * A 180x180dp round watch — a deliberate lower bound, not a measured device.
  *
  * §11 asks for "round/square screen previews", and this is the half that finds
- * the real problems: 60dp narrower than the device above, which is roughly one
+ * the real problems: 46dp narrower than the device above, which is roughly one
  * button's worth of label. A row that fits on the Ultra and wraps here is
  * exactly the defect the phone's Turkish goldens exist to catch, one size down.
+ *
+ * It used to claim to be "the smallest shape still sold", which was never
+ * checked against a real product. Treat it as a stress size that is at least as
+ * tight as anything shipping, which is the property actually wanted here.
  */
 const val WATCH_SMALL_ROUND_DEVICE =
     "w180dp-h180dp-small-notlong-round-any-320dpi-keyshidden-nonav"
 
 /**
- * A 200x200dp square watch.
+ * A 200x200dp square watch — again a shape to satisfy, not a device measured.
  *
  * `notround`, which changes what the layout may use rather than merely how it
  * looks: the corners are usable here and clipped everywhere else. A screen

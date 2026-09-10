@@ -110,7 +110,7 @@ class WearScreenChoiceTest {
         revision = 7,
         phase = phase,
         exerciseId = "0025",
-        exerciseName = "barbell curl",
+        exerciseName = "Barbell Curl",
         setNumber = 2,
         totalSets = 4,
         targetReps = 12,

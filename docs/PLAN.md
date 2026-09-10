@@ -3950,6 +3950,41 @@ whether or not the code carries them. Renaming it was not cosmetic — the share
 `sampleProfile` had been imported into that file and silently shadowed by the
 local one, so the import was doing nothing and reading as though it were.
 
+### 2026-09-10 — the wear goldens were measuring a watch that does not exist
+
+Groundwork for the watch design pass (backlog 21), and the reason to do it
+before rather than after: **the safety net was calibrated wrong.**
+
+`WATCH_SCREENSHOT_DEVICE` said 240dp at 320dpi and called itself "a Galaxy Watch
+Ultra, the paired device". The paired Ultra reports
+`DisplayMetrics{density=2.125, width=480, height=480}` at 340dpi — 480 / 2.125 =
+225.9dp. The numbers had been assumed from the model name and never read off the
+device.
+
+**The pixel canvas was right and the density was not**, which is why nothing
+looked wrong. 240dp × 2.0 and 226dp × 2.125 are both 480 pixels, so the goldens
+were the correct size and the *layout* was handed 14dp of room it does not have.
+Text and touch targets are sized in dp and sp, so at the true density everything
+is proportionally larger against the same circle — about 6% less room, which is
+the margin the clipping from the 2026-09-09 hardware session lived in. That is
+why the wrist showed a defect the goldens had already approved.
+
+Re-recording at the true configuration shows it immediately: at default font
+scale the exercise screen's Pause and Skip row now sits at the bottom edge, and
+at 200% it is off the fold entirely with the exercise name ellipsised. The
+screens scroll, so this is reachable rather than lost — but a wrist would rather
+glance than turn a crown, and that is exactly the case for the design pass.
+
+**The other two watch qualifiers are not measured devices**, and now say so. The
+180dp one claimed to be "the smallest shape still sold", which was never checked
+against a real product; it is a deliberate lower bound and is useful as one.
+
+**The fixtures were also publishing a name the app no longer produces.** The
+dataset stores lower case and the phone applies `exerciseDisplayName` before
+publishing, so the watch has never seen "barbell decline wide-grip press". The
+goldens showed it anyway, which made every wear render slightly narrower than
+reality — capitals are wider, and width is the entire point of a 226dp render.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

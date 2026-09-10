@@ -438,7 +438,7 @@ private val PADDING_H = 20.dp
  *
  * 12dp was not enough and it showed: the thumbnail at the top of the exercise
  * screen came back clipped on the real watch, and so did the first and last
- * buttons. The middle of a circle is 240dp wide and the last few rows are not,
+ * buttons. The middle of a circle is 226dp wide and the last few rows are not,
  * so a column that starts at the very edge starts inside the curve.
  *
  * The screen scrolls, so this costs nothing but a little travel.

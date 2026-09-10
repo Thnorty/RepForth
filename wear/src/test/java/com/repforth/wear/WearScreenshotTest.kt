@@ -33,7 +33,7 @@ import org.robolectric.annotation.GraphicsMode
  *
  * `wear/src/test` was string parity, then behaviour, and behaviour cannot see a
  * layout. Everything these catch is the kind of defect the phone's goldens were
- * written for and a wrist makes worse: 240dp is a quarter of a phone's width,
+ * written for and a wrist makes worse: 226dp is a quarter of a phone's width,
  * Turkish runs 15–30% longer than English, and a round display clips the corners
  * a square one lets you use.
  *
@@ -144,7 +144,7 @@ class WearScreenshotTest {
     @Composable
     private fun Rest() {
         RestScreen(
-            state = state(next = "barbell squat"),
+            state = state(next = "Barbell Squat"),
             remainingSeconds = 45,
             enabled = true,
             onAction = {},
@@ -181,6 +181,16 @@ class WearScreenshotTest {
         return bitmap.asImageBitmap()
     }
 
+    /**
+     * A snapshot as it arrives on the wire, which is why the name is capitalised.
+     *
+     * The dataset stores names in lower case and the phone applies
+     * `exerciseDisplayName` before publishing, so the watch never sees "barbell
+     * decline wide-grip press" -- it sees the title case here. These fixtures
+     * said otherwise until 2026-09-10, which made every wear golden slightly
+     * narrower than the real thing: capitals are wider, and the width is the
+     * whole point of a 226dp render.
+     */
     private fun state(
         phase: WearPhase = WearPhase.Exercise,
         timed: Boolean = false,
@@ -191,7 +201,7 @@ class WearScreenshotTest {
         revision = 7,
         phase = phase,
         exerciseId = "0025",
-        exerciseName = "barbell decline wide-grip press",
+        exerciseName = "Barbell Decline Wide-Grip Press",
         setNumber = 2,
         totalSets = 4,
         targetReps = if (timed) null else 12,
