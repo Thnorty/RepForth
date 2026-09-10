@@ -179,6 +179,7 @@ internal fun SettingsScreen(
         contentPadding = PaddingValues(horizontal = Layout.gutterPhone, vertical = Space.s3),
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
+        val prefs = state.preferences
         // One item, present from the first frame, whether or not the profile has
         // loaded yet.
         //
@@ -298,114 +299,135 @@ internal fun SettingsScreen(
             }
         }
 
+        // Read once. Null means the stored preferences have not arrived, and
+        // every row that would have to guess a value is simply not drawn until
+        // they do -- see `SettingsUiState.preferences` for what guessing looked
+        // like on a phone.
+
         item(key = "appearance") { SectionLabel(stringResource(R.string.settings_appearance)) }
 
-        item(key = "theme") {
-            ChoiceRow(
-                label = stringResource(R.string.settings_theme),
-                options = ThemeMode.entries,
-                selected = state.preferences.themeMode,
-                labelOf = {
-                    stringResource(
-                        when (it) {
-                            ThemeMode.SYSTEM -> R.string.settings_theme_system
-                            ThemeMode.LIGHT -> R.string.settings_theme_light
-                            ThemeMode.DARK -> R.string.settings_theme_dark
-                        },
-                    )
-                },
-                onSelected = onThemeChange,
-            )
+        if (prefs != null) {
+            item(key = "theme") {
+                ChoiceRow(
+                    label = stringResource(R.string.settings_theme),
+                    options = ThemeMode.entries,
+                    selected = prefs.themeMode,
+                    labelOf = {
+                        stringResource(
+                            when (it) {
+                                ThemeMode.SYSTEM -> R.string.settings_theme_system
+                                ThemeMode.LIGHT -> R.string.settings_theme_light
+                                ThemeMode.DARK -> R.string.settings_theme_dark
+                            },
+                        )
+                    },
+                    onSelected = onThemeChange,
+                )
+            }
         }
 
-        item(key = "language") {
-            // Null is a real choice here, not an absence: it means follow the
-            // system locale, which is the default.
-            val options = listOf(null, Language.ENGLISH, Language.TURKISH)
-            ChoiceRow(
-                label = stringResource(R.string.settings_language),
-                options = options,
-                selected = state.preferences.language,
-                labelOf = {
-                    stringResource(
-                        when (it) {
-                            null -> R.string.settings_language_system
-                            Language.ENGLISH -> R.string.settings_language_en
-                            Language.TURKISH -> R.string.settings_language_tr
-                        },
-                    )
-                },
-                onSelected = onLanguageChange,
-            )
+        if (prefs != null) {
+            item(key = "language") {
+                // Null is a real choice here, not an absence: it means follow the
+                // system locale, which is the default.
+                val options = listOf(null, Language.ENGLISH, Language.TURKISH)
+                ChoiceRow(
+                    label = stringResource(R.string.settings_language),
+                    options = options,
+                    selected = prefs.language,
+                    labelOf = {
+                        stringResource(
+                            when (it) {
+                                null -> R.string.settings_language_system
+                                Language.ENGLISH -> R.string.settings_language_en
+                                Language.TURKISH -> R.string.settings_language_tr
+                            },
+                        )
+                    },
+                    onSelected = onLanguageChange,
+                )
+            }
         }
 
-        item(key = "units") {
-            ChoiceRow(
-                label = stringResource(R.string.settings_units),
-                options = UnitSystem.entries,
-                selected = state.preferences.unitSystem,
-                labelOf = {
-                    stringResource(
-                        when (it) {
-                            UnitSystem.METRIC -> R.string.settings_units_metric
-                            UnitSystem.IMPERIAL -> R.string.settings_units_imperial
-                        },
-                    )
-                },
-                onSelected = onUnitsChange,
-            )
+        if (prefs != null) {
+            item(key = "units") {
+                ChoiceRow(
+                    label = stringResource(R.string.settings_units),
+                    options = UnitSystem.entries,
+                    selected = prefs.unitSystem,
+                    labelOf = {
+                        stringResource(
+                            when (it) {
+                                UnitSystem.METRIC -> R.string.settings_units_metric
+                                UnitSystem.IMPERIAL -> R.string.settings_units_imperial
+                            },
+                        )
+                    },
+                    onSelected = onUnitsChange,
+                )
+            }
         }
 
         item(key = "workout") { SectionLabel(stringResource(R.string.settings_workout)) }
 
-        item(key = "keep-awake") {
-            SwitchRow(
-                label = stringResource(R.string.settings_keep_awake),
-                detail = stringResource(R.string.settings_keep_awake_sub),
-                checked = state.preferences.keepScreenOn,
-                onCheckedChange = onKeepScreenOnChange,
-            )
+        if (prefs != null) {
+            item(key = "keep-awake") {
+                SwitchRow(
+                    label = stringResource(R.string.settings_keep_awake),
+                    detail = stringResource(R.string.settings_keep_awake_sub),
+                    checked = prefs.keepScreenOn,
+                    onCheckedChange = onKeepScreenOnChange,
+                )
+            }
         }
 
-        item(key = "haptics") {
-            SwitchRow(
-                label = stringResource(R.string.settings_haptics),
-                detail = stringResource(R.string.settings_haptics_sub),
-                checked = state.preferences.hapticsEnabled,
-                onCheckedChange = onHapticsChange,
-            )
+        if (prefs != null) {
+            item(key = "haptics") {
+                SwitchRow(
+                    label = stringResource(R.string.settings_haptics),
+                    detail = stringResource(R.string.settings_haptics_sub),
+                    checked = prefs.hapticsEnabled,
+                    onCheckedChange = onHapticsChange,
+                )
+            }
         }
 
         // Next to the haptic, because they answer the same moment. Separate
         // from it, because a phone face down on a bench is felt and not heard
         // and a phone in a bag is heard and not felt.
-        item(key = "sound") {
-            SwitchRow(
-                label = stringResource(R.string.settings_sound),
-                detail = stringResource(R.string.settings_sound_sub),
-                checked = state.preferences.soundEnabled,
-                onCheckedChange = onSoundChange,
-            )
+        if (prefs != null) {
+            item(key = "sound") {
+                SwitchRow(
+                    label = stringResource(R.string.settings_sound),
+                    detail = stringResource(R.string.settings_sound_sub),
+                    checked = prefs.soundEnabled,
+                    onCheckedChange = onSoundChange,
+                )
+            }
         }
 
-        item(key = "motion") {
-            SwitchRow(
-                label = stringResource(R.string.settings_reduced_motion),
-                detail = stringResource(R.string.settings_reduced_motion_sub),
-                checked = state.preferences.reducedMotion,
-                onCheckedChange = onReducedMotionChange,
-            )
+        if (prefs != null) {
+            item(key = "motion") {
+                SwitchRow(
+                    label = stringResource(R.string.settings_reduced_motion),
+                    detail = stringResource(R.string.settings_reduced_motion_sub),
+                    checked = prefs.reducedMotion,
+                    onCheckedChange = onReducedMotionChange,
+                )
+            }
         }
 
         item(key = "media") { SectionLabel(stringResource(R.string.settings_media)) }
 
-        item(key = "media-wifi-only") {
-            SwitchRow(
-                label = stringResource(R.string.settings_media_wifi_only),
-                detail = stringResource(R.string.settings_media_wifi_only_sub),
-                checked = state.preferences.mediaWifiOnly,
-                onCheckedChange = onMediaWifiOnlyChange,
-            )
+        if (prefs != null) {
+            item(key = "media-wifi-only") {
+                SwitchRow(
+                    label = stringResource(R.string.settings_media_wifi_only),
+                    detail = stringResource(R.string.settings_media_wifi_only_sub),
+                    checked = prefs.mediaWifiOnly,
+                    onCheckedChange = onMediaWifiOnlyChange,
+                )
+            }
         }
 
         item(key = "clear-media-cache") {
