@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -223,10 +225,17 @@ internal fun SessionScreen(
     ) {
         SessionHeader(state)
 
+        // Centred while it fits and scrollable when it does not. §13 requires
+        // text to survive 200% scaling, and this column is between a fixed
+        // header and fixed controls -- so anything too tall was simply clipped
+        // at both ends, silently. The rest screen at 200% lost the next
+        // exercise's name, set and target the moment its preview grew, which
+        // is the whole of what that preview is for.
         Column(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -384,33 +393,96 @@ private fun RestPanel(state: SessionUiState) {
         }
 
         state.nextUpPreview?.let { next ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Space.s4),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Space.s3),
-            ) {
-                ExerciseMedia(
-                    mediaRef = next.thumbnail,
-                    contentDescription = next.name,
-                    size = ExerciseMediaSize.SMALL,
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.session_next_up, next.name),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    if (next.nextSetNumber != null && next.totalSets != null) {
-                        Text(
-                            text = stringResource(R.string.session_set_of, next.nextSetNumber, next.totalSets),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            NextUpPanel(next = next, reducedMotion = state.reducedMotion)
+        }
+    }
+}
+
+/**
+ * What is coming, at a size worth looking at.
+ *
+ * This was a 48dp still beside two lines of text, and rest is the one moment in
+ * a workout with time to look at anything — the screen had a countdown, a
+ * thumbnail the size of a favicon, and two blocks of empty space. The owner
+ * asked for the picture to be bigger and for the prescription to be on it.
+ *
+ * The media is the animation, chosen against [reducedMotion] exactly as the
+ * active set's own media is, so the switch that stops one stops both.
+ *
+ * The target line answers "what am I about to lift", which the preview could
+ * always have said and did not: it named the exercise, counted the sets, and
+ * stopped short of the work.
+ */
+@Composable
+private fun NextUpPanel(next: NextUpPreview, reducedMotion: Boolean) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Space.s2),
+    ) {
+        Box(
+            // Smaller than the active set's media, which is 92% of the width:
+            // this is what comes next, not what is happening, and the countdown
+            // above it is still the thing the screen is for.
+            modifier = Modifier
+                .fillMaxWidth(0.58f)
+                .aspectRatio(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            ExerciseMedia(
+                mediaRef = if (reducedMotion) next.thumbnail else next.animation,
+                contentDescription = next.name,
+                size = ExerciseMediaSize.FLUSH,
+                // `FLUSH` takes its size from the modifier it is given and
+                // wraps its content without one -- so the surface collapsed to
+                // the placeholder icon and sat lost in the middle of the
+                // square this Box had already reserved.
+                modifier = Modifier.fillMaxSize(),
+                // Proportionate to that square. The default 32dp is sized for
+                // a 72dp tile and reads as a speck at this scale, which is the
+                // view every user with no cached media gets.
+                iconSize = Space.s12,
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.session_next_up, next.name),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+
+        if (next.nextSetNumber != null && next.totalSets != null) {
+            Text(
+                text = stringResource(R.string.session_set_of, next.nextSetNumber, next.totalSets),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        next.target?.let { target ->
+            val units = LocalUnitSystem.current
+            val load = target.weightKg?.takeIf { it > 0.0 }?.let { weight ->
+                stringResource(R.string.session_target_weight, units.formatWeight(weight), units.symbol)
+            } ?: stringResource(R.string.session_target_bodyweight)
+
+            Text(
+                text = when (target) {
+                    is ExerciseTarget.Reps ->
+                        stringResource(R.string.session_next_target_reps, target.reps, load)
+                    // The prescription rather than a countdown: nothing is
+                    // running yet, so there is no remainder to show.
+                    is ExerciseTarget.Duration ->
+                        stringResource(
+                            R.string.session_next_target_seconds,
+                            (target.durationMs / 1000L).toInt(),
+                            load,
                         )
-                    }
-                }
-            }
+                },
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

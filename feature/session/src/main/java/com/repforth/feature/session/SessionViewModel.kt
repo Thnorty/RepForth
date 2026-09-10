@@ -25,9 +25,28 @@ import kotlinx.coroutines.launch
 /** Preview of what comes next during rest (either next set of current movement or next movement). */
 data class NextUpPreview(
     val thumbnail: MediaRef,
+
+    /**
+     * The moving version, for the rest screen's preview.
+     *
+     * Rest is the one moment in a workout with time to look at something, and
+     * the preview used to be a 48dp still beside two lines of text. The screen
+     * picks between this and [thumbnail] on the reduced-motion setting, exactly
+     * as the active set's own media does.
+     */
+    val animation: MediaRef = MediaRef.Unavailable,
     val name: String,
     val nextSetNumber: Int? = null,
     val totalSets: Int? = null,
+
+    /**
+     * What the next set asks for — repetitions or seconds, and the load.
+     *
+     * The preview named the exercise and counted the sets and said nothing about
+     * the work itself, so "what am I about to lift" was a question the rest
+     * screen could answer and did not.
+     */
+    val target: ExerciseTarget? = null,
 )
 
 /**
@@ -94,9 +113,11 @@ data class SessionUiState(
                 val summary = summaries[nextPlanned.exerciseId.value] ?: return null
                 return NextUpPreview(
                     thumbnail = summary.thumbnail,
+                    animation = summary.animation,
                     name = summary.name,
                     nextSetNumber = 1,
                     totalSets = nextPlanned.target.sets,
+                    target = nextPlanned.target,
                 )
             } else {
                 // Next set of the current exercise
@@ -108,9 +129,15 @@ data class SessionUiState(
                 val totalSets = currPlanned.target.sets
                 return NextUpPreview(
                     thumbnail = thumbnail,
+                    animation = currentExercise?.animation
+                        ?: summary?.animation
+                        ?: MediaRef.Unavailable,
                     name = name,
                     nextSetNumber = nextSetNum,
                     totalSets = totalSets,
+                    // The same exercise, so the same prescription: another set of
+                    // what is already on the bar.
+                    target = currPlanned.target,
                 )
             }
         }
