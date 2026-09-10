@@ -619,7 +619,11 @@ Every watch command includes the last observed revision. The phone applies it, p
 
 When disconnected, the last snapshot may remain visible but all modifying actions are disabled and clearly marked unavailable. This preserves the chosen connected-remote behavior.
 
-For MVP, use a static thumbnail on the watch. A later opt-in experiment may transfer and play a GIF for a few seconds on tap, but it must stop in ambient mode and pass battery/performance testing first.
+The watch plays the animation, as of 2026-09-10. It shipped with a static thumbnail and this paragraph used to defer the moving version to "a later opt-in experiment"; the owner asked for it directly.
+
+The caution that deferral carried is kept as the design rather than as a setting. The animation lives on its own page, so it plays only when the wearer has swiped to it and stops the moment they swipe away or the watch sleeps. The phone sends the GIF in place of the JPEG rather than as well as it -- a stopped animation draws its first frame, so one asset serves both jobs. That costs about fourteen times the bytes, 94KB against 6.6KB at the catalog median and 233KB at its worst, warmed for the whole plan at the start of the workout rather than fetched when the wrist asks.
+
+**Battery cost is still unmeasured.** The old wording asked for battery and performance testing before this shipped, and only the second half has been done. What is known is that playback is bounded by the page being on screen; what is not known is what a long workout of swiping to it costs.
 
 Use Material 3 for Wear OS, large touch targets, rotary scrolling where appropriate, round/square screen previews, haptics, and an ongoing activity. Keep decorative motion secondary to glanceability.
 

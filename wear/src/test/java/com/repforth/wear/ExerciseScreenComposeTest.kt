@@ -1,8 +1,5 @@
 package com.repforth.wear
 
-import android.graphics.Bitmap
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -330,9 +327,8 @@ class ExerciseScreenComposeTest {
         assertEquals(listOf(WearAction.SkipSet), sent)
     }
 
-    /** A 1x1 bitmap: this asserts what the screen does with one, not how it looks. */
-    private fun image(): ImageBitmap =
-        Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888).asImageBitmap()
+    /** A real animated GIF, which is what the phone sends now. */
+    private fun image(): ByteArray = animatedGif()
 
     /**
      * Page 0: the set itself, through the real pager.
@@ -346,7 +342,7 @@ class ExerciseScreenComposeTest {
         remainingSeconds: Int?,
         enabled: Boolean = true,
         fontScale: Float = 1f,
-        thumbnail: ImageBitmap? = null,
+        thumbnail: ByteArray? = null,
         attributed: Boolean = thumbnail != null,
         name: String = NAME,
     ) = host(fontScale) {
@@ -355,7 +351,7 @@ class ExerciseScreenComposeTest {
             remainingSeconds = remainingSeconds,
             enabled = enabled,
             onAction = { sent += it },
-            thumbnail = thumbnail,
+            media = thumbnail,
         )
     }
 
@@ -379,8 +375,14 @@ class ExerciseScreenComposeTest {
     }
 
     /** Page 2: the picture, and §6's notice. Present only when there is one. */
-    private fun renderMedia(thumbnail: ImageBitmap, attributed: Boolean = true) = host(1f) {
-        MediaPage(state = state(timed = false, attributed = attributed), thumbnail = thumbnail)
+    private fun renderMedia(thumbnail: ByteArray, attributed: Boolean = true) = host(1f) {
+        MediaPage(
+            state = state(timed = false, attributed = attributed),
+            media = thumbnail,
+            // Never true in a test: a playing AnimatedImageDrawable keeps the
+            // composition busy and hangs the run. The pager is what turns it on.
+            playing = false,
+        )
     }
 
     private fun host(fontScale: Float, content: @Composable () -> Unit) {

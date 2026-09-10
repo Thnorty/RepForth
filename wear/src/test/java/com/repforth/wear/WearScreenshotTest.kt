@@ -1,13 +1,9 @@
 package com.repforth.wear
 
-import android.graphics.Bitmap
-import android.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -97,7 +93,7 @@ class WearScreenshotTest {
      */
     @Test
     fun exercise_thumbnail() = capture("exercise-thumbnail") {
-        Exercise(thumbnail = swatch())
+        Exercise(attributed = true)
     }
 
     /**
@@ -169,7 +165,15 @@ class WearScreenshotTest {
      */
     @Test
     fun media() = capture("media") {
-        MediaPage(state = state(attributed = true), thumbnail = swatch())
+        MediaPage(
+            state = state(attributed = true),
+            media = animatedGif(),
+            // Stopped, which draws the first frame -- and is the only way this
+            // can be a golden at all. A playing `AnimatedImageDrawable` keeps
+            // invalidating, the composition never idles, and Robolectric hangs.
+            // AGENTS.md records the same trap from a frame-driven rest ring.
+            playing = false,
+        )
     }
 
     /**
@@ -186,7 +190,7 @@ class WearScreenshotTest {
             remainingSeconds = null,
             enabled = true,
             onAction = {},
-            thumbnail = swatch(),
+            media = animatedGif(),
         )
     }
 
@@ -269,9 +273,9 @@ class WearScreenshotTest {
      * inside a pager is offset and scaled by whatever the pager is doing.
      */
     @Composable
-    private fun Exercise(timed: Boolean = false, thumbnail: ImageBitmap? = null) {
+    private fun Exercise(timed: Boolean = false, attributed: Boolean = false) {
         ExercisePage(
-            state = state(timed = timed, attributed = thumbnail != null),
+            state = state(timed = timed, attributed = attributed),
             remainingSeconds = if (timed) 42 else null,
         )
     }
@@ -282,36 +286,6 @@ class WearScreenshotTest {
             state = state(WearPhase.Rest, next = "Barbell Squat"),
             remainingSeconds = 45,
         )
-    }
-
-    /**
-     * A deterministic stand-in for a downloaded thumbnail.
-     *
-     * Four flat quadrants rather than a real photograph: it is unmistakably an
-     * image when it renders, it is identical on every machine, and it carries no
-     * licensed bytes into the repository — §6 forbids committing media, and a
-     * golden is committed.
-     */
-    private fun swatch(): ImageBitmap {
-        val size = 8
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                val left = x < size / 2
-                val top = y < size / 2
-                bitmap.setPixel(
-                    x,
-                    y,
-                    when {
-                        left && top -> Color.rgb(0xE8, 0x6A, 0x33)
-                        left -> Color.rgb(0x2E, 0x2E, 0x2E)
-                        top -> Color.rgb(0x9A, 0x9A, 0x9A)
-                        else -> Color.rgb(0xF2, 0xF2, 0xF2)
-                    },
-                )
-            }
-        }
-        return bitmap.asImageBitmap()
     }
 
     /**

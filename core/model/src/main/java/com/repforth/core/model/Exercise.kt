@@ -51,4 +51,13 @@ data class ExerciseSummary(
     val target: Muscle,
     val equipment: Equipment,
     val thumbnail: MediaRef = MediaRef.Unavailable,
+
+    /**
+     * The moving version of the same exercise.
+     *
+     * Alongside the still rather than instead of it: they are different sizes
+     * for different jobs. The catalog ships both for all 1,324 exercises -- a
+     * still is about 6.6KB and an animation about 94KB at the median.
+     */
+    val animation: MediaRef = MediaRef.Unavailable,
 )

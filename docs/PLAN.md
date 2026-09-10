@@ -4198,6 +4198,47 @@ applies `exerciseDisplayName` before any screen sees one, so the phone has drawn
 otherwise. The same gap was closed on the watch on 2026-09-10; this is the other
 half of it. Capitals are wider, so the goldens were narrower than life.
 
+### 2026-09-10 - the watch plays the exercise
+
+Asked for during the design pass and built now that there is a page worth
+putting it on. §3 had deferred it to "a later opt-in experiment"; the caution
+that deferral carried is kept as the design rather than as a setting.
+
+**One asset, not two.** The phone sends the GIF where it sent the JPEG. A
+stopped `AnimatedImageDrawable` draws its first frame, so the animation is also
+the still and there is one path for both. It costs about fourteen times the
+bytes - measured across the shipped manifest, 94KB at the median against 6.6KB,
+128KB at the 90th percentile and 233KB at the very worst, with every one of the
+1,324 exercises having one. That is well inside a Data Layer asset, and it is
+warmed for the whole plan at the start of the workout rather than fetched when
+the wrist asks, so the transfer has a set's worth of time rather than a swipe's.
+
+**It plays only on the page you are looking at.** The pager already knows which
+that is. Swipe away and it stops; the watch sleeps and the activity stops with
+it. No setting, because the page itself is the opt-in.
+
+**Drawn through a `Canvas` on the drawable's own callback**, not an `Image` and
+not a frame loop. `AnimatedImageDrawable` schedules its next frame through
+`Drawable.Callback`, so invalidation follows the GIF's frame delays rather than
+the display's. The frame-loop alternative is the one AGENTS.md already warns
+about: a composable that never lets the composition idle hangs every Robolectric
+test that renders it. Every golden and every test passes `playing = false` for
+that reason, and gets the first frame.
+
+**The test fixture is a generated GIF**, 239 bytes and two frames of four
+quadrants - §6 forbids committing media bytes and a golden is committed. One
+test does nothing but assert the fixture is genuinely animated, because every
+other test here would pass just as well against a still and the page's whole
+reason for existing would stop being tested.
+
+**One bug found while writing those tests.** The §6 notice was gated on bytes
+arriving rather than on a picture decoding, so a truncated file would have drawn
+a copyright line under nothing. It follows the decoded picture now.
+
+**Battery cost is unmeasured**, and §3's old wording asked for it. Playback is
+bounded by the page being on screen, which is the structural half of the answer;
+what a long workout of swiping to it costs is not known.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

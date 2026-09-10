@@ -1,6 +1,11 @@
 package com.repforth.wear
 
-import androidx.compose.foundation.Image
+import android.graphics.ImageDecoder
+import android.graphics.Rect
+import android.graphics.drawable.AnimatedImageDrawable
+import android.graphics.drawable.Drawable
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +22,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.wear.compose.foundation.rememberActiveFocusRequester
 import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
@@ -30,8 +39,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,6 +54,8 @@ import com.repforth.core.designsystem.theme.RepForthNumeric
 import com.repforth.core.wearprotocol.WearAction
 import com.repforth.core.wearprotocol.WearPhase
 import com.repforth.core.wearprotocol.WearWorkoutState
+import java.nio.ByteBuffer
+import kotlin.math.max
 
 /**
  * The five screens §11 names, and nothing else.
@@ -391,17 +402,18 @@ fun ControlsPage(
 @Composable
 fun MediaPage(
     state: WearWorkoutState,
-    thumbnail: ImageBitmap,
+    media: ByteArray,
+    playing: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val picture = remember(media) { decodeMedia(media) }
+
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Image(
-            bitmap = thumbnail,
-            // Decorative: the exercise name is on the page before this one, and
-            // a screen reader announcing the picture as well would say the same
-            // thing twice.
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        if (picture == null) return@Box
+
+        AnimatedPicture(
+            picture = picture,
+            playing = playing,
             modifier = Modifier.fillMaxSize().padding(MEDIA_INSET).clip(CircleShape),
         )
 
@@ -523,6 +535,99 @@ private fun ArcFrame(
         }
     }
 }
+
+/**
+ * The exercise, moving, on the one page that asks for it.
+ *
+ * §3 asked for "a compact static thumbnail" and said an animation would be a
+ * later opt-in that "must stop in ambient mode". The owner asked for it on
+ * 2026-09-10, and this is the shape that keeps the caution: it plays only while
+ * [playing], which the pager sets from whether this is the page being looked at.
+ * Swipe away and it stops; the watch sleeps and the activity stops with it.
+ *
+ * **Drawn through a `Canvas` rather than an `Image`, and redrawn on the
+ * drawable's own callback.** `AnimatedImageDrawable` schedules its next frame
+ * through [Drawable.Callback], so the invalidation follows the GIF's own frame
+ * delays instead of every display frame. A `withFrameMillis` loop would be the
+ * obvious alternative and is worse: AGENTS.md records that a composable which
+ * never lets the composition idle hangs every Robolectric test that renders it.
+ * The goldens pass `playing = false` for exactly that reason, and get the first
+ * frame — which is what a stopped `AnimatedImageDrawable` draws.
+ */
+@Composable
+private fun AnimatedPicture(picture: Drawable, playing: Boolean, modifier: Modifier) {
+    var tick by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(picture) {
+        val handler = Handler(Looper.getMainLooper())
+        picture.callback = object : Drawable.Callback {
+            override fun invalidateDrawable(who: Drawable) {
+                tick++
+            }
+
+            override fun scheduleDrawable(who: Drawable, what: Runnable, at: Long) {
+                handler.postAtTime(what, who, at)
+            }
+
+            override fun unscheduleDrawable(who: Drawable, what: Runnable) {
+                handler.removeCallbacks(what, who)
+            }
+        }
+        onDispose {
+            handler.removeCallbacksAndMessages(picture)
+            picture.callback = null
+            (picture as? AnimatedImageDrawable)?.stop()
+        }
+    }
+
+    LaunchedEffect(picture, playing) {
+        val animated = picture as? AnimatedImageDrawable ?: return@LaunchedEffect
+        if (playing) animated.start() else animated.stop()
+    }
+
+    Canvas(modifier) {
+        // Read so a new frame invalidates this draw. Without it the callback
+        // fires into nothing and the picture holds its first frame forever.
+        @Suppress("UNUSED_EXPRESSION")
+        tick
+
+        drawIntoCanvas { canvas ->
+            picture.setBounds(centreCrop(size.width, size.height, picture))
+            picture.draw(canvas.nativeCanvas)
+        }
+    }
+}
+
+/**
+ * Fill the circle and keep the proportions, cropping what will not fit.
+ *
+ * `ContentScale.Crop` did this when an `Image` drew the picture. Drawing a
+ * `Drawable` by hand means doing the arithmetic by hand: these are square-ish
+ * and the display is a circle, so letterboxing would show bars inside the rim.
+ */
+private fun centreCrop(width: Float, height: Float, picture: Drawable): Rect {
+    val sourceWidth = picture.intrinsicWidth.takeIf { it > 0 } ?: return Rect(0, 0, width.toInt(), height.toInt())
+    val sourceHeight = picture.intrinsicHeight.takeIf { it > 0 } ?: return Rect(0, 0, width.toInt(), height.toInt())
+
+    val scale = max(width / sourceWidth, height / sourceHeight)
+    val drawnWidth = sourceWidth * scale
+    val drawnHeight = sourceHeight * scale
+    val left = ((width - drawnWidth) / 2f).toInt()
+    val top = ((height - drawnHeight) / 2f).toInt()
+    return Rect(left, top, left + drawnWidth.toInt(), top + drawnHeight.toInt())
+}
+
+/**
+ * The bytes as something drawable, or null if they are not an image at all.
+ *
+ * `ImageDecoder` returns an [AnimatedImageDrawable] for an animated GIF and a
+ * still drawable for anything else, so one call covers both and the screen does
+ * not need to know which arrived. A null is drawn as nothing, which is the same
+ * thing the screen does when no picture was sent.
+ */
+private fun decodeMedia(bytes: ByteArray): Drawable? = runCatching {
+    ImageDecoder.decodeDrawable(ImageDecoder.createSource(ByteBuffer.wrap(bytes)))
+}.getOrNull()
 
 /**
  * The arc on the rim, drawn rather than assembled from a component.
