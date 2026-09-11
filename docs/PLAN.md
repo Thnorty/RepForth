@@ -4423,6 +4423,56 @@ rather than as a second literal.
 Version codes are unchanged: 1 and 1001. This is the first release, so there is
 nothing to be higher than.
 
+### 2026-09-11 - 1.0.0 is published, with no APK on it
+
+The tag is `v1.0.0` on `75679a4`, and the release is
+https://github.com/Thnorty/RepForth/releases/tag/v1.0.0.
+
+**No APK is attached, and that is the decision rather than an omission.** This
+repository is public and has no release signing key, so the only key available is
+Android's debug keystore -- which ships with the SDK, uses the password
+`android`, and is therefore not a signature at all: anyone can produce an APK
+that the installer treats as the same app. Worse than proving nothing, it is
+sticky. Android refuses an update signed by a different key, so a device that
+installed the debug-signed build could never take a properly signed one without
+uninstalling and losing its profile, plans and history. A release with a download
+button that does that to its earliest users is worse than a release with no
+download button.
+
+What the notes do instead is say how to build it, and say the imagery question
+has to be read first. If a signed download is ever wanted, the prerequisite is a
+real keystore held outside the repository -- which is a maintainer decision with
+a key to look after, not a build change.
+
+**The licence is still unchosen and the notes say so plainly.** There is no
+`LICENSE` file; the first draft of the notes cited one, which would have been a
+false claim in the most load-bearing sentence of the release. Until a file
+exists the source is all rights reserved, and the notes carry the third-party
+terms that apply anyway.
+
+**The README described Phase 0 of six.** It told every reader that logging a
+workout, saving plans, progress history, the watch and Coach did not work yet,
+which had been wrong for weeks -- and it is the first thing anyone reaching a
+1.0.0 release would open. Rewritten as "What it does" and "What is still rough".
+
+Three of its claims were checked rather than carried over, and two were wrong.
+The catalog count is right: 1,324, read off `repforth.db`. Deleting data is all
+of it or nothing, not "any part", so that sentence was describing a screen that
+does not exist. The watch is three pages only when the exercise has a picture,
+two when it does not, so the count came out of the sentence.
+
+The rough list is sourced from this file rather than written from memory. The
+first draft named Coach's request form and a fixed media cache size, neither of
+which is recorded anywhere here, and the cache size is configurable in the sense
+that matters -- Settings clears it and can hold downloads to Wi-Fi. What the
+backlog actually holds that a user would notice is the body map's tap targets,
+`onGenerate` not clearing `weekId` (item 12), and the undrawn exercise count
+(item 4).
+
+The repository map listed seven of twenty-eight modules, which is worse than
+none: `core/workout`, `core/ai`, `core/transfer` and the entire watch half were
+missing from a map whose job is to say where things live.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
