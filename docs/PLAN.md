@@ -4505,6 +4505,52 @@ sharp one is not about either exercise: it walks all four set indices of a rest
 and asserts that the pictured exercise and the named exercise are the same, since
 a disagreement between them is the defect and neither field is wrong on its own.
 
+### 2026-09-12 - nobody loads 62.5 kg because a model said so
+
+Asked for after training from a generated plan: prescribed weights should be
+multiples of five.
+
+A weight from Coach is a guess at a working load. Written to a tenth of a
+kilogram it reads as a measurement, and invites someone to hunt for plates to
+match a number that was never that precise. `WorkoutLimits.weightKgStep` is 5.0
+and sits beside `sessionMinutesStep`, which exists for the same reason and
+already says it: nobody means 47 minutes.
+
+**Rounded at the decoder, not at the builder.** `AiWorkoutCodec.decodeResponse`
+is the one door a provider answer comes through -- both providers call it -- so
+rounding there means the validator, the rules engine and the builder all read
+the same numbers. Rounding afterwards would have validated one plan and saved
+another. The prompt asks for multiples of five as well, but a prompt is a
+request: a model that answers 62.5 is not malformed, and the decoder is what
+makes the rule true.
+
+Two cases are deliberately not rounded, and both were found by asking what the
+number means rather than what it is:
+
+- **Zero stays zero.** It is how "no load" arrives when it does not arrive as
+  null, and 5 kg would put a barbell in someone's hands for a press-up. For the
+  same reason a light load is floored at one step rather than rounded down --
+  2 kg becoming zero would change what the exercise *is*, not what it weighs.
+- **An out-of-range weight is passed through untouched.** 502 kg is a model that
+  has misunderstood the question; snapping it to 500 would hide that from the
+  validator and spend a retry on nothing.
+
+**Typed weights are untouched.** Someone who enters 62.5 in the builder has
+62.5 on the bar, and a field that rewrites the number under the cursor is a
+field that fights typing. This is about what the app invents.
+
+**Metric only, and that is §7 rather than an oversight.** Weights are stored in
+kilograms and converted for display, so a rounded plan is round for a reader on
+kilograms and lands on 55, 77, 99 lb for a reader on pounds. Rounding in the
+reader's unit would make the stored number depend on a display preference, which
+is exactly what §7 forbids. If pounds should round in pounds, it is a storage
+question and not a formatting one.
+
+The first version of the test expected 62.5 to round *down*, and the code
+rounded it up. The code was right -- half a step either way is as good, and the
+ordinary convention is the one worth being predictable about -- so the test
+changed and the expectation is now written down beside it.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

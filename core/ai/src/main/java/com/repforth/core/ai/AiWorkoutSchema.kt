@@ -205,7 +205,9 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
     appendLine(
         "- weight_kg: a working weight suited to this person's experience and goal for " +
             "barbell, dumbbell, cable and machine work; null for body weight and for " +
-            "anything that carries no load",
+            "anything that carries no load. Give a multiple of " +
+            "${WorkoutLimits.weightKgStep.toInt()} kg: this is a starting load to be " +
+            "adjusted on the day, not a measurement",
     )
     appendLine("- exercise_id must be copied exactly from the catalog; no other exercise exists")
     appendLine("- focus_muscles: the target_muscle values of the rows you used that day")
