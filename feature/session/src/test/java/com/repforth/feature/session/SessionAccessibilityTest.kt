@@ -1,6 +1,8 @@
 package com.repforth.feature.session
 
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.repforth.core.designsystem.theme.RepForthPreviewHost
 import com.repforth.core.model.BodyPart
@@ -10,6 +12,9 @@ import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.PlanSource
+import com.repforth.core.model.PlannedExercise
+import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
@@ -52,7 +57,25 @@ class SessionAccessibilityTest {
     @Test
     fun paused_english() = check(ENGLISH, active(SessionPhase.PAUSED))
 
-    private fun check(locale: String, state: SessionUiState) {
+    /**
+     * The finish screen, which nothing here walked until now -- five answer
+     * rows, a note field and the offer that carries the answer into the plan.
+     *
+     * [revealAdjustment] answers the question first, because the offer is not
+     * drawn until one is chosen. Tapped by position rather than by label so the
+     * Turkish case needs no second string.
+     */
+    @Test
+    fun completing_english() = check(ENGLISH, completing(), revealAdjustment = true)
+
+    @Test
+    fun completing_turkish() = check(TURKISH, completing(), revealAdjustment = true)
+
+    private fun check(
+        locale: String,
+        state: SessionUiState,
+        revealAdjustment: Boolean = false,
+    ) {
         RuntimeEnvironment.setQualifiers("+$locale")
         RuntimeEnvironment.setFontScale(1f)
 
@@ -65,7 +88,7 @@ class SessionAccessibilityTest {
                     onSkipRest = {},
                     onPause = {},
                     onResume = {},
-                    onFinish = { _, _ -> },
+                    onFinish = { _, _, _ -> },
                     onAbandon = {},
                     onKeepRunningSession = {},
                     onDiscardRunningAndStart = {},
@@ -73,8 +96,28 @@ class SessionAccessibilityTest {
             }
         }
 
+        if (revealAdjustment) compose.onAllNodes(isSelectable())[1].performClick()
+
         compose.assertScreenIsAccessible("Session ${state.snapshot?.phase} ($locale)")
     }
+
+    /** A finished workout with a plan behind it, so the offer has something to show. */
+    private fun completing() = active(SessionPhase.COMPLETING).copy(
+        plan = WorkoutTemplate(
+            id = "t1",
+            name = "Push Day",
+            source = PlanSource.MANUAL,
+            exercises = listOf(
+                PlannedExercise(
+                    id = "pe0",
+                    exerciseId = ExerciseId("0025"),
+                    position = 0,
+                    target = ExerciseTarget.Reps(sets = 4, reps = 12, weightKg = 60.0),
+                    restMs = 90_000L,
+                ),
+            ),
+        ),
+    )
 
     private fun active(phase: SessionPhase = SessionPhase.ACTIVE) = SessionUiState(
         snapshot = SessionSnapshot(

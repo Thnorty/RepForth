@@ -60,6 +60,7 @@ internal class RoomTemplateRepository @Inject constructor(
                     targetReps = reps?.reps,
                     targetDurationMs = duration?.durationMs,
                     targetWeightKg = planned.target.weightKg,
+                    targetProgressKg = planned.progressKg,
                     restMs = planned.restMs,
                     createdAt = now,
                     updatedAt = now,
@@ -90,4 +91,5 @@ private fun TemplateExerciseEntity.toDomain() = PlannedExercise(
     position = position,
     target = exerciseTargetOf(targetSets, targetReps, targetDurationMs, targetWeightKg),
     restMs = restMs,
+    progressKg = targetProgressKg,
 )

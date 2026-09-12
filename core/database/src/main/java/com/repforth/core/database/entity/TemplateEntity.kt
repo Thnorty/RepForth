@@ -113,6 +113,16 @@ data class TemplateExerciseEntity(
     @ColumnInfo(name = "target_weight_kg")
     val targetWeightKg: Double?,
 
+    /**
+     * How far past [targetWeightKg] progression has crept, signed.
+     *
+     * Defaulted rather than nullable: every plan has one, and a plan written
+     * before this existed has crept nowhere. See `PlannedExercise.progressKg`
+     * for why the remainder is stored apart from the weight it belongs to.
+     */
+    @ColumnInfo(name = "target_progress_kg", defaultValue = "0")
+    val targetProgressKg: Double = 0.0,
+
     @ColumnInfo(name = "rest_ms")
     val restMs: Long,
 

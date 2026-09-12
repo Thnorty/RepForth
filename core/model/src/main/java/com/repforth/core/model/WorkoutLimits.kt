@@ -53,6 +53,32 @@ object WorkoutLimits {
     const val weightKgStep = 5.0
 
     /**
+     * What a *generated* duration is rounded to, in seconds.
+     *
+     * The same argument as [weightKgStep], one field along: a model asked for a
+     * plank returns forty-seven seconds, and forty-seven is a number nobody
+     * counts to. It is also the grid a rest-day progression moves along, which
+     * is why the two constants sit together rather than one being a display
+     * concern and the other a rule.
+     */
+    const val durationSecondsStep = 5
+
+    /**
+     * A generated duration, snapped to the step.
+     *
+     * Floored at [durationSeconds]'s own minimum rather than at zero: a timed
+     * set of no seconds is not a shorter set, it is not a set.
+     *
+     * Out-of-range durations are returned untouched for the same reason weights
+     * are -- rounding a value the contract will reject would hide the rejection.
+     */
+    fun roundDurationSeconds(seconds: Int): Int {
+        if (seconds !in durationSeconds) return seconds
+        val stepped = ((seconds + durationSecondsStep / 2) / durationSecondsStep) * durationSecondsStep
+        return maxOf(durationSeconds.first, stepped)
+    }
+
+    /**
      * A generated weight, snapped to something a rack can hold.
      *
      * Zero stays zero, because zero is how "no load" arrives when it does not

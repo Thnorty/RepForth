@@ -539,20 +539,69 @@ class MigrationTest {
         migrated.close()
     }
 
+    /**
+     * Migrating 6 to 7 keeps the plan and gives it nowhere to have crept.
+     *
+     * The column is `NOT NULL DEFAULT 0` rather than nullable, and the default
+     * is the backfill: unlike the note and effort added in v5, there is no
+     * difference here between "not recorded" and "none". A plan written before
+     * progression existed has crept exactly zero.
+     */
+    @Test
+    fun migrating_6_to_7_keeps_the_plan_and_starts_it_at_zero() {
+        helper.createDatabase(TEST_DB, 6).apply {
+            execSQL(
+                """
+                INSERT INTO workout_template
+                    (id, name, notes, source, week_id, week_position, day_of_week,
+                     created_at, updated_at)
+                VALUES ('plan-1', 'Push Day', NULL, 'MANUAL', NULL, NULL, NULL, 100, 200)
+                """.trimIndent(),
+            )
+            execSQL(
+                """
+                INSERT INTO template_exercise
+                    (id, template_id, exercise_id, position, target_sets, target_reps,
+                     target_duration_ms, target_weight_kg, rest_ms, created_at, updated_at)
+                VALUES ('te-1', 'plan-1', '0025', 0, 4, 8, NULL, 60.0, 90000, 100, 200)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(
+            TEST_DB,
+            7,
+            true,
+            RepForthDatabase.MIGRATION_6_7,
+        )
+
+        migrated.query(
+            "SELECT target_weight_kg, target_progress_kg FROM template_exercise",
+        ).use { cursor ->
+            assertTrue("The planned exercise must survive", cursor.moveToFirst())
+            assertEquals(60.0, cursor.getDouble(0), 0.001)
+            assertEquals("A plan from before has crept nowhere", 0.0, cursor.getDouble(1), 0.001)
+        }
+
+        migrated.close()
+    }
+
     /** And the whole chain, which is what a v1 install runs. */
     @Test
-    fun migrating_from_1_to_6_produces_the_schema_room_expects() {
+    fun migrating_from_1_to_7_produces_the_schema_room_expects() {
         helper.createDatabase(TEST_DB, 1).close()
 
         helper.runMigrationsAndValidate(
             TEST_DB,
-            6,
+            7,
             true,
             RepForthDatabase.MIGRATION_1_2,
             RepForthDatabase.MIGRATION_2_3,
             RepForthDatabase.MIGRATION_3_4,
             RepForthDatabase.MIGRATION_4_5,
             RepForthDatabase.MIGRATION_5_6,
+            RepForthDatabase.MIGRATION_6_7,
         ).close()
     }
 

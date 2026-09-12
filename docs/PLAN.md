@@ -4551,6 +4551,83 @@ rounded it up. The code was right -- half a step either way is as good, and the
 ordinary convention is the one worth being predictable about -- so the test
 changed and the expectation is now written down beside it.
 
+### 2026-09-12 - the ending question finally does something
+
+Asked for after it had been noticed that §3's "how hard was it?" wrote a number
+to history and nothing read it back. The one question the app asks about how
+training is going changed nothing about the training.
+
+It moves the plan now, once, at the end, **if the user accepts it**. "A little
+easy" moves one level, "too easy" two, and the same going down; "Just right"
+offers nothing, which is the point of a five-point scale.
+
+**The rule is one line: a level on a load is the smaller of five kilograms and a
+tenth of it.** Both halves exist for a case the other gets wrong, and one always
+binds. A tenth is what makes a ten kilogram dumbbell behave, since five would be
+half again in one session. The five kilogram ceiling is what stops a heavy lift
+running away, since a tenth of a hundred and twenty kilogram squat is twelve.
+
+The owner proposed the percentage and the hidden accumulator; the ceiling is the
+one refinement, and the worked example they gave survives it exactly - ten
+kilograms told "too easy" goes to twelve, then 14.4, and shows fifteen.
+
+**A plan now carries two numbers for one weight, and that was the hard call.**
+A tenth of ten kilograms is one, and a plan is written in fives, so the honest
+answer to "add a level" is off the grid. The first design stored one unrounded
+weight and rounded at the reading end; it was backed out before it was written,
+because the *builder's* weight field is where a load is stated and a field that
+displays a rounded copy of the number it is editing rewrites itself under the
+cursor on every recomposition. This repo already has that scar, in
+`DecimalField`'s resync comment.
+
+So `PlannedExercise.progressKg` holds the remainder and the target holds a
+weight a rack can hold. Both are honest on their own, every screen keeps reading
+the field it always read, and `Progression.kt` is the only thing that adds them.
+
+Three rules fall out of that, each a place it could have gone quietly wrong:
+
+- **A typed weight clears the carry.** `DraftExercise.carriedProgressKg` compares
+  the field against the weight the row was loaded with, so opening a plan and
+  saving it keeps weeks of progress and editing the number discards it.
+- **The card never draws "10 kg to 10 kg".** An exercise whose plan reads the
+  same is described in a sentence instead, which is why `ProgressionChange`
+  distinguishes `isVisible` from `moves`.
+- **An exercise already at a limit reports that nothing happened**, so a five
+  kilogram load told to get lighter is not mentioned at all.
+
+**Generated durations snap to five seconds** alongside the weights that started
+snapping this morning, for the same reason: a model asked for a plank returns
+forty-seven seconds. Progression moves a timed set by ten.
+
+Database v7 adds `template_exercise.target_progress_kg`, `NOT NULL DEFAULT 0`,
+and the default is the backfill - unlike the note and effort added in v5, there
+is no difference between "not recorded" and "none". **The packaged asset had to
+be rebuilt**, not merely migrated: `PackagedCatalogTest` asserts the asset's
+`user_version` and Room identity hash match the current schema, so leaving it at
+v6 and letting the migration carry it forward - which would have worked at
+runtime - fails the build. `tools/import-dataset.py` rebuilds it from Room's own
+exported schema.
+
+**The compose test is the one that matters**, and it is written against the
+shape AGENTS.md warns about: `onFinish` takes the acceptance as an argument, so
+if the screen never passed `true` the feature would be dead with every rule test
+in `core:model` still green. Two behaviours were watched failing - the tap
+reaching Finish, and changing the answer withdrawing an acceptance already
+given.
+
+The finish screen had never been walked for accessibility at all. It is, now, in
+both languages, with the card showing.
+
+**The "Last set done" headline is above the fold once the card appears.** The
+content column scrolls, so it is reachable rather than lost, but at default font
+scale it is no longer the first thing on the screen. Left as it is: what the
+screen is for at that moment is the two questions and the button.
+
+Still open, and written down rather than solved: an exercise with no load gains a
+repetition every easy session and never converts to weight, so a press-up walks
+from twelve to twenty-four. Real programmes cap the repetitions and move on;
+this has no dumbbell to move to.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

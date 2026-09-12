@@ -12,6 +12,9 @@ import com.repforth.core.model.Exercise
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.MediaRef
+import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.model.progressedBy
+import com.repforth.core.model.progressionLevels
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
@@ -85,6 +88,14 @@ data class SessionUiState(
      * discarding it would be a worse one.
      */
     val conflictingSession: SessionSnapshot? = null,
+    /**
+     * The plan this workout was performed from, if it had one.
+     *
+     * Held so the finish screen can offer to move it. Null for a session started
+     * from no plan, and the offer simply does not appear -- there is nowhere to
+     * write.
+     */
+    val plan: WorkoutTemplate? = null,
     /**
      * The name of that workout, so the question can name it.
      *
@@ -324,8 +335,20 @@ class SessionViewModel @Inject constructor(
      * exists for the few seconds between typing and pressing Finish and nothing
      * else reads it. Blank is normalised to nothing by the engine.
      */
-    fun onFinish(note: String? = null, effort: Int? = null) =
+    fun onFinish(note: String? = null, effort: Int? = null, adjustPlan: Boolean = false) {
+        // The plan first, and deliberately: `dispatch` adopts a terminal
+        // snapshot, which navigates the screen away. Writing afterwards would
+        // race a composable that is being torn down, and the one thing worse
+        // than not moving the plan is moving it sometimes.
+        if (adjustPlan) {
+            val plan = _uiState.value.plan
+            val levels = progressionLevels(effort)
+            if (plan != null && levels != 0) {
+                viewModelScope.launch { templates.save(plan.progressedBy(levels)) }
+            }
+        }
         dispatch(SessionCommand.Finish(controller.newCommandId(), note = note, effort = effort))
+    }
 
     fun onAbandon() = dispatch(SessionCommand.Abandon(controller.newCommandId()))
 
@@ -387,10 +410,17 @@ class SessionViewModel @Inject constructor(
             }
         }
 
+        // Looked up once per session rather than on every snapshot. The finish
+        // screen needs it, and a workout cannot change which plan it came from
+        // part way through.
+        val plan = _uiState.value.plan
+            ?: snapshot.templateId?.let { templates.find(it) }
+
         _uiState.value = _uiState.value.copy(
             snapshot = snapshot,
             summaries = summaries,
             currentExercise = current,
+            plan = plan,
             restRemainingMs = controller.restRemaining(),
             setRemainingMs = controller.setRemaining(),
             loading = false,

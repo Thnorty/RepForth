@@ -1,6 +1,9 @@
 package com.repforth.feature.session
 
+import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -12,6 +15,9 @@ import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.model.ExerciseTarget
 import com.repforth.core.model.MediaRef
 import com.repforth.core.model.Muscle
+import com.repforth.core.model.PlanSource
+import com.repforth.core.model.PlannedExercise
+import com.repforth.core.model.WorkoutTemplate
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_COMPARISON
 import com.repforth.core.testing.SCREENSHOT_DEVICE
@@ -139,11 +145,50 @@ class SessionScreenshotTest {
     @Test
     fun session_none() = capture("session-none-en", SessionUiState(loading = false))
 
+    /**
+     * The offer that carries §3's answer into the plan.
+     *
+     * Only reachable by answering, so this is the one capture that taps
+     * something first. The second answer on the scale is "a little easy", which
+     * is one level -- enough for the heavy lift to move on the plan and the
+     * light one to move only underneath, so the picture holds both halves of
+     * the card at once.
+     *
+     * Turkish and 2x for the reason the rest of this screen has them: a row of
+     * names with a figure pinned to the right is exactly what a 30% longer
+     * language and a doubled font scale break, and nothing else here would
+     * notice.
+     */
+    @Test
+    fun session_adjustment() = capture(
+        "session-adjust-en",
+        completing(),
+        reveal = true,
+    )
+
+    @Test
+    fun session_adjustment_turkish() = capture(
+        "session-adjust-tr",
+        completing(),
+        locale = TURKISH,
+        reveal = true,
+    )
+
+    @Test
+    fun session_adjustment_large_text() = capture(
+        "session-adjust-en-2x",
+        completing(),
+        fontScale = 2f,
+        reveal = true,
+    )
+
     private fun capture(
         name: String,
         state: SessionUiState,
         locale: String? = null,
         fontScale: Float = 1f,
+        /** Answer the effort question first, which is the only way to see the card. */
+        reveal: Boolean = false,
     ) {
         RuntimeEnvironment.setQualifiers("+${locale ?: ENGLISH}")
         RuntimeEnvironment.setFontScale(fontScale)
@@ -157,7 +202,7 @@ class SessionScreenshotTest {
                     onSkipRest = {},
                     onPause = {},
                     onResume = {},
-                    onFinish = { _, _ -> },
+                    onFinish = { _, _, _ -> },
                     onAbandon = {},
                     onKeepRunningSession = {},
                     onDiscardRunningAndStart = {},
@@ -165,8 +210,49 @@ class SessionScreenshotTest {
             }
         }
 
+        if (reveal) {
+            // By position rather than by label, so one line works in both
+            // languages: the answers are a selectable group in scale order and
+            // "a little easy" is the second of five.
+            compose.onAllNodes(isSelectable())[1].performClick()
+            // And accept it, so the golden shows the state that writes.
+            compose.onNode(isToggleable()).performClick()
+        }
+
         compose.onRoot().captureRoboImage(screenshotPath(name), SCREENSHOT_COMPARISON)
     }
+
+    /**
+     * A finished workout with the plan behind it, which the offer needs.
+     *
+     * The heavy lift moves five kilograms on the plan; the light one is below
+     * the ceiling, so a level is a tenth of it and the plan reads the same.
+     * Both are in the picture on purpose -- a fixture with only heavy lifts
+     * would photograph half the card.
+     */
+    private fun completing() = active(phase = SessionPhase.COMPLETING).copy(
+        plan = WorkoutTemplate(
+            id = "t1",
+            name = "Push Day",
+            source = PlanSource.MANUAL,
+            exercises = listOf(
+                PlannedExercise(
+                    id = "pe0",
+                    exerciseId = ExerciseId("0025"),
+                    position = 0,
+                    target = ExerciseTarget.Reps(sets = 4, reps = 12, weightKg = 60.0),
+                    restMs = 90_000L,
+                ),
+                PlannedExercise(
+                    id = "pe1",
+                    exerciseId = ExerciseId("0043"),
+                    position = 1,
+                    target = ExerciseTarget.Reps(sets = 3, reps = 10, weightKg = 10.0),
+                    restMs = 60_000L,
+                ),
+            ),
+        ),
+    )
 
     /** 48 of the planned 90 seconds left, so the ring is caught mid-sweep. */
     private fun resting() =

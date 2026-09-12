@@ -117,6 +117,19 @@ data class PlannedExerciseDto(
     val durationMs: Long? = null,
     val weightKg: Double? = null,
     val restMs: Long,
+
+    /**
+     * How far past [weightKg] progression has crept.
+     *
+     * Carried so a plan survives a round trip with its progress intact. It does
+     * mean a file can read 13.31 where the app said 15; the alternative is an
+     * export that quietly resets everyone's training back to the last five
+     * kilogram mark they passed.
+     *
+     * Defaulted for the same reason every other added field is: a file written
+     * before this existed describes a plan that had crept nowhere.
+     */
+    val progressKg: Double = 0.0,
 )
 
 @Serializable

@@ -45,4 +45,11 @@
     <string name="session_conflict_unnamed">Antrenmanın</string>
     <string name="session_conflict_keep">Ona geri dön</string>
     <string name="session_conflict_discard">Sonlandır ve başlat</string>
+    <string name="session_adjust_harder">%1$s planını bir sonrakinde zorlaştır</string>
+    <string name="session_adjust_easier">%1$s planını bir sonrakinde kolaylaştır</string>
+    <string name="session_adjust_weight">%1$s → %2$s %3$s</string>
+    <string name="session_adjust_reps">%1$d → %2$d tekrar</string>
+    <string name="session_adjust_seconds">%1$d → %2$d sn</string>
+    <string name="session_adjust_creeping_one">%1$s %2$s ağırlığında kalıyor, %3$s hedefine yaklaşıyor.</string>
+    <string name="session_adjust_creeping_many">%1$d egzersiz şimdilik ağırlığını koruyor ve bir sonraki kademeye yaklaşıyor.</string>
 </resources>

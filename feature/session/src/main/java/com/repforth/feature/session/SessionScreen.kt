@@ -5,6 +5,8 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -19,14 +21,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,10 +44,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.repforth.core.designsystem.component.EFFORT_SCALE
@@ -60,6 +70,9 @@ import com.repforth.core.designsystem.theme.symbol
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.ExerciseTarget
+import com.repforth.core.model.ProgressionChange
+import com.repforth.core.model.progressionLevels
+import com.repforth.core.model.progressionPreview
 import kotlinx.coroutines.delay
 
 /**
@@ -167,7 +180,7 @@ internal fun SessionScreen(
     onSkipRest: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onFinish: (String?, Int?) -> Unit,
+    onFinish: (String?, Int?, Boolean) -> Unit,
     onAbandon: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -600,6 +613,177 @@ private fun Headline(text: String) {
  * is a different question, and removing the column would be a destructive
  * migration for nothing.
  */
+/**
+ * §3's answer, carried into the plan that produced it.
+ *
+ * The question was asked for weeks and read by nothing: the number went to
+ * history and the plan that had been too easy stayed exactly as easy. This is
+ * the other half, and it is an **offer** rather than a consequence — it writes
+ * to something the user keeps, so it defaults to off and a tap is what accepts
+ * it.
+ *
+ * Absent entirely for "Just right", for an unanswered question, and for a
+ * workout started from no plan. The first two are the five-point scale working:
+ * the middle is where a well-judged session lands and there is nothing to
+ * correct. The third has nowhere to write.
+ *
+ * **Sage rather than lime when accepted.** The screen already spends its one
+ * accent on the chosen answer and the Finish button, and §12 allows one; the
+ * palette's secondary role is literally named for "completed", which is what an
+ * accepted offer is.
+ *
+ * The card is what is clickable, not the switch inside it. A switch is a 32dp
+ * target sitting in a card four times its height, and the whole card is the
+ * thing a thumb aims at — so the switch is drawn as state and never handles a
+ * tap of its own.
+ */
+@Composable
+private fun PlanAdjustmentCard(
+    state: SessionUiState,
+    effort: Int?,
+    accepted: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    val plan = state.plan ?: return
+    val levels = progressionLevels(effort)
+    if (levels == 0) return
+
+    val changes = remember(plan, levels) { plan.progressionPreview(levels) }
+    val shown = changes.filter { it.isVisible }
+    val creeping = changes.filter { !it.isVisible && it.moves }
+    if (shown.isEmpty() && creeping.isEmpty()) return
+
+    fun nameOf(change: ProgressionChange) =
+        state.summaries[change.exerciseId.value]?.name ?: change.exerciseId.value
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Target.min)
+            .toggleable(value = accepted, role = Role.Switch, onValueChange = onToggle),
+        colors = if (accepted) {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        } else {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            )
+        },
+        border = if (accepted) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(Space.s4),
+            verticalArrangement = Arrangement.spacedBy(Space.s3),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Space.s3),
+            ) {
+                Text(
+                    text = stringResource(
+                        if (levels > 0) R.string.session_adjust_harder
+                        else R.string.session_adjust_easier,
+                        plan.name,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                // State, not a second control. The card owns the tap.
+                Switch(checked = accepted, onCheckedChange = null)
+            }
+
+            if (shown.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+                    shown.forEach { change ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(Space.s3)) {
+                            Text(
+                                text = nameOf(change),
+                                style = MaterialTheme.typography.bodySmall,
+                                // Inherits the card's content colour rather than
+                                // onSurfaceVariant, which does not contrast
+                                // against secondaryContainer once accepted --
+                                // the same trap RfChoiceRows records.
+                                color = LocalContentColor.current.copy(alpha = NAME_ALPHA),
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                text = change.describe(),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                textAlign = TextAlign.End,
+                            )
+                        }
+                    }
+                }
+            }
+
+            // What moved without the plan reading differently. A row saying
+            // "10 kg becomes 10 kg" looks broken; this says the same thing
+            // truthfully, and is why a light dumbbell is worth answering for.
+            val only = creeping.singleOrNull()
+            val units = LocalUnitSystem.current
+            when {
+                only != null && only.creepingToward != null && only.after.weightKg != null ->
+                    CreepLine(
+                        stringResource(
+                            R.string.session_adjust_creeping_one,
+                            nameOf(only),
+                            "${units.formatWeight(only.after.weightKg!!)} ${units.symbol}",
+                            "${units.formatWeight(only.creepingToward!!)} ${units.symbol}",
+                        ),
+                    )
+
+                creeping.size > 1 ->
+                    CreepLine(stringResource(R.string.session_adjust_creeping_many, creeping.size))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreepLine(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = LocalContentColor.current.copy(alpha = CREEP_ALPHA),
+    )
+}
+
+/** One row of the card: what this exercise asked for, and what it will ask for. */
+@Composable
+private fun ProgressionChange.describe(): String {
+    val units = LocalUnitSystem.current
+    val wasLoad = before.weightKg
+    val nowLoad = after.weightKg
+    if (wasLoad != null && nowLoad != null && wasLoad != nowLoad) {
+        return stringResource(
+            R.string.session_adjust_weight,
+            units.formatWeight(wasLoad),
+            units.formatWeight(nowLoad),
+            units.symbol,
+        )
+    }
+    val wasReps = (before as? ExerciseTarget.Reps)?.reps
+    val nowReps = (after as? ExerciseTarget.Reps)?.reps
+    if (wasReps != null && nowReps != null) {
+        return stringResource(R.string.session_adjust_reps, wasReps, nowReps)
+    }
+    val wasSeconds = (before as? ExerciseTarget.Duration)?.durationMs?.div(1000L)?.toInt()
+    val nowSeconds = (after as? ExerciseTarget.Duration)?.durationMs?.div(1000L)?.toInt()
+    if (wasSeconds != null && nowSeconds != null) {
+        return stringResource(R.string.session_adjust_seconds, wasSeconds, nowSeconds)
+    }
+    return ""
+}
+
+/** How far the exercise name sits behind its own figure. Matches RfChoiceRows. */
+private const val NAME_ALPHA = 0.75f
+
+/** And how far the sentence about invisible progress sits behind both. */
+private const val CREEP_ALPHA = 0.65f
+
 @Composable
 private fun EffortRow(selected: Int?, onSelect: (Int?) -> Unit) {
     RfChoiceRows(
@@ -620,7 +804,7 @@ private fun SessionControls(
     onSkipRest: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onFinish: (String?, Int?) -> Unit,
+    onFinish: (String?, Int?, Boolean) -> Unit,
     onAbandon: () -> Unit,
 ) {
     // Read here and called from the handlers: a haptic belongs to the tap, and
@@ -631,6 +815,9 @@ private fun SessionControls(
     // and is what an ordinary one-tap log records.
     var effort by rememberSaveable { mutableStateOf<Int?>(null) }
     var note by rememberSaveable { mutableStateOf("") }
+    // Off until asked for. The offer writes to a saved plan, so the default has
+    // to be the one where pressing Finish changes nothing but this workout.
+    var adjustPlan by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -652,7 +839,21 @@ private fun SessionControls(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            EffortRow(selected = effort, onSelect = { effort = it })
+            EffortRow(
+                selected = effort,
+                onSelect = {
+                    effort = it
+                    // A new answer describes a different plan, so the previous
+                    // acceptance is not an acceptance of this one.
+                    adjustPlan = false
+                },
+            )
+            PlanAdjustmentCard(
+                state = state,
+                effort = effort,
+                accepted = adjustPlan,
+                onToggle = { confirm(); adjustPlan = it },
+            )
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it.take(MAX_NOTE_CHARS) },
@@ -677,7 +878,7 @@ private fun SessionControls(
 
             state.isCompleting -> PrimaryAction(
                 text = stringResource(R.string.session_finish),
-                onClick = { onFinish(note, effort) },
+                onClick = { onFinish(note, effort, adjustPlan) },
             )
 
             // Nothing to press on a timed set: §3's timed work is measured, so

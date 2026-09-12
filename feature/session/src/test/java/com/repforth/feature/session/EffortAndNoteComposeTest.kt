@@ -212,7 +212,7 @@ class EffortAndNoteComposeTest {
                     onSkipRest = {},
                     onPause = {},
                     onResume = {},
-                    onFinish = { note, effort ->
+                    onFinish = { note, effort, _ ->
                         finishes++
                         finishedWith = note
                         finishedEffort = effort
