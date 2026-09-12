@@ -2,6 +2,7 @@ package com.repforth.core.ai
 
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.Language
+import com.repforth.core.model.WorkoutLimits
 import com.repforth.core.rules.GenerationRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -257,13 +258,39 @@ object AiWorkoutCodec {
     }
 
     fun decodeResponse(value: String): AiWorkoutDecodeResult = try {
-        AiWorkoutDecodeResult.Ok(json.decodeFromString<AiWorkoutResponse>(value))
+        AiWorkoutDecodeResult.Ok(
+            json.decodeFromString<AiWorkoutResponse>(value).onLoadableWeights(),
+        )
     } catch (_: SerializationException) {
         AiWorkoutDecodeResult.Malformed
     } catch (_: IllegalArgumentException) {
         AiWorkoutDecodeResult.Malformed
     }
 }
+
+/**
+ * Every prescribed weight on a multiple of [WorkoutLimits.weightKgStep].
+ *
+ * **Here, at the one door a provider answer comes through.** The prompt asks
+ * for round numbers and both providers are told to, but a prompt is a request:
+ * a model that answers 62.5 kg is not malformed, it is just writing a guess to
+ * a precision it does not have. Doing it at the decoder means the validator,
+ * the rules engine and the builder all see the same numbers, so what is checked
+ * is what gets stored -- rounding afterwards would validate one plan and save
+ * another.
+ *
+ * See [WorkoutLimits.roundWeightKg] for what each weight becomes, including the
+ * two it deliberately leaves alone.
+ */
+private fun AiWorkoutResponse.onLoadableWeights() = copy(
+    days = days.map { day ->
+        day.copy(
+            exercises = day.exercises.map { exercise ->
+                exercise.copy(weightKg = exercise.weightKg?.let(WorkoutLimits::roundWeightKg))
+            },
+        )
+    },
+)
 
 private fun Iterable<com.repforth.core.model.Muscle>.canonicalSlugs(): List<String> =
     map { it.canonical.slug }.distinct().sorted()

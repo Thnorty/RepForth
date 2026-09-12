@@ -12,6 +12,7 @@ import com.repforth.core.model.UserProfile
 import com.repforth.core.rules.GenerationRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -150,6 +151,68 @@ class AiWorkoutContractTest {
         val exercise = response.days.single().exercises.single()
         assertEquals("a", exercise.exerciseId)
         assertEquals(25.0, exercise.weightKg ?: 0.0, 0.001)
+    }
+
+    /**
+     * **A provider's weight is a guess, and it is rounded to look like one.**
+     *
+     * Reported after the first plans came back: nobody loads 62.5 kg because a
+     * model said so. The prompt asks for multiples of five and this is what
+     * makes it true -- a model that answers 62.5 is not malformed, it is just
+     * writing a guess to a precision it does not have.
+     *
+     * At the decoder rather than at the builder, so the validator and the rules
+     * engine check the numbers that will actually be stored.
+     */
+    @Test
+    fun `a weight off the step is rounded to it`() {
+        assertEquals(60.0, decodedWeight("61.0") ?: 0.0, 0.001)
+        assertEquals(65.0, decodedWeight("63.0") ?: 0.0, 0.001)
+        // Exactly half a step, which rounds up. Either answer is as good as the
+        // other and the ordinary convention is the one worth being predictable
+        // about; 62.5 is also the number this was reported over.
+        assertEquals(65.0, decodedWeight("62.5") ?: 0.0, 0.001)
+        assertEquals(80.0, decodedWeight("80.0") ?: 0.0, 0.001)
+    }
+
+    /** Null is body weight and stays null; it is not a load to round. */
+    @Test
+    fun `body weight is left alone`() {
+        val result = AiWorkoutCodec.decodeResponse(
+            """{"days":[{"title":"Push","exercises":[{"exercise_id":"a","sets":3,""" +
+                """"repetitions":10,"rest_seconds":60}]}],"rationale":"Balanced"}""",
+        )
+        val exercise = (result as AiWorkoutDecodeResult.Ok).response.days.single().exercises.single()
+        assertNull(exercise.weightKg)
+    }
+
+    /**
+     * A light dumbbell is floored at one step rather than rounded down to
+     * nothing. Zero reads as body weight everywhere in the app, so rounding 2 kg
+     * to it would change what the exercise *is* rather than what it weighs.
+     */
+    @Test
+    fun `a light load is floored at one step rather than erased`() {
+        assertEquals(5.0, decodedWeight("2.0") ?: 0.0, 0.001)
+        assertEquals(0.0, decodedWeight("0.0") ?: -1.0, 0.001)
+    }
+
+    /**
+     * **Rounding must not rescue a weight the contract will reject.** 502 kg is
+     * a model that has misunderstood the question; snapping it to 500 would hide
+     * that from the validator and spend a retry on nothing.
+     */
+    @Test
+    fun `an out-of-range weight is passed through for the validator to reject`() {
+        assertEquals(502.0, decodedWeight("502.0") ?: 0.0, 0.001)
+    }
+
+    private fun decodedWeight(json: String): Double? {
+        val result = AiWorkoutCodec.decodeResponse(
+            """{"days":[{"title":"Push","exercises":[{"exercise_id":"a","sets":3,""" +
+                """"repetitions":10,"weight_kg":$json,"rest_seconds":60}]}],"rationale":"Balanced"}""",
+        )
+        return (result as AiWorkoutDecodeResult.Ok).response.days.single().exercises.single().weightKg
     }
 
     /** The removed fields are removed on the way in too: v3 output is not v4 output. */
