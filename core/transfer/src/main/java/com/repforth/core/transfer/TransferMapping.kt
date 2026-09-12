@@ -62,6 +62,7 @@ internal fun WorkoutTemplate.toDto() = TemplateDto(
             durationMs = duration?.durationMs,
             weightKg = planned.target.weightKg,
             restMs = planned.restMs,
+            progressKg = planned.progressKg,
         )
     },
 )
@@ -83,6 +84,7 @@ internal fun TemplateDto.toDomain() = WorkoutTemplate(
                 position = dto.position,
                 target = dto.target(),
                 restMs = dto.restMs,
+                progressKg = dto.progressKg,
             )
         },
 )

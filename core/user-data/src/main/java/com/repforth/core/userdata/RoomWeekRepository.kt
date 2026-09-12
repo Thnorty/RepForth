@@ -78,6 +78,7 @@ internal class RoomWeekRepository @Inject constructor(
                     targetReps = reps?.reps,
                     targetDurationMs = duration?.durationMs,
                     targetWeightKg = planned.target.weightKg,
+                    targetProgressKg = planned.progressKg,
                     restMs = planned.restMs,
                     createdAt = now,
                     updatedAt = now,
@@ -129,4 +130,5 @@ private fun TemplateExerciseEntity.toPlannedExercise(): PlannedExercise = Planne
     position = position,
     target = exerciseTargetOf(targetSets, targetReps, targetDurationMs, targetWeightKg),
     restMs = restMs,
+    progressKg = targetProgressKg,
 )

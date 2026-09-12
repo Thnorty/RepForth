@@ -203,6 +203,10 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
     )
     appendLine("- repetitions is one exact integer, never a range and never a text value")
     appendLine(
+        "- duration_seconds: a multiple of ${WorkoutLimits.durationSecondsStep}. Nobody " +
+            "counts to forty-seven",
+    )
+    appendLine(
         "- weight_kg: a working weight suited to this person's experience and goal for " +
             "barbell, dumbbell, cable and machine work; null for body weight and for " +
             "anything that carries no load. Give a multiple of " +

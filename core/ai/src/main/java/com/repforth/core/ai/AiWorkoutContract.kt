@@ -259,7 +259,7 @@ object AiWorkoutCodec {
 
     fun decodeResponse(value: String): AiWorkoutDecodeResult = try {
         AiWorkoutDecodeResult.Ok(
-            json.decodeFromString<AiWorkoutResponse>(value).onLoadableWeights(),
+            json.decodeFromString<AiWorkoutResponse>(value).onTheGrid(),
         )
     } catch (_: SerializationException) {
         AiWorkoutDecodeResult.Malformed
@@ -269,24 +269,31 @@ object AiWorkoutCodec {
 }
 
 /**
- * Every prescribed weight on a multiple of [WorkoutLimits.weightKgStep].
+ * Every prescribed weight and duration on its step.
  *
  * **Here, at the one door a provider answer comes through.** The prompt asks
  * for round numbers and both providers are told to, but a prompt is a request:
- * a model that answers 62.5 kg is not malformed, it is just writing a guess to
- * a precision it does not have. Doing it at the decoder means the validator,
- * the rules engine and the builder all see the same numbers, so what is checked
- * is what gets stored -- rounding afterwards would validate one plan and save
- * another.
+ * a model that answers 62.5 kg or a forty-seven second plank is not malformed,
+ * it is just writing a guess to a precision it does not have. Doing it at the
+ * decoder means the validator, the rules engine and the builder all see the
+ * same numbers, so what is checked is what gets stored -- rounding afterwards
+ * would validate one plan and save another.
  *
- * See [WorkoutLimits.roundWeightKg] for what each weight becomes, including the
- * two it deliberately leaves alone.
+ * It also hands progression a plan that already sits on the grid it moves
+ * along, so the first easy workout moves a number rather than tidying one.
+ *
+ * See [WorkoutLimits.roundWeightKg] and [WorkoutLimits.roundDurationSeconds]
+ * for what each value becomes, including the cases they leave alone.
  */
-private fun AiWorkoutResponse.onLoadableWeights() = copy(
+private fun AiWorkoutResponse.onTheGrid() = copy(
     days = days.map { day ->
         day.copy(
             exercises = day.exercises.map { exercise ->
-                exercise.copy(weightKg = exercise.weightKg?.let(WorkoutLimits::roundWeightKg))
+                exercise.copy(
+                    weightKg = exercise.weightKg?.let(WorkoutLimits::roundWeightKg),
+                    durationSeconds = exercise.durationSeconds
+                        ?.let(WorkoutLimits::roundDurationSeconds),
+                )
             },
         )
     },

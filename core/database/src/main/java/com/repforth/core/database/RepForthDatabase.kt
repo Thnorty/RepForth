@@ -73,7 +73,7 @@ abstract class RepForthDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
 
     companion object {
-        const val VERSION = 6
+        const val VERSION = 7
 
         /** Also the asset filename once the import task prepackages the catalog. */
         const val NAME = "repforth.db"
@@ -226,6 +226,31 @@ abstract class RepForthDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP TABLE IF EXISTS `profile_preferred_muscle`")
                 db.execSQL("DROP TABLE IF EXISTS `movement_exclusion`")
+            }
+        }
+
+        /**
+         * Migration from v6 to v7: how far past its weight an exercise has crept.
+         *
+         * A plan is written in five kilogram steps and progression moves a light
+         * load by less than one, so the remainder is stored beside the weight
+         * rather than inside it. See `Progression.kt` for why that is two
+         * numbers and not one.
+         *
+         * **Defaulted to zero rather than nullable, and the default is the
+         * backfill.** Unlike the note and effort added in v5, there is no
+         * difference here between "not recorded" and "none": a plan written
+         * before this existed has crept nowhere, which is exactly zero.
+         *
+         * Only `template_exercise` gets it. A session's copy of a target is a
+         * record of what was performed and is never progressed.
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `template_exercise` " +
+                        "ADD COLUMN `target_progress_kg` REAL NOT NULL DEFAULT 0",
+                )
             }
         }
     }

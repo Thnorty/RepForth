@@ -64,7 +64,31 @@ data class DraftExercise(
     val weightKg: Double? = null,
     val restSeconds: Int = DEFAULT_REST_SECONDS,
     val timed: Boolean = false,
+
+    /**
+     * Progression's carry, and the weight it was measured against.
+     *
+     * The builder never shows or edits either. They ride through so that opening
+     * a plan and saving it does not quietly throw away weeks of accumulated
+     * progress -- which is what a draft that simply dropped the field would do,
+     * invisibly, on a screen nobody would suspect.
+     *
+     * [loadedWeightKg] is what makes it safe to keep: the carry belongs to a
+     * particular weight, so the moment the field says something else it is
+     * stale. See [carriedProgressKg].
+     */
+    val progressKg: Double = 0.0,
+    val loadedWeightKg: Double? = null,
 ) {
+    /**
+     * The carry this row still owns, which is none once the weight is retyped.
+     *
+     * `Progression.kt` states the rule: someone entering a number means that
+     * number, not a place to carry on from.
+     */
+    val carriedProgressKg: Double
+        get() = if (weightKg != null && weightKg == loadedWeightKg) progressKg else 0.0
+
     /**
      * The domain target this row describes.
      *
@@ -904,6 +928,7 @@ class BuilderViewModel @Inject constructor(
                             position = exIndex,
                             target = draftEx.target,
                             restMs = draftEx.restSeconds * 1000L,
+                            progressKg = draftEx.carriedProgressKg,
                         )
                     },
                 )
@@ -972,6 +997,7 @@ class BuilderViewModel @Inject constructor(
                             position = index,
                             target = draft.target,
                             restMs = draft.restSeconds * 1000L,
+                            progressKg = draft.carriedProgressKg,
                         )
                     },
                 ),
@@ -1063,6 +1089,8 @@ private fun List<PlannedExercise>.toDrafts(
         weightKg = planned.target.weightKg,
         restSeconds = (planned.restMs / 1000L).toInt(),
         timed = duration != null,
+        progressKg = planned.progressKg,
+        loadedWeightKg = planned.target.weightKg,
     )
 }
 

@@ -51,6 +51,22 @@ data class PlannedExercise(
     val position: Int,
     val target: ExerciseTarget,
     val restMs: Long,
+
+    /**
+     * How far past [ExerciseTarget.weightKg] this exercise has crept, signed.
+     *
+     * Progression moves a light load by less than the five kilograms a plan is
+     * written in, so the remainder has to live somewhere or every easy session
+     * on a ten kilogram dumbbell would round back to where it started and the
+     * offer would silently do nothing. The exact load is the target's weight
+     * plus this; `Progression.kt` is the only thing that adds them, and the only
+     * thing that writes this.
+     *
+     * Zero for a plan nobody has progressed, and zero again the moment a weight
+     * is typed by hand -- someone entering a number means that number, not a
+     * place to carry on from.
+     */
+    val progressKg: Double = 0.0,
 ) {
     init {
         require(position >= 0) { "position must not be negative" }

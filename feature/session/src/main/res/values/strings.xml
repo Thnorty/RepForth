@@ -23,6 +23,28 @@
     <string name="session_note">Workout note (optional)</string>
     <string name="session_note_hint">How did it go?</string>
 
+    <!--
+        §3's answer, carried into the plan.
+
+        The card is offered on the finish screen once an easy or a hard answer is
+        chosen, and writes only if the user turns it on. "Just right" offers
+        nothing, which is the point of a five-point scale: the middle is where a
+        well-judged session lands and there is nothing to correct.
+    -->
+    <string name="session_adjust_harder">Make %1$s harder next time</string>
+    <string name="session_adjust_easier">Make %1$s easier next time</string>
+    <!-- Before and after, for one row of the card. -->
+    <string name="session_adjust_weight">%1$s → %2$s %3$s</string>
+    <string name="session_adjust_reps">%1$d → %2$d reps</string>
+    <string name="session_adjust_seconds">%1$d → %2$d s</string>
+    <!--
+        A light load moves by less than the five kilograms a plan is written in,
+        so the plan reads the same and the progress is real. Saying so beats a
+        row that reads "10 kg → 10 kg", which looks broken rather than patient.
+    -->
+    <string name="session_adjust_creeping_one">%1$s stays at %2$s and moves closer to %3$s.</string>
+    <string name="session_adjust_creeping_many">%1$d exercises keep their weight for now and move closer to the next one.</string>
+
     <string name="session_resting">Rest</string>
     <string name="session_skip_rest">Skip rest</string>
     <string name="session_rest_over">Rest is over</string>
