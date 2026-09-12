@@ -96,9 +96,12 @@ private fun WearApp(viewModel: WearViewModel = viewModel()) {
                 WearScreen.Rest -> state.workout?.let { workout ->
                     RestScreen(
                         state = workout,
-                        // The picture rides through the rest too. It is of the
-                        // exercise being worked, and a rest is when there is
-                        // most time to look at one.
+                        // The picture rides through the rest too, and during
+                        // one it is of whatever comes next rather than of the
+                        // exercise just finished -- the phone chooses which,
+                        // and sends one asset. A rest is when there is most
+                        // time to look at a movement, and the movement worth
+                        // looking at then is the one about to be done.
                         media = state.media,
                         remainingSeconds = rememberCountdownSeconds(
                             workout,

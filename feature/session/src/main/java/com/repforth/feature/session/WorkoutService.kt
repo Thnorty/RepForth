@@ -26,6 +26,7 @@ import com.repforth.core.media.download.ANIMATION_MEDIA_TYPE
 import com.repforth.core.media.manifest.MediaManifestRepository
 import com.repforth.core.model.ExerciseSummary
 import com.repforth.core.wearprotocol.WearAlert
+import com.repforth.core.wearsync.wearMediaExerciseId
 import com.repforth.core.workout.SessionCommand
 import com.repforth.core.workout.SessionEvent
 import com.repforth.core.workout.SessionPhase
@@ -167,7 +168,7 @@ class WorkoutService : Service() {
                     bridge.publish(
                         snapshot,
                         names,
-                        thumbnails[snapshot.currentExerciseId()],
+                        thumbnails[snapshot.wearMediaId()],
                         attribution,
                     )
                 }
@@ -387,8 +388,17 @@ class WorkoutService : Service() {
         exercises.summaries(snapshot.exercises.map { it.exerciseId })
             .entries.associate { (id, summary) -> id.value to summary }
 
-    private fun SessionSnapshot.currentExerciseId(): String? =
-        currentExercise?.exerciseId?.value
+    /**
+     * Whose picture goes with this snapshot, asked at the moment of asking.
+     *
+     * The clock reading matters: the answer turns on whether a rest is still
+     * owed, and a paused rest owes one. Taken here rather than passed in because
+     * both callers are publishing *now* -- `WearBridge` stamps the projection
+     * with its own reading a moment later, and the two cannot disagree about
+     * something as coarse as which phase a session is in.
+     */
+    private fun SessionSnapshot.wearMediaId(): String? =
+        wearMediaExerciseId(SystemClock.elapsedRealtime())
 
     /**
      * Fetches the workout's thumbnails once, in the background.
@@ -418,13 +428,13 @@ class WorkoutService : Service() {
                 val bytes = loadAnimation(id) ?: return@forEach
                 thumbnails[id] = bytes
 
-                // Only if the wrist is still on this exercise. By the time a
-                // download finishes the user may have moved on, and republishing
-                // an old snapshot is exactly what the revision check exists to
-                // refuse -- better not to send it.
+                // Only if this is still the picture the wrist should be
+                // showing. By the time a download finishes the user may have
+                // moved on, and republishing an old snapshot is exactly what
+                // the revision check exists to refuse -- better not to send it.
                 val current = controller.state.value
                 if (current != null && !current.phase.isTerminal &&
-                    current.currentExerciseId() == id
+                    current.wearMediaId() == id
                 ) {
                     bridge.publish(current, names, bytes, attribution)
                 }
