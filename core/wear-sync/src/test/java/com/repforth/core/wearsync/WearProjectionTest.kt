@@ -198,6 +198,90 @@ class WearProjectionTest {
         )
     }
 
+    // ------------------------------------------- whose picture goes on the wire
+
+    /** Working a set: the picture is of the movement being done. */
+    @Test
+    fun `during a set the picture is the exercise being worked`() {
+        assertEquals("0025", snapshot().wearMediaExerciseId(PUBLISHED_AT))
+    }
+
+    /** Between sets of the same exercise, nothing has changed to look at. */
+    @Test
+    fun `resting between sets the picture stays on this exercise`() {
+        val resting = snapshot(
+            phase = SessionPhase.RESTING,
+            restEndsAtElapsed = PUBLISHED_AT + 90_000L,
+        )
+        assertEquals("0025", resting.wearMediaExerciseId(PUBLISHED_AT))
+    }
+
+    /**
+     * **The rest after the last set of an exercise, which is the whole point.**
+     *
+     * Reported from a wrist: the third page kept playing the exercise that had
+     * just finished while the first page said "Next: dumbbell incline hammer
+     * curl". One rest, two answers to the same question, and the animation was
+     * the wrong one -- there is no reason left to look at a movement you will
+     * not do again.
+     */
+    @Test
+    fun `resting after the last set the picture is the next exercise`() {
+        val resting = snapshot(
+            phase = SessionPhase.RESTING,
+            currentSetIndex = 3,
+            restEndsAtElapsed = PUBLISHED_AT + 90_000L,
+        )
+        assertEquals("0043", resting.wearMediaExerciseId(PUBLISHED_AT))
+    }
+
+    /**
+     * A paused rest is still a rest.
+     *
+     * `WearViewModel` keeps the rest screen up for a pause that still owes rest,
+     * so the picture has to follow it there. Asked as "does a clock still owe
+     * something" rather than as a phase for exactly this case: the phone drops
+     * its deadline on a pause and keeps a remainder instead.
+     */
+    @Test
+    fun `a paused rest still shows what is coming`() {
+        val paused = snapshot(
+            phase = SessionPhase.PAUSED,
+            currentSetIndex = 3,
+            restRemainingMs = 47_000L,
+        )
+        assertEquals("0043", paused.wearMediaExerciseId(PUBLISHED_AT))
+    }
+
+    /** A pause with no rest owed is a paused *set*, and keeps the set's picture. */
+    @Test
+    fun `a paused set keeps the picture of the set`() {
+        val paused = snapshot(phase = SessionPhase.PAUSED, currentSetIndex = 3)
+        assertEquals("0025", paused.wearMediaExerciseId(PUBLISHED_AT))
+    }
+
+    /**
+     * The invariant the two halves have to keep: the picture is of the exercise
+     * the wrist has just been told to expect.
+     *
+     * Written as one assertion over both fields rather than two tests that could
+     * drift apart, because a disagreement between them is the defect itself and
+     * not a property of either one alone.
+     */
+    @Test
+    fun `while resting the picture and the name agree`() {
+        listOf(0, 1, 2, 3).forEach { setIndex ->
+            val resting = snapshot(
+                phase = SessionPhase.RESTING,
+                currentSetIndex = setIndex,
+                restEndsAtElapsed = PUBLISHED_AT + 90_000L,
+            )
+            val named = resting.toWearState(NAMES, PUBLISHED_AT)!!.nextExerciseName
+            val pictured = NAMES[resting.wearMediaExerciseId(PUBLISHED_AT)]
+            assertEquals("Set ${setIndex + 1} of 4", named, pictured)
+        }
+    }
+
     /**
      * An id the catalog cannot name is shown as the id.
      *

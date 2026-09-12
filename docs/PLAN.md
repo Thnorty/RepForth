@@ -4473,6 +4473,38 @@ The repository map listed seven of twenty-eight modules, which is worse than
 none: `core/workout`, `core/ai`, `core/transfer` and the entire watch half were
 missing from a map whose job is to say where things live.
 
+### 2026-09-12 - the wrist rested in front of the wrong animation
+
+Reported from a wrist: during a rest the third page plays the exercise that has
+just finished, and it should play the one coming next.
+
+The text on that screen had been right since 2026-09-10 -- "Next" asks
+`isLastSetOfExercise` first, so between sets it names this exercise again and
+after the last set it names the one after. The **picture** never learned the
+question. `WorkoutService` looked up `thumbnails[currentExerciseId]` whatever
+the phase was, so the last rest of every exercise showed a name and an animation
+that disagreed with each other, at the one moment in a workout with time enough
+to notice.
+
+One asset crosses the wire, so the phone chooses which. `wearMediaExerciseId`
+sits next to the name in `core:wear-sync` for that reason: the two answers come
+out of one function now and cannot drift apart again.
+
+**Resting is asked as "does a rest clock still owe something", not as a phase.**
+A paused rest is still a rest -- `WearViewModel` already keeps the rest screen up
+for one -- and the phone drops its deadline on a pause and keeps a remainder
+instead, so a phase test would have put the finished exercise back on screen for
+exactly the pause the rest screen was surviving.
+
+The watch needed no change at all. It keys its media off the asset id and knows
+nothing about which exercise it belongs to, which is what made this a one-sided
+fix.
+
+Three of the six new tests were watched failing against the old behaviour. The
+sharp one is not about either exercise: it walks all four set indices of a rest
+and asserts that the pictured exercise and the named exercise are the same, since
+a disagreement between them is the defect and neither field is wrong on its own.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

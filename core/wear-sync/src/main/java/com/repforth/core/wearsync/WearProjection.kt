@@ -96,14 +96,51 @@ fun SessionSnapshot.toWearState(
  * Null only at the very end, where there is genuinely nothing after this.
  */
 private fun SessionSnapshot.nextExerciseName(names: Map<String, String>): String? {
-    val next = if (isLastSetOfExercise) {
-        exercises.getOrNull(currentExerciseIndex + 1) ?: return null
-    } else {
-        // Another set of what is already on the bar.
-        currentExercise ?: return null
-    }
-    val id = next.exerciseId.value
+    val id = nextExercise()?.exerciseId?.value ?: return null
     return names[id] ?: id
+}
+
+/**
+ * Whatever comes next — which is usually this exercise again.
+ *
+ * Null only at the very end, where there is genuinely nothing after this. In a
+ * session that cannot happen: the engine sends the final set straight to
+ * `COMPLETING` rather than resting after it, so every rest has something on the
+ * other side of it.
+ */
+private fun SessionSnapshot.nextExercise() = if (isLastSetOfExercise) {
+    exercises.getOrNull(currentExerciseIndex + 1)
+} else {
+    // Another set of what is already on the bar.
+    currentExercise
+}
+
+/**
+ * Which exercise's picture belongs on the wire.
+ *
+ * **The picture is of what the wrist is being told to expect.** During a set
+ * that is the exercise being worked; during a rest it is whatever
+ * [WearWorkoutState.nextExerciseName] names, which between sets is the same
+ * exercise again and after the last set of one is the exercise that follows.
+ *
+ * It was the current exercise in both cases until now, so the last rest of an
+ * exercise put the animation and the name in disagreement: the text said
+ * "Next: Barbell Squat" and the media page played the press that had just
+ * finished. The rest is the one moment in a workout with time to look at a
+ * movement, and it was showing the movement there was no longer any reason to
+ * look at.
+ *
+ * Resting is asked as "does a rest clock still owe something", not as a phase,
+ * because a **paused** rest is still a rest — that is the same question
+ * `WearViewModel` asks to choose the rest screen, and the picture has to follow
+ * the screen it is on.
+ *
+ * Null when there is no exercise at all, which is a session with none.
+ */
+fun SessionSnapshot.wearMediaExerciseId(nowElapsedRealtimeMs: Long): String? {
+    val resting = restRemaining(nowElapsedRealtimeMs) != null
+    val shown = if (resting) nextExercise() ?: currentExercise else currentExercise
+    return shown?.exerciseId?.value
 }
 
 /**
