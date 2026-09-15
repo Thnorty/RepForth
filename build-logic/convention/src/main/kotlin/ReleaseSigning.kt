@@ -1,4 +1,5 @@
 import com.android.build.api.dsl.ApplicationExtension
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import java.io.File
 import java.util.Properties
@@ -14,17 +15,22 @@ import java.util.Properties
  * different key, so every device that took a debug-signed build has to uninstall
  * before it can take a real one, losing its plans and history on the way.
  *
- * ## Where the key lives, and why it is not here
+ * ## Where the key lives
  *
- * `~/.repforth/signing.properties`, naming a keystore beside it. Outside the
- * repository on purpose: this repository is public, `.gitignore` can only stop
- * the mistakes it anticipates, and a signing key committed once is a signing key
- * that has to be replaced. Nothing in the build tree knows the password, so
- * there is no file here to leak.
+ * `.repforth/signing.properties` in the repository root, naming a keystore
+ * beside it. The file declares `storeFile`, `storePassword`, `keyAlias` and
+ * `keyPassword`; a relative `storeFile` resolves against the folder the
+ * properties file is in, so the pair backs up and restores as one directory.
  *
- * The file declares `storeFile`, `storePassword`, `keyAlias` and `keyPassword`.
- * A relative `storeFile` resolves against the directory the properties file is
- * in, so the pair can be backed up and restored as one folder.
+ * **It was outside the working tree until the owner asked for it here**, and
+ * that is a real trade. The repository is public, and a key committed once is a
+ * key that has to be replaced with every existing install orphaned — so being
+ * ignored is no longer a convenience, it is the only thing standing between the
+ * key and a `git add -A`. Three things enforce it: `/.repforth/` in the root
+ * `.gitignore`, `.repforth/.gitignore` excluding the folder's contents from
+ * inside it so an edit to the root file cannot expose them, and
+ * [requireIgnoredByGit] below, which fails the build rather than signing with a
+ * key git can see.
  *
  * ## Absent is not an error
  *
@@ -34,8 +40,9 @@ import java.util.Properties
  * which is the opposite of what a public repository wants.
  *
  * The consequence is worth stating plainly, because it is quiet: an unsigned
- * release APK cannot be installed. If a release build will not install, check
- * whether this file was found before looking anywhere else.
+ * release APK cannot be installed. The filename is the tell. If a release build
+ * will not install, check whether the output is `…-release-unsigned.apk` before
+ * looking anywhere else.
  */
 internal fun Project.configureReleaseSigning(extension: ApplicationExtension) {
     val credentials = releaseSigningCredentials() ?: run {
@@ -44,6 +51,9 @@ internal fun Project.configureReleaseSigning(extension: ApplicationExtension) {
         )
         return
     }
+
+    requireIgnoredByGit(credentials.storeFile)
+    requireIgnoredByGit(credentials.propertiesFile)
 
     with(extension) {
         signingConfigs.create("release") {
@@ -59,6 +69,7 @@ internal fun Project.configureReleaseSigning(extension: ApplicationExtension) {
 }
 
 private class ReleaseSigningCredentials(
+    val propertiesFile: File,
     val storeFile: File,
     val storePassword: String,
     val keyAlias: String,
@@ -74,7 +85,7 @@ private class ReleaseSigningCredentials(
  * out of `apksigner`.
  */
 private fun Project.releaseSigningCredentials(): ReleaseSigningCredentials? {
-    val properties = File(System.getProperty("user.home"), SIGNING_PROPERTIES)
+    val properties = rootDir.resolve(SIGNING_PROPERTIES)
     if (!properties.isFile) return null
 
     val values = Properties().apply { properties.inputStream().use(::load) }
@@ -92,7 +103,48 @@ private fun Project.releaseSigningCredentials(): ReleaseSigningCredentials? {
         logger.warn("$SIGNING_PROPERTIES is incomplete; release output will be unsigned.")
         return null
     }
-    return ReleaseSigningCredentials(store, storePassword, alias, keyPassword)
+    return ReleaseSigningCredentials(properties, store, storePassword, alias, keyPassword)
+}
+
+/**
+ * Refuses to sign with a secret git is not ignoring.
+ *
+ * The key sits in the working tree, so the ignore rules are the only thing
+ * keeping it out of a public repository — and an ignore rule is a line in a file
+ * anyone can edit, in a project where `git add -A` is the normal way to stage.
+ * This turns a silent leak into a failed build, at the one moment the key is
+ * definitely being used.
+ *
+ * **A machine with no git answers nothing, and that is not a failure.** An
+ * exported source tree has no repository to ask, and refusing to build there
+ * would be inventing a dependency on a tool that has nothing to do with signing.
+ * Only a clear "git can see this" fails.
+ */
+private fun Project.requireIgnoredByGit(secret: File) {
+    // `providers.exec` rather than `ProcessBuilder`: the configuration cache
+    // refuses an external process started during configuration, and it is right
+    // to -- a build whose result depends on an unrecorded command cannot be
+    // replayed. This goes through Gradle, so the call is an input like any other.
+    val exit = runCatching {
+        providers.exec {
+            commandLine("git", "check-ignore", "-q", secret.absolutePath)
+            workingDir = rootDir
+            isIgnoreExitValue = true
+        }.result.get().exitValue
+    }.getOrNull() ?: run {
+        logger.warn("Could not ask git whether ${secret.name} is ignored; not checking.")
+        return
+    }
+
+    // 0 is ignored, 1 is not ignored, and anything else is git declining to
+    // answer -- not a repository, a broken index. Only the clear "not ignored"
+    // is treated as the leak.
+    if (exit == 1) {
+        throw GradleException(
+            "${secret.absolutePath} is a signing secret and git is not ignoring it. " +
+                "Restore the /.repforth/ rule in .gitignore before building a release.",
+        )
+    }
 }
 
 private const val SIGNING_PROPERTIES = ".repforth/signing.properties"
