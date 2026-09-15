@@ -4794,6 +4794,35 @@ by**, and it held: 3 over 2 installs in place, and the same signature means it
 does so without an uninstall. The whole point of 1.0.1's key change was being
 able to ship a fix the same day without costing anyone their history.
 
+### 2026-09-15 - the watch in the README, and the pager does take a synthetic swipe
+
+The three watch screens are captured now: the set, the rest with its amber ring,
+and the exercise animation with Gym visual's credit on its scrim.
+
+**They only exist while the phone is running a workout**, which is what made
+this the last piece rather than the first. The watch draws what the phone
+publishes, the animation crosses the Data Layer as an asset, and the Xiaomi has
+never been paired to a watch -- so the whole sequence had to be the Galaxy: the
+new build on both devices, onboarding, an import, a workout started, and only
+then a wrist worth photographing. `WearBridge` logged the publish that carried
+it: `thumbnail 69828 bytes`.
+
+**`adb shell input swipe` does reach the Wear pager.** This file has said since
+2026-09-10 that it does not -- "the pager's touch slop rejects synthetic
+gestures" -- on the strength of a frame-timing run that reported
+`Total frames rendered: 0`. Both pages changed on the first attempt here, with a
+600ms swipe across the middle of the face. The old note was true about what it
+measured and wrong about why: `dumpsys gfxinfo` counting no frames is not the
+same as the gesture not landing. Corrected above.
+
+Two dialogs interrupted, and both are worth expecting rather than debugging: the
+watch asks for notification permission on first launch after an install, and the
+phone asks again when the foreground service starts. Neither appears in a
+`uiautomator` dump of the app, because neither belongs to the app.
+
+The owner's data was restored on both phones afterwards by re-importing, and the
+dialog confirmed it each time: 56 workouts removed, 55 restored.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

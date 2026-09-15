@@ -55,6 +55,21 @@ SHOTS = [
     ("catalog.png", "catalog.png"),
 ]
 
+# The watch, captured while the phone was running a workout -- which is the only
+# way its screens exist at all. The media page needs the phone to have published
+# the animation, so these cannot be taken from a watch on its own.
+#
+# Round-masked rather than corner-rounded: a circular face inside a rounded
+# square reads as a picture of a watch on a card, which is one frame more than
+# the strip needs.
+WATCH_SHOTS = [
+    ("watch-set.png", "watch-set.png"),
+    ("watch-rest.png", "watch-rest.png"),
+    ("watch-media.png", "watch-media.png"),
+]
+
+WATCH_WIDTH = 360
+
 # Measured on the capture rather than guessed: the status bar ends and the app's
 # background begins at 100, and the gesture bar takes the last 40.
 STATUS_BAR = 100
@@ -75,6 +90,23 @@ def rounded(image, radius):
     return out
 
 
+def publish(raw_dir, source, name, width, crop, radius):
+    full = os.path.join(raw_dir, source)
+    if not os.path.isfile(full):
+        sys.exit("readme-shots: no capture at %s" % full)
+    image = Image.open(full).convert("RGB")
+    if crop:
+        image = image.crop((0, STATUS_BAR, image.width, image.height - GESTURE_BAR))
+    scale = width / image.width
+    resized = image.resize((width, round(image.height * scale)), Image.LANCZOS)
+    # A width-sized radius on a square capture is a circle, which is what the
+    # watch wants and what the phones must never get.
+    rounded(resized, radius or resized.width // 2).save(
+        os.path.join(OUT_DIR, name), optimize=True
+    )
+    print("docs/screenshots/%s  %dx%d" % (name, resized.width, resized.height))
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: python tools/readme-shots.py <folder of raw captures>")
@@ -82,15 +114,9 @@ def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
     for source, name in SHOTS:
-        full = os.path.join(raw_dir, source)
-        if not os.path.isfile(full):
-            sys.exit("readme-shots: no capture at %s" % full)
-        image = Image.open(full).convert("RGB")
-        cropped = image.crop((0, STATUS_BAR, image.width, image.height - GESTURE_BAR))
-        scale = WIDTH / cropped.width
-        resized = cropped.resize((WIDTH, round(cropped.height * scale)), Image.LANCZOS)
-        rounded(resized, CORNER_RADIUS).save(os.path.join(OUT_DIR, name), optimize=True)
-        print("docs/screenshots/%s  %dx%d" % (name, resized.width, resized.height))
+        publish(raw_dir, source, name, WIDTH, crop=True, radius=CORNER_RADIUS)
+    for source, name in WATCH_SHOTS:
+        publish(raw_dir, source, name, WATCH_WIDTH, crop=False, radius=None)
 
 
 if __name__ == "__main__":

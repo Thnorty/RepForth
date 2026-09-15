@@ -36,6 +36,21 @@ English and Turkish are both first-class. Neither is a translation of the other.
 </tr>
 </table>
 
+### On the wrist
+
+<table>
+<tr>
+<td><img src="docs/screenshots/watch-set.png" width="200" alt="The watch showing ten reps, set 1 of 2, and a Log set button"></td>
+<td><img src="docs/screenshots/watch-rest.png" width="200" alt="The watch counting a rest down on an amber ring, naming what comes next"></td>
+<td><img src="docs/screenshots/watch-media.png" width="200" alt="The watch playing the exercise animation, with the Gym visual credit beneath it"></td>
+</tr>
+<tr>
+<td align="center"><b>The set</b></td>
+<td align="center"><b>The rest</b></td>
+<td align="center"><b>The movement</b></td>
+</tr>
+</table>
+
 The exercise artwork in these is Gym visual's, shown under the terms in
 [`NOTICE.md`](NOTICE.md) and credited in the app wherever it is drawn.
 
