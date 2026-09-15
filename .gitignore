@@ -13,9 +13,17 @@ captures/
 *.jks
 !debug.keystore
 
-# The release signing key lives in ~/.repforth, not here. This is belt and
-# braces for anyone who copies it in anyway: the repository is public, and a
-# key committed once is a key that has to be replaced.
+# The release signing key. It lives in the working tree now, at the owner's
+# request, so this is load-bearing rather than belt and braces: the repository
+# is public, and a key committed once is a key that has to be replaced and every
+# existing install orphaned.
+#
+# Three things keep it out, because one is not enough for a file this costly to
+# leak. This entry; the `*.jks` and `signing.properties` rules above; and
+# `.repforth/.gitignore`, which excludes everything in the folder from inside it
+# and so survives an edit to this file. The build also refuses to sign with a
+# key git is not ignoring -- see ReleaseSigning.kt.
+/.repforth/
 signing.properties
 
 # Never commit provider credentials (§8, §18).
