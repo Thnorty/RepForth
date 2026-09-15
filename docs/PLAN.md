@@ -4628,6 +4628,46 @@ repetition every easy session and never converts to weight, so a press-up walks
 from twelve to twenty-four. Real programmes cap the repetitions and move on;
 this has no dumbbell to move to.
 
+### 2026-09-15 - 1.0.1, and a signature that means something
+
+1.0.0 shipped with no APK because there was no key to sign one with, and the
+only key available was the SDK's debug keystore - published password, ships with
+every install of the SDK, and therefore not a signature at all. There is a real
+one now.
+
+**It lives at `~/.repforth/`, outside the repository, and nothing in the build
+tree knows the password.** `configureReleaseSigning` reads
+`~/.repforth/signing.properties`, which names a keystore beside it; a relative
+`storeFile` resolves against that directory so the pair backs up as one folder.
+`.gitignore` gained `*.jks` and `signing.properties` as belt and braces, but the
+reason the key is safe is that it was never in the tree.
+
+**A machine without the key builds unsigned, and that is not an error.** CI has
+no key and must not have one, and a pull request that needed the maintainer's
+private key to compile would be the opposite of what a public repository wants.
+The fallback was measured rather than assumed: the properties file was moved
+aside and the build watched producing `app-placeholder-release-unsigned.apk`
+with a lifecycle line saying why. That suffix is the signal to look for when a
+release build will not install.
+
+Version codes went to 2 and 1002. `PHONE_VERSION_CODE` now carries the rule in
+its comment rather than leaving it to be remembered: it goes up on every release
+that leaves the machine, because Android refuses a lower code over a higher one
+and it is the only thing separating two builds with the same name.
+
+**The cost, paid once and only by the owner.** Android refuses an update signed
+by a different key, so the debug-signed 1.0.0 on the phone and the watch had to
+be uninstalled before 1.0.1 could go on - taking the profile, the training week
+and 55 recorded sessions with it. The export was taken first, verified by
+parsing it and counting what was inside, and a second copy kept outside the
+device before anything was removed. Nobody else pays this: every install from
+here carries the same signature.
+
+This is also the last release that can be installed over a debug build. Anyone
+who took a hand-signed 1.0.0 from this repository is in the same position, which
+is exactly the stickiness 1.0.0's notes described as the reason not to attach an
+APK to it.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

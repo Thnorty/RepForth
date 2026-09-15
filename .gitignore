@@ -10,7 +10,13 @@ captures/
 *.apk
 *.aab
 *.keystore
+*.jks
 !debug.keystore
+
+# The release signing key lives in ~/.repforth, not here. This is belt and
+# braces for anyone who copies it in anyway: the repository is public, and a
+# key committed once is a key that has to be replaced.
+signing.properties
 
 # Never commit provider credentials (§8, §18).
 .env

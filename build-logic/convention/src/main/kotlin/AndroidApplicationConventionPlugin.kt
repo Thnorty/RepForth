@@ -27,6 +27,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             defaultConfig.testInstrumentationRunner = "com.repforth.app.RepForthTestRunner"
 
             configureMediaFlavours(this)
+            configureReleaseSigning(this)
 
             // The same emulator the migrations and the baseline profile use.
             // `connectedAndroidTest` on this module really does uninstall the
