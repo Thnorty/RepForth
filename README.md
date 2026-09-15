@@ -6,9 +6,10 @@ and goes nowhere else.
 
 English and Turkish are both first-class. Neither is a translation of the other.
 
-> **Status: 1.0.0.** Everything below works on hardware. See
-> [`docs/PLAN.md`](docs/PLAN.md) for how each piece got there and what is still
-> known to be rough.
+> **Status: 1.0.1.** Everything below works on hardware. Signed APKs are
+> attached to [the latest release](https://github.com/Thnorty/RepForth/releases/latest).
+> See [`docs/PLAN.md`](docs/PLAN.md) for how each piece got there and what is
+> still known to be rough.
 
 ## What it does
 
@@ -103,7 +104,7 @@ tools/fetch-dataset.sh && python tools/import-dataset.py
 ## Licence
 
 **Not yet chosen** — a deliberate open decision, not an oversight, and the one
-thing 1.0.0 does not settle. The project guideline recommends Apache-2.0 for the
+thing these releases do not settle. The project guideline recommends Apache-2.0 for the
 explicit patent grant, but the choice belongs to the maintainer and no `LICENSE`
 file has been added.
 

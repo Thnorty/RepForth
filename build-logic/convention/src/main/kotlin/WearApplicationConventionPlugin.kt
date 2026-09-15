@@ -26,6 +26,7 @@ class WearApplicationConventionPlugin : Plugin<Project> {
             defaultConfig.minSdk = libs.int("minSdkWear")
             defaultConfig.targetSdk = libs.int("targetSdk")
             configureMediaFlavours(this)
+            configureReleaseSigning(this)
         }
     }
 }
