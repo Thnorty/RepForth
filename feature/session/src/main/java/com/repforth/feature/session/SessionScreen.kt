@@ -212,6 +212,25 @@ internal fun SessionScreen(
 
     var confirmingAbandon by rememberSaveable { mutableStateOf(false) }
 
+    // §3's two questions and the offer that follows them, held here rather than
+    // inside the controls.
+    //
+    // **They are content, not controls, and that distinction is load-bearing.**
+    // The controls sit below a weighted column with no height limit of their
+    // own, so anything tall in them grows straight off the bottom of the screen
+    // with nothing to scroll -- which is exactly what the plan card did on a
+    // 1080x2400 phone: five rows and a sentence pushed the note field to the
+    // edge and put Finish out of reach entirely, so the workout could not be
+    // ended at all. Found on hardware, at ordinary font scale.
+    //
+    // Null is "not answered", which is different from any number on the scale
+    // and is what an ordinary one-tap log records.
+    var effort by rememberSaveable { mutableStateOf<Int?>(null) }
+    var note by rememberSaveable { mutableStateOf("") }
+    // Off until asked for. The offer writes to a saved plan, so the default has
+    // to be the one where pressing Finish changes nothing but this workout.
+    var adjustPlan by rememberSaveable { mutableStateOf(false) }
+
     // Back asks the same question the button does.
     //
     // Without this, back left the workout running and returned to Plans, where
@@ -246,13 +265,29 @@ internal fun SessionScreen(
             when {
                 state.isResting -> RestPanel(state)
                 state.isPaused -> Headline(stringResource(R.string.session_paused))
-                state.isCompleting -> Headline(stringResource(R.string.session_completing))
+                state.isCompleting -> FinishQuestions(
+                    state = state,
+                    effort = effort,
+                    onEffort = {
+                        effort = it
+                        // A new answer describes a different plan, so the
+                        // previous acceptance is not an acceptance of this one.
+                        adjustPlan = false
+                    },
+                    note = note,
+                    onNote = { note = it },
+                    adjustPlan = adjustPlan,
+                    onAdjustPlan = { adjustPlan = it },
+                )
                 else -> TargetPanel(state)
             }
         }
 
         SessionControls(
             state = state,
+            effort = effort,
+            note = note,
+            adjustPlan = adjustPlan,
             onCompleteSet = onCompleteSet,
             onSkipSet = onSkipSet,
             onSkipRest = onSkipRest,
@@ -796,9 +831,71 @@ private fun EffortRow(selected: Int?, onSelect: (Int?) -> Unit) {
     )
 }
 
+/**
+ * §3's two optional questions and the offer that follows them.
+ *
+ * **Content rather than controls, and that is the whole point of it being its
+ * own composable.** These used to sit at the top of [SessionControls], which is
+ * pinned below a weighted column and has no height limit of its own — so the
+ * plan card's five rows and its sentence grew straight off the bottom of a
+ * 1080x2400 phone, taking the note field's lower half and the Finish button
+ * with them. Nothing scrolled to them, so the workout could not be ended at
+ * all. Found on hardware at ordinary font scale, and the 2x golden had been
+ * showing it for three days with the overflow written off as "the column
+ * scrolls, so it is reachable". It was not the column that had grown.
+ *
+ * **Neither question is on the logging path.** An ordinary set stays one tap,
+ * which is the constraint the review set and the reason these are not beside
+ * the reps and weight fields: a workout is eight or more sets, and a question
+ * asked eight times is a question that gets answered badly or not at all.
+ */
+@Composable
+private fun FinishQuestions(
+    state: SessionUiState,
+    effort: Int?,
+    onEffort: (Int?) -> Unit,
+    note: String,
+    onNote: (String) -> Unit,
+    adjustPlan: Boolean,
+    onAdjustPlan: (Boolean) -> Unit,
+) {
+    val confirm = rfHaptic()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Space.s2),
+    ) {
+        Headline(stringResource(R.string.session_completing))
+        Text(
+            text = stringResource(R.string.session_effort),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        EffortRow(selected = effort, onSelect = onEffort)
+        PlanAdjustmentCard(
+            state = state,
+            effort = effort,
+            accepted = adjustPlan,
+            onToggle = { confirm(); onAdjustPlan(it) },
+        )
+        OutlinedTextField(
+            value = note,
+            onValueChange = { onNote(it.take(MAX_NOTE_CHARS)) },
+            label = { Text(stringResource(R.string.session_note)) },
+            placeholder = { Text(stringResource(R.string.session_note_hint)) },
+            minLines = 2,
+            maxLines = 4,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
 @Composable
 private fun SessionControls(
     state: SessionUiState,
+    effort: Int?,
+    note: String,
+    adjustPlan: Boolean,
     onCompleteSet: (Int?, Double?, Long?) -> Unit,
     onSkipSet: () -> Unit,
     onSkipRest: () -> Unit,
@@ -811,13 +908,6 @@ private fun SessionControls(
     // performing one during composition would fire it again on every
     // recomposition -- of which this screen has one a second while resting.
     val confirm = rfHaptic()
-    // Null is "not answered", which is different from any number on the scale
-    // and is what an ordinary one-tap log records.
-    var effort by rememberSaveable { mutableStateOf<Int?>(null) }
-    var note by rememberSaveable { mutableStateOf("") }
-    // Off until asked for. The offer writes to a saved plan, so the default has
-    // to be the one where pressing Finish changes nothing but this workout.
-    var adjustPlan by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -825,46 +915,6 @@ private fun SessionControls(
             .padding(bottom = Space.s4),
         verticalArrangement = Arrangement.spacedBy(Space.s2),
     ) {
-        // §3's two optional questions, asked once, at the one moment the whole
-        // workout is in view and nothing is waiting on the user.
-        //
-        // **Neither is on the logging path.** An ordinary set stays one tap,
-        // which is the constraint the review set and the reason these are not
-        // beside the reps and weight fields: a workout is eight or more sets,
-        // and a question asked eight times is a question that gets answered
-        // badly or not at all.
-        if (state.isCompleting) {
-            Text(
-                text = stringResource(R.string.session_effort),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            EffortRow(
-                selected = effort,
-                onSelect = {
-                    effort = it
-                    // A new answer describes a different plan, so the previous
-                    // acceptance is not an acceptance of this one.
-                    adjustPlan = false
-                },
-            )
-            PlanAdjustmentCard(
-                state = state,
-                effort = effort,
-                accepted = adjustPlan,
-                onToggle = { confirm(); adjustPlan = it },
-            )
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it.take(MAX_NOTE_CHARS) },
-                label = { Text(stringResource(R.string.session_note)) },
-                placeholder = { Text(stringResource(R.string.session_note_hint)) },
-                minLines = 2,
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
         when {
             state.isResting -> PrimaryAction(
                 text = stringResource(R.string.session_skip_rest),

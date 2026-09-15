@@ -28,6 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -208,6 +209,44 @@ class PlanAdjustmentComposeTest {
 
         assertFalse("The card now says the opposite of what was accepted", adjusted!!)
         assertEquals(5, finishedEffort)
+    }
+
+    /**
+     * **The workout has to remain finishable while the card is on screen.**
+     *
+     * It was not. The questions sat inside `SessionControls`, which is pinned
+     * below a weighted column and has no height limit of its own, so the card's
+     * five rows and its sentence grew off the bottom of a 1080x2400 phone and
+     * took the Finish button with them. Nothing scrolled to it. The workout
+     * could not be ended at all.
+     *
+     * `assertIsDisplayed` is the assertion that catches it and `assertExists`
+     * is the one that does not: the button was always in the tree, it was
+     * simply nowhere a thumb could reach. The 2x golden had been showing the
+     * overflow for three days and it was written off as "the column scrolls, so
+     * it is reachable" -- true of the column, and the column was not what had
+     * grown.
+     */
+    @Test
+    fun `the finish button stays reachable with the card showing`() {
+        render()
+
+        compose.onNodeWithText(A_LITTLE_EASY).performClick()
+        compose.onNodeWithText(HARDER).performClick()
+
+        compose.onNodeWithText(FINISH).assertIsDisplayed()
+    }
+
+    /** And at 200% font scale, which is where §13 says it has to hold. */
+    @Test
+    fun `the finish button stays reachable at double font scale`() {
+        RuntimeEnvironment.setFontScale(2f)
+        render()
+
+        compose.onNodeWithText(A_LITTLE_EASY).performClick()
+        compose.onNodeWithText(HARDER).performClick()
+
+        compose.onNodeWithText(FINISH).assertIsDisplayed()
     }
 
     private fun render(plan: WorkoutTemplate? = template()) {
