@@ -8,7 +8,7 @@
  * match, and the symptom would be a store listing whose two artifacts disagree
  * about what release they belong to.
  */
-const val APP_VERSION_NAME = "1.0.1"
+const val APP_VERSION_NAME = "1.0.2"
 
 /**
  * The phone's version code.
@@ -21,7 +21,7 @@ const val APP_VERSION_NAME = "1.0.1"
  * Android refuses to install a lower code over a higher one, and it is the only
  * thing that distinguishes two builds carrying the same version name.
  */
-const val PHONE_VERSION_CODE = 2
+const val PHONE_VERSION_CODE = 3
 
 /** The watch's, kept a clear distance from the phone's. See above. */
 const val WEAR_VERSION_CODE = PHONE_VERSION_CODE + 1000
