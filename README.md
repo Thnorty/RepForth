@@ -15,35 +15,29 @@ English and Turkish are both first-class. Neither is a translation of the other.
 
 <table>
 <tr>
-<td width="25%"><img src="docs/screenshots/coach.png" alt="Coach asking how many days, what focus, and how long each session should be"></td>
-<td width="25%"><img src="docs/screenshots/rest.png" alt="A rest counting down on a ring, with the next set's prescription under it"></td>
-<td width="25%"><img src="docs/screenshots/progression.png" alt="The finish screen offering to make the plan harder next time"></td>
-<td width="25%"><img src="docs/screenshots/progress.png" alt="Progress: workouts, volume, streak and a history list"></td>
+<td width="33%"><img src="docs/screenshots/training.png" alt="A set in progress: the exercise animation, the rep target as one large number, and Log set"></td>
+<td width="33%"><img src="docs/screenshots/rest.png" alt="A rest counting down on a ring, with the next set's animation and prescription under it"></td>
+<td width="33%"><img src="docs/screenshots/progression.png" alt="The finish screen offering to make the plan harder next time, listing what changes"></td>
 </tr>
 <tr>
-<td align="center"><b>Ask for a week</b></td>
 <td align="center"><b>Train it</b></td>
+<td align="center"><b>Rest, and see what is next</b></td>
 <td align="center"><b>Move the plan</b></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/catalog.png" alt="The exercise catalog, searchable and filtered, 1324 exercises"></td>
+<td><img src="docs/screenshots/exercise.png" alt="An exercise with its animation, target muscles and numbered instructions"></td>
+<td><img src="docs/screenshots/progress.png" alt="Progress: workouts, volume, streak and a history list"></td>
+</tr>
+<tr>
+<td align="center"><b>1,324 exercises</b></td>
+<td align="center"><b>How to do it</b></td>
 <td align="center"><b>See it add up</b></td>
 </tr>
 </table>
 
-<table>
-<tr>
-<td><img src="docs/screenshots/watch-set.png" width="200" alt="The watch showing twelve reps, set 2 of 4, and a Log set button"></td>
-<td><img src="docs/screenshots/watch-rest.png" width="200" alt="The watch counting a rest down on an amber ring, naming what is next"></td>
-<td>The watch is a remote for the workout the phone is running. The rim carries
-progress through the workout during a set and the countdown during a rest, and
-the phone stays authoritative — so the wrist can be out of date, but never
-wrong.</td>
-</tr>
-</table>
-
-Rendered from the app's own screenshot tests rather than photographed off a
-phone, for two reasons that are not about effort: a device screenshot would
-publish a real person's training history, and the exercise imagery is not ours
-to redistribute (see [`NOTICE.md`](NOTICE.md)). Regenerate with
-`python tools/readme-shots.py` after re-recording the goldens.
+The exercise artwork in these is Gym visual's, shown under the terms in
+[`NOTICE.md`](NOTICE.md) and credited in the app wherever it is drawn.
 
 **The catalog.** 1,324 exercises packaged in the app, searchable by name and
 filtered by body part, equipment and muscle, with a tappable body map beside the

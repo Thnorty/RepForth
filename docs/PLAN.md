@@ -4714,6 +4714,64 @@ Today was dropped from the set. Trimmed it is 562px against the others' ~1080,
 because it is two cards and a lot of nothing - honest about the screen, and the
 weakest of five things to lead with.
 
+### 2026-09-15 - the card put Finish off the bottom of the screen
+
+**Found on hardware, at ordinary font scale, on a 1080x2400 Xiaomi.** With the
+plan card showing, the note field was cut in half by the bottom edge and the
+Finish button was off the screen entirely. Nothing scrolled to it. The workout
+could not be ended at all.
+
+The cause is one line of layout the feature never questioned. `SessionControls`
+is pinned below a weighted, scrolling content column and **has no height limit
+of its own**, so anything tall inside it grows past the bottom of the display
+rather than being constrained or scrolled. The two questions had always lived
+there, and had always been short enough.
+
+The fix is a distinction rather than a patch: the effort scale, the plan card
+and the note are *content*, and only the buttons are *controls*.
+`FinishQuestions` now renders inside the scrolling column, so it can be as tall
+as it likes, and the primary action stays pinned where a thumb expects it.
+
+**The 2x golden had been showing this for three days.** When it was recorded the
+overflow was written off in this file as "the column scrolls, so it is
+reachable" -- true of the column, and the column was not what had grown. A
+golden is only worth what the person looking at it is willing to believe about
+it.
+
+`the finish button stays reachable with the card showing` is the regression, and
+`assertIsDisplayed` is the assertion that catches it where `assertExists` would
+not: the button was always in the tree, it was simply nowhere a thumb could
+reach. There is a 200% font scale twin, because §13 is where this has to hold.
+
+### 2026-09-15 - the README shows the animations
+
+The gallery is device captures now rather than renders of the goldens, at the
+owner's request and knowing the trade.
+
+The goldens draw every exercise with `MediaRef.Unavailable`, which is the
+placeholder icon -- and that is most of what the session and catalog screens
+are, so a gallery built from them was selling a different app. What device
+captures cost is written into `tools/readme-shots.py` rather than left to be
+rediscovered: the artwork is Gym visual's and now sits in a public repository
+deliberately, the captures are of a real phone so the status bar is cropped, and
+nothing regenerates them when a screen changes.
+
+**Taken by driving the phone over adb**, which is worth recording for the next
+time. `uiautomator dump` piped through a text filter gives every node as
+"label|bounds", so a tap is a label lookup rather than a guess at coordinates --
+seven onboarding screens, the import and a whole workout went through without a
+single screenshot being looked at.
+
+**The system file picker does not accept synthetic taps reliably.** Four
+`input tap` attempts on the export file did nothing, at coordinates confirmed
+against both the node bounds and a screenshot. `input keyevent` navigation to
+the row and Enter selected it first time. Use the keyboard for DocumentsUI.
+
+The owner's data was exported, verified by parsing it, restored afterwards by
+re-importing, and the dialog confirmed the round trip: it offered to remove 56
+workouts and restore 55, the difference being the session taken for the
+screenshots.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
