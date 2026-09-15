@@ -4772,6 +4772,28 @@ re-importing, and the dialog confirmed the round trip: it offered to remove 56
 workouts and restore 55, the difference being the session taken for the
 screenshots.
 
+### 2026-09-15 - 1.0.2, because 1.0.1's download is broken
+
+1.0.1 was published this morning with APKs attached for the first time, and by
+the afternoon it had a screen that could not be got past: with the plan card
+showing, Finish was off the bottom of the display. See the entry above for the
+cause.
+
+**A release with a broken download is worse than a release with none**, which is
+the argument 1.0.0's notes made for attaching nothing at all. So 1.0.2 exists to
+replace the artefacts rather than to add anything: one fix, no new features, and
+version codes 3 and 1003.
+
+1.0.1's release body now opens with a line pointing at this one. Its assets were
+left in place rather than deleted -- removing a published file breaks anyone who
+linked it, and a warning they will read is better than a 404 they will not
+understand. The offer to delete them stands with the owner.
+
+**This is the first release the version-code rule has actually been exercised
+by**, and it held: 3 over 2 installs in place, and the same signature means it
+does so without an uninstall. The whole point of 1.0.1's key change was being
+able to ship a fix the same day without costing anyone their history.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine

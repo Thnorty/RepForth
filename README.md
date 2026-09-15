@@ -6,7 +6,7 @@ and goes nowhere else.
 
 English and Turkish are both first-class. Neither is a translation of the other.
 
-> **Status: 1.0.1.** Everything below works on hardware. Signed APKs are
+> **Status: 1.0.2.** Everything below works on hardware. Signed APKs are
 > attached to [the latest release](https://github.com/Thnorty/RepForth/releases/latest).
 > See [`docs/PLAN.md`](docs/PLAN.md) for how each piece got there and what is
 > still known to be rough.
