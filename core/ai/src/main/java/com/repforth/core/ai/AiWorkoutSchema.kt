@@ -1,12 +1,7 @@
 package com.repforth.core.ai
 
 import com.repforth.core.model.WorkoutLimits
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 /** The provider-visible name changes when the contract changes. */
 const val AI_WORKOUT_SCHEMA_NAME = "repforth_workout_v$AI_WORKOUT_SCHEMA_VERSION"
@@ -63,33 +58,6 @@ object AiWorkoutJsonSchema {
             "rest_seconds" to integerSchema(),
         ),
     )
-
-    private fun stringSchema() = buildJsonObject { put("type", "string") }
-
-    private fun integerSchema() = buildJsonObject { put("type", "integer") }
-
-    private fun arraySchema(items: JsonObject) = buildJsonObject {
-        put("type", "array")
-        put("items", items)
-    }
-
-    private fun objectSchema(properties: LinkedHashMap<String, JsonObject>) = buildJsonObject {
-        put("type", "object")
-        put("additionalProperties", false)
-        put("properties", JsonObject(properties))
-        put("required", JsonArray(properties.keys.map(::JsonPrimitive)))
-    }
-
-    /** A value that may be absent, as a type array — the form both providers accept. */
-    private fun nullable(type: String) = buildJsonObject {
-        put(
-            "type",
-            buildJsonArray {
-                add(JsonPrimitive(type))
-                add(JsonPrimitive("null"))
-            },
-        )
-    }
 }
 
 /**

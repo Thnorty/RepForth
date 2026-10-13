@@ -242,6 +242,22 @@ sealed interface AiWorkoutDecodeResult {
 }
 
 /**
+ * The decoder for every payload a model writes against one of this app's
+ * contracts.
+ *
+ * One instance rather than one per codec, because its settings are the contract:
+ * unknown keys refused, nothing coerced, no lenient parsing. A second copy is one
+ * edit away from a contract that quietly accepts what the other rejects.
+ */
+internal val strictContractJson = Json {
+    encodeDefaults = true
+    ignoreUnknownKeys = false
+    isLenient = false
+    coerceInputValues = false
+    allowSpecialFloatingPointValues = false
+}
+
+/**
  * The strict codec for the model-authored payload.
  *
  * Provider envelopes are intentionally forward-compatible and ignore unknown
@@ -249,17 +265,9 @@ sealed interface AiWorkoutDecodeResult {
  * unknown field is evidence that the model did not follow that contract.
  */
 object AiWorkoutCodec {
-    private val json = Json {
-        encodeDefaults = true
-        ignoreUnknownKeys = false
-        isLenient = false
-        coerceInputValues = false
-        allowSpecialFloatingPointValues = false
-    }
-
     fun decodeResponse(value: String): AiWorkoutDecodeResult = try {
         AiWorkoutDecodeResult.Ok(
-            json.decodeFromString<AiWorkoutResponse>(value).onTheGrid(),
+            strictContractJson.decodeFromString<AiWorkoutResponse>(value).onTheGrid(),
         )
     } catch (_: SerializationException) {
         AiWorkoutDecodeResult.Malformed

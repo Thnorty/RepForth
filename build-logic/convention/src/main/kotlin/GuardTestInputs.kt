@@ -48,6 +48,8 @@ internal fun Project.configureGuardTestInputs() {
         // this rule doing its job: corrupting the JSON left the task
         // UP-TO-DATE and the build green.
         "../../tools/gemini-schema.json",
+        // The same guard, for the plan-edit schema Coach sends when changing a plan.
+        "../../tools/gemini-plan-edit-schema.json",
         // WearPathsTest in core:wear-protocol reads both apps' manifests, to
         // check the pathPrefix each listener filters on still covers every path
         // the protocol declares. An intent filter cannot read a Kotlin constant,
