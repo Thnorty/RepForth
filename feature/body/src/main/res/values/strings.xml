@@ -97,4 +97,9 @@
         <item quantity="other">%1$d measurements</item>
     </plurals>
     <string name="check_ins_photos_only">Photos only</string>
+
+    <!-- Two photos of one pose, side by side. -->
+    <string name="compare_needs_two">Take this pose on two check-ins to compare them.</string>
+    <string name="compare_photo_description">%1$s photo, %2$s</string>
+    <string name="compare_close">Close</string>
 </resources>

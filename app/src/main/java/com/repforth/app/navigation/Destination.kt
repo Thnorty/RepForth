@@ -79,6 +79,9 @@ sealed interface Destination {
 
     /** Every check-in, newest first. */
     @Serializable data object BodyCheckIns : Destination
+
+    /** Two progress photos of one pose, side by side. */
+    @Serializable data object BodyCompare : Destination
 }
 
 /**
