@@ -22,6 +22,10 @@ class FakeAiProvider(
         ProviderFailure.FORMAT,
         "No workout fixture configured",
     ),
+    var nextEdit: ProviderPlanEditResult = ProviderPlanEditResult.Failed(
+        ProviderFailure.FORMAT,
+        "No edit fixture configured",
+    ),
 ) : AiProvider {
 
     /** Every config it was called with, so a test can assert what was sent. */
@@ -32,6 +36,12 @@ class FakeAiProvider(
 
     /** Null on the first attempt; populated only for the single repair attempt. */
     val workoutRetryFeedback = mutableListOf<AiWorkoutRetryFeedback?>()
+
+    /** Plan edits, kept apart from generation for the same reason. */
+    val editCalls = mutableListOf<Pair<ProviderConfig, AiPlanEditRequest>>()
+
+    /** Null on the first attempt; populated only for the single repair attempt. */
+    val editRetryFeedback = mutableListOf<AiWorkoutRetryFeedback?>()
 
     override suspend fun testConnection(config: ProviderConfig): ProviderTestResult {
         calls += config
@@ -46,5 +56,15 @@ class FakeAiProvider(
         workoutCalls += config to request
         workoutRetryFeedback += retryFeedback
         return nextWorkout
+    }
+
+    override suspend fun editPlan(
+        config: ProviderConfig,
+        request: AiPlanEditRequest,
+        retryFeedback: AiWorkoutRetryFeedback?,
+    ): ProviderPlanEditResult {
+        editCalls += config to request
+        editRetryFeedback += retryFeedback
+        return nextEdit
     }
 }

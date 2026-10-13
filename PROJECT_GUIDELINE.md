@@ -470,6 +470,56 @@ generated plan is well-formed, legal against the user's equipment, and not
 absurd. It does not check that the programming is good.** That judgement is the
 model's, and the user's.
 
+### Editing an existing plan
+
+Coach can also change a plan the person already has, either the plan as a
+whole ("add more chest work") or one exercise, from that exercise's own card
+("swap this for something similar"). The model does not get to send the plan
+back. It answers with a list of typed changes, at most 12. Each change is one
+of four operations:
+
+| Operation | What it does |
+|---|---|
+| `replace` | Puts a different catalog exercise, with its own prescription, at a position |
+| `add` | Inserts an exercise after a position, where 0 means the start of the day |
+| `remove` | Takes the exercise at a position out |
+| `adjust` | Changes sets, repetitions, duration, weight or rest in place. It cannot clear a weight, because a missing value means unchanged |
+
+**Positions are read against the plan as it was sent.** Days and positions
+are 1-based. Every change is judged against the same plan, so removing
+position 1 does not move what "position 2" refers to. That makes an answer
+mean the same thing in whatever order its changes are listed. The whole
+answer is checked before any of it is applied. An unknown position, a change
+with the wrong fields for its operation, two changes to the same exercise, or
+a day left empty is rejected as a whole.
+
+**The edit is judged only on what it introduced.** These checks apply to
+anything the edit added or changed:
+
+- every introduced exercise is in the catalog the person's equipment reaches
+- sets, repetitions, duration, weight and rest are inside `WorkoutLimits`
+- the target type (repetitions or duration) suits the exercise
+- a day the edit touched does not hold the same exercise twice, and does not
+  grow past the per-day maximum
+
+What the person built by hand and the edit left alone is never held against
+the edit. A week-level rule is not reapplied. Neither is the session length.
+The owner decided on 2026-10-13 that an edit may make a day run past it: when
+someone asks for more chest work, that is what they asked for. The review
+shows each changed day's estimated length instead, and marks a day that runs
+past the person's usual length.
+
+A rejected answer gets one repair attempt. The feedback is written by the app
+from the violations, never copied from the model's own text. Server errors are
+retried as generation retries them.
+
+**Nothing changes until the person applies it.** The proposal is shown as a
+list of rows, for example "Barbell Bench Press → Barbell Incline Bench Press".
+Apply writes it into the open draft. The draft is still unsaved, and saving
+it remains the person's step. If the person edits the plan while Coach is
+working, the proposal is marked stale and cannot be applied, because its
+positions describe a plan that no longer exists.
+
 ### Coach safety
 
 - Present the app as general fitness planning, not medical advice.
@@ -838,6 +888,7 @@ live only in the maintainer’s secured CI/release environment.
 - Secure key storage and provider settings.
 - Gemini adapter, generic OpenAI-compatible adapter, structured contracts, validation, and retryable failures.
 - AI coach and muscle-specific generation UI.
+- Coach edits an existing plan as well as generating one: typed changes, reviewed, then applied to the draft (§8, "Editing an existing plan").
 
 ### Phase 3 — Polished phone experience
 

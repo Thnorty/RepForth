@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Built; recovery corrections needed.** Engines, data, all six screens and manual builder exist; the 2026-09-07 audit reproduced three persistence-mapping failures. See Next |
-| 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI |
+| 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI. 2.6, Coach editing an existing plan, is done and verified on the Galaxy S23 |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | **Core remote demonstrated on hardware.** Snapshot delivery, commands, stale-command refusal, rest countdown and disconnected recovery were demonstrated on a Galaxy S23 and Galaxy Watch Ultra. The 2026-09-07 source audit found the §3/§11 thumbnail, watch timer alerts and ongoing activity still missing |
@@ -1002,6 +1002,65 @@ one clear dismissal action.
 Device verification remains for the redesigned loading card and timeout popup.
 Placeholder assembly, all 409 unit tests, and lint pass for the complete current
 worktree after the local generator removal.
+
+### 2.6 — Coach edits an existing plan — **done**
+
+People can now ask Coach to change a plan they already have. From any
+exercise card, "Swap for something similar" replaces just that exercise. From
+the plan, the person writes what they want, for example "add more chest
+work". The contract is in §8 ("Editing an existing plan"). The spec is
+`docs/superpowers/specs/2026-10-13-ai-plan-edit-design.md`.
+
+- **`core:ai`**
+  - `AiPlanEditContract`, with its own schema at
+    `tools/gemini-plan-edit-schema.json`, held by `SchemaDumpGuardTest`.
+  - `PlanEditApplier`, which reads positions against the plan as sent.
+  - `PlanEditValidator`, which judges only what the edit introduced.
+  - `editPlan` in both provider adapters. They now share their HTTP call with
+    generation.
+  - `AiPlanEditor`, which makes one call plus one repair attempt and returns a
+    typed outcome.
+- **`feature:builder`**
+  - A Coach button on every card, for one exercise, and "Ask Coach to change
+    this" below the cards, for the whole plan. Both appear on the workout and
+    on the week.
+  - A sheet that asks, works, and reviews. Its Apply and Discard stay pinned
+    below the rows, so Apply is reachable at 2× text.
+  - A staleness check that refuses to apply a proposal if the plan changed
+    while Coach was working.
+
+**One decision changed the spec while it was being built.** An edit may make
+a day run past the profile's session length. The owner decided this on
+2026-10-13: "I want it to be able to go over." The review shows each changed
+day's minutes, in the error colour when the day runs past.
+
+**Tests**
+- `core:ai` gained 79 tests in six new classes, plus a schema check in
+  `SchemaDumpGuardTest`.
+- `feature:builder` gained 31 unit tests, five `PlanEditComposeTest` cases,
+  five accessibility checks and eight goldens. The module has 146 tests in
+  all.
+- `PlanEditComposeTest` hosts the real `BuilderRoute`. Its card tests were
+  seen failing with the card's call cut, as AGENTS.md's "prove the fix is
+  reached" requires.
+- On the managed emulator, `coachEditSwapsAnExerciseOnlyAfterApply` drives the
+  card's button, the swap chip, Apply and Discard through the real Hilt graph,
+  against a fixture applied by the production applier. `:app` now has ten
+  instrumentation tests, and they passed 10 of 10 three runs in a row.
+
+**What the emulator runs found.** The keyboard test failed five runs out of
+five. The cause was a poisoned managed-device snapshot: SystemUI's ANR fired
+before the first test on every restore. It was not this change, and
+AGENTS.md records how to tell the difference.
+
+**Verified on hardware, 2026-10-13.** A release build from e7da8e3, signed
+`CN=RepForth`, was installed over 1.0.2 on the Galaxy S23. With the owner's
+configured provider, the owner ran both entry points and applied each one:
+a card's "Swap for something similar" on a workout, and "add more chest" on a
+week plan. Both answers passed the contract, reviewed sensibly, and changed the
+cards on Apply. The crash buffer was empty and the process was alive seven
+minutes later. The schema rule of shape only, with no bounds and no `enum`,
+was accepted by a live provider on its first call.
 
 ---
 

@@ -126,4 +126,47 @@
         <item quantity="other">%1$d minutes</item>
     </plurals>
     <string name="coach_save_defaults">Save as default</string>
+    <!-- Coach changing an existing plan: the request sheet, its review, and the card action. -->
+    <string name="plan_edit_open">Ask Coach to change this</string>
+    <string name="plan_edit_open_exercise">Ask Coach about %1$s</string>
+    <string name="plan_edit_title">Change this plan</string>
+    <string name="plan_edit_hint">What should change?</string>
+    <string name="plan_edit_about">About: %1$s</string>
+    <string name="plan_edit_about_day">About: %1$s · Day %2$d</string>
+    <string name="plan_edit_unpin">Remove %1$s from the request</string>
+    <string name="plan_edit_swap_similar">Swap for something similar</string>
+    <string name="plan_edit_swap_similar_instruction">Replace this exercise with a different one that works the same muscles.</string>
+    <string name="plan_edit_send">Ask Coach</string>
+    <string name="plan_edit_working_title">Coach is reworking your plan</string>
+    <string name="plan_edit_working_body">This usually takes a few seconds.</string>
+    <string name="plan_edit_cancel">Cancel</string>
+    <string name="plan_edit_cancel_confirm_title">Stop this request?</string>
+    <string name="plan_edit_cancel_confirm">Stop</string>
+    <string name="plan_edit_review_title">Coach suggests</string>
+    <string name="plan_edit_no_changes">Coach suggests no changes.</string>
+    <string name="plan_edit_apply">Apply</string>
+    <string name="plan_edit_discard">Discard</string>
+    <string name="plan_edit_close">Close</string>
+    <string name="plan_edit_stale">The plan changed while Coach was working, so these suggestions no longer fit it.</string>
+    <string name="plan_edit_ask_again">Ask again</string>
+    <string name="plan_edit_day_minutes">Day %1$d: about %2$d min</string>
+    <string name="plan_edit_day_minutes_over">Day %1$d: about %2$d min, past your usual %3$d</string>
+    <string name="plan_edit_workout_minutes">About %1$d min</string>
+    <string name="plan_edit_workout_minutes_over">About %1$d min, past your usual %2$d</string>
+    <string name="plan_edit_row_day">Day %1$d</string>
+    <string name="plan_edit_row_replaced">%1$s → %2$s</string>
+    <string name="plan_edit_row_added">Add %1$s</string>
+    <string name="plan_edit_row_added_after">Add %1$s after %2$s</string>
+    <string name="plan_edit_row_removed">Remove %1$s</string>
+    <string name="plan_edit_row_adjusted">Change %1$s</string>
+    <string name="plan_edit_sets_reps">%1$d × %2$d reps</string>
+    <string name="plan_edit_sets_seconds">%1$d × %2$d s</string>
+    <string name="plan_edit_weight">%1$s %2$s</string>
+    <string name="plan_edit_rest">%1$d s rest</string>
+    <!-- Failures in a plan edit, where generation's own wording would give advice that does not apply. -->
+    <string name="plan_edit_error_timeout_title">Coach timed out</string>
+    <string name="plan_edit_error_timeout_body">The provider sent no response within %1$d seconds. Your plan has not changed and your request is still here, so you can retry. A narrower request is a smaller job.</string>
+    <string name="plan_edit_error_failed_title">Coach could not change the plan</string>
+    <string name="plan_edit_error_failed_body">The provider answered, but its changes did not fit this plan, even after one correction. Your plan has not changed. Retrying often works, or try wording the request differently.</string>
+    <string name="plan_edit_error_no_candidates_body">Nothing in the catalog fits your available equipment, so Coach has nothing to suggest. You can add equipment in Settings.</string>
 </resources>

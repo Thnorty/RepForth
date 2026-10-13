@@ -24,9 +24,16 @@ import org.junit.Test
 class SchemaDumpGuardTest {
 
     @Test
-    fun `the dumped schema matches the schema the app sends`() {
-        val dump = File("../../tools/gemini-schema.json")
-        val live = AiWorkoutJsonSchema.value.toString()
+    fun `the dumped schema matches the schema the app sends`() =
+        assertDumpCurrent("gemini-schema.json", AiWorkoutJsonSchema.value.toString())
+
+    /** The plan-edit schema goes to the same endpoint, so it gets the same probe. */
+    @Test
+    fun `the dumped edit schema matches the schema the app sends`() =
+        assertDumpCurrent("gemini-plan-edit-schema.json", AiPlanEditJsonSchema.value.toString())
+
+    private fun assertDumpCurrent(name: String, live: String) {
+        val dump = File("../../tools/$name")
 
         if (System.getProperty("repforth.regenerate") == "true") {
             dump.parentFile?.mkdirs()
@@ -39,7 +46,7 @@ class SchemaDumpGuardTest {
             dump.exists(),
         )
         assertEquals(
-            "tools/gemini-schema.json is stale, so the Gemini probes are testing " +
+            "tools/$name is stale, so the Gemini probes are testing " +
                 "a schema this app no longer sends. Regenerate it — see this " +
                 "test's comment — and re-run tools/probe-gemini-fields.ps1.",
             live,

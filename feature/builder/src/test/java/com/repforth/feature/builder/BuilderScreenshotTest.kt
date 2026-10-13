@@ -99,6 +99,57 @@ class BuilderScreenshotTest {
     fun coach_turkish_large_text() =
         capture("coach-tr-2x", locale = TURKISH, fontScale = 2f) { CoachContent() }
 
+    /** Coach's edit sheet: the request as asked from a card, and the review. */
+    @Test
+    fun plan_edit_asking_english() = capture("plan-edit-asking-en") { PlanEditFor(BuilderFixtures.PLAN_EDIT_ASKING) }
+
+    @Test
+    fun plan_edit_asking_turkish() =
+        capture("plan-edit-asking-tr", locale = TURKISH) { PlanEditFor(BuilderFixtures.PLAN_EDIT_ASKING) }
+
+    @Test
+    fun plan_edit_asking_large_text() =
+        capture("plan-edit-asking-en-2x", fontScale = 2f) { PlanEditFor(BuilderFixtures.PLAN_EDIT_ASKING) }
+
+    @Test
+    fun plan_edit_asking_turkish_large_text() =
+        capture("plan-edit-asking-tr-2x", locale = TURKISH, fontScale = 2f) {
+            PlanEditFor(BuilderFixtures.PLAN_EDIT_ASKING)
+        }
+
+    @Test
+    fun plan_edit_review_english() =
+        capture("plan-edit-review-en") { PlanEditFor(BuilderFixtures.PLAN_EDIT_REVIEWING) }
+
+    @Test
+    fun plan_edit_review_turkish() =
+        capture("plan-edit-review-tr", locale = TURKISH) { PlanEditFor(BuilderFixtures.PLAN_EDIT_REVIEWING) }
+
+    @Test
+    fun plan_edit_review_large_text() =
+        capture("plan-edit-review-en-2x", fontScale = 2f) { PlanEditFor(BuilderFixtures.PLAN_EDIT_REVIEWING) }
+
+    @Test
+    fun plan_edit_review_turkish_large_text() =
+        capture("plan-edit-review-tr-2x", locale = TURKISH, fontScale = 2f) {
+            PlanEditFor(BuilderFixtures.PLAN_EDIT_REVIEWING)
+        }
+
+    @androidx.compose.runtime.Composable
+    private fun PlanEditFor(state: BuilderUiState) {
+        PlanEditContent(
+            state = state,
+            onTextChange = {},
+            onUnpin = {},
+            onSend = {},
+            onCancel = {},
+            onApply = {},
+            onAskAgain = {},
+            onDismiss = {},
+            onOpenProviderSettings = {},
+        )
+    }
+
     private fun capture(
         name: String,
         locale: String? = null,
@@ -147,6 +198,7 @@ class BuilderScreenshotTest {
             onWeightChange = { _, _ -> },
             onTimedChange = { _, _ -> },
             onSave = {},
+            onAskCoach = {},
         )
     }
 
@@ -188,6 +240,7 @@ class BuilderScreenshotTest {
             onTimedChangeInDay = { _, _, _ -> },
             onSaveWeek = {},
             onCoach = {},
+            onAskCoach = {},
         )
     }
 }

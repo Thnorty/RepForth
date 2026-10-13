@@ -126,4 +126,47 @@
         <item quantity="other">%1$d dakika</item>
     </plurals>
     <string name="coach_save_defaults">Varsayılan yap</string>
+    <!-- Koç ile mevcut planı değiştirme: istek sayfası, öneri listesi ve kart eylemi. -->
+    <string name="plan_edit_open">Koç\'tan değişiklik iste</string>
+    <string name="plan_edit_open_exercise">%1$s için Koç\'a sor</string>
+    <string name="plan_edit_title">Planı değiştir</string>
+    <string name="plan_edit_hint">Neyi değiştirelim?</string>
+    <string name="plan_edit_about">Konu: %1$s</string>
+    <string name="plan_edit_about_day">Konu: %1$s · %2$d. gün</string>
+    <string name="plan_edit_unpin">%1$s egzersizini istekten çıkar</string>
+    <string name="plan_edit_swap_similar">Benzeriyle değiştir</string>
+    <string name="plan_edit_swap_similar_instruction">Bu egzersizi aynı kasları çalıştıran başka bir egzersizle değiştir.</string>
+    <string name="plan_edit_send">Koç\'a sor</string>
+    <string name="plan_edit_working_title">Koç planını yeniden düzenliyor</string>
+    <string name="plan_edit_working_body">Bu genellikle birkaç saniye sürer.</string>
+    <string name="plan_edit_cancel">Vazgeç</string>
+    <string name="plan_edit_cancel_confirm_title">Bu istek durdurulsun mu?</string>
+    <string name="plan_edit_cancel_confirm">Durdur</string>
+    <string name="plan_edit_review_title">Koç\'un önerisi</string>
+    <string name="plan_edit_no_changes">Koç bir değişiklik önermiyor.</string>
+    <string name="plan_edit_apply">Uygula</string>
+    <string name="plan_edit_discard">Vazgeç</string>
+    <string name="plan_edit_close">Kapat</string>
+    <string name="plan_edit_stale">Koç çalışırken plan değişti; bu öneriler artık plana uymuyor.</string>
+    <string name="plan_edit_ask_again">Yeniden sor</string>
+    <string name="plan_edit_day_minutes">%1$d. gün: yaklaşık %2$d dk</string>
+    <string name="plan_edit_day_minutes_over">%1$d. gün: yaklaşık %2$d dk, alıştığın %3$d dakikayı aşıyor</string>
+    <string name="plan_edit_workout_minutes">Yaklaşık %1$d dk</string>
+    <string name="plan_edit_workout_minutes_over">Yaklaşık %1$d dk, alıştığın %2$d dakikayı aşıyor</string>
+    <string name="plan_edit_row_day">%1$d. gün</string>
+    <string name="plan_edit_row_replaced">%1$s → %2$s</string>
+    <string name="plan_edit_row_added">%1$s ekle</string>
+    <string name="plan_edit_row_added_after">%2$s sonrasına %1$s ekle</string>
+    <string name="plan_edit_row_removed">%1$s çıkar</string>
+    <string name="plan_edit_row_adjusted">%1$s güncelle</string>
+    <string name="plan_edit_sets_reps">%1$d × %2$d tekrar</string>
+    <string name="plan_edit_sets_seconds">%1$d × %2$d sn</string>
+    <string name="plan_edit_weight">%1$s %2$s</string>
+    <string name="plan_edit_rest">%1$d sn dinlenme</string>
+    <!-- Failures in a plan edit, where generation's own wording would give advice that does not apply. -->
+    <string name="plan_edit_error_timeout_title">Koç zaman aşımına uğradı</string>
+    <string name="plan_edit_error_timeout_body">Sağlayıcı %1$d saniye içinde yanıt vermedi. Planın değişmedi ve isteğin hâlâ burada, tekrar deneyebilirsin. Daha dar bir istek daha küçük bir iş olur.</string>
+    <string name="plan_edit_error_failed_title">Koç planı değiştiremedi</string>
+    <string name="plan_edit_error_failed_body">Sağlayıcı yanıt verdi, ama önerdiği değişiklikler bir düzeltmeden sonra bile bu plana uymadı. Planın değişmedi. Tekrar denemek çoğu zaman işe yarar; isteği farklı ifade etmeyi de deneyebilirsin.</string>
+    <string name="plan_edit_error_no_candidates_body">Katalogda mevcut ekipmanına uyan bir egzersiz yok, bu yüzden Koç\'un önerebileceği bir şey yok. Ayarlar\'dan ekipman ekleyebilirsin.</string>
 </resources>

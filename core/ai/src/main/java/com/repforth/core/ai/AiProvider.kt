@@ -90,6 +90,29 @@ sealed interface ProviderGenerationResult {
     ) : ProviderGenerationResult
 }
 
+/** A plan edit from the provider, decoded by the strict edit codec, or why not. */
+sealed interface ProviderPlanEditResult {
+    data class Ok(val response: AiPlanEditResponse) : ProviderPlanEditResult
+
+    /** [detail] as in [ProviderGenerationResult.Failed]: verbatim, bounded, quoted. */
+    data class Failed(
+        val failure: ProviderFailure,
+        val detail: String? = null,
+    ) : ProviderPlanEditResult
+}
+
+/**
+ * The model's structured JSON text, before any contract has decoded it.
+ *
+ * Internal to the adapters: it is what lets one transport path serve every
+ * contract, so a fix to envelopes, status mapping or deadlines lands once.
+ */
+internal sealed interface StructuredReply {
+    data class Text(val value: String) : StructuredReply
+
+    data class Failed(val failure: ProviderFailure, val detail: String?) : StructuredReply
+}
+
 /**
  * One AI provider, as §8 defines it.
  *
@@ -121,4 +144,11 @@ interface AiProvider {
         request: AiWorkoutRequest,
         retryFeedback: AiWorkoutRetryFeedback? = null,
     ): ProviderGenerationResult
+
+    /** Requests a list of changes to an existing plan; applying and judging them is the caller's. */
+    suspend fun editPlan(
+        config: ProviderConfig,
+        request: AiPlanEditRequest,
+        retryFeedback: AiWorkoutRetryFeedback? = null,
+    ): ProviderPlanEditResult
 }

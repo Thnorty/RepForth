@@ -9,6 +9,7 @@ import com.repforth.core.ai.http.toProviderFailure
 import com.repforth.core.model.ProviderConfig
 import com.repforth.core.model.ProviderId
 import com.repforth.core.model.ProviderSettings
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -101,19 +102,79 @@ internal class GeminiProvider(
         config: ProviderConfig,
         request: AiWorkoutRequest,
         retryFeedback: AiWorkoutRetryFeedback?,
-    ): ProviderGenerationResult {
+    ): ProviderGenerationResult = when (
+        val reply = structuredCall(
+            config = config,
+            prompt = request.toGenerationPrompt(retryFeedback),
+            schema = AiWorkoutJsonSchema.value,
+            timeoutSeconds = generationTimeoutSeconds(
+                config.settings.requestTimeoutSeconds,
+                request.days,
+            ),
+        )
+    ) {
+        is StructuredReply.Failed -> ProviderGenerationResult.Failed(reply.failure, reply.detail)
+        is StructuredReply.Text -> when (val decoded = AiWorkoutCodec.decodeResponse(reply.value)) {
+            is AiWorkoutDecodeResult.Ok -> ProviderGenerationResult.Ok(decoded.response)
+            AiWorkoutDecodeResult.Malformed -> ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "Gemini returned a malformed structured workout",
+            )
+        }
+    }
+
+    /**
+     * A plan edit, on the configured deadline as it stands: the answer is a
+     * short list of changes however many days the plan has, so there is nothing
+     * to scale it by.
+     */
+    override suspend fun editPlan(
+        config: ProviderConfig,
+        request: AiPlanEditRequest,
+        retryFeedback: AiWorkoutRetryFeedback?,
+    ): ProviderPlanEditResult = when (
+        val reply = structuredCall(
+            config = config,
+            prompt = request.toPlanEditPrompt(retryFeedback),
+            schema = AiPlanEditJsonSchema.value,
+            timeoutSeconds = config.settings.requestTimeoutSeconds,
+        )
+    ) {
+        is StructuredReply.Failed -> ProviderPlanEditResult.Failed(reply.failure, reply.detail)
+        is StructuredReply.Text -> when (val decoded = AiPlanEditCodec.decodeResponse(reply.value)) {
+            is AiPlanEditDecodeResult.Ok -> ProviderPlanEditResult.Ok(decoded.response)
+            AiPlanEditDecodeResult.Malformed -> ProviderPlanEditResult.Failed(
+                ProviderFailure.FORMAT,
+                "Gemini returned a malformed plan edit",
+            )
+        }
+    }
+
+    /**
+     * One structured-output call: the prompt and schema out, the model's JSON
+     * text back, every transport and envelope failure typed on the way.
+     *
+     * Each contract decodes the text with its own strict codec afterwards; this
+     * part is the same for all of them, and is written once.
+     */
+    private suspend fun structuredCall(
+        config: ProviderConfig,
+        prompt: String,
+        schema: JsonObject,
+        timeoutSeconds: Int,
+    ): StructuredReply {
         val wireRequest = runCatching {
             val body = GeminiGenerateRequest(
                 contents = listOf(
                     GeminiContent(
                         parts = listOf(
-                            GeminiPart(text = request.toGenerationPrompt(retryFeedback)),
+                            GeminiPart(text = prompt),
                         ),
                     ),
                 ),
                 generationConfig = GeminiGenerationConfig(
                     responseMimeType = "application/json",
-                    responseJsonSchema = AiWorkoutJsonSchema.value,
+                    responseJsonSchema = schema,
                 ),
             )
             Request.Builder()
@@ -127,7 +188,7 @@ internal class GeminiProvider(
                 .post(json.encodeToString(body).toRequestBody(PROVIDER_JSON_MEDIA_TYPE))
                 .build()
         }.getOrElse {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
                 "Invalid provider request configuration",
             )
@@ -135,20 +196,17 @@ internal class GeminiProvider(
 
         val reply = http.send(
             request = wireRequest,
-            timeoutSeconds = generationTimeoutSeconds(
-                config.settings.requestTimeoutSeconds,
-                request.days,
-            ),
+            timeoutSeconds = timeoutSeconds,
         ).getOrElse { cause ->
             // No detail: nothing came back. A timeout or a DNS failure has no
             // server response to show, and putting the exception's word
             // ("timeout") under a heading that says "Server response" would be
             // the app inventing a reply the server never sent.
-            return ProviderGenerationResult.Failed(cause.toProviderFailure(), null)
+            return StructuredReply.Failed(cause.toProviderFailure(), null)
         }
 
         if (reply.code !in 200..299) {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 failureForGeneration(reply.code, reply.body),
                 providerDetail(reply.body),
             )
@@ -157,7 +215,7 @@ internal class GeminiProvider(
         val envelope = runCatching {
             json.decodeFromString<GeminiGenerateResponse>(reply.body)
         }.getOrElse {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
                 "Invalid Gemini response envelope",
             )
@@ -167,23 +225,13 @@ internal class GeminiProvider(
             ?.content
             ?.parts
             ?.firstNotNullOfOrNull(GeminiPart::text)
-            ?: return ProviderGenerationResult.Failed(
+            ?: return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
-                "Gemini response contained no structured workout",
+                "Gemini response contained no structured answer",
             )
-
-        return when (val decoded = AiWorkoutCodec.decodeResponse(structured)) {
-            is AiWorkoutDecodeResult.Ok -> {
-                ProviderGenerationResult.Ok(decoded.response)
-            }
-            AiWorkoutDecodeResult.Malformed -> {
-                ProviderGenerationResult.Failed(
-                    ProviderFailure.FORMAT,
-                    "Gemini returned a malformed structured workout",
-                )
-            }
-        }
+        return StructuredReply.Text(structured)
     }
+
 
     /**
      * Gemini answers an invalid key with 400, not 401.

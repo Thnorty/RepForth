@@ -64,6 +64,7 @@ import com.repforth.core.media.ui.ExerciseDetailSheet
 import com.repforth.core.media.ui.ExerciseMedia
 import com.repforth.core.media.ui.ExerciseMediaSize
 import com.repforth.core.model.BodyRegion
+import com.repforth.core.ai.PlanRef
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.Language
 import com.repforth.core.model.WorkoutLimits
@@ -169,6 +170,7 @@ fun BuilderRoute(
             onTimedChangeInDay = { day, i, v -> viewModel.onTimedChange(i, v, day) },
             onSaveWeek = { viewModel.onSaveWeek(defaultWeekName, dayTitles) },
             onCoach = viewModel::onCoachOpen,
+            onAskCoach = viewModel::onPlanEditOpen,
             modifier = modifier,
         )
 
@@ -187,6 +189,7 @@ fun BuilderRoute(
             onWeightChange = viewModel::onWeightChange,
             onTimedChange = viewModel::onTimedChange,
             onSave = viewModel::onSave,
+            onAskCoach = viewModel::onPlanEditOpen,
             modifier = modifier,
         )
     }
@@ -217,6 +220,19 @@ fun BuilderRoute(
     // belongs to the builder, not to one of its two layouts. No bottom action —
     // the exercise is already in the plan, so "Add" would be the one thing it
     // must not offer.
+    PlanEditSheet(
+        state = state,
+        onTextChange = viewModel::onPlanEditTextChange,
+        onUnpin = viewModel::onPlanEditUnpin,
+        onSend = { viewModel.onPlanEditSend(it, language) },
+        onCancel = viewModel::onPlanEditCancel,
+        onApply = viewModel::onPlanEditApply,
+        onAskAgain = viewModel::onPlanEditAskAgain,
+        onErrorDismissed = viewModel::onPlanEditErrorDismissed,
+        onDismiss = viewModel::onPlanEditDismiss,
+        onOpenProviderSettings = onOpenProviderSettings,
+    )
+
     state.detailExercise?.let { detail ->
         ExerciseDetailSheet(
             exercise = detail,
@@ -247,6 +263,7 @@ internal fun BuilderScreen(
     onWeightChange: (Int, Double?) -> Unit,
     onTimedChange: (Int, Boolean) -> Unit,
     onSave: () -> Unit,
+    onAskCoach: (PlanRef?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -303,7 +320,14 @@ internal fun BuilderScreen(
                     onRestChange = { onRestChange(index, it) },
                     onWeightChange = { onWeightChange(index, it) },
                     onTimedChange = { onTimedChange(index, it) },
+                    onAskCoach = { onAskCoach(PlanRef(day = 1, position = index + 1)) },
                 )
+            }
+
+            if (state.exercises.isNotEmpty()) {
+                item(key = "plan_edit") {
+                    AskCoachToChangeButton(onClick = { onAskCoach(null) })
+                }
             }
 
             // Coach first, and filled. It was an OutlinedButton below "Add
@@ -435,6 +459,8 @@ internal fun ExerciseCard(
     onRestChange: (Int) -> Unit,
     onWeightChange: (Double?) -> Unit,
     onTimedChange: (Boolean) -> Unit,
+    /** Null where the card is shown without Coach, such as a preview. */
+    onAskCoach: (() -> Unit)? = null,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -527,20 +553,34 @@ internal fun ExerciseCard(
                 }
             }
 
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = !draft.timed,
-                    onClick = { onTimedChange(false) },
-                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                ) {
-                    Text(stringResource(R.string.builder_mode_reps))
+            // Coach's button sits on the mode row rather than with move and
+            // remove: a fourth 48dp button there would take the width the name
+            // needs, and this row has room to spare.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                    SegmentedButton(
+                        selected = !draft.timed,
+                        onClick = { onTimedChange(false) },
+                        shape = SegmentedButtonDefaults.itemShape(0, 2),
+                    ) {
+                        Text(stringResource(R.string.builder_mode_reps))
+                    }
+                    SegmentedButton(
+                        selected = draft.timed,
+                        onClick = { onTimedChange(true) },
+                        shape = SegmentedButtonDefaults.itemShape(1, 2),
+                    ) {
+                        Text(stringResource(R.string.builder_mode_duration))
+                    }
                 }
-                SegmentedButton(
-                    selected = draft.timed,
-                    onClick = { onTimedChange(true) },
-                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                ) {
-                    Text(stringResource(R.string.builder_mode_duration))
+                onAskCoach?.let { ask ->
+                    IconButton(onClick = ask, modifier = Modifier.size(Target.min)) {
+                        Icon(
+                            painter = RfIcons.Generate,
+                            contentDescription = stringResource(R.string.plan_edit_open_exercise, draft.name),
+                            modifier = Modifier.size(Space.s5),
+                        )
+                    }
                 }
             }
 
@@ -696,3 +736,27 @@ private fun DecimalField(
 }
 
 private const val MAX_DIGITS = 6
+
+/**
+ * The plan-wide way in to Coach's edit, on both the workout and the week.
+ *
+ * Outlined and below the cards, under Coach's own filled button's sparkle: it
+ * acts on the plan already on screen, where "Build one for me" replaces it.
+ */
+@Composable
+internal fun AskCoachToChangeButton(onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Target.min),
+    ) {
+        Icon(
+            painter = RfIcons.Generate,
+            contentDescription = null,
+            modifier = Modifier.size(Space.s5),
+        )
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Text(stringResource(R.string.plan_edit_open))
+    }
+}

@@ -1,8 +1,10 @@
 package com.repforth.feature.builder
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.repforth.core.designsystem.theme.LocalReducedMotion
 import com.repforth.core.designsystem.theme.RepForthPreviewHost
 import com.repforth.core.testing.ENGLISH
 import com.repforth.core.testing.SCREENSHOT_DEVICE
@@ -54,6 +56,43 @@ class BuilderAccessibilityTest {
     @Test
     fun week_review_turkish() = check(TURKISH, "Week review") { WeekReviewContent() }
 
+    @Test
+    fun plan_edit_asking_english() = check(ENGLISH, "Plan edit, asking") { PlanEditFor(BuilderFixtures.PLAN_EDIT_ASKING) }
+
+    @Test
+    fun plan_edit_asking_turkish() = check(TURKISH, "Plan edit, asking") { PlanEditFor(BuilderFixtures.PLAN_EDIT_ASKING) }
+
+    /** Reduced motion, so the ring is the static icon: an endless one never lets the walk go idle. */
+    @Test
+    fun plan_edit_working_english() = check(ENGLISH, "Plan edit, working") {
+        CompositionLocalProvider(LocalReducedMotion provides true) {
+            PlanEditFor(BuilderFixtures.PLAN_EDIT_WORKING)
+        }
+    }
+
+    @Test
+    fun plan_edit_reviewing_english() =
+        check(ENGLISH, "Plan edit, reviewing") { PlanEditFor(BuilderFixtures.PLAN_EDIT_REVIEWING) }
+
+    @Test
+    fun plan_edit_reviewing_turkish() =
+        check(TURKISH, "Plan edit, reviewing") { PlanEditFor(BuilderFixtures.PLAN_EDIT_REVIEWING) }
+
+    @Composable
+    private fun PlanEditFor(state: BuilderUiState) {
+        PlanEditContent(
+            state = state,
+            onTextChange = {},
+            onUnpin = {},
+            onSend = {},
+            onCancel = {},
+            onApply = {},
+            onAskAgain = {},
+            onDismiss = {},
+            onOpenProviderSettings = {},
+        )
+    }
+
     private fun check(locale: String, screen: String, content: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers("+$locale")
         RuntimeEnvironment.setFontScale(1f)
@@ -91,6 +130,7 @@ class BuilderAccessibilityTest {
             onWeightChange = { _, _ -> },
             onTimedChange = { _, _ -> },
             onSave = {},
+            onAskCoach = {},
         )
     }
 
@@ -132,6 +172,7 @@ class BuilderAccessibilityTest {
             onTimedChangeInDay = { _, _, _ -> },
             onSaveWeek = {},
             onCoach = {},
+            onAskCoach = {},
         )
     }
 }
