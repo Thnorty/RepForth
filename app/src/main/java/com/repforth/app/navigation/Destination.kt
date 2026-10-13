@@ -73,6 +73,12 @@ sealed interface Destination {
 
     /** A body check-in: [checkInId] to edit one, or null for today's (new or existing). */
     @Serializable data class BodyCheckIn(val checkInId: String? = null) : Destination
+
+    /** One measurement's chart and entries. [typeId] is a built-in's id or a custom type's. */
+    @Serializable data class BodyMeasurement(val typeId: String) : Destination
+
+    /** Every check-in, newest first. */
+    @Serializable data object BodyCheckIns : Destination
 }
 
 /**

@@ -54,6 +54,9 @@ object Layout {
      * outside it, so they follow the font scale and this need not.
      */
     val trendChartHeight = 160.dp
+
+    /** A progress photo as a list row's leading thumbnail; the height follows its 3:4 frame. */
+    val photoThumbSmall = 48.dp
 }
 
 /**

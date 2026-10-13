@@ -25,7 +25,9 @@ import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
 import com.repforth.feature.body.BodyRoute
+import com.repforth.feature.body.CheckInListRoute
 import com.repforth.feature.body.CheckInRoute
+import com.repforth.feature.body.MeasurementDetailRoute
 import com.repforth.feature.body.ProgressTabs
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
@@ -148,9 +150,9 @@ fun RepForthNavHost(
                 body = {
                     BodyRoute(
                         onCheckIn = { navController.navigate(Destination.BodyCheckIn()) },
-                        onOpenMeasurement = {},
+                        onOpenMeasurement = { navController.navigate(Destination.BodyMeasurement(it)) },
                         onCompare = {},
-                        onAllCheckIns = {},
+                        onAllCheckIns = { navController.navigate(Destination.BodyCheckIns) },
                         onChooseTracked = {},
                     )
                 },
@@ -158,6 +160,12 @@ fun RepForthNavHost(
         }
         composable<Destination.BodyCheckIn> {
             CheckInRoute(onDone = { navController.popBackStack() })
+        }
+        composable<Destination.BodyMeasurement> {
+            MeasurementDetailRoute(onOpenCheckIn = { navController.navigate(Destination.BodyCheckIn(it)) })
+        }
+        composable<Destination.BodyCheckIns> {
+            CheckInListRoute(onOpenCheckIn = { navController.navigate(Destination.BodyCheckIn(it)) })
         }
         composable<Destination.Settings> {
             SettingsRoute(

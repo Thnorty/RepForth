@@ -18,6 +18,7 @@ import com.repforth.core.model.MeasurementKind
 import com.repforth.core.model.MeasurementType
 import com.repforth.core.model.Pose
 import com.repforth.core.model.UnitSystem
+import java.util.Locale
 
 /**
  * A typed value, in the unit the user reads, back in the unit it is stored in.
@@ -37,14 +38,17 @@ fun readMeasurement(text: String, kind: MeasurementKind, units: UnitSystem): Dou
 
 /** A stored value as the number the user reads, without its unit. */
 @Composable
-fun formatMeasurementNumber(value: Double, kind: MeasurementKind): String {
-    val units = LocalUnitSystem.current
+fun formatMeasurementNumber(value: Double, kind: MeasurementKind): String =
+    measurementNumber(value, kind, LocalUnitSystem.current, LocalConfiguration.current.locales[0])
+
+/** [formatMeasurementNumber] for a caller outside composition, such as a chart's axis. */
+fun measurementNumber(value: Double, kind: MeasurementKind, units: UnitSystem, locale: Locale): String {
     val shown = when (kind) {
         MeasurementKind.MASS -> units.fromKilograms(value)
         MeasurementKind.LENGTH -> units.fromCentimetres(value)
         MeasurementKind.PERCENT, MeasurementKind.PLAIN -> value
     }
-    return formatDecimal(shown, LocalConfiguration.current.locales[0])
+    return formatDecimal(shown, locale)
 }
 
 /** The unit beside a figure: kg or lb, cm or in, %, or the user's own label. */

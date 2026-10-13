@@ -62,6 +62,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import java.util.Locale
 
 /** Whether a camera app can take a photo for us at all. */
 @Composable
@@ -270,7 +271,11 @@ private fun DateRow(date: LocalDate, onClick: () -> Unit) {
 /** A date the way the reader's language writes one. */
 @Composable
 internal fun formatCheckInDate(date: LocalDate): String =
-    date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(LocalConfiguration.current.locales[0]))
+    date.format(checkInDateFormat(LocalConfiguration.current.locales[0]))
+
+/** The formatter behind [formatCheckInDate], for a caller outside composition. */
+internal fun checkInDateFormat(locale: Locale): DateTimeFormatter =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
 
 /**
  * One measurement. The figure is shown in the reader's units; until it is

@@ -68,4 +68,24 @@
     <string name="check_in_problem_date_taken">O tarihte zaten bir kayıt var.</string>
     <string name="check_in_photo_unreadable">O fotoğraf okunamadı.</string>
     <string name="check_in_photo_write_failed">Fotoğraf kaydedilemedi. Telefonda yer kalmamış olabilir.</string>
+
+    <string name="measurement_range_three">3 ay</string>
+    <string name="measurement_range_six">6 ay</string>
+    <string name="measurement_range_year">1 yıl</string>
+    <string name="measurement_range_all">Tümü</string>
+    <string name="measurement_period_three">son 3 ay</string>
+    <string name="measurement_period_six">son 6 ay</string>
+    <string name="measurement_period_year">son bir yıl</string>
+    <string name="measurement_period_all">tüm zamanlar</string>
+    <string name="measurement_chart_description">%1$s, %4$s içinde %2$s değerinden %3$s değerine</string>
+    <string name="measurement_chart_single">%1$s, %3$s tarihinde %2$s</string>
+    <string name="measurement_entries">Kayıtlar</string>
+    <string name="measurement_no_entries">Bu dönemde kayıt yok.</string>
+
+    <string name="check_ins_empty">Henüz kayıt yok.</string>
+    <plurals name="check_ins_measurements">
+        <item quantity="one">%1$d ölçü</item>
+        <item quantity="other">%1$d ölçü</item>
+    </plurals>
+    <string name="check_ins_photos_only">Yalnızca fotoğraf</string>
 </resources>
