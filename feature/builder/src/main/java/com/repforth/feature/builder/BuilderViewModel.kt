@@ -3,11 +3,16 @@ package com.repforth.feature.builder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.repforth.core.ai.AiGenerationFailureReason
+import com.repforth.core.ai.AiPlanEditOutcome
+import com.repforth.core.ai.AiPlanEditService
 import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutResponse
 import com.repforth.core.ai.ProviderFailure
+import com.repforth.core.ai.PlanEditLimits
+import com.repforth.core.ai.PlanEditRequest
+import com.repforth.core.ai.PlanRef
 import com.repforth.core.ai.ProviderAvailability
 import com.repforth.core.datastore.UserPreferencesDataSource
 import com.repforth.core.exercisedata.ExerciseRepository
@@ -187,7 +192,7 @@ data class ExerciseContent(
     val timed: Boolean,
 )
 
-private fun DraftExercise.contentKey() = ExerciseContent(
+internal fun DraftExercise.contentKey() = ExerciseContent(
     exerciseId = exerciseId,
     sets = sets,
     reps = reps,
@@ -350,7 +355,21 @@ data class BuilderUiState(
     /** From preferences, for the detail sheet's animation and instructions. */
     val reducedMotion: Boolean = false,
     val language: Language? = null,
+    /** Coach changing the plan in place; see [PlanEditState]. */
+    val planEdit: PlanEditState = PlanEditState.Closed,
 ) {
+    /**
+     * Whether the exercises have changed by hand since Coach was asked, so its
+     * answer no longer fits them. Names and day titles do not count; see
+     * [planEditBasis].
+     */
+    val planEditIsStale: Boolean
+        get() = when (val edit = planEdit) {
+            is PlanEditState.Working -> edit.basis != planEditBasis
+            is PlanEditState.Reviewing -> edit.basis != planEditBasis
+            else -> false
+        }
+
     /**
      * Whether Coach is set to something the profile does not say.
      *
@@ -451,6 +470,7 @@ class BuilderViewModel @Inject constructor(
     private val exercises: ExerciseRepository,
     private val profiles: ProfileRepository,
     private val generator: AiWorkoutGenerationService,
+    private val planEditor: AiPlanEditService,
     private val providers: ProviderAvailability,
     private val weeks: WeekRepository,
     preferences: UserPreferencesDataSource,
@@ -805,6 +825,138 @@ class BuilderViewModel @Inject constructor(
         }
     }
 
+    private var planEditJob: Job? = null
+
+    /**
+     * Opens the request sheet, about one exercise when [pin] says which.
+     *
+     * From the plan-wide action [pin] is null; from an exercise card it is that
+     * card's place in the plan as it stands now.
+     */
+    fun onPlanEditOpen(pin: PlanRef?) = update {
+        copy(planEdit = PlanEditState.Asking(pin = pin?.let(::pinnedAt), text = ""))
+    }
+
+    fun onPlanEditTextChange(text: String) = update {
+        val asking = planEdit as? PlanEditState.Asking ?: return@update this
+        copy(planEdit = asking.copy(text = text.take(PlanEditLimits.maxInstructionChars)))
+    }
+
+    fun onPlanEditUnpin() = update {
+        val asking = planEdit as? PlanEditState.Asking ?: return@update this
+        copy(planEdit = asking.copy(pin = null))
+    }
+
+    /**
+     * Asks Coach for changes. [instruction] is what the screen sends: the typed
+     * text, or the suggestion chip's fixed sentence in the active language --
+     * resolved there, because this class has no resources.
+     */
+    fun onPlanEditSend(instruction: String, locale: Language) {
+        val pin = when (val edit = _uiState.value.planEdit) {
+            is PlanEditState.Asking -> edit.pin
+            is PlanEditState.Failed -> edit.pin
+            else -> return
+        }
+        val trimmed = instruction.trim().take(PlanEditLimits.maxInstructionChars)
+        if (trimmed.isEmpty()) return
+        requestPlanEdit(pin, trimmed, locale)
+    }
+
+    fun onPlanEditRetry(locale: Language) {
+        val failed = _uiState.value.planEdit as? PlanEditState.Failed ?: return
+        requestPlanEdit(failed.pin, failed.instruction, locale)
+    }
+
+    /** Stops waiting and goes back to the request, keeping what was asked. */
+    fun onPlanEditCancel() {
+        val working = _uiState.value.planEdit as? PlanEditState.Working ?: return
+        planEditJob?.cancel()
+        update { copy(planEdit = PlanEditState.Asking(working.pin, working.instruction)) }
+    }
+
+    /**
+     * Puts the proposal into the draft -- unsaved, exactly like a hand edit --
+     * unless the exercises changed since it was computed, in which case it no
+     * longer describes this plan and nothing happens; the sheet says so.
+     */
+    fun onPlanEditApply() = update {
+        val reviewing = planEdit as? PlanEditState.Reviewing ?: return@update this
+        if (planEditIsStale) return@update this
+        withEditedPlan(reviewing.edited, reviewing.introduced).copy(planEdit = PlanEditState.Closed)
+    }
+
+    /** Closes the sheet whatever it is showing, and abandons a request still running. */
+    fun onPlanEditDismiss() {
+        planEditJob?.cancel()
+        update { copy(planEdit = PlanEditState.Closed) }
+    }
+
+    private fun requestPlanEdit(pin: PinnedExercise?, instruction: String, locale: Language) {
+        planEditJob?.cancel()
+        val sent = _uiState.value
+        val basis = sent.planEditBasis
+        update { copy(planEdit = PlanEditState.Working(pin, instruction, basis)) }
+        planEditJob = viewModelScope.launch {
+            val profile = profiles.getProfile()
+            if (profile == null) {
+                update {
+                    copy(
+                        planEdit = PlanEditState.Failed(
+                            pin,
+                            instruction,
+                            CoachError(
+                                titleRes = R.string.coach_error_failed_title,
+                                messageRes = R.string.coach_failed_no_profile,
+                                canRetry = false,
+                            ),
+                        ),
+                    )
+                }
+                return@launch
+            }
+            val outcome = planEditor.edit(
+                request = PlanEditRequest(
+                    profile = profile,
+                    plan = sent.toEditablePlan(),
+                    instruction = instruction,
+                    focus = pin?.ref,
+                ),
+                locale = locale,
+                candidates = exercises.candidates(),
+            )
+            val next = when (outcome) {
+                is AiPlanEditOutcome.Failure ->
+                    PlanEditState.Failed(pin, instruction, outcome.failure.toCoachError())
+
+                is AiPlanEditOutcome.Proposal -> {
+                    val introduced = exercises.summaries(
+                        outcome.edited.days
+                            .flatMap { it.exercises }
+                            .filter { it.key == null }
+                            .map { ExerciseId(it.exerciseId) },
+                    )
+                    val proposed = sent.withEditedPlan(outcome.edited, introduced)
+                    val touched = outcome.changes.map { it.day }.toSet()
+                    PlanEditState.Reviewing(
+                        pin = pin,
+                        instruction = instruction,
+                        basis = basis,
+                        rationale = outcome.rationale,
+                        rows = sent.reviewRows(outcome.changes, introduced),
+                        dayMinutes = touched.associateWith { day ->
+                            proposed.weekDays.getOrNull(day - 1)?.estimatedMinutes
+                                ?: proposed.estimatedMinutes
+                        },
+                        edited = outcome.edited,
+                        introduced = introduced,
+                    )
+                }
+            }
+            update { copy(planEdit = next) }
+        }
+    }
+
     /**
      * Adds an exercise to the workout being edited, or to one day of a week.
      *
@@ -1095,7 +1247,7 @@ private fun List<PlannedExercise>.toDrafts(
 }
 
 /** A validated provider answer, projected without changing any target value. */
-private fun List<AiPlannedExercise>.toAiDrafts(
+internal fun List<AiPlannedExercise>.toAiDrafts(
     names: Map<ExerciseId, ExerciseSummary>,
 ): List<DraftExercise> = map { planned ->
     val exerciseId = ExerciseId(planned.exerciseId)
