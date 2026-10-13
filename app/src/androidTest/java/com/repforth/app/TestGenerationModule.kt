@@ -1,5 +1,8 @@
 package com.repforth.app
 
+import com.repforth.core.ai.AiGenerationFailureReason
+import com.repforth.core.ai.AiPlanEditOutcome
+import com.repforth.core.ai.AiPlanEditService
 import com.repforth.core.ai.AiPlannedDay
 import com.repforth.core.ai.AiPlannedExercise
 import com.repforth.core.ai.AiWorkoutGenerationOutcome
@@ -9,6 +12,7 @@ import com.repforth.core.ai.ProviderAvailability
 import com.repforth.core.ai.di.AiGenerationModule
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.Language
+import com.repforth.core.ai.PlanEditRequest
 import com.repforth.core.rules.GenerationRequest
 import dagger.Module
 import dagger.Provides
@@ -66,9 +70,27 @@ object TestGenerationModule {
     @Singleton
     fun provideProviderAvailability(): ProviderAvailability = FixtureAvailability
 
+    /** Replaced with a fixture that answers in the next change; until then, it declines. */
+    @Provides
+    @Singleton
+    fun providePlanEditService(): AiPlanEditService = FixturePlanEditService
+
     /** Ids from the pinned catalog, so the drafts resolve to real names. */
     const val FIRST_EXERCISE_ID = "0025"
     const val SECOND_EXERCISE_ID = "0032"
+}
+
+private object FixturePlanEditService : AiPlanEditService {
+    override suspend fun edit(
+        request: PlanEditRequest,
+        locale: Language,
+        candidates: List<ExerciseCandidate>,
+    ): AiPlanEditOutcome = AiPlanEditOutcome.Failure(
+        AiWorkoutGenerationOutcome.Failure(
+            reason = AiGenerationFailureReason.NO_PROVIDER_CONFIGURATION,
+            attempts = 0,
+        ),
+    )
 }
 
 private object FixtureAvailability : ProviderAvailability {

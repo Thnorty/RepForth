@@ -1,5 +1,7 @@
 package com.repforth.core.ai.di
 
+import com.repforth.core.ai.AiPlanEditService
+import com.repforth.core.ai.AiPlanEditor
 import com.repforth.core.ai.AiWorkoutGenerationService
 import com.repforth.core.ai.AiWorkoutGenerator
 import com.repforth.core.ai.ProviderAvailability
@@ -38,6 +40,16 @@ object AiGenerationModule {
     fun provideWorkoutGenerationService(
         generator: AiWorkoutGenerator,
     ): AiWorkoutGenerationService = generator
+
+    /**
+     * The plan-edit service, beside the generator for the same reason: it reads
+     * a stored key, so on a test device it can only fail, and this is the one
+     * binding an instrumentation test replaces to reach the review sheet.
+     */
+    @Provides
+    fun providePlanEditService(
+        editor: AiPlanEditor,
+    ): AiPlanEditService = editor
 
     /**
      * The "is a provider set up?" question, for screens that must ask it.

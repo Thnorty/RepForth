@@ -8,7 +8,6 @@ import com.repforth.core.ai.http.generationTimeoutSeconds
 import com.repforth.core.rules.RulesEngine
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
 enum class AiGenerationFailureReason {
@@ -158,39 +157,16 @@ class AiWorkoutGenerator @Inject constructor(
         }
     }
 
-    /**
-     * One logical provider call, retrying only transport-level transience.
-     *
-     * This is a different thing from the repair attempt below, and conflating
-     * the two is what made a provider outage look like a broken app. A repair
-     * attempt is for output the model got *wrong*: it costs tokens, it may only
-     * happen once (§8), and it needs feedback to be worth making. A 5xx is not
-     * wrong output — it is no output. Gemini answers a demand spike with
-     * `503 UNAVAILABLE` and the words "spikes in demand are usually temporary",
-     * nothing is billed, and the identical request a second later commonly
-     * succeeds. Failing the whole generation on the first one turns a blip into
-     * a dead feature, which is exactly what it did.
-     *
-     * Bounded and backed off rather than persistent: the user is watching a
-     * spinner, the generation card offers cancel, and an app that hammers a
-     * provider that just said it is overloaded is part of the problem.
-     */
+    /** One logical provider call; see [retryingServerErrors]. */
     private suspend fun callProvider(
         provider: AiProvider,
         config: com.repforth.core.model.ProviderConfig,
         providerRequest: AiWorkoutRequest,
         retryFeedback: AiWorkoutRetryFeedback?,
-    ): ProviderGenerationResult {
-        var backoffMs = FIRST_BACKOFF_MS
-        repeat(TRANSIENT_ATTEMPTS - 1) {
-            val result = provider.generateWorkout(config, providerRequest, retryFeedback)
-            val transient = result is ProviderGenerationResult.Failed &&
-                result.failure == ProviderFailure.SERVER
-            if (!transient) return result
-            delay(backoffMs)
-            backoffMs *= 2
-        }
-        return provider.generateWorkout(config, providerRequest, retryFeedback)
+    ): ProviderGenerationResult = retryingServerErrors(
+        isServerError = { it is ProviderGenerationResult.Failed && it.failure == ProviderFailure.SERVER },
+    ) {
+        provider.generateWorkout(config, providerRequest, retryFeedback)
     }
 
     private suspend fun retry(
@@ -230,11 +206,5 @@ class AiWorkoutGenerator @Inject constructor(
                 deadlineSeconds = deadline,
             )
         }
-    }
-
-    private companion object {
-        /** Total tries for one call, including the first. */
-        const val TRANSIENT_ATTEMPTS = 3
-        const val FIRST_BACKOFF_MS = 1_000L
     }
 }
