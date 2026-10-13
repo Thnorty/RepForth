@@ -549,6 +549,10 @@ private fun ImportDialog(pending: PendingImport, onConfirm: () -> Unit, onDismis
                             workouts = preview.removedSessions,
                         )
                     }
+
+                    preview.checkIns?.let { checkIns ->
+                        Text(pluralStringResource(R.plurals.settings_import_body, checkIns, checkIns))
+                    }
                 }
             }
         },

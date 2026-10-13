@@ -68,7 +68,7 @@
 
     <string name="settings_data">Verilerin</string>
     <string name="settings_export">Dışa aktar</string>
-    <string name="settings_export_sub">Profilin, planların ve geçmişin tek bir JSON dosyasında.</string>
+    <string name="settings_export_sub">Profilin, planların, geçmişin ve vücut ölçülerin tek bir JSON dosyasında. Fotoğraflar dahil değil.</string>
     <string name="settings_import">İçe aktar</string>
     <string name="settings_import_sub">Bu uygulamanın dışa aktardığı bir dosyadan. Önce neyin değişeceğini görürsün.</string>
     <string name="settings_delete_workouts">Antrenman verilerini sil</string>
@@ -93,6 +93,10 @@
     <plurals name="settings_import_weeks">
         <item quantity="one">%1$d hafta</item>
         <item quantity="other">%1$d hafta</item>
+    </plurals>
+    <plurals name="settings_import_body">
+        <item quantity="one">%1$d vücut kaydı. Ölçümlerinin yerini alır; fotoğrafların kalır.</item>
+        <item quantity="other">%1$d vücut kaydı. Ölçümlerinin yerini alır; fotoğrafların kalır.</item>
     </plurals>
     <plurals name="settings_import_sessions">
         <item quantity="one">%1$d antrenman</item>

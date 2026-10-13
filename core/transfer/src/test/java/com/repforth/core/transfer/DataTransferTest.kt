@@ -18,7 +18,12 @@ import com.repforth.core.model.TrainingWeek
 import com.repforth.core.model.UserProfile
 import com.repforth.core.model.WeekDay
 import com.repforth.core.model.WorkoutTemplate
+import com.repforth.core.testing.FakeBodyRepository
 import com.repforth.core.testing.FakeProfiles
+import com.repforth.core.model.CheckIn
+import com.repforth.core.model.MeasurementKind
+import com.repforth.core.model.Pose
+import java.time.LocalDate
 import com.repforth.core.workout.SessionExercise
 import com.repforth.core.workout.SessionPhase
 import com.repforth.core.workout.SessionSnapshot
@@ -50,6 +55,7 @@ class DataTransferTest {
     private lateinit var templates: FakeTemplates
     private lateinit var weeks: FakeWeeks
     private lateinit var sessions: FakeSessions
+    private lateinit var body: FakeBodyRepository
     private lateinit var preferences: UserPreferencesDataSource
     private lateinit var providers: ProviderRepository
     private lateinit var secrets: InMemorySecretStore
@@ -61,19 +67,20 @@ class DataTransferTest {
         templates = FakeTemplates()
         weeks = FakeWeeks()
         sessions = FakeSessions()
+        body = FakeBodyRepository()
         preferences = fakePreferences()
         val (repository, store) = fakeProviders()
         providers = repository
         secrets = store
         transfer = DefaultDataTransfer(
-            profiles, templates, weeks, sessions, preferences, providers,
+            profiles, templates, weeks, sessions, body, preferences, providers,
             DirectTransaction, FakeTimeSource(), UnconfinedTestDispatcher(),
         )
     }
 
     /** Another app with nothing in it, for writing a file to import from. */
     private fun emptyTransfer() = DefaultDataTransfer(
-        FakeProfiles(), FakeTemplates(), FakeWeeks(), FakeSessions(), fakePreferences(),
+        FakeProfiles(), FakeTemplates(), FakeWeeks(), FakeSessions(), FakeBodyRepository(), fakePreferences(),
         fakeProviders().first, DirectTransaction, FakeTimeSource(), UnconfinedTestDispatcher(),
     )
 
@@ -129,7 +136,7 @@ class DataTransferTest {
         val restoredWeeks = FakeWeeks()
         val restoredSessions = FakeSessions()
         val emptied = DefaultDataTransfer(
-            restoredProfiles, restoredTemplates, restoredWeeks, restoredSessions,
+            restoredProfiles, restoredTemplates, restoredWeeks, restoredSessions, FakeBodyRepository(),
             fakePreferences(), fakeProviders().first, DirectTransaction, FakeTimeSource(),
             UnconfinedTestDispatcher(),
         )
@@ -416,7 +423,7 @@ class DataTransferTest {
         )
 
         val failing = DefaultDataTransfer(
-            profiles, templates, weeks, sessions, preferences, providers,
+            profiles, templates, weeks, sessions, body, preferences, providers,
             RollingBackTransaction(before, profiles, templates, weeks, sessions),
             FakeTimeSource(), UnconfinedTestDispatcher(),
         )
@@ -657,6 +664,116 @@ class DataTransferTest {
         assertEquals(listOf(0, 1), plan.exercises.map { it.position })
         assertEquals(listOf("a", "b"), plan.exercises.map { it.id })
     }
+
+    // ---- Body tracking (format 3) ----
+
+    private val day = LocalDate.of(2026, 10, 1)
+
+    private fun bodyTransfer(into: FakeBodyRepository) = DefaultDataTransfer(
+        FakeProfiles(), FakeTemplates(), FakeWeeks(), FakeSessions(), into, fakePreferences(),
+        fakeProviders().first, DirectTransaction, FakeTimeSource(), UnconfinedTestDispatcher(),
+    )
+
+    @Test
+    fun `body measurements round-trip`() = runTest {
+        val skinfold = body.addCustom("Skinfold", MeasurementKind.PLAIN, "mm")
+        body.setTracked("neck", true)
+        body.save(CheckIn("a", day, mapOf("waist" to 86.36, skinfold.id to 12.0), emptyMap()))
+        body.save(CheckIn("b", day.plusDays(7), mapOf("weight" to 80.9), emptyMap()))
+
+        val restored = FakeBodyRepository()
+        val into = bodyTransfer(restored)
+        val outcome = into.read(transfer.export()) as ImportOutcome.Ready
+        into.import(outcome.document)
+
+        assertEquals(body.checkIns.value.sortedBy { it.date }, restored.checkIns.value.sortedBy { it.date })
+        assertEquals(body.types.value.sortedBy { it.sortOrder }, restored.types.value.sortedBy { it.sortOrder })
+    }
+
+    @Test
+    fun `no photo reaches the file`() = runTest {
+        body.save(CheckIn("a", day, mapOf("waist" to 86.0), mapOf(Pose.FRONT to "secret-front.jpg")))
+
+        val exported = transfer.export()
+
+        assertFalse("A photo's file name was exported", "secret-front" in exported)
+        assertFalse("Something photo-shaped was exported", "photo" in exported.lowercase())
+        assertTrue("The measurement itself is exported", "86.0" in exported)
+    }
+
+    @Test
+    fun `a version 2 file leaves body data alone`() = runTest {
+        body.save(CheckIn("a", day, mapOf("waist" to 86.0), emptyMap()))
+        val olderFile = ExportDocument(version = 2, exportedAt = 0)
+
+        val outcome = transfer.read(jsonOf(olderFile)) as ImportOutcome.Ready
+        transfer.import(outcome.document)
+
+        assertEquals(null, outcome.preview.checkIns)
+        assertEquals(listOf("a"), body.checkIns.value.map { it.id })
+    }
+
+    @Test
+    fun `import keeps check-ins that hold photos`() = runTest {
+        body.save(CheckIn("x", day, mapOf("waist" to 90.0), mapOf(Pose.FRONT to "x.jpg")))
+        val file = bodyTransfer(
+            FakeBodyRepository().apply { save(CheckIn("z", day.plusDays(3), mapOf("weight" to 81.0), emptyMap())) },
+        ).export()
+
+        val outcome = transfer.read(file) as ImportOutcome.Ready
+        transfer.import(outcome.document)
+
+        assertEquals(1, outcome.preview.checkIns)
+        val x = body.checkIns.value.single { it.id == "x" }
+        assertEquals(mapOf(Pose.FRONT to "x.jpg"), x.photos)
+        assertEquals(emptyMap<String, Double>(), x.measurements)
+        assertEquals(81.0, body.checkIns.value.single { it.id == "z" }.measurements.getValue("weight"), 0.0)
+    }
+
+    @Test
+    fun `an invalid check-in fails the read`() = runTest {
+        val types = body.types.value.map { it.toDto() }
+        val bad = ExportDocument(
+            exportedAt = 0,
+            body = BodyDto(types, listOf(CheckInDto("c", "2026-10-01", mapOf("waist" to -1.0)))),
+        )
+
+        val outcome = transfer.read(jsonOf(bad))
+
+        assertTrue("Expected Invalid, got $outcome", (outcome as? ImportOutcome.Failed)?.failure is ImportFailure.Invalid)
+    }
+
+    @Test
+    fun `reset deletes body data`() = runTest {
+        body.save(CheckIn("a", day, mapOf("waist" to 86.0), mapOf(Pose.FRONT to "f.jpg")))
+
+        transfer.resetApp()
+
+        assertTrue(body.checkIns.value.isEmpty())
+        assertEquals(listOf("f.jpg"), body.deletedPhotos)
+    }
+
+    /** A phone that only ever logged its body still exports something worth importing. */
+    @Test
+    fun `a file with only body data is not empty`() = runTest {
+        val file = bodyTransfer(
+            FakeBodyRepository().apply { save(CheckIn("z", day, mapOf("weight" to 81.0), emptyMap())) },
+        ).export()
+
+        val outcome = transfer.read(file) as ImportOutcome.Ready
+
+        assertFalse(outcome.preview.isEmpty)
+    }
+
+    @Test
+    fun `delete workout data leaves body data`() = runTest {
+        body.save(CheckIn("a", day, mapOf("waist" to 86.0), emptyMap()))
+
+        transfer.deleteWorkoutData()
+
+        assertEquals(listOf("a"), body.checkIns.value.map { it.id })
+    }
+
 }
 
 /**

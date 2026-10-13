@@ -64,7 +64,12 @@ class ResetCoverageTest {
          * Deliberately a short list that has to be argued for. A clock is not a
          * store; almost everything else this class is given will be.
          */
-        val NOT_A_STORE = setOf("TimeSource")
+        val NOT_A_STORE = setOf(
+            "TimeSource",
+            // Runs a block in one database transaction; holds nothing itself.
+            // Listed once the guard stopped reading the whole class as reset.
+            "UserDataTransaction",
+        )
 
         val CONSTRUCTOR = Regex(
             """class\s+DefaultDataTransfer[^(]*\((.*?)\)\s*:""",
@@ -78,9 +83,17 @@ class ResetCoverageTest {
                 .toList()
         }
 
-        /** The body of one `override suspend fun`, up to its closing brace. */
+        /**
+         * The body of one `override suspend fun`, up to its closing brace.
+         *
+         * Matches the `override`, not the bare `fun`: the interface declares
+         * the same name first, with no body, and the first `{` after that
+         * declaration opens the whole implementing class. Searching for the
+         * bare name made every store in the class count as cleared, so this
+         * test passed with `resetApp()` clearing nothing it was given.
+         */
         fun bodyOf(source: String, function: String): String {
-            val start = source.indexOf("fun $function(")
+            val start = source.indexOf("override suspend fun $function(")
             if (start < 0) return ""
             val open = source.indexOf('{', start)
             if (open < 0) return ""

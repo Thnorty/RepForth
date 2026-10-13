@@ -1,5 +1,9 @@
 package com.repforth.core.transfer
 
+import com.repforth.core.model.BuiltInMeasurement
+import com.repforth.core.model.CheckIn
+import com.repforth.core.model.MeasurementType
+import java.time.LocalDate
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseTarget
@@ -198,6 +202,36 @@ internal fun SessionDto.toDomain() = SessionSnapshot(
  * reaching across a module boundary for four lines would couple the file format
  * to the storage layer.
  */
+internal fun MeasurementType.toDto() = MeasurementTypeDto(
+    id = id,
+    builtIn = builtIn?.id,
+    customName = customName,
+    kind = kind.name,
+    unitLabel = unitLabel,
+    tracked = tracked,
+    sortOrder = sortOrder,
+)
+
+internal fun MeasurementTypeDto.toDomain() = MeasurementType(
+    id = id,
+    builtIn = builtIn?.let { BuiltInMeasurement.byId(it) ?: throw IllegalArgumentException("unknown built-in measurement '$it'") },
+    customName = customName,
+    kind = enumOf(kind, "measurement kind"),
+    unitLabel = unitLabel,
+    tracked = tracked,
+    sortOrder = sortOrder,
+)
+
+/** Photos are dropped here, deliberately: see [BodyDto]. */
+internal fun CheckIn.toDto() = CheckInDto(id = id, date = date.toString(), measurements = measurements)
+
+internal fun CheckInDto.toDomain() = CheckIn(
+    id = id,
+    date = LocalDate.parse(date),
+    measurements = measurements,
+    photos = emptyMap(),
+)
+
 private fun PlannedExerciseDto.target(): ExerciseTarget = when {
     reps != null -> ExerciseTarget.Reps(sets, reps, weightKg)
     durationMs != null -> ExerciseTarget.Duration(sets, durationMs, weightKg)
