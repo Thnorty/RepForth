@@ -605,6 +605,42 @@ class MigrationTest {
         ).close()
     }
 
+    /** Migrating 7 to 8 adds the body tables exactly as Room declares them. */
+    @Test
+    fun migrating_from_7_to_8_produces_the_schema_room_expects() {
+        helper.createDatabase(TEST_DB, 7).close()
+
+        helper.runMigrationsAndValidate(TEST_DB, 8, true, RepForthDatabase.MIGRATION_7_8).close()
+    }
+
+    /** And leaves every plan where it was: the migration only creates tables. */
+    @Test
+    fun migrating_from_7_to_8_keeps_existing_plans() {
+        helper.createDatabase(TEST_DB, 7).apply {
+            execSQL(
+                """
+                INSERT INTO workout_template
+                    (id, name, notes, source, week_id, week_position, day_of_week,
+                     created_at, updated_at)
+                VALUES ('plan-1', 'Push Day', NULL, 'MANUAL', NULL, NULL, NULL, 100, 200)
+                """.trimIndent(),
+            )
+            close()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 8, true, RepForthDatabase.MIGRATION_7_8)
+
+        migrated.query("SELECT name FROM workout_template").use { cursor ->
+            assertTrue("The plan must survive", cursor.moveToFirst())
+            assertEquals("Push Day", cursor.getString(0))
+        }
+        migrated.query("SELECT COUNT(*) FROM measurement_type").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("Built-ins are seeded by the repository, not here", 0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
     private fun SupportSQLiteDatabase.insertSessionInProgress(state: String = "ACTIVE") = execSQL(
         """
         INSERT INTO workout_session

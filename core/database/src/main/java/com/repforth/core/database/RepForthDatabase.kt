@@ -4,15 +4,20 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.repforth.core.database.dao.BodyDao
 import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.dao.ProfileDao
 import com.repforth.core.database.dao.SessionDao
 import com.repforth.core.database.dao.TemplateDao
 import com.repforth.core.database.dao.WeekDao
+import com.repforth.core.database.entity.CheckInEntity
 import com.repforth.core.database.entity.ExerciseEntity
 import com.repforth.core.database.entity.ExerciseInstructionStepEntity
 import com.repforth.core.database.entity.ExerciseSecondaryMuscleEntity
+import com.repforth.core.database.entity.MeasurementEntity
+import com.repforth.core.database.entity.MeasurementTypeEntity
 import com.repforth.core.database.entity.ProfileEquipmentEntity
+import com.repforth.core.database.entity.ProgressPhotoEntity
 import com.repforth.core.database.entity.SessionExerciseEntity
 import com.repforth.core.database.entity.SetRecordEntity
 import com.repforth.core.database.entity.TemplateExerciseEntity
@@ -58,6 +63,12 @@ import com.repforth.core.database.entity.WorkoutTemplateEntity
         WorkoutSessionEntity::class,
         SessionExerciseEntity::class,
         SetRecordEntity::class,
+
+        // Body tracking: check-ins, their measurements and photos.
+        MeasurementTypeEntity::class,
+        CheckInEntity::class,
+        MeasurementEntity::class,
+        ProgressPhotoEntity::class,
     ],
 )
 abstract class RepForthDatabase : RoomDatabase() {
@@ -72,8 +83,10 @@ abstract class RepForthDatabase : RoomDatabase() {
 
     abstract fun sessionDao(): SessionDao
 
+    abstract fun bodyDao(): BodyDao
+
     companion object {
-        const val VERSION = 7
+        const val VERSION = 8
 
         /** Also the asset filename once the import task prepackages the catalog. */
         const val NAME = "repforth.db"
@@ -250,6 +263,66 @@ abstract class RepForthDatabase : RoomDatabase() {
                 db.execSQL(
                     "ALTER TABLE `template_exercise` " +
                         "ADD COLUMN `target_progress_kg` REAL NOT NULL DEFAULT 0",
+                )
+            }
+        }
+
+        /**
+         * Migration from v7 to v8: the body tracking tables (check-ins, their
+         * measurements and photos, and the types that can be measured).
+         *
+         * Statements copied from Room's own `8.json`, so the migration and the
+         * schema it is validated against cannot disagree. It inserts nothing:
+         * built-in types are seeded by the repository, because a fresh install
+         * starts from the prepackaged asset and never runs this.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `measurement_type` (`id` TEXT NOT NULL, " +
+                        "`built_in` TEXT, `custom_name` TEXT, `kind` TEXT NOT NULL, " +
+                        "`unit_label` TEXT, `tracked` INTEGER NOT NULL, " +
+                        "`sort_order` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, " +
+                        "`updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `check_in` (`id` TEXT NOT NULL, " +
+                        "`epoch_day` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, " +
+                        "`updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_check_in_epoch_day` " +
+                        "ON `check_in` (`epoch_day`)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `measurement` (`id` TEXT NOT NULL, " +
+                        "`check_in_id` TEXT NOT NULL, `type_id` TEXT NOT NULL, " +
+                        "`value` REAL NOT NULL, `created_at` INTEGER NOT NULL, " +
+                        "`updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`check_in_id`) REFERENCES `check_in`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE , " +
+                        "FOREIGN KEY(`type_id`) REFERENCES `measurement_type`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_measurement_check_in_id_type_id` " +
+                        "ON `measurement` (`check_in_id`, `type_id`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_measurement_type_id` " +
+                        "ON `measurement` (`type_id`)",
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `progress_photo` (`id` TEXT NOT NULL, " +
+                        "`check_in_id` TEXT NOT NULL, `pose` TEXT NOT NULL, " +
+                        "`file_name` TEXT NOT NULL, `created_at` INTEGER NOT NULL, " +
+                        "`updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`), " +
+                        "FOREIGN KEY(`check_in_id`) REFERENCES `check_in`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE )",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_progress_photo_check_in_id_pose` " +
+                        "ON `progress_photo` (`check_in_id`, `pose`)",
                 )
             }
         }
