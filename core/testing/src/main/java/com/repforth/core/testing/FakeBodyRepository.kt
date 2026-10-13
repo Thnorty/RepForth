@@ -90,7 +90,10 @@ class FakeBodyRepository(
     override suspend fun deleteCustom(typeId: String) {
         if (types.value.none { it.id == typeId && it.builtIn == null }) return
         types.value = types.value.filterNot { it.id == typeId }
-        checkIns.value = checkIns.value.map { it.copy(measurements = it.measurements - typeId) }
+        // As the real repository: a check-in left holding nothing goes.
+        checkIns.value = checkIns.value
+            .map { it.copy(measurements = it.measurements - typeId) }
+            .filterNot { it.measurements.isEmpty() && it.photos.isEmpty() }
     }
 
     override suspend fun entryCount(typeId: String): Int = checkIns.value.count { typeId in it.measurements }

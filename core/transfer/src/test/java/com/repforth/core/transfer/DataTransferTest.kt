@@ -690,6 +690,25 @@ class DataTransferTest {
         assertEquals(body.types.value.sortedBy { it.sortOrder }, restored.types.value.sortedBy { it.sortOrder })
     }
 
+    /**
+     * A photos-only day is a valid check-in on the device, and the photos do
+     * not travel. Written as a check-in with no measurements, it failed the
+     * import's empty-check-in rule and took the whole backup -- workouts and
+     * all -- down with it.
+     */
+    @Test
+    fun `a photos-only check-in does not stop the backup restoring`() = runTest {
+        body.save(CheckIn("photos", day, emptyMap(), mapOf(Pose.FRONT to "f.jpg")))
+        body.save(CheckIn("weighed", day.plusDays(1), mapOf("weight" to 80.0), emptyMap()))
+
+        val restored = FakeBodyRepository()
+        val outcome = bodyTransfer(restored).read(transfer.export())
+
+        assertTrue("The backup was refused: $outcome", outcome is ImportOutcome.Ready)
+        bodyTransfer(restored).import((outcome as ImportOutcome.Ready).document)
+        assertEquals(listOf("weighed"), restored.checkIns.value.map { it.id })
+    }
+
     @Test
     fun `no photo reaches the file`() = runTest {
         body.save(CheckIn("a", day, mapOf("waist" to 86.0), mapOf(Pose.FRONT to "secret-front.jpg")))

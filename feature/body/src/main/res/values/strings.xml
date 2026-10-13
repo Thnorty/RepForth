@@ -132,4 +132,5 @@
     <string name="tracking_name_too_long">Keep the name to 40 characters.</string>
     <string name="tracking_unit_missing">A number needs a unit label, such as mm.</string>
     <string name="tracking_unit_too_long">Keep the unit label to 10 characters.</string>
+    <string name="check_in_photo_adding">Adding photo…</string>
 </resources>

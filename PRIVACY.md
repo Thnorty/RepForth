@@ -89,8 +89,10 @@ never part of the export:**
   no location, no camera model, no timestamp -- whatever the original held. A
   photo picked from your gallery is copied; the original is not touched.
 - The copy lives in the app's private storage (`body-photos`). It is not sent
-  anywhere, and it is not in the export, so moving to a new phone means
-  carrying the photos across yourself.
+  anywhere, and it is not in the export. Android's own phone-to-phone transfer,
+  when setting up a new phone, is a separate path: on Android 12 and later
+  `allowBackup="false"` does not turn it off, and whether it carries these
+  files has not been checked on a device.
 - A photo taken but never saved to a check-in is deleted within a day. A stored
   photo that no check-in refers to is deleted the next time the Body tab opens.
 - **Reset app** deletes measurements and photos. **Delete all workout data**

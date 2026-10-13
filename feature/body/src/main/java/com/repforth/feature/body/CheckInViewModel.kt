@@ -46,6 +46,8 @@ data class CheckInUiState(
     val today: LocalDate = LocalDate.MIN,
     val fields: List<FieldState> = emptyList(),
     val photos: Map<Pose, String> = emptyMap(),
+    /** Poses whose photo is still being shrunk and stored; Save waits for them. */
+    val importing: Set<Pose> = emptySet(),
     val problem: CheckInProblem? = null,
     /** The type id whose text is not a number, when that is what stopped a save. */
     val unreadableField: String? = null,
@@ -61,9 +63,10 @@ data class CheckInUiState(
  * A check-in, new or stored.
  *
  * Opened without an id it edits today's, if there is one: one check-in per day,
- * so "Check in" twice on a day means "change today's". The photo being taken is
- * kept in [SavedStateHandle], because Android may kill this process while the
- * camera app is in front, and the photo must still land in its slot.
+ * so "Check in" twice on a day means "change today's". Everything the person
+ * has done here -- typed values, photos added or removed, the photo being taken
+ * -- is kept in [SavedStateHandle]: Android is most likely to kill this process
+ * while the camera app is in front, and the form must be as they left it.
  */
 @HiltViewModel
 class CheckInViewModel @Inject constructor(
@@ -80,10 +83,22 @@ class CheckInViewModel @Inject constructor(
     private var storedPhotos: Map<Pose, String> = emptyMap()
 
     /** Photo changes this visit: a file name, or null for removed. Applied over [storedPhotos]. */
-    private val photoEdits = mutableMapOf<Pose, String?>()
+    private val photoEdits: MutableMap<Pose, String?> =
+        saved.get<HashMap<String, String>>(PHOTO_EDITS).orEmpty()
+            .mapKeys { Pose.valueOf(it.key) }
+            .mapValues { it.value.ifEmpty { null } }
+            .toMutableMap()
 
     /** Files imported this visit, which are orphans unless a save keeps them. */
-    private val added = mutableSetOf<String>()
+    private val added: MutableSet<String> = saved.get<ArrayList<String>>(ADDED).orEmpty().toMutableSet()
+
+    /** Typed text by type id, for the fields that have been touched. */
+    private val typed: MutableMap<String, String> = saved.get<HashMap<String, String>>(TYPED).orEmpty().toMutableMap()
+
+    private fun keepPhotos() {
+        saved[PHOTO_EDITS] = HashMap(photoEdits.entries.associate { it.key.name to it.value.orEmpty() })
+        saved[ADDED] = ArrayList(added)
+    }
 
     init {
         viewModelScope.launch { load() }
@@ -99,7 +114,7 @@ class CheckInViewModel @Inject constructor(
 
         val fields = types.sortedBy { it.sortOrder }
             .filter { it.tracked || existing?.measurements?.containsKey(it.id) == true }
-            .map { FieldState(it, text = null, originalValue = existing?.measurements?.get(it.id)) }
+            .map { FieldState(it, text = typed[it.id], originalValue = existing?.measurements?.get(it.id)) }
 
         _uiState.update {
             it.copy(
@@ -110,6 +125,8 @@ class CheckInViewModel @Inject constructor(
                 fields = fields,
                 photos = shownPhotos(),
                 canDelete = existing != null,
+                // Rebuilt after process death with edits in hand: still unsaved.
+                dirty = typed.isNotEmpty() || photoEdits.isNotEmpty() || saved.contains(DATE),
             )
         }
     }
@@ -126,6 +143,8 @@ class CheckInViewModel @Inject constructor(
     }
 
     fun onFieldChange(typeId: String, text: String) {
+        typed[typeId] = text
+        saved[TYPED] = HashMap(typed)
         _uiState.update { state ->
             state.copy(
                 fields = state.fields.map { if (it.type.id == typeId) it.copy(text = text) else it },
@@ -138,7 +157,7 @@ class CheckInViewModel @Inject constructor(
 
     fun onPhotoPicked(pose: Pose, uri: Uri?) {
         if (uri == null) return
-        viewModelScope.launch { receive(pose, photos.importFrom(uri)) }
+        importing(pose) { photos.importFrom(uri) }
     }
 
     /** Where the camera app should write a photo for [pose]. */
@@ -158,7 +177,19 @@ class CheckInViewModel @Inject constructor(
             File(path).delete()
             return
         }
-        viewModelScope.launch { receive(pose, photos.importCapture(path)) }
+        importing(pose) { photos.importCapture(path) }
+    }
+
+    /** Runs an import with [pose] marked as in progress, so Save cannot overtake it. */
+    private fun importing(pose: Pose, import: suspend () -> PhotoImport) {
+        _uiState.update { it.copy(importing = it.importing + pose) }
+        viewModelScope.launch {
+            try {
+                receive(pose, import())
+            } finally {
+                _uiState.update { it.copy(importing = it.importing - pose) }
+            }
+        }
     }
 
     private fun receive(pose: Pose, result: PhotoImport) {
@@ -166,6 +197,7 @@ class CheckInViewModel @Inject constructor(
             is PhotoImport.Stored -> {
                 added += result.fileName
                 photoEdits[pose] = result.fileName
+                keepPhotos()
                 _uiState.update { it.copy(photos = shownPhotos(), dirty = true, photoFailure = null, problem = null) }
             }
             is PhotoImport.Failed -> _uiState.update { it.copy(photoFailure = result.reason) }
@@ -174,12 +206,14 @@ class CheckInViewModel @Inject constructor(
 
     fun onRemovePhoto(pose: Pose) {
         photoEdits[pose] = null
+        keepPhotos()
         _uiState.update { it.copy(photos = shownPhotos(), dirty = true) }
     }
 
     fun onSave(units: UnitSystem) {
         val state = _uiState.value
-        if (state.loading) return
+        // A photo still being added would be left out of what is saved.
+        if (state.loading || state.importing.isNotEmpty()) return
         val measurements = mutableMapOf<String, Double>()
         for (field in state.fields) {
             val value = when {
@@ -232,6 +266,7 @@ class CheckInViewModel @Inject constructor(
         val unused = added - keep
         if (unused.isNotEmpty()) photos.delete(unused)
         added.clear()
+        keepPhotos()
     }
 
     fun photoFile(fileName: String): File = photos.fileFor(fileName)
@@ -243,5 +278,8 @@ class CheckInViewModel @Inject constructor(
         const val DATE = "date"
         const val CAPTURE_POSE = "capturePose"
         const val CAPTURE_PATH = "capturePath"
+        const val TYPED = "typed"
+        const val PHOTO_EDITS = "photoEdits"
+        const val ADDED = "added"
     }
 }

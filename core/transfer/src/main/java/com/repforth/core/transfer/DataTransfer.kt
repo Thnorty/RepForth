@@ -167,7 +167,11 @@ internal class DefaultDataTransfer(
                 sessions = sessions.observeFinished().first().map { it.toDto() },
                 body = BodyDto(
                     types = body.observeTypes().first().map { it.toDto() },
-                    checkIns = body.observeCheckIns().first().map { it.toDto() },
+                    // A photos-only day has nothing that can travel, and written
+                    // as an empty check-in it would make the whole file unreadable.
+                    checkIns = body.observeCheckIns().first()
+                        .filter { it.measurements.isNotEmpty() }
+                        .map { it.toDto() },
                 ),
             ),
         )

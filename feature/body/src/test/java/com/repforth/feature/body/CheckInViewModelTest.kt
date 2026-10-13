@@ -11,6 +11,7 @@ import com.repforth.core.model.UnitSystem
 import com.repforth.core.testing.FakeBodyRepository
 import com.repforth.core.testing.FakePhotoStore
 import java.time.ZoneOffset
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -194,6 +195,61 @@ class CheckInViewModelTest {
         advanceUntilIdle()
 
         assertEquals(mapOf(Pose.FRONT to "photo-0.jpg"), rebuilt.uiState.value.photos)
+    }
+
+    /**
+     * The camera app is exactly when Android kills the process, so the form
+     * the person left -- what they typed, the photos they had already added --
+     * has to be there when they come back, not just the photo in flight.
+     */
+    @Test
+    fun `the whole form survives process death`() = runTest(dispatcher) {
+        val saved = SavedStateHandle()
+        val first = viewModel(saved)
+        first.onFieldChange("weight", "80")
+        first.onPhotoPicked(Pose.FRONT, android.net.Uri.EMPTY)
+        advanceUntilIdle()
+        first.newCapture(Pose.SIDE)
+
+        val rebuilt = viewModel(saved)
+        rebuilt.onCaptureResult(success = true)
+        advanceUntilIdle()
+
+        assertEquals("80", rebuilt.field("weight").text)
+        assertEquals(mapOf(Pose.FRONT to "photo-0.jpg", Pose.SIDE to "photo-1.jpg"), rebuilt.uiState.value.photos)
+        assertTrue(rebuilt.uiState.value.dirty)
+
+        // And the files it added are still known to be its own.
+        rebuilt.onDiscard()
+        advanceUntilIdle()
+        assertEquals(setOf("photo-0.jpg", "photo-1.jpg"), photos.deleted.toSet())
+    }
+
+    /**
+     * A full-size photo takes a moment to shrink. Saving in that moment stored
+     * the check-in without it -- and the person had watched themselves take it.
+     */
+    @Test
+    fun `save is held while a photo is still being added`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+        val gate = CompletableDeferred<Unit>()
+        photos.importGate = gate
+        viewModel.onFieldChange("weight", "80")
+        viewModel.newCapture(Pose.FRONT)
+        viewModel.onCaptureResult(success = true)
+        advanceUntilIdle()
+
+        assertEquals(setOf(Pose.FRONT), viewModel.uiState.value.importing)
+        viewModel.onSave(UnitSystem.METRIC)
+        advanceUntilIdle()
+        assertNull("Saved before the photo was in", body.findOn(today))
+
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(emptySet<Pose>(), viewModel.uiState.value.importing)
+        viewModel.onSave(UnitSystem.METRIC)
+        advanceUntilIdle()
+        assertEquals(mapOf(Pose.FRONT to "photo-0.jpg"), body.findOn(today)!!.photos)
     }
 
     @Test

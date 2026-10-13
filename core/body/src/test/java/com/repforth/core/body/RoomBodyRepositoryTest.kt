@@ -176,6 +176,50 @@ class RoomBodyRepositoryTest {
         assertEquals(emptyList<String>(), photos.deleted)
     }
 
+    /**
+     * A check-in whose only value was the deleted type would be left holding
+     * nothing -- shown as "0 measurements", and exported as a check-in that
+     * every import then refuses, taking the whole backup with it.
+     */
+    @Test
+    fun `deleting a custom type removes check-ins it leaves empty`() = runTest {
+        val repository = repository()
+        val skinfold = repository.addCustom("Skinfold", MeasurementKind.PLAIN, "mm")
+        repository.save(checkIn("only", date = today.minusDays(2), measurements = mapOf(skinfold.id to 12.0)))
+        repository.save(
+            checkIn(
+                "photographed", date = today.minusDays(1),
+                measurements = mapOf(skinfold.id to 11.0), photos = mapOf(Pose.FRONT to "f.jpg"),
+            ),
+        )
+
+        repository.deleteCustom(skinfold.id)
+
+        assertNull(repository.find("only"))
+        assertEquals("Photos alone still make a check-in", mapOf(Pose.FRONT to "f.jpg"), repository.find("photographed")!!.photos)
+    }
+
+    /**
+     * The backup was taken, then the photographed check-in was moved to another
+     * day. The file names its id on the old day; writing that over it would
+     * empty its photos, and the photos are the one thing no file can restore.
+     */
+    @Test
+    fun `restore keeps photos when the photographed check-in moved day`() = runTest {
+        val repository = repository()
+        val types = repository.observeTypes().first()
+        repository.save(checkIn("p", date = today.minusDays(1), photos = mapOf(Pose.FRONT to "p.jpg")))
+
+        repository.restoreMeasurements(
+            types,
+            listOf(checkIn("p", date = today.minusDays(2), measurements = mapOf("waist" to 88.0))),
+        )
+
+        assertEquals(mapOf(Pose.FRONT to "p.jpg"), repository.findOn(today.minusDays(1))!!.photos)
+        assertEquals(88.0, repository.findOn(today.minusDays(2))!!.measurements.getValue("waist"), 0.0)
+        assertEquals(listOf("p.jpg"), repository.observeCheckIns().first().flatMap { it.photos.values })
+    }
+
     @Test
     fun `restore onto a photographed day merges into it`() = runTest {
         val repository = repository()

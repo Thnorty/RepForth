@@ -193,6 +193,7 @@ internal fun CheckInScreen(
                     pose = pose,
                     file = state.photos[pose]?.let(photoFile),
                     filled = pose in state.photos,
+                    adding = pose in state.importing,
                     cameraAvailable = cameraAvailable,
                     onTake = { onTakePhoto(pose) },
                     onChoose = { onChoosePhoto(pose) },
@@ -214,6 +215,8 @@ internal fun CheckInScreen(
         }
         Button(
             onClick = onSave,
+            // Held while a photo is still being added, or it would be left out.
+            enabled = state.importing.isEmpty(),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Layout.gutterPhone, vertical = Space.s3)
@@ -308,6 +311,7 @@ private fun PhotoSlot(
     pose: Pose,
     file: File?,
     filled: Boolean,
+    adding: Boolean,
     cameraAvailable: Boolean,
     onTake: () -> Unit,
     onChoose: () -> Unit,
@@ -322,7 +326,16 @@ private fun PhotoSlot(
         )
         Column(modifier = Modifier.weight(2f), verticalArrangement = Arrangement.spacedBy(Space.s1)) {
             Text(label, style = MaterialTheme.typography.titleSmall)
-            PhotoAction(stringResource(R.string.check_in_take_photo), RfIcons.Camera, enabled = cameraAvailable, onClick = onTake)
+            if (adding) {
+                // Words, not a spinner: an endless animation would need its
+                // own reduced-motion branch, and this lasts a second or two.
+                Text(
+                    text = stringResource(R.string.check_in_photo_adding),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            PhotoAction(stringResource(R.string.check_in_take_photo), RfIcons.Camera, enabled = cameraAvailable && !adding, onClick = onTake)
             if (!cameraAvailable) {
                 Text(
                     text = stringResource(R.string.check_in_no_camera),
@@ -330,7 +343,7 @@ private fun PhotoSlot(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            PhotoAction(stringResource(R.string.check_in_choose_photo), RfIcons.Gallery, enabled = true, onClick = onChoose)
+            PhotoAction(stringResource(R.string.check_in_choose_photo), RfIcons.Gallery, enabled = !adding, onClick = onChoose)
             if (filled) {
                 PhotoAction(stringResource(R.string.check_in_remove_photo), RfIcons.Delete, enabled = true, onClick = onRemove)
             }

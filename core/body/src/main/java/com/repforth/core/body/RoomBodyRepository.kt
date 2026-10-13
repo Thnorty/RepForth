@@ -177,6 +177,11 @@ internal class RoomBodyRepository @Inject constructor(
     override suspend fun deleteCustom(typeId: String) {
         customType(typeId) ?: return
         dao.deleteType(typeId)
+        // A check-in whose only value was that type now holds nothing, which
+        // CheckInRules never lets a save create; it goes, unless it has photos.
+        dao.checkIns()
+            .filter { it.measurements.isEmpty() && it.photos.isEmpty() }
+            .forEach { dao.deleteCheckIn(it.checkIn.id) }
     }
 
     override suspend fun entryCount(typeId: String): Int = dao.countMeasurements(typeId)
@@ -206,13 +211,19 @@ internal class RoomBodyRepository @Inject constructor(
             }
         }
 
+        val photographedIds = photographed.values.map { it.checkIn.id }.toSet()
         checkIns.forEach { incoming ->
             val onThatDay = photographed[incoming.date]
-            if (onThatDay != null) {
+            when {
                 // Same day as a photographed check-in: one per day, so they merge.
-                write(onThatDay.toDomain().copy(measurements = incoming.measurements), onThatDay)
-            } else {
-                write(incoming.copy(photos = emptyMap()), previous = null)
+                onThatDay != null ->
+                    write(onThatDay.toDomain().copy(measurements = incoming.measurements), onThatDay)
+                // The file names a photographed check-in that has since moved
+                // day. Written under its own id it would drag the row back and
+                // empty its photos, so it becomes a check-in of its own.
+                incoming.id in photographedIds ->
+                    write(incoming.copy(id = UUID.randomUUID().toString(), photos = emptyMap()), previous = null)
+                else -> write(incoming.copy(photos = emptyMap()), previous = null)
             }
         }
     }

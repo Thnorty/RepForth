@@ -6,6 +6,7 @@ import com.repforth.core.body.PhotoFailure
 import com.repforth.core.body.PhotoImport
 import com.repforth.core.body.PhotoStore
 import java.io.File
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Photo files without files: imports hand out names, and every request is
@@ -14,6 +15,9 @@ import java.io.File
 class FakePhotoStore(private val root: File = File("build/fake-photos")) : PhotoStore {
 
     var nextImport: PhotoImport? = null
+
+    /** When set, every import waits for it: a 200MP photo takes a while to shrink. */
+    var importGate: CompletableDeferred<Unit>? = null
     val imported = mutableListOf<String>()
     val deleted = mutableListOf<String>()
     var sweeps = 0
@@ -23,7 +27,8 @@ class FakePhotoStore(private val root: File = File("build/fake-photos")) : Photo
 
     private var counter = 0
 
-    private fun store(): PhotoImport {
+    private suspend fun store(): PhotoImport {
+        importGate?.await()
         nextImport?.let {
             nextImport = null
             return it
