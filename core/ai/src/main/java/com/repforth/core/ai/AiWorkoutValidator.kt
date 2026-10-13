@@ -30,12 +30,35 @@ enum class AiWorkoutIssue {
 
     /** The week uses so little of the session time that it is not what was asked for. */
     WEEK_TOO_SHORT,
+
+    // Plan edits only. A generated week cannot break these: it has no plan as
+    // sent to address, and no operations to get wrong.
+
+    /** More changes than [PlanEditLimits.maxChanges]. */
+    TOO_MANY_CHANGES,
+
+    /** A day or position that is not in the plan as sent. */
+    UNKNOWN_POSITION,
+
+    /** Two replace/remove/adjust changes aimed at the same exercise. */
+    CONFLICTING_CHANGES,
+
+    /** A field an operation must set is null, or one it must not set is present. */
+    OPERATION_SHAPE,
+
+    /** The edit made a day longer and left it past the session ceiling. */
+    DAY_GREW_PAST_CEILING,
 }
 
 data class AiWorkoutContractViolation(
     val issue: AiWorkoutIssue,
     val dayIndex: Int? = null,
     val exerciseId: String? = null,
+    /**
+     * A plan edit's position, exactly as the model wrote it -- including a 0 it
+     * should not have, which is the point of echoing it back.
+     */
+    val position: Int? = null,
 )
 
 enum class AiWorkoutRetryIssueKind {
@@ -61,11 +84,13 @@ data class AiWorkoutRetryIssue(
     val explanation: String,
     val dayIndex: Int? = null,
     val exerciseId: String? = null,
+    val position: Int? = null,
 ) {
     /** The sentence with its location, as one prompt line. */
     fun describe(): String {
         val where = listOfNotNull(
             dayIndex?.let { "day ${it + 1}" },
+            position?.let { "position $it" },
             exerciseId?.let { "exercise $it" },
         ).joinToString(", ")
         return if (where.isEmpty()) explanation else "$where: $explanation"
@@ -91,21 +116,16 @@ data class AiWorkoutRetryFeedback(
             ),
         )
 
+        /** Feedback for a plan edit, whose rejections are all contract violations. */
+        fun fromContract(violations: List<AiWorkoutContractViolation>) = AiWorkoutRetryFeedback(
+            violations.map(AiWorkoutContractViolation::toRetryIssue),
+        )
+
         fun from(result: AiWorkoutValidationResult): AiWorkoutRetryFeedback {
             require(!result.isValid) { "A valid response does not need retry feedback" }
             return AiWorkoutRetryFeedback(
                 issues = buildList {
-                    result.contractViolations.forEach { violation ->
-                        add(
-                            AiWorkoutRetryIssue(
-                                kind = AiWorkoutRetryIssueKind.CONTRACT,
-                                code = violation.issue.name.lowercase(),
-                                explanation = violation.issue.explain(),
-                                dayIndex = violation.dayIndex,
-                                exerciseId = violation.exerciseId,
-                            ),
-                        )
-                    }
+                    result.contractViolations.forEach { add(it.toRetryIssue()) }
                     result.ruleViolations.forEach { violation ->
                         add(
                             AiWorkoutRetryIssue(
@@ -122,6 +142,15 @@ data class AiWorkoutRetryFeedback(
         }
     }
 }
+
+private fun AiWorkoutContractViolation.toRetryIssue() = AiWorkoutRetryIssue(
+    kind = AiWorkoutRetryIssueKind.CONTRACT,
+    code = issue.name.lowercase(),
+    explanation = issue.explain(),
+    dayIndex = dayIndex,
+    exerciseId = exerciseId,
+    position = position,
+)
 
 /** The model-facing sentence for each contract failure, with the real limits in it. */
 private fun AiWorkoutIssue.explain(): String = when (this) {
@@ -155,6 +184,20 @@ private fun AiWorkoutIssue.explain(): String = when (this) {
     AiWorkoutIssue.WEEK_TOO_SHORT ->
         "the week uses almost none of the time available; a lighter day is fine, a " +
             "whole week of them is not - add working exercises or sets"
+    AiWorkoutIssue.TOO_MANY_CHANGES ->
+        "more than ${PlanEditLimits.maxChanges} changes; make only the changes the person asked for"
+    AiWorkoutIssue.UNKNOWN_POSITION ->
+        "no exercise is at that day and position in the current plan; days and positions " +
+            "count from 1, and add takes 0 to mean the start of the day"
+    AiWorkoutIssue.CONFLICTING_CHANGES ->
+        "more than one replace, remove or adjust aims at the same exercise; give one change per exercise"
+    AiWorkoutIssue.OPERATION_SHAPE ->
+        "the fields do not fit the op: replace and add need exercise_id, sets, rest_seconds and " +
+            "one of repetitions or duration_seconds; remove sets every other field to null; " +
+            "adjust leaves exercise_id null and sets at least one number"
+    AiWorkoutIssue.DAY_GREW_PAST_CEILING ->
+        "the change makes this day longer than the time available; swap rather than add, or " +
+            "trim sets or rest"
 }
 
 /**
