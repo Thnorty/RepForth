@@ -1034,6 +1034,11 @@ a day run past the profile's session length. The owner decided this on
 2026-10-13: "I want it to be able to go over." The review shows each changed
 day's minutes, in the error colour when the day runs past.
 
+**The review's figures use `RepForthNumeric.xs`.** This is also the owner's
+decision of 2026-10-13. Each line stays one translated sentence, so Turkish
+keeps its own word order. `withNumerals` styles the figures where they land
+in that sentence, and `NumeralsTest` holds it.
+
 **Tests**
 - `core:ai` gained 79 tests in six new classes, plus a schema check in
   `SchemaDumpGuardTest`.
