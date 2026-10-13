@@ -79,6 +79,13 @@ internal object AppText {
     val coachGenerate: String get() = text(BuilderR.string.coach_generate)
     val discard: String get() = text(BuilderR.string.builder_discard_dialog_confirm)
 
+    // Coach changing a plan that already exists.
+    fun planEditOpenExercise(name: String): String =
+        InstrumentationRegistry.getInstrumentation().targetContext
+            .getString(BuilderR.string.plan_edit_open_exercise, name)
+    val planEditSwapSimilar: String get() = text(BuilderR.string.plan_edit_swap_similar)
+    val planEditApply: String get() = text(BuilderR.string.plan_edit_apply)
+
     /** The short label on a plan row's own button, not Today's "Start workout". */
     val startPlan: String get() = text(BuilderR.string.plans_start_short)
 

@@ -1,6 +1,7 @@
 package com.repforth.app
 
 import com.repforth.core.ai.AiGenerationFailureReason
+import com.repforth.core.ai.AiPlanChange
 import com.repforth.core.ai.AiPlanEditOutcome
 import com.repforth.core.ai.AiPlanEditService
 import com.repforth.core.ai.AiPlannedDay
@@ -12,6 +13,9 @@ import com.repforth.core.ai.ProviderAvailability
 import com.repforth.core.ai.di.AiGenerationModule
 import com.repforth.core.model.ExerciseCandidate
 import com.repforth.core.model.Language
+import com.repforth.core.ai.PlanEditApplication
+import com.repforth.core.ai.PlanEditApplier
+import com.repforth.core.ai.PlanEditOp
 import com.repforth.core.ai.PlanEditRequest
 import com.repforth.core.rules.GenerationRequest
 import dagger.Module
@@ -70,7 +74,7 @@ object TestGenerationModule {
     @Singleton
     fun provideProviderAvailability(): ProviderAvailability = FixtureAvailability
 
-    /** Replaced with a fixture that answers in the next change; until then, it declines. */
+    /** And the edit, for the same reason: no device can reach a provider. */
     @Provides
     @Singleton
     fun providePlanEditService(): AiPlanEditService = FixturePlanEditService
@@ -78,14 +82,56 @@ object TestGenerationModule {
     /** Ids from the pinned catalog, so the drafts resolve to real names. */
     const val FIRST_EXERCISE_ID = "0025"
     const val SECOND_EXERCISE_ID = "0032"
+
+    /**
+     * What a Coach edit swaps in: barbell incline bench press, another
+     * pectorals movement, so the fixture answers the swap chip the way a
+     * provider asked "something that works the same muscles" could.
+     */
+    const val SWAP_EXERCISE_ID = "0047"
 }
 
+/**
+ * Swaps the exercise the person pointed at for [TestGenerationModule.SWAP_EXERCISE_ID],
+ * keeping its prescription.
+ *
+ * The edited plan comes from [PlanEditApplier], not from copying the list by
+ * hand: the applier is what decides what "day 1, position 1" means, and a
+ * fixture that worked that out for itself could agree with the test and
+ * disagree with the app. A request with no focus has nothing to swap, and is
+ * declined the way a real provider failure would be.
+ */
 private object FixturePlanEditService : AiPlanEditService {
     override suspend fun edit(
         request: PlanEditRequest,
         locale: Language,
         candidates: List<ExerciseCandidate>,
-    ): AiPlanEditOutcome = AiPlanEditOutcome.Failure(
+    ): AiPlanEditOutcome {
+        val focus = request.focus ?: return declined()
+        val current = request.plan.days[focus.day - 1].exercises[focus.position - 1]
+        val change = AiPlanChange(
+            op = PlanEditOp.REPLACE,
+            day = focus.day,
+            position = focus.position,
+            exerciseId = TestGenerationModule.SWAP_EXERCISE_ID,
+            sets = current.sets,
+            repetitions = current.repetitions,
+            durationSeconds = current.durationSeconds,
+            weightKg = current.weightKg,
+            restSeconds = current.restSeconds,
+        )
+        return when (val applied = PlanEditApplier.apply(request.plan, listOf(change))) {
+            is PlanEditApplication.Applied -> AiPlanEditOutcome.Proposal(
+                edited = applied.edit.plan,
+                changes = listOf(change),
+                rationale = "Fixture answer for instrumentation.",
+                attempts = 1,
+            )
+            is PlanEditApplication.Rejected -> declined()
+        }
+    }
+
+    private fun declined() = AiPlanEditOutcome.Failure(
         AiWorkoutGenerationOutcome.Failure(
             reason = AiGenerationFailureReason.NO_PROVIDER_CONFIGURATION,
             attempts = 0,

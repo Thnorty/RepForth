@@ -246,6 +246,62 @@ class BuilderFlowTest {
     }
 
     /**
+     * A Coach edit changes the draft only when Apply is tapped, and saves nothing.
+     *
+     * The edit reaches the builder through the card's own button: that is the
+     * caller the unit tests stand in for, and `PlanEditComposeTest` hosts the
+     * route on the JVM rather than in the app's real navigation and Hilt graph.
+     * The answer is [TestGenerationModule]'s fixture, which replaces the
+     * exercise it was pointed at -- applied through the production applier, so
+     * its idea of "position 1" is the app's.
+     *
+     * Asserting the old name is gone matters as much as the new one arriving: a
+     * swap that appended instead of replacing would pass the first half alone.
+     */
+    @Test
+    fun coachEditSwapsAnExerciseOnlyAfterApply() {
+        compose.openNewWorkout()
+
+        compose.onNodeWithText(AppText.coachOpen).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(AppText.coachGenerate).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodes(hasText(COACH_FIRST_EXERCISE)).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        compose.onNodeWithContentDescription(AppText.planEditOpenExercise(COACH_FIRST_EXERCISE))
+            .performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(AppText.planEditSwapSimilar).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodes(hasText(AppText.planEditApply)).fetchSemanticsNodes().isNotEmpty()
+        }
+        // Proposed is not applied: until Apply, the card still holds the old one.
+        assertTrue(
+            "The swap reached the draft before Apply was tapped",
+            compose.onAllNodes(hasText(COACH_SWAP_EXERCISE)).fetchSemanticsNodes().isEmpty(),
+        )
+        compose.onNodeWithText(AppText.planEditApply).performClick()
+
+        compose.waitUntil(TIMEOUT_MS) {
+            compose.onAllNodes(hasText(COACH_SWAP_EXERCISE)).fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodes(hasText(COACH_FIRST_EXERCISE)).fetchSemanticsNodes().isEmpty()
+        }
+
+        compose.onNodeWithContentDescription(AppText.back).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(AppText.discard).performClick()
+        compose.waitForIdle()
+
+        assertTrue(
+            "A Coach edit saved a plan that was never confirmed",
+            compose.onAllNodes(hasText(COACH_PLAN_NAME)).fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    /**
      * Waits for the keyboard *and* for the layout to have moved out of its way.
      *
      * `waitUntil { imeHeight() > 0 }` is not enough, and the difference cost a
@@ -605,5 +661,13 @@ class BuilderFlowTest {
 
         /** `coach_default_name`, used when the field is left empty. */
         const val COACH_PLAN_NAME = "Coach plan"
+
+        /**
+         * [TestGenerationModule.FIRST_EXERCISE_ID] and
+         * [TestGenerationModule.SWAP_EXERCISE_ID] as a card draws them --
+         * title-cased, for the reason [CATALOG_EXERCISE] gives.
+         */
+        const val COACH_FIRST_EXERCISE = "Barbell Bench Press"
+        const val COACH_SWAP_EXERCISE = "Barbell Incline Bench Press"
     }
 }
