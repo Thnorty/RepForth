@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.repforth.core.ai.AiPlanChange
 import com.repforth.core.ai.PlanEditOp
@@ -23,6 +24,7 @@ import com.repforth.core.testing.FakeProfiles
 import com.repforth.core.testing.SCREENSHOT_DEVICE
 import com.repforth.core.testing.SCREENSHOT_SDK
 import com.repforth.core.testing.sampleProfile
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -172,6 +174,36 @@ class PlanEditComposeTest {
         assertEquals(PlanRef(2, 1), editor.requests.single().first.focus)
     }
 
+    /**
+     * Back while Coach works asks first, and "Keep waiting" keeps the sheet.
+     *
+     * The sheet refused to become Hidden while working, but material3's back
+     * handler animates it off-screen before asking whether it may: the sheet
+     * slid away, the confirm dialog came up, and keeping the request left a
+     * scrim over the builder and the answer arriving somewhere nobody could see
+     * it. So this asserts the answer is *displayed*, not merely composed.
+     */
+    @Test
+    fun `back while Coach works, then keep waiting, still shows the answer`() {
+        swapFirstFor("ex-new")
+        val gate = CompletableDeferred<Unit>()
+        editor.gate = gate
+        render(planId = BuilderFixtures.STANDALONE.id)
+
+        compose.onNodeWithContentDescription("Ask Coach about Exercise 0").performClick()
+        compose.onNodeWithText(SWAP_CHIP).performClick()
+        waitFor(WORKING)
+
+        Espresso.pressBack()
+        waitFor(KEEP_WAITING)
+        compose.onNodeWithText(KEEP_WAITING).performClick()
+        compose.waitForIdle()
+
+        gate.complete(Unit)
+        waitFor(APPLY)
+        compose.onNodeWithText(APPLY).assertIsDisplayed()
+    }
+
     private object NotConfigured : ProviderAvailability {
         override val configured = flowOf(false)
     }
@@ -185,5 +217,7 @@ class PlanEditComposeTest {
         const val APPLY = "Apply"
         const val DISCARD = "Discard"
         const val SETUP_NOTICE = "AI provider you choose"
+        const val WORKING = "Coach is reworking your plan"
+        const val KEEP_WAITING = "Keep waiting"
     }
 }

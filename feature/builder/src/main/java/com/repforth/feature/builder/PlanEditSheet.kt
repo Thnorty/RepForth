@@ -1,5 +1,6 @@
 package com.repforth.feature.builder
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetValue
@@ -84,10 +86,16 @@ internal fun PlanEditSheet(
         confirmValueChange = { it != SheetValue.Hidden || !working },
     )
 
+    // Back is taken away from the sheet while Coach works, and asked about
+    // here instead. material3's own back handler slides the sheet off-screen
+    // *before* `confirmValueChange` is consulted, so refusing Hidden alone left
+    // an invisible sheet holding the answer once "Keep waiting" was tapped.
     ModalBottomSheet(
         onDismissRequest = { if (working) confirmingStop = true else onDismiss() },
         sheetState = sheetState,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = !working),
     ) {
+        BackHandler(enabled = working) { confirmingStop = true }
         PlanEditContent(
             state = state,
             onTextChange = onTextChange,
