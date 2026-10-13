@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The camera app may write here, and nowhere else. Stored photos in
+     filesDir/body-photos are never shared. -->
+<paths>
+    <cache-path name="camera" path="camera/" />
+</paths>
