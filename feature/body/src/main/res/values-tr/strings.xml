@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="body_tab_workouts">Antrenmanlar</string>
+    <string name="body_tab_body">Vücut</string>
+
+    <string name="body_empty">Ölçülerini ve fotoğraflarını takip etmeye başlamak için kayıt ekle.</string>
+    <string name="body_check_in">Kayıt ekle</string>
+    <string name="body_latest">Son ölçümler</string>
+    <string name="body_photos">Fotoğraflar</string>
+    <string name="body_compare">Karşılaştır</string>
+    <string name="body_all_check_ins">Tüm kayıtlar</string>
+    <string name="body_choose_tracked">Neleri takip edeceğini seç</string>
+    <string name="body_no_photo">Henüz fotoğraf yok</string>
+
+    <string name="body_change_down">▼ %1$s</string>
+    <string name="body_change_up">▲ %1$s</string>
+    <string name="body_change_none">±0</string>
+    <string name="body_change_down_spoken">son kayıttan bu yana %1$s azaldı</string>
+    <string name="body_change_up_spoken">son kayıttan bu yana %1$s arttı</string>
+    <string name="body_change_none_spoken">son kayıttan bu yana değişmedi</string>
+
+    <string name="body_value_with_unit">%1$s %2$s</string>
+    <string name="body_value_percent">%%%1$s</string>
+
+    <string name="body_type_weight">Kilo</string>
+    <string name="body_type_body_fat">Vücut yağı</string>
+    <string name="body_type_neck">Boyun</string>
+    <string name="body_type_shoulders">Omuzlar</string>
+    <string name="body_type_chest">Göğüs</string>
+    <string name="body_type_waist">Bel</string>
+    <string name="body_type_hips">Kalça</string>
+    <string name="body_type_arm_left">Sol kol</string>
+    <string name="body_type_arm_right">Sağ kol</string>
+    <string name="body_type_forearm_left">Sol ön kol</string>
+    <string name="body_type_forearm_right">Sağ ön kol</string>
+    <string name="body_type_thigh_left">Sol uyluk</string>
+    <string name="body_type_thigh_right">Sağ uyluk</string>
+    <string name="body_type_calf_left">Sol baldır</string>
+    <string name="body_type_calf_right">Sağ baldır</string>
+
+    <string name="body_pose_front">Ön</string>
+    <string name="body_pose_side">Yan</string>
+    <string name="body_pose_back">Arka</string>
+    <string name="body_photo_description">%1$s fotoğrafı</string>
+</resources>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Progress tab's two halves. -->
+    <string name="body_tab_workouts">Workouts</string>
+    <string name="body_tab_body">Body</string>
+
+    <!-- The Body tab. -->
+    <string name="body_empty">Check in to start tracking your measurements and photos.</string>
+    <string name="body_check_in">Check in</string>
+    <string name="body_latest">Latest</string>
+    <string name="body_photos">Photos</string>
+    <string name="body_compare">Compare</string>
+    <string name="body_all_check_ins">All check-ins</string>
+    <string name="body_choose_tracked">Choose what to track</string>
+    <string name="body_no_photo">No photo yet</string>
+
+    <!-- A change since the previous entry. The arrow is shown; the words are read. -->
+    <string name="body_change_down">▼ %1$s</string>
+    <string name="body_change_up">▲ %1$s</string>
+    <string name="body_change_none">±0</string>
+    <string name="body_change_down_spoken">down %1$s since last time</string>
+    <string name="body_change_up_spoken">up %1$s since last time</string>
+    <string name="body_change_none_spoken">unchanged since last time</string>
+
+    <!-- A value with its unit, and a percentage. -->
+    <string name="body_value_with_unit">%1$s %2$s</string>
+    <string name="body_value_percent">%1$s%%</string>
+
+    <!-- Built-in measurements. -->
+    <string name="body_type_weight">Weight</string>
+    <string name="body_type_body_fat">Body fat</string>
+    <string name="body_type_neck">Neck</string>
+    <string name="body_type_shoulders">Shoulders</string>
+    <string name="body_type_chest">Chest</string>
+    <string name="body_type_waist">Waist</string>
+    <string name="body_type_hips">Hips</string>
+    <string name="body_type_arm_left">Left arm</string>
+    <string name="body_type_arm_right">Right arm</string>
+    <string name="body_type_forearm_left">Left forearm</string>
+    <string name="body_type_forearm_right">Right forearm</string>
+    <string name="body_type_thigh_left">Left thigh</string>
+    <string name="body_type_thigh_right">Right thigh</string>
+    <string name="body_type_calf_left">Left calf</string>
+    <string name="body_type_calf_right">Right calf</string>
+
+    <!-- Photo poses. -->
+    <string name="body_pose_front">Front</string>
+    <string name="body_pose_side">Side</string>
+    <string name="body_pose_back">Back</string>
+    <string name="body_photo_description">%1$s photo</string>
+</resources>

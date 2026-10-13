@@ -69,9 +69,14 @@ fun UnitSystem.toKilograms(value: Double): Double = when (this) {
  * process. So the default reports the **device's** locale, and a Turkish user on
  * an English phone would get a period back for the comma they had just typed.
  */
-fun UnitSystem.formatWeight(kg: Double, locale: Locale): String {
-    val shown = fromKilograms(kg)
-    val rounded = (shown * 10).roundToInt() / 10.0
+fun UnitSystem.formatWeight(kg: Double, locale: Locale): String = formatDecimal(fromKilograms(kg), locale)
+
+/**
+ * Any figure to one decimal, whole numbers without one, in the reader's
+ * [locale]. What [formatWeight] and [formatLength] both are once converted.
+ */
+fun formatDecimal(value: Double, locale: Locale): String {
+    val rounded = (value * 10).roundToInt() / 10.0
     if (rounded % 1.0 == 0.0) return rounded.toInt().toString()
 
     // `0.#` rather than the default pattern, because the default groups: a gym
@@ -199,11 +204,7 @@ fun UnitSystem.toCentimetres(value: Double): Double = when (this) {
 }
 
 /** A length as text, without the unit, to one decimal in the reader's [locale] — as [formatWeight]. */
-fun UnitSystem.formatLength(cm: Double, locale: Locale): String {
-    val rounded = (fromCentimetres(cm) * 10).roundToInt() / 10.0
-    if (rounded % 1.0 == 0.0) return rounded.toInt().toString()
-    return DecimalFormat("0.#", DecimalFormatSymbols.getInstance(locale)).format(rounded)
-}
+fun UnitSystem.formatLength(cm: Double, locale: Locale): String = formatDecimal(fromCentimetres(cm), locale)
 
 /** The length abbreviation. */
 val UnitSystem.lengthSymbol: String

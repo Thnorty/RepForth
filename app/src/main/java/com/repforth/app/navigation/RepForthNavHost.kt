@@ -24,6 +24,8 @@ import com.repforth.core.designsystem.theme.rfPushExit
 import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
+import com.repforth.feature.body.BodyRoute
+import com.repforth.feature.body.ProgressTabs
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
 import com.repforth.feature.session.SessionRoute
@@ -140,7 +142,18 @@ fun RepForthNavHost(
             ExercisesRoute()
         }
         composable<Destination.Progress> {
-            HistoryRoute()
+            ProgressTabs(
+                workouts = { HistoryRoute() },
+                body = {
+                    BodyRoute(
+                        onCheckIn = {},
+                        onOpenMeasurement = {},
+                        onCompare = {},
+                        onAllCheckIns = {},
+                        onChooseTracked = {},
+                    )
+                },
+            )
         }
         composable<Destination.Settings> {
             SettingsRoute(
