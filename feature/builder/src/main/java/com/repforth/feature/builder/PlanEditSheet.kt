@@ -351,7 +351,7 @@ private fun Reviewing(
                 isWeek -> stringResource(R.string.plan_edit_day_minutes, day, minutes)
                 over -> stringResource(R.string.plan_edit_workout_minutes_over, minutes, ceilingMinutes!!)
                 else -> stringResource(R.string.plan_edit_workout_minutes, minutes)
-            },
+            }.withNumerals(),
             style = MaterialTheme.typography.bodyMedium,
             color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -457,7 +457,7 @@ private fun ChangeRow(row: PlanEditRow) {
         Column(modifier = Modifier.weight(1f)) {
             row.dayNumber?.let {
                 Text(
-                    stringResource(R.string.plan_edit_row_day, it),
+                    stringResource(R.string.plan_edit_row_day, it).withNumerals(),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -465,7 +465,7 @@ private fun ChangeRow(row: PlanEditRow) {
             Text(headline, style = MaterialTheme.typography.titleSmall)
             detail?.let {
                 Text(
-                    it,
+                    it.withNumerals(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
