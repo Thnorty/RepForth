@@ -87,6 +87,9 @@ internal fun BodyScreen(
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                 )
+                // Before the first check-in too: otherwise arms, hips and the
+                // rest can only be chosen after saving one without them.
+                LinkRow(stringResource(R.string.body_choose_tracked), onChooseTracked, TextAlign.Center)
             }
         } else {
             LazyColumn(
@@ -237,11 +240,11 @@ private fun PhotoStrip(
 }
 
 @Composable
-private fun LinkRow(text: String, onClick: () -> Unit) {
+private fun LinkRow(text: String, onClick: () -> Unit, align: TextAlign = TextAlign.Start) {
     TextButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
     ) {
-        Text(text, modifier = Modifier.fillMaxWidth())
+        Text(text, modifier = Modifier.fillMaxWidth(), textAlign = align)
     }
 }

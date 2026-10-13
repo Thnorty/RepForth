@@ -73,6 +73,29 @@ question from this one and a sharper one.
 **Phase 5 — the watch.** Phone and watch exchange workout state directly over the
 Wear Data Layer. That traffic stays between your paired devices.
 
+## Body tracking
+
+Measurements you record -- weight, body fat, tape measurements, and any you
+add yourself -- go into the same on-device database as your workouts, and are
+part of the JSON export. **Progress photos are handled differently, and are
+never part of the export:**
+
+- They come from your phone's own camera app, or from your gallery through the
+  system photo picker. RepForth holds **no camera permission and no storage
+  permission**. The camera app writes one file into a folder only RepForth can
+  read, through a `FileProvider` limited to that folder.
+- Each photo is decoded, turned upright, shrunk to at most 2048 px on its long
+  edge, and saved as a new JPEG. That copy carries **no EXIF data at all** --
+  no location, no camera model, no timestamp -- whatever the original held. A
+  photo picked from your gallery is copied; the original is not touched.
+- The copy lives in the app's private storage (`body-photos`). It is not sent
+  anywhere, and it is not in the export, so moving to a new phone means
+  carrying the photos across yourself.
+- A photo taken but never saved to a check-in is deleted within a day. A stored
+  photo that no check-in refers to is deleted the next time the Body tab opens.
+- **Reset app** deletes measurements and photos. **Delete all workout data**
+  leaves them alone: it is about workouts.
+
 ## Android Auto Backup
 
 Off. `android:allowBackup="false"` in the manifest, held there by

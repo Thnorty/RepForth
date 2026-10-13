@@ -86,6 +86,8 @@ dependencies {
     androidTestImplementation(project(":feature:builder"))
     androidTestImplementation(project(":feature:onboarding"))
     androidTestImplementation(project(":feature:settings"))
+    androidTestImplementation(project(":feature:body"))
+    androidTestImplementation(project(":core:body"))
     // Coach's generation binding is replaced with a fixture on a test device;
     // see TestGenerationModule for why it has to be.
     androidTestImplementation(project(":core:ai"))

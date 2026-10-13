@@ -28,6 +28,7 @@ which decisions are closed so they are not reopened.
 | 5 — Wear remote | §19 | **Core remote demonstrated on hardware.** Snapshot delivery, commands, stale-command refusal, rest countdown and disconnected recovery were demonstrated on a Galaxy S23 and Galaxy Watch Ultra. The 2026-09-07 source audit found the §3/§11 thumbnail, watch timer alerts and ongoing activity still missing |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 61 goldens and enforced CI; migrations and keystore storage now run on a managed emulator |
 | — Reported from use | — | Four rounds after every phase was complete. Three defects, two of which took two attempts each; see below |
+| — Body tracking | §3, §7, §12, §14 | **Built; not yet verified on hardware.** Check-ins, measurements, charts, progress photos and compare, under Progress. See 2026-10-13 below |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
 and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
@@ -4886,6 +4887,66 @@ phone asks again when the foreground service starts. Neither appears in a
 
 The owner's data was restored on both phones afterwards by re-importing, and the
 dialog confirmed it each time: 56 workouts removed, 55 restored.
+
+### 2026-10-13 - body tracking: measurements, photos, and a Body tab under Progress
+
+**Built on the JVM and the managed emulator; not yet verified on hardware.**
+The phone check with the owner (a real camera, a real photo picker, a real
+export) is still to come, and nothing here should be read as having passed it.
+
+Spec `docs/superpowers/specs/2026-10-13-body-tracking-design.md`, plan
+`docs/superpowers/plans/2026-10-13-body-tracking.md`. What exists:
+
+- **Progress is a Workouts | Body switch.** Body shows each tracked type's
+  latest value and its change in a neutral colour (a smaller waist and a bigger
+  arm are both good), the latest front, side and back photos, and links to
+  every check-in and to choosing what to track. **Check in** is pinned.
+- **A check-in** is one per day: a value per tracked type, in the user's units,
+  and three photo slots filled by the system camera app or the photo picker.
+- **Measurement detail** charts one type over 3 months, 6 months, a year, or
+  everything, then lists every entry; TalkBack hears one sentence for the chart.
+- **Compare photos** sets two days of one pose side by side, with that day's
+  weight under each.
+- **What to track**: fifteen built-ins with switches, and the user's own types
+  (length, weight, percent, or a number with its own unit label), which can be
+  renamed or deleted; delete says how many entries go with it.
+- **Storage.** Room schema 8 adds four tables (§7). Photos are files in private
+  storage, re-encoded so they carry no EXIF, and never exported. The export is
+  format version 3 and carries measurements. Reset app clears both; Delete all
+  workout data clears neither. **No camera permission** -- the APK was checked.
+
+Rulings taken during the build, each with what it costs if wrong:
+
+- `@Upsert` silently dropped a second check-in on a day already taken -- seen on
+  the emulator, not reasoned about. `BodyDao` updates, then inserts with ABORT.
+- `ResetCoverageTest` had been reading the whole class as the reset body and so
+  passed every store regardless. It now matches the override, and immediately
+  named `body` and then `transaction` -- the guard had never worked.
+- Import skips the future-date rule: a backup is a record, and refusing
+  someone's only copy over a clock disagreement helps nobody. A file holding
+  only body data no longer counts as empty.
+- Built-ins are seeded by the repository, not the migration.
+- The photo sweep runs once per process, when the Body tab opens; a capture
+  never saved is swept after a day.
+- With no pose chosen, Compare opens on the first pose that has two days.
+- **The Body tab's empty state offers "Choose what to track".** The spec said
+  only "one line and Check in"; `BodyFlowTest` on the emulator found that a new
+  user could not reach the tracking screen until after saving a first check-in
+  of the defaults -- so no arms, no hips, until then.
+- **An `AlertDialog` holding a text field cannot be driven under Robolectric.**
+  Not in touch mode, the dialog's window hands focus to the field, and Compose
+  never goes idle -- with the clock running or stopped, and a stopped-clock run
+  that passed was followed by one that hung on the same line. The add form is
+  `AddCustomForm`, tested in the main window; the dialog itself is tested only
+  by `BodyFlowTest` on the emulator.
+
+Measured on 2026-10-13: `./gradlew test` 2,404 test executions across both
+variants, 0 failed; `./gradlew lint` clean; `:app` on `pixel6Api34` 12 of 12,
+twice, with both `BodyFlowTest` methods watched failing for a real reason (one
+on the empty state above, one on a mutation that unhooked Check in). 124
+screenshot goldens, 25 of them new.
+
+Not done: the hardware check.
 
 ### Earlier polish and maintenance backlog
 

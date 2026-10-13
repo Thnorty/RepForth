@@ -3,6 +3,7 @@ package com.repforth.app
 import androidx.annotation.StringRes
 import androidx.test.platform.app.InstrumentationRegistry
 import com.repforth.core.exercisedata.R as TermsR
+import com.repforth.feature.body.R as BodyR
 import com.repforth.feature.builder.R as BuilderR
 import com.repforth.feature.onboarding.R as OnboardingR
 import com.repforth.feature.session.R as SessionR
@@ -91,6 +92,17 @@ internal object AppText {
 
     val conflictTitle: String get() = text(SessionR.string.session_conflict_title)
     val appearance: String get() = text(SettingsR.string.settings_appearance)
+
+    // Body tracking, under Progress.
+    val bodyTab: String get() = text(BodyR.string.body_tab_body)
+    val checkIn: String get() = text(BodyR.string.body_check_in)
+    val checkInSave: String get() = text(BodyR.string.check_in_save)
+    val waist: String get() = text(BodyR.string.body_type_waist)
+    val chooseTracked: String get() = text(BodyR.string.body_choose_tracked)
+    val addCustom: String get() = text(BodyR.string.tracking_add)
+    val customName: String get() = text(BodyR.string.tracking_name)
+    val kindWeight: String get() = text(BodyR.string.tracking_kind_mass)
+    val addCustomConfirm: String get() = text(BodyR.string.tracking_add_confirm)
 
     /**
      * The app's resources, not the test APK's.
