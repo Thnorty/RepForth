@@ -128,18 +128,7 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
     val budgetSeconds = sessionDurationMinutes * 60
     val targetSeconds = (budgetSeconds * AiPlanFill.TARGET_DAY_FRACTION).toInt()
     appendLine("TIME BUDGET - this person has $sessionDurationMinutes minutes a day, and expects to use them")
-    appendLine(
-        "A day costs the sum over its exercises of " +
-            "sets x (repetitions x ${WorkoutLimits.secondsPerRepEstimate} + rest_seconds) seconds, " +
-            "or sets x (duration_seconds + rest_seconds) for timed ones. " +
-            "The last set's rest counts.",
-    )
-    appendLine(
-        "That arithmetic is the only definition of a day's length here. Do not judge " +
-            "it by how long the session would take in a real gym - setup, walking " +
-            "between stations and warm-up sets are not counted, on purpose. Add the " +
-            "numbers up yourself before you answer.",
-    )
+    appendDurationFormula()
     appendLine("Aim each day at $targetSeconds-$budgetSeconds seconds by that arithmetic.")
     appendLine(
         "- over $budgetSeconds seconds is rejected outright; that ceiling is the one " +
@@ -157,6 +146,55 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
         "- ${WorkoutLimits.maxExercisesPerDay} exercises per day is the hard maximum, " +
             "not the target; the target is the time budget above",
     )
+    appendNumberLimits()
+    appendLine("- focus_muscles: the target_muscle values of the rows you used that day")
+    appendLine(
+        "- title: name what the day trains and nothing else, such as \"Chest and " +
+            "triceps\". The app prints the day number beside it, so a title that " +
+            "starts with one reads as \"Day 1 - Day 1: ...\".",
+    )
+    appendLine("- rationale: one short paragraph explaining the week you built")
+    appendLine()
+
+    retryFeedback?.let {
+        appendLine(it.toPromptSection())
+        appendLine()
+    }
+
+    appendLine(
+        "CATALOG - the only exercises that exist " +
+            "(${candidates.size} ${if (candidates.size == 1) "row" else "rows"})",
+    )
+    appendLine(AiExerciseCandidate.CATALOG_HEADER)
+    candidates.forEach { appendLine(it.toCatalogRow()) }
+}.trim()
+
+/**
+ * How the app measures a day, stated once for every prompt that asks a model to
+ * fill one. [AiWorkoutValidator] and [PlanEditValidator] enforce the ceiling with
+ * this formula, so a prompt that described it differently would set the model a
+ * test it could not see.
+ */
+internal fun StringBuilder.appendDurationFormula() {
+    appendLine(
+        "A day costs the sum over its exercises of " +
+            "sets x (repetitions x ${WorkoutLimits.secondsPerRepEstimate} + rest_seconds) seconds, " +
+            "or sets x (duration_seconds + rest_seconds) for timed ones. " +
+            "The last set's rest counts.",
+    )
+    appendLine(
+        "That arithmetic is the only definition of a day's length here. Do not judge " +
+            "it by how long the session would take in a real gym - setup, walking " +
+            "between stations and warm-up sets are not counted, on purpose. Add the " +
+            "numbers up yourself before you answer.",
+    )
+}
+
+/**
+ * The per-exercise numbers every answer is checked against on arrival, from
+ * [WorkoutLimits], shared by generation and plan edits.
+ */
+internal fun StringBuilder.appendNumberLimits() {
     appendLine(
         "- sets ${WorkoutLimits.sets.first}-${WorkoutLimits.sets.last}; " +
             "repetitions ${WorkoutLimits.reps.first}-${WorkoutLimits.reps.last}; " +
@@ -182,27 +220,7 @@ internal fun AiWorkoutRequest.toGenerationPrompt(
             "adjusted on the day, not a measurement",
     )
     appendLine("- exercise_id must be copied exactly from the catalog; no other exercise exists")
-    appendLine("- focus_muscles: the target_muscle values of the rows you used that day")
-    appendLine(
-        "- title: name what the day trains and nothing else, such as \"Chest and " +
-            "triceps\". The app prints the day number beside it, so a title that " +
-            "starts with one reads as \"Day 1 - Day 1: ...\".",
-    )
-    appendLine("- rationale: one short paragraph explaining the week you built")
-    appendLine()
-
-    retryFeedback?.let {
-        appendLine(it.toPromptSection())
-        appendLine()
-    }
-
-    appendLine(
-        "CATALOG - the only exercises that exist " +
-            "(${candidates.size} ${if (candidates.size == 1) "row" else "rows"})",
-    )
-    appendLine(AiExerciseCandidate.CATALOG_HEADER)
-    candidates.forEach { appendLine(it.toCatalogRow()) }
-}.trim()
+}
 
 /**
  * The rejection, in words the model can act on.
