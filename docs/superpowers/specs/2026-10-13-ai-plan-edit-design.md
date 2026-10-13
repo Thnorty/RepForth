@@ -25,6 +25,9 @@ confirms". This is the feature those sentences describe.
   Apply or Discard. No per-change checkboxes.
 - **The model returns a list of typed changes**, not a rewritten plan.
 - **No `move` operation.** Reordering stays manual; the builder already has it.
+- **An edit may run a day past the session length** (owner, 2026-10-13, during
+  implementation). "Add more chest" on a full day adds chest. The review shows
+  each touched day's new length and says when it is over the usual session.
 
 ### Assumed
 
@@ -145,10 +148,17 @@ ceiling, which the builder allows with a warning.
 | Sets, reps, duration, rest, weight within `WorkoutLimits` | every changed exercise |
 | Target type matches the exercise's timed flag | every changed exercise |
 | No exercise twice in one day | every day the edit touched |
-| Session ceiling | a touched day may not end longer than it started *and* over the ceiling |
+| At most `maxExercisesPerDay` | a touched day may not grow past it |
 
 Not applied: day count, the 30% week-fill floor (`WEEK_TOO_SHORT`), rationale
 length beyond "present". These judge a generated week, not an edit.
+
+**Nor the session ceiling.** This section originally rejected a change that made
+a day longer and left it over the ceiling. The owner reversed that during
+implementation: a person asking to add exercises to a full day is asking for a
+longer day, and refusing — or steering the model into swapping instead — overrules
+them on the one thing they asked. The prompt says a day may run long when asked,
+and the review makes the new length visible before Apply.
 
 The per-day checks and the duration estimate come from the existing
 `AiWorkoutValidator`/`RulesEngine` code, extracted where they are currently
@@ -206,7 +216,8 @@ A modal bottom sheet with three states:
    - adjust: `Squat: 5×5 → 4×6`, day
 
    Each row is one merged semantics node reading as a sentence. Touched days
-   show their new estimated minutes. Actions: **Apply**, **Discard**. A
+   show their new estimated minutes, and say so when that is past the
+   profile's session length. Actions: **Apply**, **Discard**. A
    zero-change answer shows the rationale and **Close** only.
 
 Errors use the existing `CoachError` popup. Retry keeps the typed instruction

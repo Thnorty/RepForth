@@ -303,7 +303,7 @@
   1. Filter with `RulesEngine.filterCandidates(GenerationRequest(profile = request.profile), candidates)`.
   2. Resolve the config.
   3. Call the provider.
-  4. On `Ok`, run `PlanEditApplier.apply`, then `PlanEditValidator.validate` with `offered = eligible.associateBy { it.id.value }` and `sessionLengthMs = profile.sessionLengthMs`.
+  4. On `Ok`, run `PlanEditApplier.apply`, then `PlanEditValidator.validate` with `offered = eligible.associateBy { it.id.value }`. (No session length: see the 2026-10-13 ruling in the ledger; edits may run long.)
   5. On failure, make one repair attempt with `AiWorkoutRetryFeedback.fromContract`, or `Malformed` for `FORMAT`.
 
   Bind it in `AiGenerationModule`, and add a stub binding to `TestGenerationModule`.
@@ -429,6 +429,7 @@
 | `plan_edit_stale` | The plan changed while Coach was working, so these suggestions no longer fit it. |
 | `plan_edit_ask_again` | Ask again |
 | `plan_edit_day_minutes` | Day %1$d: about %2$d min |
+| `plan_edit_day_minutes_over` | Day %1$d: about %2$d min, past your usual %3$d |
 | `plan_edit_row_replaced` | %1$s → %2$s |
 | `plan_edit_row_added` | Add %1$s |
 | `plan_edit_row_added_after` | Add %1$s after %2$s |

@@ -45,9 +45,6 @@ enum class AiWorkoutIssue {
 
     /** A field an operation must set is null, or one it must not set is present. */
     OPERATION_SHAPE,
-
-    /** The edit made a day longer and left it past the session ceiling. */
-    DAY_GREW_PAST_CEILING,
 }
 
 data class AiWorkoutContractViolation(
@@ -195,9 +192,6 @@ private fun AiWorkoutIssue.explain(): String = when (this) {
         "the fields do not fit the op: replace and add need exercise_id, sets, rest_seconds and " +
             "one of repetitions or duration_seconds; remove sets every other field to null; " +
             "adjust leaves exercise_id null and sets at least one number"
-    AiWorkoutIssue.DAY_GREW_PAST_CEILING ->
-        "the change makes this day longer than the time available; swap rather than add, or " +
-            "trim sets or rest"
 }
 
 /**

@@ -44,6 +44,13 @@ internal fun EditableDay.estimatedDurationMs(): Long = exercises.sumOf { exercis
  *
  * None of the generation-only checks apply. The day count and the week-fill
  * floor judge a week the model wrote; this week is the person's.
+ *
+ * **Neither does the session length.** An edit may run a day past it -- the
+ * owner's decision, 2026-10-13. "Add more chest" on a full day should add chest;
+ * refusing it, or quietly answering with a swap, overrules the person on the one
+ * thing they asked for. The review shows each touched day's new length and says
+ * when it is over, and the builder already warns about a long day, so the cost
+ * is visible before Apply rather than enforced after it.
  */
 object PlanEditValidator {
 
@@ -52,7 +59,6 @@ object PlanEditValidator {
         edit: AppliedEdit,
         rationale: String,
         offered: Map<String, ExerciseCandidate>,
-        sessionLengthMs: Long,
     ): List<AiWorkoutContractViolation> = buildList {
         if (rationale.isBlank()) add(AiWorkoutContractViolation(AiWorkoutIssue.RATIONALE_MISSING))
 
@@ -97,11 +103,6 @@ object PlanEditValidator {
             val count = after.exercises.size
             if (count > WorkoutLimits.maxExercisesPerDay && count > before.exercises.size) {
                 add(AiWorkoutContractViolation(AiWorkoutIssue.TOO_MANY_EXERCISES, dayIndex = dayIndex))
-            }
-
-            val lengthMs = after.estimatedDurationMs()
-            if (lengthMs > sessionLengthMs && lengthMs > before.estimatedDurationMs()) {
-                add(AiWorkoutContractViolation(AiWorkoutIssue.DAY_GREW_PAST_CEILING, dayIndex = dayIndex))
             }
         }
     }

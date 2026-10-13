@@ -22,8 +22,6 @@ import org.junit.Test
  */
 class PlanEditValidatorTest {
 
-    private val ceilingMs = 30 * 60_000L
-
     private fun candidate(id: String, timed: Boolean = false) = ExerciseCandidate(
         id = ExerciseId(id),
         name = id,
@@ -65,7 +63,6 @@ class PlanEditValidatorTest {
             edit = (applied as PlanEditApplication.Applied).edit,
             rationale = rationale,
             offered = offered,
-            sessionLengthMs = ceilingMs,
         )
     }
 
@@ -153,41 +150,27 @@ class PlanEditValidatorTest {
         )
     }
 
+    /**
+     * The owner's decision, 2026-10-13: an edit may run a day past the session
+     * length. "Add more chest" on a full day should add chest, and the review
+     * says how long the day became, rather than the app refusing what was asked.
+     */
     @Test
-    fun `a day may not grow past the ceiling`() {
+    fun `a day may grow past the session length`() {
         // 5 × (30 + 270) = 1500s, 25 minutes; adding 5 × (30 + 90) = 600s makes 35.
-        val found = violations(
-            day(ex("A", sets = 5, rest = 270)),
-            change(PlanEditOp.ADD, position = 1, id = "X", sets = 5, rest = 90),
-        )
-
-        assertEquals(listOf(AiWorkoutContractViolation(AiWorkoutIssue.DAY_GREW_PAST_CEILING, dayIndex = 0)), found)
-    }
-
-    @Test
-    fun `a day may grow while it stays under the ceiling`() {
-        assertEquals(
-            emptyList<AiWorkoutIssue>(),
-            issues(day(ex("A", sets = 5, rest = 270)), change(PlanEditOp.ADD, position = 1, id = "X")),
-        )
-    }
-
-    @Test
-    fun `a day already over the ceiling may be edited if it does not grow`() {
-        // 8 × 300s = 40 minutes; 7 sets is 35, still over and shorter.
         assertEquals(
             emptyList<AiWorkoutIssue>(),
             issues(
-                day(ex("A", sets = 8, rest = 270)),
-                change(PlanEditOp.ADJUST, position = 1, sets = 7, reps = null, rest = null),
+                day(ex("A", sets = 5, rest = 270)),
+                change(PlanEditOp.ADD, position = 1, id = "X", sets = 5, rest = 90),
             ),
         )
     }
 
     @Test
-    fun `a day already over the ceiling may not grow`() {
+    fun `a day already over the session length may grow further`() {
         assertEquals(
-            listOf(AiWorkoutIssue.DAY_GREW_PAST_CEILING),
+            emptyList<AiWorkoutIssue>(),
             issues(
                 day(ex("A", sets = 8, rest = 270)),
                 change(PlanEditOp.ADJUST, position = 1, sets = 9, reps = null, rest = null),

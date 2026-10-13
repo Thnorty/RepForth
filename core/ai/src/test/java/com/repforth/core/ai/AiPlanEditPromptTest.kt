@@ -142,6 +142,19 @@ class AiPlanEditPromptTest {
         assertTrue(text.contains("0 means"))
     }
 
+    /**
+     * An edit may run a day past the session length (owner's decision,
+     * 2026-10-13), so the prompt must not tell the model otherwise: a model told
+     * that going over is rejected answers "add more chest" with a swap.
+     */
+    @Test
+    fun `going over the session length is allowed, and said to be`() {
+        val time = prompt().substringAfter("TIME").substringBefore("NUMBERS")
+
+        assertTrue(time, time.contains("may run past"))
+        assertFalse(time, time.contains("rejected"))
+    }
+
     @Test
     fun `the instruction is capped`() {
         assertEquals(PlanEditLimits.maxInstructionChars, request(instruction = "x".repeat(2_000)).instruction.length)

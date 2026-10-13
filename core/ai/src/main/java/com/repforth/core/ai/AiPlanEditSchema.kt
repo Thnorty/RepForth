@@ -124,12 +124,13 @@ internal fun AiPlanEditRequest.toPlanEditPrompt(
     appendLine("- rationale: one or two sentences on what you changed and why")
     appendLine()
 
-    appendLine("TIME - a day must not end longer than the time available")
+    appendLine("TIME - this person usually trains $sessionDurationMinutes minutes a day")
     appendDurationFormula()
     appendLine(
-        "- a change that makes a day longer than ${sessionDurationMinutes * 60} seconds " +
-            "is rejected; a day that was already longer may be changed only if your " +
-            "changes do not make it longer still",
+        "- a day may run past ${sessionDurationMinutes * 60} seconds when that is what " +
+            "the person asked for: adding exercises means adding them, not swapping " +
+            "others out. Do not trim exercises they did not mention to make room. The " +
+            "app shows them the new length before they accept",
     )
     appendLine()
 
