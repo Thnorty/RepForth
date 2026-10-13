@@ -48,6 +48,12 @@ object Layout {
      * past this rather than growing.
      */
     val dialogCodeMaxHeight = 180.dp
+
+    /**
+     * The drawing area of a trend chart. Holds no text: the chart's labels sit
+     * outside it, so they follow the font scale and this need not.
+     */
+    val trendChartHeight = 160.dp
 }
 
 /**
