@@ -151,6 +151,36 @@ class PlanEditValidatorTest {
     }
 
     /**
+     * Adjusting one of two copies the person put there themselves introduces no
+     * duplicate. Counting the adjusted copy as "changed" made "add a set to the
+     * bench press" fail -- twice, repair included -- on any day that had it twice.
+     */
+    @Test
+    fun `adjusting a hand-built duplicate is not a duplicate`() {
+        val handBuilt = day(ex("B"), ex("B").copy(key = "second-B"))
+
+        assertEquals(
+            emptyList<AiWorkoutIssue>(),
+            issues(handBuilt, change(PlanEditOp.ADJUST, position = 1, sets = 4, reps = null, rest = null)),
+        )
+    }
+
+    /**
+     * An adjust is judged on the fields it set. The builder caps nothing a
+     * person types, so a hand-entered weight past `WorkoutLimits` must not make
+     * an extra set impossible to ask for.
+     */
+    @Test
+    fun `an adjust is not judged on a value it left alone`() {
+        val heavy = ex("A").copy(weightKg = WorkoutLimits.weightKg.endInclusive + 100)
+
+        assertEquals(
+            emptyList<AiWorkoutIssue>(),
+            issues(day(heavy), change(PlanEditOp.ADJUST, position = 1, sets = 4, reps = null, rest = null)),
+        )
+    }
+
+    /**
      * The owner's decision, 2026-10-13: an edit may run a day past the session
      * length. "Add more chest" on a full day should add chest, and the review
      * says how long the day became, rather than the app refusing what was asked.

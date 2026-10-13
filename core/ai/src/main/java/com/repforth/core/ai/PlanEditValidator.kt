@@ -69,6 +69,10 @@ object PlanEditValidator {
             if (introduced && candidate == null) {
                 add(violation(AiWorkoutIssue.EXERCISE_NOT_OFFERED, slot.dayIndex, exercise.exerciseId))
             }
+            // An adjusted row is judged on the fields the adjust changed. The
+            // builder caps nothing a person types, so a hand-entered weight past
+            // the limits must not make "one more set" impossible to ask for.
+            val before = if (introduced) null else original.days[slot.dayIndex].exercises.firstOrNull { it.key == exercise.key }
             prescriptionIssues(
                 sets = exercise.sets,
                 repetitions = exercise.repetitions,
@@ -78,7 +82,9 @@ object PlanEditValidator {
                 // An adjusted exercise keeps the measure it had; the applier
                 // already refused an adjust that switched it.
                 isTimed = if (introduced) candidate?.isTimed else exercise.durationSeconds != null,
-            ).forEach { add(violation(it, slot.dayIndex, exercise.exerciseId)) }
+            )
+                .filter { issue -> before == null || issue.fieldChanged(before, exercise) }
+                .forEach { add(violation(it, slot.dayIndex, exercise.exerciseId)) }
         }
 
         // The same order generation keeps: what each exercise says first, and
@@ -91,7 +97,12 @@ object PlanEditValidator {
         edit.touchedDays.sorted().forEach { dayIndex ->
             val before = original.days[dayIndex]
             val after = edit.plan.days[dayIndex]
-            val changedHere = edit.changed.filter { it.dayIndex == dayIndex }.map { it.index }.toSet()
+            // Only what the edit put in can be a duplicate it made: adjusting
+            // one of two copies the person built leaves the pair as it found it.
+            val changedHere = edit.changed
+                .filter { it.dayIndex == dayIndex && after.exercises[it.index].key == null }
+                .map { it.index }
+                .toSet()
 
             after.exercises
                 .withIndex()
@@ -105,6 +116,16 @@ object PlanEditValidator {
                 add(AiWorkoutContractViolation(AiWorkoutIssue.TOO_MANY_EXERCISES, dayIndex = dayIndex))
             }
         }
+    }
+
+    /** Whether the value [this] complains about is one [after] changed from [before]. */
+    private fun AiWorkoutIssue.fieldChanged(before: EditableExercise, after: EditableExercise): Boolean = when (this) {
+        AiWorkoutIssue.SETS_OUT_OF_RANGE -> before.sets != after.sets
+        AiWorkoutIssue.REST_OUT_OF_RANGE -> before.restSeconds != after.restSeconds
+        AiWorkoutIssue.WEIGHT_OUT_OF_RANGE -> before.weightKg != after.weightKg
+        AiWorkoutIssue.REPETITION_OUT_OF_RANGE -> before.repetitions != after.repetitions
+        AiWorkoutIssue.DURATION_OUT_OF_RANGE -> before.durationSeconds != after.durationSeconds
+        else -> true
     }
 
     private fun violation(issue: AiWorkoutIssue, dayIndex: Int, exerciseId: String) =
