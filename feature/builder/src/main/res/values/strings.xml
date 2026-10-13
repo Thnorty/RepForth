@@ -163,4 +163,10 @@
     <string name="plan_edit_sets_seconds">%1$d × %2$d s</string>
     <string name="plan_edit_weight">%1$s %2$s</string>
     <string name="plan_edit_rest">%1$d s rest</string>
+    <!-- Failures in a plan edit, where generation's own wording would give advice that does not apply. -->
+    <string name="plan_edit_error_timeout_title">Coach timed out</string>
+    <string name="plan_edit_error_timeout_body">The provider sent no response within %1$d seconds. Your plan has not changed and your request is still here, so you can retry. A narrower request is a smaller job.</string>
+    <string name="plan_edit_error_failed_title">Coach could not change the plan</string>
+    <string name="plan_edit_error_failed_body">The provider answered, but its changes did not fit this plan, even after one correction. Your plan has not changed. Retrying often works, or try wording the request differently.</string>
+    <string name="plan_edit_error_no_candidates_body">Nothing in the catalog fits your available equipment, so Coach has nothing to suggest. You can add equipment in Settings.</string>
 </resources>

@@ -943,7 +943,7 @@ class BuilderViewModel @Inject constructor(
             )
             val next = when (outcome) {
                 is AiPlanEditOutcome.Failure ->
-                    PlanEditState.Failed(pin, instruction, outcome.failure.toCoachError())
+                    PlanEditState.Failed(pin, instruction, outcome.failure.toPlanEditError())
 
                 is AiPlanEditOutcome.Proposal -> {
                     val introduced = exercises.summaries(
@@ -1305,6 +1305,33 @@ private fun AiWorkoutGenerationOutcome.Failure.toCoachError(): CoachError = when
         canRetry = true,
         detail = detail,
     )
+}
+
+/**
+ * Generation's errors, reworded where its advice does not apply to an edit.
+ *
+ * Generation's timeout suggests asking for fewer days, its invalid answer says
+ * nothing in it was a workout, and its empty catalog blames the selected
+ * muscles: an edit has no days control, answers in changes rather than a
+ * workout, and selects no muscles. The rest -- keys, quota, network, no
+ * provider -- read the same for both, and stay shared.
+ */
+private fun AiWorkoutGenerationOutcome.Failure.toPlanEditError(): CoachError {
+    val shared = toCoachError()
+    return when {
+        reason == AiGenerationFailureReason.PROVIDER_FAILURE && providerFailure == ProviderFailure.TIMEOUT ->
+            shared.copy(
+                titleRes = R.string.plan_edit_error_timeout_title,
+                messageRes = R.string.plan_edit_error_timeout_body,
+            )
+        reason == AiGenerationFailureReason.INVALID_RESPONSE -> shared.copy(
+            titleRes = R.string.plan_edit_error_failed_title,
+            messageRes = R.string.plan_edit_error_failed_body,
+        )
+        reason == AiGenerationFailureReason.NO_ELIGIBLE_CANDIDATES ->
+            shared.copy(messageRes = R.string.plan_edit_error_no_candidates_body)
+        else -> shared
+    }
 }
 
 private fun providerError(

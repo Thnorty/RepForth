@@ -163,4 +163,10 @@
     <string name="plan_edit_sets_seconds">%1$d × %2$d sn</string>
     <string name="plan_edit_weight">%1$s %2$s</string>
     <string name="plan_edit_rest">%1$d sn dinlenme</string>
+    <!-- Failures in a plan edit, where generation's own wording would give advice that does not apply. -->
+    <string name="plan_edit_error_timeout_title">Koç zaman aşımına uğradı</string>
+    <string name="plan_edit_error_timeout_body">Sağlayıcı %1$d saniye içinde yanıt vermedi. Planın değişmedi ve isteğin hâlâ burada, tekrar deneyebilirsin. Daha dar bir istek daha küçük bir iş olur.</string>
+    <string name="plan_edit_error_failed_title">Koç planı değiştiremedi</string>
+    <string name="plan_edit_error_failed_body">Sağlayıcı yanıt verdi, ama önerdiği değişiklikler bir düzeltmeden sonra bile bu plana uymadı. Planın değişmedi. Tekrar denemek çoğu zaman işe yarar; isteği farklı ifade etmeyi de deneyebilirsin.</string>
+    <string name="plan_edit_error_no_candidates_body">Katalogda mevcut ekipmanına uyan bir egzersiz yok, bu yüzden Koç\'un önerebileceği bir şey yok. Ayarlar\'dan ekipman ekleyebilirsin.</string>
 </resources>

@@ -303,6 +303,39 @@ class PlanEditViewModelTest {
         assertTrue(state.planEdit is PlanEditState.Reviewing)
     }
 
+    /**
+     * Generation's wording would tell the person to "ask for fewer days" or say
+     * the answer held no workout -- advice for a screen they are not on.
+     */
+    @Test
+    fun `an edit's failures say what happened to the edit, not to a generation`() = runTest(dispatcher) {
+        openStandalone()
+        advanceUntilIdle()
+        val expected = listOf(
+            AiWorkoutGenerationOutcome.Failure(
+                AiGenerationFailureReason.PROVIDER_FAILURE,
+                attempts = 1,
+                providerFailure = ProviderFailure.TIMEOUT,
+            ) to R.string.plan_edit_error_timeout_body,
+            AiWorkoutGenerationOutcome.Failure(AiGenerationFailureReason.INVALID_RESPONSE, attempts = 2) to
+                R.string.plan_edit_error_failed_body,
+            AiWorkoutGenerationOutcome.Failure(AiGenerationFailureReason.NO_ELIGIBLE_CANDIDATES, attempts = 0) to
+                R.string.plan_edit_error_no_candidates_body,
+        )
+
+        expected.forEach { (failure, message) ->
+            editor.outcome = AiPlanEditOutcome.Failure(failure)
+            viewModel.onPlanEditOpen(PlanRef(1, 2))
+            viewModel.onPlanEditSend("swap it", Language.ENGLISH)
+            advanceUntilIdle()
+
+            val failed = state.planEdit as PlanEditState.Failed
+            assertEquals(failure.reason.name, message, failed.error.messageRes)
+            viewModel.onPlanEditErrorDismissed()
+            viewModel.onPlanEditDismiss()
+        }
+    }
+
     @Test
     fun `dismissing an error returns to the request, text and pin kept`() = runTest(dispatcher) {
         openStandalone()
