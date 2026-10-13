@@ -70,6 +70,9 @@ sealed interface Destination {
      * session lives in the database, not on the back stack.
      */
     @Serializable data class Session(val templateId: String? = null) : Destination
+
+    /** A body check-in: [checkInId] to edit one, or null for today's (new or existing). */
+    @Serializable data class BodyCheckIn(val checkInId: String? = null) : Destination
 }
 
 /**

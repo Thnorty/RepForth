@@ -48,4 +48,31 @@
     <string name="body_pose_side">Side</string>
     <string name="body_pose_back">Back</string>
     <string name="body_photo_description">%1$s photo</string>
+    <!-- The check-in form. -->
+    <string name="check_in_date">Date</string>
+    <string name="check_in_date_spoken">Date, %1$s</string>
+    <string name="check_in_measurements">Measurements</string>
+    <string name="check_in_take_photo">Take photo</string>
+    <string name="check_in_choose_photo">Choose photo</string>
+    <string name="check_in_remove_photo">Remove</string>
+    <string name="check_in_no_camera">No camera app found</string>
+    <string name="check_in_save">Save</string>
+    <string name="check_in_delete">Delete check-in</string>
+    <string name="check_in_delete_title">Delete this check-in?</string>
+    <string name="check_in_delete_body">Its measurements and photos are removed.</string>
+    <string name="check_in_delete_confirm">Delete</string>
+    <string name="check_in_cancel">Cancel</string>
+    <string name="check_in_discard_title">Discard changes?</string>
+    <string name="check_in_discard_body">What you entered here is not saved.</string>
+    <string name="check_in_discard_confirm">Discard</string>
+    <string name="check_in_keep_editing">Keep editing</string>
+    <string name="check_in_not_a_number">%1$s isn\'t a number.</string>
+    <string name="check_in_problem_empty">Add a measurement or a photo first.</string>
+    <string name="check_in_problem_future">A check-in can\'t be in the future.</string>
+    <string name="check_in_problem_not_positive">Measurements must be more than zero.</string>
+    <string name="check_in_problem_percent">A percentage can\'t be over 100.</string>
+    <string name="check_in_problem_unknown_type">One of these measurements no longer exists.</string>
+    <string name="check_in_problem_date_taken">There\'s already a check-in on that date.</string>
+    <string name="check_in_photo_unreadable">Couldn\'t read that photo.</string>
+    <string name="check_in_photo_write_failed">Couldn\'t save that photo. The phone may be out of space.</string>
 </resources>

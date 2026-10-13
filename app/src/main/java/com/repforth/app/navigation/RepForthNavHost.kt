@@ -25,6 +25,7 @@ import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
 import com.repforth.feature.body.BodyRoute
+import com.repforth.feature.body.CheckInRoute
 import com.repforth.feature.body.ProgressTabs
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
@@ -146,7 +147,7 @@ fun RepForthNavHost(
                 workouts = { HistoryRoute() },
                 body = {
                     BodyRoute(
-                        onCheckIn = {},
+                        onCheckIn = { navController.navigate(Destination.BodyCheckIn()) },
                         onOpenMeasurement = {},
                         onCompare = {},
                         onAllCheckIns = {},
@@ -154,6 +155,9 @@ fun RepForthNavHost(
                     )
                 },
             )
+        }
+        composable<Destination.BodyCheckIn> {
+            CheckInRoute(onDone = { navController.popBackStack() })
         }
         composable<Destination.Settings> {
             SettingsRoute(
