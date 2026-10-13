@@ -168,12 +168,49 @@ fun sanitizeWeightInput(raw: String): String {
  */
 fun UnitSystem.readWeight(text: String): WeightEntry {
     if (text.isBlank()) return WeightEntry.Blank
-    val value = text.replace(',', '.').toDoubleOrNull() ?: return WeightEntry.Invalid
+    val value = readDecimal(text) ?: return WeightEntry.Invalid
     // A separator alone parses nowhere, but a negative or non-finite number
     // could arrive from a paste, and neither is a weight.
     if (!value.isFinite() || value < 0.0) return WeightEntry.Invalid
     return WeightEntry.Value(toKilograms(value))
 }
+
+/**
+ * A number typed in either decimal mark, or null when there is none.
+ *
+ * Both separators for the reason [SEPARATORS] gives. Range is the caller's
+ * concern: a negative number reads as one.
+ */
+fun readDecimal(text: String): Double? =
+    text.trim().takeIf { it.isNotEmpty() }?.replace(',', '.')?.toDoubleOrNull()
+
+private const val CENTIMETRES_PER_INCH = 2.54
+
+/** A stored length, in the unit the user reads. */
+fun UnitSystem.fromCentimetres(cm: Double): Double = when (this) {
+    UnitSystem.METRIC -> cm
+    UnitSystem.IMPERIAL -> cm / CENTIMETRES_PER_INCH
+}
+
+/** A length the user typed, back in centimetres for storage, unrounded as [toKilograms] is. */
+fun UnitSystem.toCentimetres(value: Double): Double = when (this) {
+    UnitSystem.METRIC -> value
+    UnitSystem.IMPERIAL -> value * CENTIMETRES_PER_INCH
+}
+
+/** A length as text, without the unit, to one decimal in the reader's [locale] — as [formatWeight]. */
+fun UnitSystem.formatLength(cm: Double, locale: Locale): String {
+    val rounded = (fromCentimetres(cm) * 10).roundToInt() / 10.0
+    if (rounded % 1.0 == 0.0) return rounded.toInt().toString()
+    return DecimalFormat("0.#", DecimalFormatSymbols.getInstance(locale)).format(rounded)
+}
+
+/** The length abbreviation. */
+val UnitSystem.lengthSymbol: String
+    get() = when (this) {
+        UnitSystem.METRIC -> "cm"
+        UnitSystem.IMPERIAL -> "in"
+    }
 
 /** The abbreviation, for labels and for anything that prints a total. */
 val UnitSystem.symbol: String
