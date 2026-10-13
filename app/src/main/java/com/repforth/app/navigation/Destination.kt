@@ -82,6 +82,9 @@ sealed interface Destination {
 
     /** Two progress photos of one pose, side by side. */
     @Serializable data object BodyCompare : Destination
+
+    /** Which measurements a check-in asks for, and the user's own. */
+    @Serializable data object BodyTracking : Destination
 }
 
 /**

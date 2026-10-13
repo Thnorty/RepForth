@@ -102,4 +102,34 @@
     <string name="compare_needs_two">Take this pose on two check-ins to compare them.</string>
     <string name="compare_photo_description">%1$s photo, %2$s</string>
     <string name="compare_close">Close</string>
+
+    <!-- Choosing what to track, and the user's own measurements. -->
+    <string name="tracking_built_in">Measurements</string>
+    <string name="tracking_custom">Your own</string>
+    <string name="tracking_add">Add custom measurement</string>
+    <string name="tracking_add_title">New measurement</string>
+    <string name="tracking_add_confirm">Add</string>
+    <string name="tracking_name">Name</string>
+    <string name="tracking_kind">Kind</string>
+    <string name="tracking_kind_length">Length</string>
+    <string name="tracking_kind_mass">Weight</string>
+    <string name="tracking_kind_percent">Percent</string>
+    <string name="tracking_kind_plain">Number</string>
+    <string name="tracking_unit">Unit label</string>
+    <string name="tracking_cancel">Cancel</string>
+    <string name="tracking_rename_action">Rename %1$s</string>
+    <string name="tracking_rename_title">Rename measurement</string>
+    <string name="tracking_rename_confirm">Save</string>
+    <string name="tracking_delete_action">Delete %1$s</string>
+    <string name="tracking_delete_title">Delete measurement</string>
+    <plurals name="tracking_delete_message">
+        <item quantity="one">Delete %1$s? Its %2$d entry goes with it.</item>
+        <item quantity="other">Delete %1$s? Its %2$d entries go with it.</item>
+    </plurals>
+    <string name="tracking_delete_message_empty">Delete %1$s? It has no entries.</string>
+    <string name="tracking_delete_confirm">Delete</string>
+    <string name="tracking_name_blank">Give it a name.</string>
+    <string name="tracking_name_too_long">Keep the name to 40 characters.</string>
+    <string name="tracking_unit_missing">A number needs a unit label, such as mm.</string>
+    <string name="tracking_unit_too_long">Keep the unit label to 10 characters.</string>
 </resources>

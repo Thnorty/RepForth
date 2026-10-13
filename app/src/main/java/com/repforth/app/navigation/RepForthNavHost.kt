@@ -30,6 +30,7 @@ import com.repforth.feature.body.CheckInRoute
 import com.repforth.feature.body.ComparePhotosRoute
 import com.repforth.feature.body.MeasurementDetailRoute
 import com.repforth.feature.body.ProgressTabs
+import com.repforth.feature.body.TrackingRoute
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
 import com.repforth.feature.session.SessionRoute
@@ -154,7 +155,7 @@ fun RepForthNavHost(
                         onOpenMeasurement = { navController.navigate(Destination.BodyMeasurement(it)) },
                         onCompare = { navController.navigate(Destination.BodyCompare) },
                         onAllCheckIns = { navController.navigate(Destination.BodyCheckIns) },
-                        onChooseTracked = {},
+                        onChooseTracked = { navController.navigate(Destination.BodyTracking) },
                     )
                 },
             )
@@ -164,6 +165,9 @@ fun RepForthNavHost(
         }
         composable<Destination.BodyMeasurement> {
             MeasurementDetailRoute(onOpenCheckIn = { navController.navigate(Destination.BodyCheckIn(it)) })
+        }
+        composable<Destination.BodyTracking> {
+            TrackingRoute()
         }
         composable<Destination.BodyCompare> {
             ComparePhotosRoute()

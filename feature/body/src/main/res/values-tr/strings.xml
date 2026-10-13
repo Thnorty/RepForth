@@ -92,4 +92,33 @@
     <string name="compare_needs_two">Karşılaştırmak için bu pozu iki kayıtta çek.</string>
     <string name="compare_photo_description">%1$s fotoğrafı, %2$s</string>
     <string name="compare_close">Kapat</string>
+
+    <string name="tracking_built_in">Ölçüler</string>
+    <string name="tracking_custom">Kendi ölçülerin</string>
+    <string name="tracking_add">Özel ölçü ekle</string>
+    <string name="tracking_add_title">Yeni ölçü</string>
+    <string name="tracking_add_confirm">Ekle</string>
+    <string name="tracking_name">Ad</string>
+    <string name="tracking_kind">Tür</string>
+    <string name="tracking_kind_length">Uzunluk</string>
+    <string name="tracking_kind_mass">Ağırlık</string>
+    <string name="tracking_kind_percent">Yüzde</string>
+    <string name="tracking_kind_plain">Sayı</string>
+    <string name="tracking_unit">Birim</string>
+    <string name="tracking_cancel">Vazgeç</string>
+    <string name="tracking_rename_action">%1$s: yeniden adlandır</string>
+    <string name="tracking_rename_title">Ölçüyü yeniden adlandır</string>
+    <string name="tracking_rename_confirm">Kaydet</string>
+    <string name="tracking_delete_action">%1$s: sil</string>
+    <string name="tracking_delete_title">Ölçüyü sil</string>
+    <plurals name="tracking_delete_message">
+        <item quantity="one">%1$s silinsin mi? %2$d kaydı da silinir.</item>
+        <item quantity="other">%1$s silinsin mi? %2$d kaydı da silinir.</item>
+    </plurals>
+    <string name="tracking_delete_message_empty">%1$s silinsin mi? Hiç kaydı yok.</string>
+    <string name="tracking_delete_confirm">Sil</string>
+    <string name="tracking_name_blank">Bir ad ver.</string>
+    <string name="tracking_name_too_long">Ad en fazla 40 karakter olabilir.</string>
+    <string name="tracking_unit_missing">Sayı için bir birim gerekir, örneğin mm.</string>
+    <string name="tracking_unit_too_long">Birim en fazla 10 karakter olabilir.</string>
 </resources>
