@@ -96,9 +96,67 @@ internal class OpenAiCompatibleProvider(
         config: ProviderConfig,
         request: AiWorkoutRequest,
         retryFeedback: AiWorkoutRetryFeedback?,
-    ): ProviderGenerationResult {
+    ): ProviderGenerationResult = when (
+        val reply = structuredCall(
+            config = config,
+            prompt = request.toGenerationPrompt(retryFeedback),
+            schemaName = AI_WORKOUT_SCHEMA_NAME,
+            schema = AiWorkoutJsonSchema.value,
+            timeoutSeconds = generationTimeoutSeconds(
+                config.settings.requestTimeoutSeconds,
+                request.days,
+            ),
+        )
+    ) {
+        is StructuredReply.Failed -> ProviderGenerationResult.Failed(reply.failure, reply.detail)
+        is StructuredReply.Text -> when (val decoded = AiWorkoutCodec.decodeResponse(reply.value)) {
+            is AiWorkoutDecodeResult.Ok -> ProviderGenerationResult.Ok(decoded.response)
+            AiWorkoutDecodeResult.Malformed -> ProviderGenerationResult.Failed(
+                ProviderFailure.FORMAT,
+                "OpenAI-compatible provider returned a malformed structured workout",
+            )
+        }
+    }
+
+    /** A plan edit, on the configured deadline as it stands. See [GeminiProvider.editPlan]. */
+    override suspend fun editPlan(
+        config: ProviderConfig,
+        request: AiPlanEditRequest,
+        retryFeedback: AiWorkoutRetryFeedback?,
+    ): ProviderPlanEditResult = when (
+        val reply = structuredCall(
+            config = config,
+            prompt = request.toPlanEditPrompt(retryFeedback),
+            schemaName = AI_PLAN_EDIT_SCHEMA_NAME,
+            schema = AiPlanEditJsonSchema.value,
+            timeoutSeconds = config.settings.requestTimeoutSeconds,
+        )
+    ) {
+        is StructuredReply.Failed -> ProviderPlanEditResult.Failed(reply.failure, reply.detail)
+        is StructuredReply.Text -> when (val decoded = AiPlanEditCodec.decodeResponse(reply.value)) {
+            is AiPlanEditDecodeResult.Ok -> ProviderPlanEditResult.Ok(decoded.response)
+            AiPlanEditDecodeResult.Malformed -> ProviderPlanEditResult.Failed(
+                ProviderFailure.FORMAT,
+                "OpenAI-compatible provider returned a malformed plan edit",
+            )
+        }
+    }
+
+    /**
+     * One structured-output call over Chat Completions: the prompt and a strict
+     * named schema out, the model's JSON text back, every transport, envelope
+     * and refusal failure typed on the way. Each contract decodes the text with
+     * its own strict codec afterwards; this part is written once.
+     */
+    private suspend fun structuredCall(
+        config: ProviderConfig,
+        prompt: String,
+        schemaName: String,
+        schema: JsonObject,
+        timeoutSeconds: Int,
+    ): StructuredReply {
         if (config.baseUrl.isBlank()) {
-            return ProviderGenerationResult.Failed(ProviderFailure.ENDPOINT_REFUSED, "no address")
+            return StructuredReply.Failed(ProviderFailure.ENDPOINT_REFUSED, "no address")
         }
 
         val wireRequest = runCatching {
@@ -107,15 +165,15 @@ internal class OpenAiCompatibleProvider(
                 messages = listOf(
                     ChatMessage(
                         role = "user",
-                        content = request.toGenerationPrompt(retryFeedback),
+                        content = prompt,
                     ),
                 ),
                 responseFormat = ChatResponseFormat(
                     type = "json_schema",
                     jsonSchema = ChatJsonSchema(
-                        name = AI_WORKOUT_SCHEMA_NAME,
+                        name = schemaName,
                         strict = true,
-                        schema = AiWorkoutJsonSchema.value,
+                        schema = schema,
                     ),
                 ),
             )
@@ -125,7 +183,7 @@ internal class OpenAiCompatibleProvider(
                 .post(json.encodeToString(body).toRequestBody(PROVIDER_JSON_MEDIA_TYPE))
                 .build()
         }.getOrElse {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 ProviderFailure.ENDPOINT_REFUSED,
                 "invalid address",
             )
@@ -133,20 +191,17 @@ internal class OpenAiCompatibleProvider(
 
         val reply = http.send(
             request = wireRequest,
-            timeoutSeconds = generationTimeoutSeconds(
-                config.settings.requestTimeoutSeconds,
-                request.days,
-            ),
+            timeoutSeconds = timeoutSeconds,
         ).getOrElse { cause ->
             // No detail: nothing came back. A timeout or a DNS failure has no
             // server response to show, and putting the exception's word
             // ("timeout") under a heading that says "Server response" would be
             // the app inventing a reply the server never sent.
-            return ProviderGenerationResult.Failed(cause.toProviderFailure(), null)
+            return StructuredReply.Failed(cause.toProviderFailure(), null)
         }
 
         if (reply.code !in 200..299) {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 failureForStatus(reply.code),
                 providerDetail(reply.body),
             )
@@ -155,35 +210,29 @@ internal class OpenAiCompatibleProvider(
         val envelope = runCatching {
             json.decodeFromString<ChatCompletionResponse>(reply.body)
         }.getOrElse {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
                 "Invalid OpenAI-compatible response envelope",
             )
         }
         val message = envelope.choices.firstOrNull()?.message
-            ?: return ProviderGenerationResult.Failed(
+            ?: return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
                 "OpenAI-compatible response contained no choice",
             )
         if (!message.refusal.isNullOrBlank()) {
-            return ProviderGenerationResult.Failed(
+            return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
-                "Provider refused workout generation",
+                "Provider refused the request",
             )
         }
         val structured = message.content
-            ?: return ProviderGenerationResult.Failed(
+            ?: return StructuredReply.Failed(
                 ProviderFailure.FORMAT,
-                "OpenAI-compatible response contained no structured workout",
+                "OpenAI-compatible response contained no structured answer",
             )
 
-        return when (val decoded = AiWorkoutCodec.decodeResponse(structured)) {
-            is AiWorkoutDecodeResult.Ok -> ProviderGenerationResult.Ok(decoded.response)
-            AiWorkoutDecodeResult.Malformed -> ProviderGenerationResult.Failed(
-                ProviderFailure.FORMAT,
-                "OpenAI-compatible provider returned a malformed structured workout",
-            )
-        }
+        return StructuredReply.Text(structured)
     }
 
     @Serializable

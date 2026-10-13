@@ -342,5 +342,12 @@ class AiWorkoutGeneratorTest {
             calls += ProviderCall(config, request, retryFeedback)
             return remaining.removeAt(0)
         }
+
+        /** Generation never edits; reaching this would mean the generator called the wrong door. */
+        override suspend fun editPlan(
+            config: ProviderConfig,
+            request: AiPlanEditRequest,
+            retryFeedback: AiWorkoutRetryFeedback?,
+        ): ProviderPlanEditResult = error("The generator must not edit a plan")
     }
 }
