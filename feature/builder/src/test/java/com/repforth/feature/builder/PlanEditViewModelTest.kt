@@ -236,6 +236,25 @@ class PlanEditViewModelTest {
     }
 
     @Test
+    fun `ask again from a stale review returns to the request with the instruction`() = runTest(dispatcher) {
+        openStandalone()
+        advanceUntilIdle()
+        editor.changes = listOf(replaceFirst())
+        viewModel.onPlanEditOpen(PlanRef(1, 1))
+        viewModel.onPlanEditSend("swap it", Language.ENGLISH)
+        advanceUntilIdle()
+        viewModel.onRemove(0)
+
+        viewModel.onPlanEditAskAgain()
+
+        val asking = state.planEdit as PlanEditState.Asking
+        assertEquals("swap it", asking.text)
+        // Re-read at the same place in the plan as it is now, so the chip
+        // names what a send would actually be about.
+        assertEquals(PinnedExercise(PlanRef(1, 1), "Exercise 1", null), asking.pin)
+    }
+
+    @Test
     fun `a rename while reviewing is not stale`() = runTest(dispatcher) {
         openStandalone()
         advanceUntilIdle()
@@ -272,14 +291,34 @@ class PlanEditViewModelTest {
         assertEquals(PlanRef(1, 2), failed.pin?.ref)
         assertTrue(failed.error.canRetry)
 
+        // The dialog's Retry: back to the request, then the same send.
         editor.outcome = null
-        viewModel.onPlanEditRetry(Language.ENGLISH)
+        viewModel.onPlanEditErrorDismissed()
+        viewModel.onPlanEditSend((state.planEdit as PlanEditState.Asking).text, Language.ENGLISH)
         advanceUntilIdle()
 
         assertEquals(2, editor.requests.size)
         assertEquals(editor.requests[0].first.instruction, editor.requests[1].first.instruction)
         assertEquals(PlanRef(1, 2), editor.requests[1].first.focus)
         assertTrue(state.planEdit is PlanEditState.Reviewing)
+    }
+
+    @Test
+    fun `dismissing an error returns to the request, text and pin kept`() = runTest(dispatcher) {
+        openStandalone()
+        advanceUntilIdle()
+        editor.outcome = AiPlanEditOutcome.Failure(
+            AiWorkoutGenerationOutcome.Failure(AiGenerationFailureReason.INVALID_RESPONSE, attempts = 2),
+        )
+        viewModel.onPlanEditOpen(PlanRef(1, 2))
+        viewModel.onPlanEditSend("swap it", Language.ENGLISH)
+        advanceUntilIdle()
+
+        viewModel.onPlanEditErrorDismissed()
+
+        val asking = state.planEdit as PlanEditState.Asking
+        assertEquals("swap it", asking.text)
+        assertEquals(PlanRef(1, 2), asking.pin?.ref)
     }
 
     @Test

@@ -241,65 +241,7 @@ internal fun CoachScreen(
     }
 
     state.coachError?.let { error ->
-        AlertDialog(
-            onDismissRequest = onDismissError,
-            title = { Text(stringResource(error.titleRes)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(Space.s3)) {
-                    Text(
-                        text = error.waitedSeconds
-                            ?.let { stringResource(error.messageRes, it) }
-                            ?: stringResource(error.messageRes),
-                    )
-                    error.detail?.let { detail ->
-                        ProviderResponseBlock(detail)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (!error.canRetry) {
-                            onDismissError()
-                            return@TextButton
-                        }
-                        onDismissError()
-                        onGenerate(defaultName)
-                    },
-                ) {
-                    Text(
-                        stringResource(
-                            if (error.canRetry) {
-                                R.string.coach_error_retry
-                            } else {
-                                R.string.coach_error_dismiss
-                            },
-                        ),
-                    )
-                }
-            },
-            // Copy sits with the dialog's other actions rather than beside the
-            // block it copies. AlertDialog offers two button slots, so it
-            // shares this one with Dismiss; leftmost, because it is the least
-            // final thing here and neither closes the dialog.
-            dismissButton = if (error.canRetry || error.detail != null) {
-                {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Space.s1),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        error.detail?.let { detail -> CopyResponseButton(detail) }
-                        if (error.canRetry) {
-                            TextButton(onClick = onDismissError) {
-                                Text(stringResource(R.string.coach_error_dismiss))
-                            }
-                        }
-                    }
-                }
-            } else {
-                null
-            },
-        )
+        CoachErrorDialog(error = error, onDismiss = onDismissError, onRetry = { onGenerate(defaultName) })
     }
 
     if (confirmingCancelGeneration) {
@@ -323,6 +265,76 @@ internal fun CoachScreen(
             },
         )
     }
+}
+
+/**
+ * A provider failure, said in the app's words with the provider's own below.
+ *
+ * Shared by generation and plan edits: the failures are the same facts, so the
+ * dialog that explains them is written once. [onRetry] runs after the dialog is
+ * dismissed, and only when the error says a retry can help.
+ */
+@Composable
+internal fun CoachErrorDialog(
+    error: CoachError,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(error.titleRes)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Space.s3)) {
+                Text(
+                    text = error.waitedSeconds
+                        ?.let { stringResource(error.messageRes, it) }
+                        ?: stringResource(error.messageRes),
+                )
+                error.detail?.let { detail ->
+                    ProviderResponseBlock(detail)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    if (error.canRetry) onRetry()
+                },
+            ) {
+                Text(
+                    stringResource(
+                        if (error.canRetry) {
+                            R.string.coach_error_retry
+                        } else {
+                            R.string.coach_error_dismiss
+                        },
+                    ),
+                )
+            }
+        },
+        // Copy sits with the dialog's other actions rather than beside the
+        // block it copies. AlertDialog offers two button slots, so it
+        // shares this one with Dismiss; leftmost, because it is the least
+        // final thing here and neither closes the dialog.
+        dismissButton = if (error.canRetry || error.detail != null) {
+            {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(Space.s1),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    error.detail?.let { detail -> CopyResponseButton(detail) }
+                    if (error.canRetry) {
+                        TextButton(onClick = onDismiss) {
+                            Text(stringResource(R.string.coach_error_dismiss))
+                        }
+                    }
+                }
+            }
+        } else {
+            null
+        },
+    )
 }
 
 /**
@@ -530,7 +542,7 @@ private fun coachGlow(): Pair<Float, Float> {
  * one instead of from a dialog at the end.
  */
 @Composable
-private fun CoachSetupNotice(onOpenProviderSettings: () -> Unit) {
+internal fun CoachSetupNotice(onOpenProviderSettings: () -> Unit) {
     Column(
         modifier = Modifier
             .padding(horizontal = Layout.gutterPhone)

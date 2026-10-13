@@ -29,6 +29,7 @@ import com.repforth.core.designsystem.component.expandableHeader
 import com.repforth.core.designsystem.theme.Layout
 import com.repforth.core.designsystem.theme.Space
 import com.repforth.core.designsystem.theme.Target
+import com.repforth.core.ai.PlanRef
 import com.repforth.core.model.ExerciseId
 
 /**
@@ -57,6 +58,7 @@ internal fun WeekReviewScreen(
     onTimedChangeInDay: (Int, Int, Boolean) -> Unit,
     onSaveWeek: () -> Unit,
     onCoach: () -> Unit,
+    onAskCoach: (PlanRef?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -121,7 +123,16 @@ internal fun WeekReviewScreen(
                     onRestChange = { exIdx, rest -> onRestChangeInDay(day.dayIndex, exIdx, rest) },
                     onWeightChange = { exIdx, wt -> onWeightChangeInDay(day.dayIndex, exIdx, wt) },
                     onTimedChange = { exIdx, timed -> onTimedChangeInDay(day.dayIndex, exIdx, timed) },
+                    // The list position, not dayIndex: the edit contract
+                    // addresses days by where they sit in the week.
+                    onAskCoach = { exIdx -> onAskCoach(PlanRef(day = dayIdx + 1, position = exIdx + 1)) },
                 )
+            }
+
+            if (state.weekDays.any { it.exercises.isNotEmpty() }) {
+                item(key = "plan_edit") {
+                    AskCoachToChangeButton(onClick = { onAskCoach(null) })
+                }
             }
 
             item(key = "coach") {
@@ -155,6 +166,7 @@ private fun DayAccordionCard(
     onRestChange: (Int, Int) -> Unit,
     onWeightChange: (Int, Double?) -> Unit,
     onTimedChange: (Int, Boolean) -> Unit,
+    onAskCoach: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
@@ -219,6 +231,7 @@ private fun DayAccordionCard(
                         onRestChange = { onRestChange(index, it) },
                         onWeightChange = { onWeightChange(index, it) },
                         onTimedChange = { onTimedChange(index, it) },
+                        onAskCoach = { onAskCoach(index) },
                     )
                 }
 

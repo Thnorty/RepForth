@@ -1,5 +1,6 @@
 package com.repforth.feature.builder
 
+import com.repforth.core.ai.PlanRef
 import com.repforth.core.model.Equipment
 import com.repforth.core.model.ExerciseId
 import com.repforth.core.model.ExerciseTarget
@@ -134,5 +135,62 @@ internal object BuilderFixtures {
             ),
         ),
         savedProfile = PROFILE,
+    )
+
+    /**
+     * Coach's edit sheet, asked from a card: the pin chip and the swap
+     * suggestion are both on screen, which is the longest the request gets.
+     */
+    val PLAN_EDIT_ASKING = WEEK_DRAFT.copy(
+        providerConfigured = true,
+        planEdit = PlanEditState.Asking(
+            pin = PinnedExercise(PlanRef(1, 1), LONG_EXERCISE.name, dayNumber = 1),
+            text = "",
+        ),
+    )
+
+    val PLAN_EDIT_WORKING = WEEK_DRAFT.copy(
+        planEdit = PlanEditState.Working(pin = null, instruction = "add more chest", basis = emptyList()),
+    )
+
+    /**
+     * One row of every kind, a day pushed past the session length, and real
+     * catalog names -- the lengths the review has to survive in Turkish at
+     * twice the font size.
+     */
+    val PLAN_EDIT_REVIEWING = WEEK_DRAFT.copy(
+        planEdit = PlanEditState.Reviewing(
+            pin = null,
+            instruction = "add more chest",
+            basis = WEEK_DRAFT.planEditBasis,
+            rationale = "Two more chest movements on day 1, and a lighter press so the day still flows.",
+            rows = listOf(
+                PlanEditRow.Replaced(
+                    dayNumber = 1,
+                    from = LONG_EXERCISE.name,
+                    to = "dumbbell incline bench press",
+                    thumbnail = MediaRef.Unavailable,
+                    after = Prescription(4, 10, null, 22.5, 90),
+                ),
+                PlanEditRow.Added(
+                    dayNumber = 1,
+                    name = "cable standing fly",
+                    thumbnail = MediaRef.Unavailable,
+                    afterName = "dumbbell incline bench press",
+                    prescription = Prescription(3, 12, null, 10.0, 60),
+                ),
+                PlanEditRow.Removed(dayNumber = 2, name = "band assisted pull-up", thumbnail = MediaRef.Unavailable),
+                PlanEditRow.Adjusted(
+                    dayNumber = 2,
+                    name = LONG_EXERCISE.name,
+                    thumbnail = MediaRef.Unavailable,
+                    before = Prescription(4, 12, null, 60.0, 90),
+                    after = Prescription(3, 8, null, 65.0, 120),
+                ),
+            ),
+            dayMinutes = mapOf(1 to 52, 2 to 31),
+            edited = WEEK_DRAFT.toEditablePlan(),
+            introduced = emptyMap(),
+        ),
     )
 }

@@ -863,9 +863,19 @@ class BuilderViewModel @Inject constructor(
         requestPlanEdit(pin, trimmed, locale)
     }
 
-    fun onPlanEditRetry(locale: Language) {
-        val failed = _uiState.value.planEdit as? PlanEditState.Failed ?: return
-        requestPlanEdit(failed.pin, failed.instruction, locale)
+    /**
+     * From a review the plan has moved on from, back to the request with the
+     * same words. The pin is re-read at its place in the plan as it is now, so
+     * the chip names what a send would actually be about.
+     */
+    fun onPlanEditAskAgain() = update {
+        val reviewing = planEdit as? PlanEditState.Reviewing ?: return@update this
+        copy(
+            planEdit = PlanEditState.Asking(
+                pin = reviewing.pin?.ref?.let(::pinnedAt),
+                text = reviewing.instruction,
+            ),
+        )
     }
 
     /** Stops waiting and goes back to the request, keeping what was asked. */
@@ -884,6 +894,12 @@ class BuilderViewModel @Inject constructor(
         val reviewing = planEdit as? PlanEditState.Reviewing ?: return@update this
         if (planEditIsStale) return@update this
         withEditedPlan(reviewing.edited, reviewing.introduced).copy(planEdit = PlanEditState.Closed)
+    }
+
+    /** Back from an error to the request, with what was asked still in the field. */
+    fun onPlanEditErrorDismissed() = update {
+        val failed = planEdit as? PlanEditState.Failed ?: return@update this
+        copy(planEdit = PlanEditState.Asking(failed.pin, failed.instruction))
     }
 
     /** Closes the sheet whatever it is showing, and abandons a request still running. */
