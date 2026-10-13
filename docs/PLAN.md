@@ -22,7 +22,7 @@ which decisions are closed so they are not reopened.
 |---|---|---|
 | 0 — Foundation | §19 | **Complete.** All six slices done |
 | 1 — Local workout core | §19 | **Built; recovery corrections needed.** Engines, data, all six screens and manual builder exist; the 2026-09-07 audit reproduced three persistence-mapping failures. See Next |
-| 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI. 2.6, Coach editing an existing plan, is built and waits on a live provider |
+| 2 — AI providers | §19 | **Complete.** Storage, settings, contracts, transport, orchestration, and Coach UI. 2.6, Coach editing an existing plan, is done and verified on the Galaxy S23 |
 | 3 — Polished phone | §19 | **Complete.** Media, accessibility, motion tokens and applied motion, progress visuals, baseline profiles |
 | 4 — Weekly plans | §19 | **Complete.** Schema and migration, contract v4, Coach, review, Plans and Today, and a week that reopens |
 | 5 — Wear remote | §19 | **Core remote demonstrated on hardware.** Snapshot delivery, commands, stale-command refusal, rest countdown and disconnected recovery were demonstrated on a Galaxy S23 and Galaxy Watch Ultra. The 2026-09-07 source audit found the §3/§11 thumbnail, watch timer alerts and ongoing activity still missing |
@@ -1003,7 +1003,7 @@ Device verification remains for the redesigned loading card and timeout popup.
 Placeholder assembly, all 409 unit tests, and lint pass for the complete current
 worktree after the local generator removal.
 
-### 2.6 — Coach edits an existing plan — **built; a live provider has not yet answered the edit contract**
+### 2.6 — Coach edits an existing plan — **done**
 
 People can now ask Coach to change a plan they already have. From any
 exercise card, "Swap for something similar" replaces just that exercise. From
@@ -1053,12 +1053,14 @@ five. The cause was a poisoned managed-device snapshot: SystemUI's ANR fired
 before the first test on every restore. It was not this change, and
 AGENTS.md records how to tell the difference.
 
-**What is not verified:** no real Gemini or OpenAI-compatible model has
-answered the edit contract yet. The schema follows generation's rule of shape
-only, with no bounds and no `enum`. Even so, the first live call is the first
-evidence that a provider accepts it. Until a release build on the Galaxy S23
-has completed a card swap and a plan-wide edit, this section's state stays as
-its heading says.
+**Verified on hardware, 2026-10-13.** A release build from e7da8e3, signed
+`CN=RepForth`, was installed over 1.0.2 on the Galaxy S23. With the owner's
+configured provider, the owner ran both entry points and applied each one:
+a card's "Swap for something similar" on a workout, and "add more chest" on a
+week plan. Both answers passed the contract, reviewed sensibly, and changed the
+cards on Apply. The crash buffer was empty and the process was alive seven
+minutes later. The schema rule of shape only, with no bounds and no `enum`,
+was accepted by a live provider on its first call.
 
 ---
 
