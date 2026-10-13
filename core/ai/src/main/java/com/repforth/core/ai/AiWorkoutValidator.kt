@@ -294,67 +294,19 @@ class AiWorkoutValidator(
                         exerciseId = id,
                     )
                 }
-                if (exercise.sets !in WorkoutLimits.sets) {
+                prescriptionIssues(
+                    sets = exercise.sets,
+                    repetitions = exercise.repetitions,
+                    durationSeconds = exercise.durationSeconds,
+                    weightKg = exercise.weightKg,
+                    restSeconds = exercise.restSeconds,
+                    isTimed = candidate?.isTimed,
+                ).forEach { issue ->
                     violations += AiWorkoutContractViolation(
-                        issue = AiWorkoutIssue.SETS_OUT_OF_RANGE,
+                        issue = issue,
                         dayIndex = dayIdx,
                         exerciseId = id,
                     )
-                }
-                if (exercise.restSeconds !in WorkoutLimits.restSeconds) {
-                    violations += AiWorkoutContractViolation(
-                        issue = AiWorkoutIssue.REST_OUT_OF_RANGE,
-                        dayIndex = dayIdx,
-                        exerciseId = id,
-                    )
-                }
-                val weight = exercise.weightKg
-                if (weight != null && weight !in WorkoutLimits.weightKg) {
-                    violations += AiWorkoutContractViolation(
-                        issue = AiWorkoutIssue.WEIGHT_OUT_OF_RANGE,
-                        dayIndex = dayIdx,
-                        exerciseId = id,
-                    )
-                }
-
-                val repetitions = exercise.repetitions
-                val duration = exercise.durationSeconds
-                if ((repetitions == null) == (duration == null)) {
-                    violations += AiWorkoutContractViolation(
-                        issue = AiWorkoutIssue.TARGET_SHAPE,
-                        dayIndex = dayIdx,
-                        exerciseId = id,
-                    )
-                } else if (repetitions != null) {
-                    if (repetitions !in WorkoutLimits.reps) {
-                        violations += AiWorkoutContractViolation(
-                            issue = AiWorkoutIssue.REPETITION_OUT_OF_RANGE,
-                            dayIndex = dayIdx,
-                            exerciseId = id,
-                        )
-                    }
-                    if (candidate?.isTimed == true) {
-                        violations += AiWorkoutContractViolation(
-                            issue = AiWorkoutIssue.TARGET_TYPE_MISMATCH,
-                            dayIndex = dayIdx,
-                            exerciseId = id,
-                        )
-                    }
-                } else if (duration != null) {
-                    if (duration !in WorkoutLimits.durationSeconds) {
-                        violations += AiWorkoutContractViolation(
-                            issue = AiWorkoutIssue.DURATION_OUT_OF_RANGE,
-                            dayIndex = dayIdx,
-                            exerciseId = id,
-                        )
-                    }
-                    if (candidate?.isTimed == false) {
-                        violations += AiWorkoutContractViolation(
-                            issue = AiWorkoutIssue.TARGET_TYPE_MISMATCH,
-                            dayIndex = dayIdx,
-                            exerciseId = id,
-                        )
-                    }
                 }
             }
         }
@@ -438,6 +390,38 @@ class AiWorkoutValidator(
         if (candidateCount < WorkoutLimits.maxExercisesPerDay) return false
         val budgetMs = request.sessionLengthMs * request.days
         return totalEstimatedMs < budgetMs * AiPlanFill.MIN_WEEK_FRACTION
+    }
+}
+
+/**
+ * Every way one exercise's numbers can break the contract, in the order the
+ * validator has always reported them.
+ *
+ * Shared by generation and by plan edits, so a set count or a rest period means
+ * the same thing whichever way it reached the app. [isTimed] is the catalog's
+ * R/T marking, or null when the exercise is not in the offered catalog -- which
+ * the caller reports separately, and which leaves the target type unjudgeable.
+ */
+internal fun prescriptionIssues(
+    sets: Int,
+    repetitions: Int?,
+    durationSeconds: Int?,
+    weightKg: Double?,
+    restSeconds: Int,
+    isTimed: Boolean?,
+): List<AiWorkoutIssue> = buildList {
+    if (sets !in WorkoutLimits.sets) add(AiWorkoutIssue.SETS_OUT_OF_RANGE)
+    if (restSeconds !in WorkoutLimits.restSeconds) add(AiWorkoutIssue.REST_OUT_OF_RANGE)
+    if (weightKg != null && weightKg !in WorkoutLimits.weightKg) add(AiWorkoutIssue.WEIGHT_OUT_OF_RANGE)
+
+    if ((repetitions == null) == (durationSeconds == null)) {
+        add(AiWorkoutIssue.TARGET_SHAPE)
+    } else if (repetitions != null) {
+        if (repetitions !in WorkoutLimits.reps) add(AiWorkoutIssue.REPETITION_OUT_OF_RANGE)
+        if (isTimed == true) add(AiWorkoutIssue.TARGET_TYPE_MISMATCH)
+    } else if (durationSeconds != null) {
+        if (durationSeconds !in WorkoutLimits.durationSeconds) add(AiWorkoutIssue.DURATION_OUT_OF_RANGE)
+        if (isTimed == false) add(AiWorkoutIssue.TARGET_TYPE_MISMATCH)
     }
 }
 
