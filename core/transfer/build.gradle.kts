@@ -12,6 +12,7 @@ dependencies {
     // The one door to user data. This module owns the file format and nothing
     // else; what a profile or a plan *is* stays in core:model.
     implementation(project(":core:user-data"))
+    implementation(project(":core:body"))
     // Reset has to reach the provider key, and this is the only door to it.
     implementation(project(":core:ai"))
     implementation(project(":core:datastore"))

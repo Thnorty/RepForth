@@ -34,6 +34,11 @@ dependencies {
     // cycle. Its own tests use plain fakes for that reason.
     api(project(":core:user-data"))
 
+    // Body tracking's fakes. Brings core:body onto the test classpath of every
+    // module that uses any fixture here; it is small and already rides on Room,
+    // which FakeProfiles put there first.
+    api(project(":core:body"))
+
     // `api` so the shared RoborazziOptions below is usable by the modules that
     // consume it. Roborazzi is a test library and this module is a test
     // fixture, so it goes no further than test classpaths -- and like JUnit

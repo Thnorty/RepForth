@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Progress tab's two halves. -->
+    <string name="body_tab_workouts">Workouts</string>
+    <string name="body_tab_body">Body</string>
+
+    <!-- The Body tab. -->
+    <string name="body_empty">Check in to start tracking your measurements and photos.</string>
+    <string name="body_check_in">Check in</string>
+    <string name="body_latest">Latest</string>
+    <string name="body_photos">Photos</string>
+    <string name="body_compare">Compare</string>
+    <string name="body_all_check_ins">All check-ins</string>
+    <string name="body_choose_tracked">Choose what to track</string>
+    <string name="body_no_photo">No photo yet</string>
+
+    <!-- A change since the previous entry. The arrow is shown; the words are read. -->
+    <string name="body_change_down">▼ %1$s</string>
+    <string name="body_change_up">▲ %1$s</string>
+    <string name="body_change_none">±0</string>
+    <string name="body_change_down_spoken">down %1$s since last time</string>
+    <string name="body_change_up_spoken">up %1$s since last time</string>
+    <string name="body_change_none_spoken">unchanged since last time</string>
+
+    <!-- A value with its unit, and a percentage. -->
+    <string name="body_value_with_unit">%1$s %2$s</string>
+    <string name="body_value_percent">%1$s%%</string>
+
+    <!-- Built-in measurements. -->
+    <string name="body_type_weight">Weight</string>
+    <string name="body_type_body_fat">Body fat</string>
+    <string name="body_type_neck">Neck</string>
+    <string name="body_type_shoulders">Shoulders</string>
+    <string name="body_type_chest">Chest</string>
+    <string name="body_type_waist">Waist</string>
+    <string name="body_type_hips">Hips</string>
+    <string name="body_type_arm_left">Left arm</string>
+    <string name="body_type_arm_right">Right arm</string>
+    <string name="body_type_forearm_left">Left forearm</string>
+    <string name="body_type_forearm_right">Right forearm</string>
+    <string name="body_type_thigh_left">Left thigh</string>
+    <string name="body_type_thigh_right">Right thigh</string>
+    <string name="body_type_calf_left">Left calf</string>
+    <string name="body_type_calf_right">Right calf</string>
+
+    <!-- Photo poses. -->
+    <string name="body_pose_front">Front</string>
+    <string name="body_pose_side">Side</string>
+    <string name="body_pose_back">Back</string>
+    <string name="body_photo_description">%1$s photo</string>
+    <!-- The check-in form. -->
+    <string name="check_in_date">Date</string>
+    <string name="check_in_date_spoken">Date, %1$s</string>
+    <string name="check_in_measurements">Measurements</string>
+    <string name="check_in_take_photo">Take photo</string>
+    <string name="check_in_choose_photo">Choose photo</string>
+    <string name="check_in_remove_photo">Remove</string>
+    <string name="check_in_no_camera">No camera app found</string>
+    <string name="check_in_save">Save</string>
+    <string name="check_in_delete">Delete check-in</string>
+    <string name="check_in_delete_title">Delete this check-in?</string>
+    <string name="check_in_delete_body">Its measurements and photos are removed.</string>
+    <string name="check_in_delete_confirm">Delete</string>
+    <string name="check_in_cancel">Cancel</string>
+    <string name="check_in_discard_title">Discard changes?</string>
+    <string name="check_in_discard_body">What you entered here is not saved.</string>
+    <string name="check_in_discard_confirm">Discard</string>
+    <string name="check_in_keep_editing">Keep editing</string>
+    <string name="check_in_not_a_number">%1$s isn\'t a number.</string>
+    <string name="check_in_problem_empty">Add a measurement or a photo first.</string>
+    <string name="check_in_problem_future">A check-in can\'t be in the future.</string>
+    <string name="check_in_problem_not_positive">Measurements must be more than zero.</string>
+    <string name="check_in_problem_percent">A percentage can\'t be over 100.</string>
+    <string name="check_in_problem_unknown_type">One of these measurements no longer exists.</string>
+    <string name="check_in_problem_date_taken">There\'s already a check-in on that date.</string>
+    <string name="check_in_photo_unreadable">Couldn\'t read that photo.</string>
+    <string name="check_in_photo_write_failed">Couldn\'t save that photo. The phone may be out of space.</string>
+
+    <!-- One measurement over time. -->
+    <string name="measurement_range_three">3 months</string>
+    <string name="measurement_range_six">6 months</string>
+    <string name="measurement_range_year">1 year</string>
+    <string name="measurement_range_all">All</string>
+    <string name="measurement_period_three">the last 3 months</string>
+    <string name="measurement_period_six">the last 6 months</string>
+    <string name="measurement_period_year">the last year</string>
+    <string name="measurement_period_all">all time</string>
+    <string name="measurement_chart_description">%1$s, from %2$s to %3$s over %4$s</string>
+    <string name="measurement_chart_single">%1$s, %2$s on %3$s</string>
+    <string name="measurement_entries">Entries</string>
+    <string name="measurement_no_entries">No entries in this period.</string>
+
+    <!-- Every check-in. -->
+    <string name="check_ins_empty">No check-ins yet.</string>
+    <plurals name="check_ins_measurements">
+        <item quantity="one">%1$d measurement</item>
+        <item quantity="other">%1$d measurements</item>
+    </plurals>
+    <string name="check_ins_photos_only">Photos only</string>
+
+    <!-- Two photos of one pose, side by side. -->
+    <string name="compare_needs_two">Take this pose on two check-ins to compare them.</string>
+    <string name="compare_photo_description">%1$s photo, %2$s</string>
+    <string name="compare_close">Close</string>
+
+    <!-- Choosing what to track, and the user's own measurements. -->
+    <string name="tracking_built_in">Measurements</string>
+    <string name="tracking_custom">Your own</string>
+    <string name="tracking_add">Add custom measurement</string>
+    <string name="tracking_add_title">New measurement</string>
+    <string name="tracking_add_confirm">Add</string>
+    <string name="tracking_name">Name</string>
+    <string name="tracking_kind">Kind</string>
+    <string name="tracking_kind_length">Length</string>
+    <string name="tracking_kind_mass">Weight</string>
+    <string name="tracking_kind_percent">Percent</string>
+    <string name="tracking_kind_plain">Number</string>
+    <string name="tracking_unit">Unit label</string>
+    <string name="tracking_cancel">Cancel</string>
+    <string name="tracking_rename_action">Rename %1$s</string>
+    <string name="tracking_rename_title">Rename measurement</string>
+    <string name="tracking_rename_confirm">Save</string>
+    <string name="tracking_delete_action">Delete %1$s</string>
+    <string name="tracking_delete_title">Delete measurement</string>
+    <plurals name="tracking_delete_message">
+        <item quantity="one">Delete %1$s? Its %2$d entry goes with it.</item>
+        <item quantity="other">Delete %1$s? Its %2$d entries go with it.</item>
+    </plurals>
+    <string name="tracking_delete_message_empty">Delete %1$s? It has no entries.</string>
+    <string name="tracking_delete_confirm">Delete</string>
+    <string name="tracking_name_blank">Give it a name.</string>
+    <string name="tracking_name_too_long">Keep the name to 40 characters.</string>
+    <string name="tracking_unit_missing">A number needs a unit label, such as mm.</string>
+    <string name="tracking_unit_too_long">Keep the unit label to 10 characters.</string>
+    <string name="check_in_photo_adding">Adding photo…</string>
+</resources>

@@ -248,6 +248,11 @@ private fun NavDestination?.titleRes(
     // NavigationStructureTest looks for.
     this?.hasRoute(Destination.Session::class) == true -> R.string.nav_session
     this?.hasRoute(Destination.AiSettings::class) == true -> R.string.nav_ai_settings
+    this?.hasRoute(Destination.BodyCheckIn::class) == true -> R.string.nav_body_check_in
+    this?.hasRoute(Destination.BodyMeasurement::class) == true -> R.string.nav_body_measurement
+    this?.hasRoute(Destination.BodyCheckIns::class) == true -> R.string.nav_body_check_ins
+    this?.hasRoute(Destination.BodyCompare::class) == true -> R.string.nav_body_compare
+    this?.hasRoute(Destination.BodyTracking::class) == true -> R.string.nav_body_tracking
     this?.hasRoute(Destination.Settings::class) == true -> R.string.settings_title
     // Unreachable while every destination above is named, which
     // NavigationStructureTest is what keeps true. Settings rather than a blank

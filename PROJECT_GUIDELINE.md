@@ -58,6 +58,7 @@ The two tables behind them are dropped by migration 5→6, which deletes what th
 - Editable generated plan before starting.
 - Active workout mode with sets, reps, weights, timed intervals, rest timer, pause, skip, replacement, and notes.
 - Local workout history and basic progress summaries.
+- Body tracking under Progress: dated check-ins holding body weight, body fat, tape measurements and the user's own measures, each charted over time; front, side and back progress photos, compared side by side.
 - AI provider settings, key validation, model selection, and key deletion.
 - English and Turkish localization.
 
@@ -275,6 +276,12 @@ Room is the source of truth for structured app data. DataStore holds lightweight
 | `user_profile` | Goals, level, equipment, schedule, preferences |
 | `coach_conversation` | Optional local-only coach messages; user can disable/clear |
 | `generation_audit` | Constraints, provider/model, selected IDs, validation outcome; never API keys |
+| `measurement_type` | The fifteen built-in body measurements and the user's own, each tracked or not |
+| `check_in` | One dated body check-in; at most one per day |
+| `measurement` | One value on one check-in, in kilograms, centimetres, percent, or the type's own unit |
+| `progress_photo` | One pose (front, side, back) on one check-in, naming a file in private storage |
+
+Progress photos are files, not rows: `filesDir/body-photos/`, re-encoded on the way in so they carry no EXIF, and never part of the export. The export carries the measurements (format version 3). “Reset app” deletes measurements and photos; “Delete all workout data” leaves both.
 
 A week contains workouts rather than replacing them: a day inside a week *is* a `workout_template`, carrying `week_id`, `week_position` and an optional `day_of_week`. That keeps the session engine, history, export and the watch protocol working on one shape. `week_id` is a foreign key with `ON DELETE CASCADE` — deleting a week deletes the workouts inside it, and the UI must say how many before it does. Sessions already performed survive, because `workout_session` has no foreign key to a template.
 
@@ -689,7 +696,7 @@ Phone bottom navigation:
 1. **Today** — current/recommended workout and quick start.
 2. **Plans** — saved plan library, and the entry point for creating a workout.
 3. **Exercises** — exercise search, filters, and muscle browsing.
-4. **Progress** — history, streaks, volume, and recent muscle activity.
+4. **Progress** — a Workouts | Body switch. Workouts: history, streaks, volume, and recent muscle activity. Body: the latest measurements, photos, and check-ins.
 
 The workout builder is not a top-level destination; it opens from Plans (“New workout”), from Today, and from the edit action on any saved or generated plan. The builder has two modes: **manual**, and **Coach** — the AI path that accepts a structured request plus optional conversational refinement.
 
@@ -752,7 +759,7 @@ Default policy:
 
 - No analytics, advertising SDK, remote logging, or automatic prompt uploads.
 - No health/sensor permissions in MVP.
-- No contacts, location, microphone, camera, or storage-wide permissions.
+- No contacts, location, microphone, camera, or storage-wide permissions. Progress photos come from the system camera app through an intent and a `FileProvider` scoped to one cache folder, or from the system photo picker, so neither needs a permission. They stay in private storage and never leave the device.
 - Use the system file picker for export/import.
 - Publish a plain-language privacy document even if no data is collected by the project owner.
 - Clearly distinguish “stored only by this app” from data sent to the user-selected AI provider.

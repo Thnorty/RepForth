@@ -1,5 +1,10 @@
 package com.repforth.core.transfer
 
+import com.repforth.core.body.BodyRepository
+import com.repforth.core.model.BuiltInMeasurement
+import com.repforth.core.model.CheckInRules
+import com.repforth.core.model.MeasurementType
+import java.time.LocalDate
 import com.repforth.core.ai.ProviderRepository
 import com.repforth.core.common.time.TimeSource
 import com.repforth.core.datastore.UserPreferencesDataSource
@@ -101,6 +106,7 @@ internal class DefaultDataTransfer(
     private val templates: TemplateRepository,
     private val weeks: WeekRepository,
     private val sessions: SessionRepository,
+    private val body: BodyRepository,
     private val preferences: UserPreferencesDataSource,
     private val providers: ProviderRepository,
     private val transaction: UserDataTransaction,
@@ -129,12 +135,13 @@ internal class DefaultDataTransfer(
         templates: TemplateRepository,
         weeks: WeekRepository,
         sessions: SessionRepository,
+        body: BodyRepository,
         preferences: UserPreferencesDataSource,
         providers: ProviderRepository,
         transaction: UserDataTransaction,
         time: TimeSource,
     ) : this(
-        profiles, templates, weeks, sessions, preferences, providers, transaction, time,
+        profiles, templates, weeks, sessions, body, preferences, providers, transaction, time,
         Dispatchers.IO,
     )
 
@@ -158,6 +165,14 @@ internal class DefaultDataTransfer(
                 templates = templates.observeAll().first().map { it.toDto() },
                 weeks = weeks.observeAll().first().map { it.toDto() },
                 sessions = sessions.observeFinished().first().map { it.toDto() },
+                body = BodyDto(
+                    types = body.observeTypes().first().map { it.toDto() },
+                    // A photos-only day has nothing that can travel, and written
+                    // as an empty check-in it would make the whole file unreadable.
+                    checkIns = body.observeCheckIns().first()
+                        .filter { it.measurements.isNotEmpty() }
+                        .map { it.toDto() },
+                ),
             ),
         )
     }
@@ -201,6 +216,7 @@ internal class DefaultDataTransfer(
             document.sessions.forEach { it.toDomain() }
             document.checkIdentities()
             document.checkSessionsAreFinished()
+            document.body?.check()
         } catch (e: Exception) {
             return ImportOutcome.Failed(
                 ImportFailure.Invalid(e.message ?: "contained something invalid"),
@@ -214,6 +230,7 @@ internal class DefaultDataTransfer(
                 weeks = document.weeks.size,
                 sessions = document.sessions.size,
                 exportedAt = document.exportedAt,
+                checkIns = document.body?.checkIns?.size,
                 // Everything currently stored, because everything currently
                 // stored is what goes. Counted here rather than described as
                 // "replaced", which was only ever true of the rows whose ids
@@ -242,6 +259,14 @@ internal class DefaultDataTransfer(
             // be saved through `templates`, and the export never puts them there.
             document.weeks.forEach { weeks.save(it.toDomain()) }
             document.sessions.forEach { sessions.persist(it.toDomain()) }
+            // Body data is not workout data, so the clear above left it; a file
+            // with a body section restores it, and one without leaves it alone.
+            document.body?.let { section ->
+                body.restoreMeasurements(
+                    section.types.map { it.toDomain() },
+                    section.checkIns.map { it.toDomain() },
+                )
+            }
         }
         ImportResult.Applied
     } catch (e: Exception) {
@@ -260,6 +285,9 @@ internal class DefaultDataTransfer(
 
     override suspend fun resetApp() {
         deleteWorkoutData()
+        // Body data, photo files included. Not in deleteWorkoutData, whose row
+        // promises profile, plans and history -- and import calls it.
+        body.deleteAll()
         preferences.clear()
         providers.deleteAll()
     }
@@ -333,4 +361,30 @@ private fun ExportDocument.checkSessionsAreFinished() {
 private fun <T> List<T>.firstDuplicate(): T? {
     val seen = mutableSetOf<T>()
     return firstOrNull { !seen.add(it) }
+}
+
+/**
+ * The body section as a whole: every check-in passes the rules the app holds a
+ * saved one to, against the file's own types, and no two share an id or a day.
+ *
+ * Except the future-date rule. That one guards what a person types today; a
+ * backup is a record, and refusing it because two clocks disagree would make
+ * someone's only copy unrestorable for nothing.
+ */
+private fun BodyDto.check() {
+    val builtIns = BuiltInMeasurement.entries.mapIndexed { index, builtIn ->
+        MeasurementType(builtIn.id, builtIn, null, builtIn.kind, null, builtIn.trackedByDefault, index)
+    }
+    val known = (builtIns + types.map { it.toDomain() }).associateBy { it.id }
+    checkIns.firstDuplicate(CheckInDto::id)?.let { throw IllegalArgumentException("two check-ins share the id '$it'") }
+    checkIns.firstDuplicate(CheckInDto::date)?.let { throw IllegalArgumentException("two check-ins share the date $it") }
+    checkIns.forEach { dto ->
+        val problem = CheckInRules.check(dto.toDomain(), LocalDate.MAX, known)
+        if (problem != null) throw IllegalArgumentException("check-in ${dto.date}: $problem")
+    }
+}
+
+private fun <T, K> List<T>.firstDuplicate(key: (T) -> K): K? {
+    val seen = mutableSetOf<K>()
+    return map(key).firstOrNull { !seen.add(it) }
 }

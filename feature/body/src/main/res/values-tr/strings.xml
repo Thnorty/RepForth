@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="body_tab_workouts">Antrenmanlar</string>
+    <string name="body_tab_body">Vücut</string>
+
+    <string name="body_empty">Ölçülerini ve fotoğraflarını takip etmeye başlamak için kayıt ekle.</string>
+    <string name="body_check_in">Kayıt ekle</string>
+    <string name="body_latest">Son ölçümler</string>
+    <string name="body_photos">Fotoğraflar</string>
+    <string name="body_compare">Karşılaştır</string>
+    <string name="body_all_check_ins">Tüm kayıtlar</string>
+    <string name="body_choose_tracked">Neleri takip edeceğini seç</string>
+    <string name="body_no_photo">Henüz fotoğraf yok</string>
+
+    <string name="body_change_down">▼ %1$s</string>
+    <string name="body_change_up">▲ %1$s</string>
+    <string name="body_change_none">±0</string>
+    <string name="body_change_down_spoken">son kayıttan bu yana %1$s azaldı</string>
+    <string name="body_change_up_spoken">son kayıttan bu yana %1$s arttı</string>
+    <string name="body_change_none_spoken">son kayıttan bu yana değişmedi</string>
+
+    <string name="body_value_with_unit">%1$s %2$s</string>
+    <string name="body_value_percent">%%%1$s</string>
+
+    <string name="body_type_weight">Kilo</string>
+    <string name="body_type_body_fat">Vücut yağı</string>
+    <string name="body_type_neck">Boyun</string>
+    <string name="body_type_shoulders">Omuzlar</string>
+    <string name="body_type_chest">Göğüs</string>
+    <string name="body_type_waist">Bel</string>
+    <string name="body_type_hips">Kalça</string>
+    <string name="body_type_arm_left">Sol kol</string>
+    <string name="body_type_arm_right">Sağ kol</string>
+    <string name="body_type_forearm_left">Sol ön kol</string>
+    <string name="body_type_forearm_right">Sağ ön kol</string>
+    <string name="body_type_thigh_left">Sol uyluk</string>
+    <string name="body_type_thigh_right">Sağ uyluk</string>
+    <string name="body_type_calf_left">Sol baldır</string>
+    <string name="body_type_calf_right">Sağ baldır</string>
+
+    <string name="body_pose_front">Ön</string>
+    <string name="body_pose_side">Yan</string>
+    <string name="body_pose_back">Arka</string>
+    <string name="body_photo_description">%1$s fotoğrafı</string>
+    <string name="check_in_date">Tarih</string>
+    <string name="check_in_date_spoken">Tarih, %1$s</string>
+    <string name="check_in_measurements">Ölçüler</string>
+    <string name="check_in_take_photo">Fotoğraf çek</string>
+    <string name="check_in_choose_photo">Fotoğraf seç</string>
+    <string name="check_in_remove_photo">Kaldır</string>
+    <string name="check_in_no_camera">Kamera uygulaması bulunamadı</string>
+    <string name="check_in_save">Kaydet</string>
+    <string name="check_in_delete">Kaydı sil</string>
+    <string name="check_in_delete_title">Bu kayıt silinsin mi?</string>
+    <string name="check_in_delete_body">Ölçüleri ve fotoğrafları da silinir.</string>
+    <string name="check_in_delete_confirm">Sil</string>
+    <string name="check_in_cancel">İptal</string>
+    <string name="check_in_discard_title">Değişiklikler silinsin mi?</string>
+    <string name="check_in_discard_body">Burada girdiklerin kaydedilmez.</string>
+    <string name="check_in_discard_confirm">Kaydetmeden çık</string>
+    <string name="check_in_keep_editing">Düzenlemeye devam et</string>
+    <string name="check_in_not_a_number">%1$s bir sayı değil.</string>
+    <string name="check_in_problem_empty">Önce bir ölçü ya da fotoğraf ekle.</string>
+    <string name="check_in_problem_future">Kayıt ileri bir tarihte olamaz.</string>
+    <string name="check_in_problem_not_positive">Ölçüler sıfırdan büyük olmalı.</string>
+    <string name="check_in_problem_percent">Yüzde değeri 100\'ü geçemez.</string>
+    <string name="check_in_problem_unknown_type">Bu ölçülerden biri artık yok.</string>
+    <string name="check_in_problem_date_taken">O tarihte zaten bir kayıt var.</string>
+    <string name="check_in_photo_unreadable">O fotoğraf okunamadı.</string>
+    <string name="check_in_photo_write_failed">Fotoğraf kaydedilemedi. Telefonda yer kalmamış olabilir.</string>
+
+    <string name="measurement_range_three">3 ay</string>
+    <string name="measurement_range_six">6 ay</string>
+    <string name="measurement_range_year">1 yıl</string>
+    <string name="measurement_range_all">Tümü</string>
+    <string name="measurement_period_three">son 3 ay</string>
+    <string name="measurement_period_six">son 6 ay</string>
+    <string name="measurement_period_year">son bir yıl</string>
+    <string name="measurement_period_all">tüm zamanlar</string>
+    <string name="measurement_chart_description">%1$s, %4$s içinde %2$s değerinden %3$s değerine</string>
+    <string name="measurement_chart_single">%1$s, %3$s tarihinde %2$s</string>
+    <string name="measurement_entries">Kayıtlar</string>
+    <string name="measurement_no_entries">Bu dönemde kayıt yok.</string>
+
+    <string name="check_ins_empty">Henüz kayıt yok.</string>
+    <plurals name="check_ins_measurements">
+        <item quantity="one">%1$d ölçü</item>
+        <item quantity="other">%1$d ölçü</item>
+    </plurals>
+    <string name="check_ins_photos_only">Yalnızca fotoğraf</string>
+
+    <string name="compare_needs_two">Karşılaştırmak için bu pozu iki kayıtta çek.</string>
+    <string name="compare_photo_description">%1$s fotoğrafı, %2$s</string>
+    <string name="compare_close">Kapat</string>
+
+    <string name="tracking_built_in">Ölçüler</string>
+    <string name="tracking_custom">Kendi ölçülerin</string>
+    <string name="tracking_add">Özel ölçü ekle</string>
+    <string name="tracking_add_title">Yeni ölçü</string>
+    <string name="tracking_add_confirm">Ekle</string>
+    <string name="tracking_name">Ad</string>
+    <string name="tracking_kind">Tür</string>
+    <string name="tracking_kind_length">Uzunluk</string>
+    <string name="tracking_kind_mass">Ağırlık</string>
+    <string name="tracking_kind_percent">Yüzde</string>
+    <string name="tracking_kind_plain">Sayı</string>
+    <string name="tracking_unit">Birim</string>
+    <string name="tracking_cancel">Vazgeç</string>
+    <string name="tracking_rename_action">%1$s: yeniden adlandır</string>
+    <string name="tracking_rename_title">Ölçüyü yeniden adlandır</string>
+    <string name="tracking_rename_confirm">Kaydet</string>
+    <string name="tracking_delete_action">%1$s: sil</string>
+    <string name="tracking_delete_title">Ölçüyü sil</string>
+    <plurals name="tracking_delete_message">
+        <item quantity="one">%1$s silinsin mi? %2$d kaydı da silinir.</item>
+        <item quantity="other">%1$s silinsin mi? %2$d kaydı da silinir.</item>
+    </plurals>
+    <string name="tracking_delete_message_empty">%1$s silinsin mi? Hiç kaydı yok.</string>
+    <string name="tracking_delete_confirm">Sil</string>
+    <string name="tracking_name_blank">Bir ad ver.</string>
+    <string name="tracking_name_too_long">Ad en fazla 40 karakter olabilir.</string>
+    <string name="tracking_unit_missing">Sayı için bir birim gerekir, örneğin mm.</string>
+    <string name="tracking_unit_too_long">Birim en fazla 10 karakter olabilir.</string>
+    <string name="check_in_photo_adding">Fotoğraf ekleniyor…</string>
+</resources>

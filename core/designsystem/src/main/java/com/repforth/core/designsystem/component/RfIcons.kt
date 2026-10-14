@@ -69,6 +69,16 @@ object RfIcons {
     val Save: Painter
         @Composable get() = painterResource(R.drawable.rf_sym_save)
 
+    // Body tracking.
+    val Camera: Painter
+        @Composable get() = painterResource(R.drawable.rf_sym_photo_camera)
+
+    val Gallery: Painter
+        @Composable get() = painterResource(R.drawable.rf_sym_photo_library)
+
+    val Compare: Painter
+        @Composable get() = painterResource(R.drawable.rf_sym_compare)
+
     /** Clears a field. Distinct from [Delete], which removes a thing. */
     val Close: Painter
         @Composable get() = painterResource(R.drawable.rf_sym_close)

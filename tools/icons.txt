@@ -70,3 +70,8 @@ phone_android
 wifi
 signal_cellular_alt
 battery_5_bar
+
+# Body tracking
+photo_camera
+photo_library
+compare

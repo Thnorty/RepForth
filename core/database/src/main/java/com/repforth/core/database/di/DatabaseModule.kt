@@ -3,6 +3,7 @@ package com.repforth.core.database.di
 import android.content.Context
 import androidx.room.Room
 import com.repforth.core.database.RepForthDatabase
+import com.repforth.core.database.dao.BodyDao
 import com.repforth.core.database.dao.ExerciseDao
 import com.repforth.core.database.dao.ProfileDao
 import com.repforth.core.database.dao.SessionDao
@@ -48,6 +49,7 @@ object DatabaseModule {
                 RepForthDatabase.MIGRATION_4_5,
                 RepForthDatabase.MIGRATION_5_6,
                 RepForthDatabase.MIGRATION_6_7,
+                RepForthDatabase.MIGRATION_7_8,
             )
             .build()
 
@@ -65,4 +67,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSessionDao(database: RepForthDatabase): SessionDao = database.sessionDao()
+
+    @Provides
+    fun provideBodyDao(database: RepForthDatabase): BodyDao = database.bodyDao()
 }

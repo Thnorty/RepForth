@@ -24,6 +24,13 @@ import com.repforth.core.designsystem.theme.rfPushExit
 import com.repforth.feature.builder.BuilderRoute
 import com.repforth.feature.builder.PlansRoute
 import com.repforth.feature.exercises.ExercisesRoute
+import com.repforth.feature.body.BodyRoute
+import com.repforth.feature.body.CheckInListRoute
+import com.repforth.feature.body.CheckInRoute
+import com.repforth.feature.body.ComparePhotosRoute
+import com.repforth.feature.body.MeasurementDetailRoute
+import com.repforth.feature.body.ProgressTabs
+import com.repforth.feature.body.TrackingRoute
 import com.repforth.feature.history.HistoryRoute
 import com.repforth.feature.home.TodayRoute
 import com.repforth.feature.session.SessionRoute
@@ -140,7 +147,33 @@ fun RepForthNavHost(
             ExercisesRoute()
         }
         composable<Destination.Progress> {
-            HistoryRoute()
+            ProgressTabs(
+                workouts = { HistoryRoute() },
+                body = {
+                    BodyRoute(
+                        onCheckIn = { navController.navigate(Destination.BodyCheckIn()) },
+                        onOpenMeasurement = { navController.navigate(Destination.BodyMeasurement(it)) },
+                        onCompare = { navController.navigate(Destination.BodyCompare) },
+                        onAllCheckIns = { navController.navigate(Destination.BodyCheckIns) },
+                        onChooseTracked = { navController.navigate(Destination.BodyTracking) },
+                    )
+                },
+            )
+        }
+        composable<Destination.BodyCheckIn> {
+            CheckInRoute(onDone = { navController.popBackStack() })
+        }
+        composable<Destination.BodyMeasurement> {
+            MeasurementDetailRoute(onOpenCheckIn = { navController.navigate(Destination.BodyCheckIn(it)) })
+        }
+        composable<Destination.BodyTracking> {
+            TrackingRoute()
+        }
+        composable<Destination.BodyCompare> {
+            ComparePhotosRoute()
+        }
+        composable<Destination.BodyCheckIns> {
+            CheckInListRoute(onOpenCheckIn = { navController.navigate(Destination.BodyCheckIn(it)) })
         }
         composable<Destination.Settings> {
             SettingsRoute(

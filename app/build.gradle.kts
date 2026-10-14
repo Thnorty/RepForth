@@ -36,6 +36,7 @@ dependencies {
     // Only to answer "has onboarding happened?" — the app shell reads the
     // profile's existence, never its contents.
     implementation(project(":core:user-data"))
+    implementation(project(":feature:body"))
     implementation(project(":feature:builder"))
     implementation(project(":feature:exercises"))
     implementation(project(":feature:history"))
@@ -85,6 +86,8 @@ dependencies {
     androidTestImplementation(project(":feature:builder"))
     androidTestImplementation(project(":feature:onboarding"))
     androidTestImplementation(project(":feature:settings"))
+    androidTestImplementation(project(":feature:body"))
+    androidTestImplementation(project(":core:body"))
     // Coach's generation binding is replaced with a fixture on a test device;
     // see TestGenerationModule for why it has to be.
     androidTestImplementation(project(":core:ai"))

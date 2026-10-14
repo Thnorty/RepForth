@@ -70,6 +70,21 @@ sealed interface Destination {
      * session lives in the database, not on the back stack.
      */
     @Serializable data class Session(val templateId: String? = null) : Destination
+
+    /** A body check-in: [checkInId] to edit one, or null for today's (new or existing). */
+    @Serializable data class BodyCheckIn(val checkInId: String? = null) : Destination
+
+    /** One measurement's chart and entries. [typeId] is a built-in's id or a custom type's. */
+    @Serializable data class BodyMeasurement(val typeId: String) : Destination
+
+    /** Every check-in, newest first. */
+    @Serializable data object BodyCheckIns : Destination
+
+    /** Two progress photos of one pose, side by side. */
+    @Serializable data object BodyCompare : Destination
+
+    /** Which measurements a check-in asks for, and the user's own. */
+    @Serializable data object BodyTracking : Destination
 }
 
 /**

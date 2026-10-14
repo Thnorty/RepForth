@@ -35,6 +35,18 @@ data class ExportDocument(
      */
     val weeks: List<WeekDto> = emptyList(),
     val sessions: List<SessionDto> = emptyList(),
+    /**
+     * Body measurements, from version 3.
+     *
+     * Null rather than empty when absent, because the two mean different
+     * things on import: null is a file that predates body tracking and says
+     * nothing about it, so the body data on the phone is left alone; empty is a
+     * file from a phone with no body data, which restores to none.
+     *
+     * Photos are never here. They stay on the device (§14), and a photo row
+     * without its file would mean nothing on another phone.
+     */
+    val body: BodyDto? = null,
 ) {
     companion object {
         const val FORMAT = "repforth.export"
@@ -49,8 +61,10 @@ data class ExportDocument(
          * Version 2 added [weeks]. A version 1 file still imports and simply
          * has none, which is correct: weekly plans did not exist when it was
          * written.
+         *
+         * Version 3 added [body]. An older file leaves body data untouched.
          */
-        const val VERSION = 2
+        const val VERSION = 3
     }
 }
 
@@ -205,6 +219,13 @@ data class ImportPreview(
     val sessions: Int,
     val exportedAt: Long,
 
+    /**
+     * Body check-ins in the file, or null when it carries no body section and
+     * so leaves body data alone. When present they replace the measurements;
+     * photos stay, because no file holds them.
+     */
+    val checkIns: Int? = null,
+
     /** What is stored now, all of which the import removes. */
     val removesProfile: Boolean,
     val removedTemplates: Int,
@@ -213,7 +234,7 @@ data class ImportPreview(
 ) {
     /** Nothing in the file. Importing it would only delete. */
     val isEmpty: Boolean
-        get() = !hasProfile && templates == 0 && weeks == 0 && sessions == 0
+        get() = !hasProfile && templates == 0 && weeks == 0 && sessions == 0 && (checkIns ?: 0) == 0
 
     /** Nothing stored yet, so the import takes nothing away. */
     val replacesNothing: Boolean
@@ -257,3 +278,30 @@ sealed interface ImportFailure {
      */
     data class NotApplied(val detail: String) : ImportFailure
 }
+
+@Serializable
+data class BodyDto(
+    val types: List<MeasurementTypeDto> = emptyList(),
+    val checkIns: List<CheckInDto> = emptyList(),
+)
+
+@Serializable
+data class MeasurementTypeDto(
+    val id: String,
+    /** The built-in's id, or null for a type the user made. */
+    val builtIn: String? = null,
+    val customName: String? = null,
+    val kind: String,
+    val unitLabel: String? = null,
+    val tracked: Boolean,
+    val sortOrder: Int,
+)
+
+/** One day's measurements, canonical units, keyed by type id. No photos, ever. */
+@Serializable
+data class CheckInDto(
+    val id: String,
+    /** ISO-8601 local date. */
+    val date: String,
+    val measurements: Map<String, Double> = emptyMap(),
+)

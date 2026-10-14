@@ -59,6 +59,12 @@ class SchemaExportTest {
                 "workout_session",
                 "session_exercise",
                 "set_record",
+
+                // Body tracking (v8).
+                "measurement_type",
+                "check_in",
+                "measurement",
+                "progress_photo",
             ),
             tables,
         )
