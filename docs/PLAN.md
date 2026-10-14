@@ -4952,6 +4952,20 @@ twice, with both `BodyFlowTest` methods watched failing for a real reason (one
 on the empty state above, one on a mutation that unhooked Check in). 124
 screenshot goldens, 25 of them new.
 
+### 2026-10-14 - 1.1.0, body tracking and Coach editing a plan
+
+The first release that adds features since 1.0.2: body tracking (#81, the
+entry above) and Coach changing an existing plan (#79), plus #80's numerals.
+Version codes 4 and 1004. The watch app is unchanged apart from its version --
+nothing under `wear/` or `core:wear-protocol` moved since 1.0.2.
+
+**The first release whose upgrade is one-way.** It installs over 1.0.1 and
+1.0.2 in place, but the first launch migrates the database to schema 8, and
+1.0.2 cannot open schema 8. Going back means uninstalling, which erases the
+data, so the release notes tell people to export first if they want a way
+back. The owner's own phone made that trip on 2026-10-14 under a branch build
+of the same code.
+
 ### Earlier polish and maintenance backlog
 
 1. ~~**`:app`'s instrumentation tests are not in CI.**~~ Done in D.5. All nine
