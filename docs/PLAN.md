@@ -28,7 +28,7 @@ which decisions are closed so they are not reopened.
 | 5 — Wear remote | §19 | **Core remote demonstrated on hardware.** Snapshot delivery, commands, stale-command refusal, rest countdown and disconnected recovery were demonstrated on a Galaxy S23 and Galaxy Watch Ultra. The 2026-09-07 source audit found the §3/§11 thumbnail, watch timer alerts and ongoing activity still missing |
 | 6 — Release hardening | §19 | **In progress**, deliberately early. 6.1–6.3: 61 goldens and enforced CI; migrations and keystore storage now run on a managed emulator |
 | — Reported from use | — | Four rounds after every phase was complete. Three defects, two of which took two attempts each; see below |
-| — Body tracking | §3, §7, §12, §14 | **Built; not yet verified on hardware.** Check-ins, measurements, charts, progress photos and compare, under Progress. See 2026-10-13 below |
+| — Body tracking | §3, §7, §12, §14 | **Built and checked on the Galaxy S23.** Check-ins, measurements, charts, progress photos and compare, under Progress. See 2026-10-13 below |
 
 **Two devices have been used, and they disagree.** A Galaxy S23 on Android 14
 and a Xiaomi on Android 11 — `AGENTS.md` carries the differences, which are
@@ -4890,9 +4890,15 @@ dialog confirmed it each time: 56 workouts removed, 55 restored.
 
 ### 2026-10-13 - body tracking: measurements, photos, and a Body tab under Progress
 
-**Built on the JVM and the managed emulator; not yet verified on hardware.**
-The phone check with the owner (a real camera, a real photo picker, a real
-export) is still to come, and nothing here should be read as having passed it.
+**Built on the JVM and the managed emulator, then checked on the Galaxy S23
+(Android 14) with the owner on 2026-10-14**, as a release-signed build installed
+over 1.0.2: the schema 7→8 migration ran on the owner's real data, Samsung's
+camera in portrait and landscape, the photo picker, the app killed with
+`am kill` while the camera was in front, Compare, and an export with a
+photos-only check-in imported back. The owner reported the checks correct;
+the crash buffer stayed empty throughout. The owner also asked for "All
+check-ins" and "Choose what to track" to look like buttons -- they are now
+outlined buttons, as Compare is.
 
 Spec `docs/superpowers/specs/2026-10-13-body-tracking-design.md`, plan
 `docs/superpowers/plans/2026-10-13-body-tracking.md`. What exists:
@@ -4945,8 +4951,6 @@ variants, 0 failed; `./gradlew lint` clean; `:app` on `pixel6Api34` 12 of 12,
 twice, with both `BodyFlowTest` methods watched failing for a real reason (one
 on the empty state above, one on a mutation that unhooked Check in). 124
 screenshot goldens, 25 of them new.
-
-Not done: the hardware check.
 
 ### Earlier polish and maintenance backlog
 
