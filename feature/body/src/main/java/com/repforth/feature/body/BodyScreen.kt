@@ -16,7 +16,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -89,7 +88,11 @@ internal fun BodyScreen(
                 )
                 // Before the first check-in too: otherwise arms, hips and the
                 // rest can only be chosen after saving one without them.
-                LinkRow(stringResource(R.string.body_choose_tracked), onChooseTracked, TextAlign.Center)
+                SecondaryButton(
+                    stringResource(R.string.body_choose_tracked),
+                    onChooseTracked,
+                    Modifier.padding(top = Space.s4),
+                )
             }
         } else {
             LazyColumn(
@@ -110,9 +113,12 @@ internal fun BodyScreen(
                     }
                 }
                 item(key = "links") {
-                    Column {
-                        LinkRow(stringResource(R.string.body_all_check_ins), onAllCheckIns)
-                        LinkRow(stringResource(R.string.body_choose_tracked), onChooseTracked)
+                    Column(
+                        modifier = Modifier.padding(top = Space.s3),
+                        verticalArrangement = Arrangement.spacedBy(Space.s2),
+                    ) {
+                        SecondaryButton(stringResource(R.string.body_all_check_ins), onAllCheckIns)
+                        SecondaryButton(stringResource(R.string.body_choose_tracked), onChooseTracked)
                     }
                 }
             }
@@ -239,12 +245,13 @@ private fun PhotoStrip(
     }
 }
 
+/** The tab's secondary actions, drawn as Compare is so they read as buttons, not text. */
 @Composable
-private fun LinkRow(text: String, onClick: () -> Unit, align: TextAlign = TextAlign.Start) {
-    TextButton(
+private fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = Target.min),
+        modifier = modifier.fillMaxWidth().heightIn(min = Target.min),
     ) {
-        Text(text, modifier = Modifier.fillMaxWidth(), textAlign = align)
+        Text(text, textAlign = TextAlign.Center)
     }
 }
